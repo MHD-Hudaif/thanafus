@@ -1,0 +1,68 @@
+RewriteEngine On
+
+# =====================================================
+# REMOVE TRAILING SLASH
+# =====================================================
+
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.+)/$ /$1 [R=301,L]
+
+# =====================================================
+# PREVENT DIRECTORY LISTING
+# =====================================================
+
+Options -Indexes
+
+# =====================================================
+# ROOT PHP ROUTES
+# Allows:
+# /home -> home.php
+# /index -> index.php
+# But ignores actual .php requests
+# =====================================================
+
+RewriteCond %{REQUEST_URI} !\.php$
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{DOCUMENT_ROOT}/kauzariyya-musabaqa/$1.php -f
+RewriteRule ^([^/]+)$ $1.php [L]
+
+# =====================================================
+# ADMIN ROUTES
+# =====================================================
+
+RewriteCond %{REQUEST_URI} !\.php$
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{DOCUMENT_ROOT}/kauzariyya-musabaqa/admin/$1.php -f
+RewriteRule ^admin/(.+)$ admin/$1.php [L]
+
+# =====================================================
+# ADMIN UTILITIES ROUTES
+# =====================================================
+
+RewriteCond %{REQUEST_URI} !\.php$
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{DOCUMENT_ROOT}/kauzariyya-musabaqa/admin/utilities/$1.php -f
+RewriteRule ^admin/utilities/(.+)$ admin/utilities/$1.php [L]
+
+# =====================================================
+# AUTH ROUTES
+# =====================================================
+
+RewriteCond %{REQUEST_URI} !\.php$
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{DOCUMENT_ROOT}/kauzariyya-musabaqa/auth/$1.php -f
+RewriteRule ^auth/(.+)$ auth/$1.php [L]
+
+# =====================================================
+# TV ROUTES
+# =====================================================
+
+RewriteCond %{REQUEST_URI} !\.php$
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{DOCUMENT_ROOT}/kauzariyya-musabaqa/tv/$1.php -f
+RewriteRule ^tv/(.+)$ tv/$1.php [L]

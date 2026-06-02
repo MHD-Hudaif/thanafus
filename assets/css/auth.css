@@ -1,0 +1,323 @@
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    }
+    
+    :root{
+    --green:#10b981;
+    --yellow:#facc15;
+    }
+    
+    html,
+    body{
+    width:100%;
+    height:100%;
+    font-family:'Cairo',sans-serif;
+    overflow:hidden;
+    background:#000;
+    color:white;
+    }
+    
+    body{
+    position:relative;
+    }
+    
+    /* =========================================================
+    BACKGROUND
+    ========================================================= */
+    
+    .auth-background{
+    position:fixed;
+    inset:0;
+    overflow:hidden;
+    }
+    
+    .auth-image{
+    position:absolute;
+    inset:-5%;
+    
+    background-image:
+    url('/kauzariyya-musabaqa/assets/images/kauzariyya-4-d.png');
+    
+    background-size:cover;
+    background-position:center;
+    
+    animation:
+    bgMove 28s linear infinite alternate;
+    }
+    
+    @keyframes bgMove{
+    
+    0%{
+    transform:
+    scale(1)
+    translate3d(0,0,0);
+    }
+    
+    100%{
+    transform:
+    scale(1.12)
+    translate3d(20px,10px,0);
+    }
+    
+    }
+    
+    .auth-overlay{
+    position:absolute;
+    inset:0;
+    
+    background:
+    linear-gradient(
+    to bottom,
+    rgba(0,0,0,0.45),
+    rgba(0,0,0,0.7)
+    );
+    }
+    
+    /* =========================================================
+    CONTAINER
+    ========================================================= */
+    
+    .auth-container{
+    position:relative;
+    z-index:10;
+    
+    width:100%;
+    height:100vh;
+    
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    
+    padding:20px;
+    }
+    
+    /* =========================================================
+    CARD
+    ========================================================= */
+    
+    .auth-card{
+    width:100%;
+    max-width:460px;
+    
+    padding:45px;
+    
+    border-radius:34px;
+    
+    background:
+    linear-gradient(
+    135deg,
+    rgba(255,255,255,0.08),
+    rgba(255,255,255,0.03)
+    );
+    
+    backdrop-filter:blur(24px);
+    
+    border:1px solid rgba(255,255,255,0.08);
+    
+    box-shadow:
+    0 0 60px rgba(0,0,0,0.25);
+    }
+    
+    .auth-logo{
+    width:180px;
+    
+    margin:0 auto 25px auto;
+    
+    display:block;
+    }
+    
+    .auth-title{
+    font-size:38px;
+    font-weight:900;
+    text-align:center;
+    }
+    
+    .auth-subtitle{
+    margin-top:10px;
+    
+    text-align:center;
+    
+    font-size:14px;
+    
+    letter-spacing:2px;
+    
+    color:rgba(255,255,255,0.6);
+    }
+    
+    /* =========================================================
+    ERROR
+    ========================================================= */
+    
+    .auth-error{
+    margin-top:25px;
+    
+    height:54px;
+    
+    border-radius:16px;
+    
+    background:
+    rgba(248,113,113,0.12);
+    
+    border:1px solid rgba(248,113,113,0.18);
+    
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
+    
+    color:#fca5a5;
+    
+    font-size:14px;
+    }
+    
+    /* =========================================================
+    FORM
+    ========================================================= */
+    
+    .input-group{
+    margin-top:24px;
+    }
+    
+    .input-group label{
+    display:block;
+    
+    margin-bottom:10px;
+    
+    font-size:14px;
+    
+    color:rgba(255,255,255,0.75);
+    }
+    
+    .input-wrap{
+    height:62px;
+    
+    border-radius:18px;
+    
+    background:
+    rgba(255,255,255,0.04);
+    
+    border:1px solid rgba(255,255,255,0.08);
+    
+    display:flex;
+    align-items:center;
+    
+    padding:0 20px;
+    
+    gap:14px;
+    }
+    
+    .input-wrap i{
+    color:rgba(255,255,255,0.45);
+    }
+    
+    .input-wrap input{
+    flex:1;
+    
+    height:100%;
+    
+    background:none;
+    border:none;
+    outline:none;
+    
+    font-size:15px;
+    
+    color:white;
+    
+    font-family:'Cairo',sans-serif;
+    }
+    
+    .input-wrap input::placeholder{
+    color:rgba(255,255,255,0.35);
+    }
+    
+    /* =========================================================
+    BUTTON
+    ========================================================= */
+    
+    .auth-btn{
+    width:100%;
+    
+    height:62px;
+    
+    margin-top:30px;
+    
+    border:none;
+    
+    border-radius:20px;
+    
+    background:
+    linear-gradient(
+    135deg,
+    rgba(16,185,129,0.85),
+    rgba(250,204,21,0.6)
+    );
+    
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:12px;
+    
+    font-size:16px;
+    font-weight:800;
+    
+    color:white;
+    
+    cursor:pointer;
+    
+    transition:0.35s ease;
+    }
+    
+    .auth-btn:hover{
+    transform:
+    translateY(-3px)
+    scale(1.01);
+    
+    box-shadow:
+    0 0 40px rgba(16,185,129,0.24);
+    }
+    
+    /* =========================================================
+    BACK
+    ========================================================= */
+    
+    .back-home{
+    margin-top:20px;
+    
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
+    
+    font-size:14px;
+    
+    color:rgba(255,255,255,0.65);
+    
+    transition:0.3s ease;
+    }
+    
+    .back-home:hover{
+    color:white;
+    }
+    
+    /* =========================================================
+    MOBILE
+    ========================================================= */
+    
+    @media(max-width:600px){
+    
+    .auth-card{
+    padding:30px 24px;
+    border-radius:28px;
+    }
+    
+    .auth-title{
+    font-size:30px;
+    }
+    
+    .auth-logo{
+    width:150px;
+    }
+    
+    }
