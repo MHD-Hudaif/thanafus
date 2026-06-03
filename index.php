@@ -119,22 +119,42 @@ Skip Intro
 
 <div
 class="bg-image active"
-style="background-image:url('<?= APP_URL ?>/assets/images/kauzariyya-1-n.png')">
+style="background-image:url('<?= APP_URL ?>/assets/images/kauzariyya1.png')">
 </div>
 
 <div
 class="bg-image"
-style="background-image:url('<?= APP_URL ?>/assets/images/kauzariyya-2-n.png')">
+style="background-image:url('<?= APP_URL ?>/assets/images/kauzariyya2.png')">
 </div>
 
 <div
 class="bg-image"
-style="background-image:url('<?= APP_URL ?>/assets/images/kauzariyya-3-n.png')">
+style="background-image:url('<?= APP_URL ?>/assets/images/kauzariyya3.png')">
 </div>
 
 <div
 class="bg-image"
-style="background-image:url('<?= APP_URL ?>/assets/images/kauzariyya-4-d.png')">
+style="background-image:url('<?= APP_URL ?>/assets/images/kauzariyya4.png')">
+</div>
+
+<div
+class="bg-image"
+style="background-image:url('<?= APP_URL ?>/assets/images/kauzariyya5.png')">
+</div>
+
+<div
+class="bg-image"
+style="background-image:url('<?= APP_URL ?>/assets/images/kauzariyya6.png')">
+</div>
+
+<div
+class="bg-image"
+style="background-image:url('<?= APP_URL ?>/assets/images/kauzariyya7.png')">
+</div>
+
+<div
+class="bg-image"
+style="background-image:url('<?= APP_URL ?>/assets/images/kauzariyya8.png')">
 </div>
 
 </div>

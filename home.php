@@ -10,6 +10,13 @@ $user =
 $isLoggedIn =
     !empty($user);
 
+$backgroundImages = array_values(array_filter(
+    glob(__DIR__ . '/assets/images/kauzariyya*.png') ?: [],
+    static fn(string $path): bool => !str_contains(basename($path), 'logo')
+));
+natsort($backgroundImages);
+$backgroundImages = array_values($backgroundImages);
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -93,18 +100,34 @@ rgba(0,0,0,0.45)
 z-index:2;
 }
 
+.bg-slideshow{
+position:absolute;
+inset:0;
+overflow:hidden;
+}
+
 .bg-image{
 position:absolute;
 inset:-5%;
 
-background-image:
-url('<?= APP_URL ?>/assets/images/kauzariyya-1-n.png');
-
 background-size:cover;
 background-position:center;
 
+opacity:0;
+transform:scale(1);
+
+transition:opacity 4s cubic-bezier(0.4,0,0.2,1);
+
+filter:brightness(0.92) contrast(1.02) saturate(1.08);
+
 animation:
 bgZoom 30s linear infinite alternate;
+
+will-change:transform,opacity;
+}
+
+.bg-image.active{
+opacity:1;
 }
 
 @keyframes bgZoom{
@@ -423,7 +446,18 @@ BACKGROUND
 
 <div class="bg">
 
-    <div class="bg-image"></div>
+    <div class="bg-slideshow">
+
+        <?php foreach ($backgroundImages as $index => $imagePath): ?>
+
+            <div
+                class="bg-image<?= $index === 0 ? ' active' : '' ?>"
+                style="background-image:url('<?= APP_URL ?>/assets/images/<?= e(basename($imagePath)) ?>')"
+            ></div>
+
+        <?php endforeach; ?>
+
+    </div>
 
 </div>
 
@@ -566,6 +600,21 @@ HERO
     </div>
 
 </section>
+
+<script>
+(function () {
+    const backgrounds = document.querySelectorAll('.bg-image');
+    if (backgrounds.length < 2) return;
+
+    let currentBg = 0;
+
+    setInterval(function () {
+        backgrounds[currentBg].classList.remove('active');
+        currentBg = (currentBg + 1) % backgrounds.length;
+        backgrounds[currentBg].classList.add('active');
+    }, 15000);
+})();
+</script>
 
 </body>
 </html>
