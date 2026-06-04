@@ -22,8 +22,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $status = in_array($_POST['status'] ?? 'draft', ['draft', 'active', 'completed'], true) ? $_POST['status'] : 'draft';
     $startDate = trim((string)($_POST['start_date'] ?? '')) ?: null;
     $endDate = trim((string)($_POST['end_date'] ?? '')) ?: null;
-    $introEnabled = isset($_POST['intro_enabled']) ? 1 : 0;
-    $scoreboardEnabled = isset($_POST['scoreboard_enabled']) ? 1 : 0;
+    $introEnabled = trim((string)($_POST['intro_enabled'] ?? '1')) === '1' ? 1 : 0;
+    $scoreboardEnabled = trim((string)($_POST['scoreboard_enabled'] ?? '1')) === '1' ? 1 : 0;
 
     if ($action === 'delete') {
         try {
@@ -216,6 +216,16 @@ require_once __DIR__ . '/../includes/sidebar.php';
             <?= admin_csrf_field() ?>
             <input type="hidden" name="action" id="eventAction" value="create">
             <input type="hidden" name="event_id" id="eventId" value="">
+            <input type="hidden" name="intro_enabled" id="eventIntro" value="1">
+            <input type="hidden" name="scoreboard_enabled" id="eventScoreboard" value="1">
+            <div class="input-group full-width hidden" id="eventStatusRow">
+                <label>Status</label>
+                <select name="status" id="eventStatusSelect">
+                    <option value="draft">Draft</option>
+                    <option value="active">Active</option>
+                    <option value="completed">Completed</option>
+                </select>
+            </div>
             <div class="form-grid">
                 <div class="input-group">
                     <label>Title <span class="required">*</span></label>
@@ -227,21 +237,18 @@ require_once __DIR__ . '/../includes/sidebar.php';
                 </div>
                 <div class="input-group">
                     <label>Theme Colors</label>
-                    <input type="text" name="theme_colors" id="eventColors" placeholder="#14b8a6,#22c55e">
+                    <div class="color-input-container">
+                        <div class="color-chip-list" id="eventColorChips" aria-live="polite"></div>
+                        <input type="text" id="eventColorEntry" autocomplete="off" placeholder="Type a color name or hex code">
+                    </div>
+                    <input type="hidden" name="theme_colors" id="eventColors" value="">
+                    <div class="color-suggestions" id="eventColorSuggestions" role="listbox" aria-label="Color suggestions"></div>
                 </div>
                 <div class="input-group">
                     <label>Scoreboard Mode</label>
                     <select name="scoreboard_mode" id="eventMode">
                         <option value="system">System</option>
                         <option value="manual">Manual</option>
-                    </select>
-                </div>
-                <div class="input-group">
-                    <label>Status</label>
-                    <select name="status" id="eventStatus">
-                        <option value="draft">Draft</option>
-                        <option value="active">Active</option>
-                        <option value="completed">Completed</option>
                     </select>
                 </div>
                 <div class="input-group">
@@ -255,10 +262,6 @@ require_once __DIR__ . '/../includes/sidebar.php';
                 <div class="input-group full-width">
                     <label>Description</label>
                     <textarea name="description" id="eventDescription" rows="4"></textarea>
-                </div>
-                <div class="checkbox-group full-width">
-                    <label><input type="checkbox" name="intro_enabled" id="eventIntro" checked> Intro Enabled</label>
-                    <label><input type="checkbox" name="scoreboard_enabled" id="eventScoreboard" checked> Scoreboard Enabled</label>
                 </div>
             </div>
             <div class="form-actions">
@@ -291,15 +294,168 @@ require_once __DIR__ . '/../includes/sidebar.php';
 <script>
 function openModal(id) { document.getElementById(id)?.classList.add('active'); }
 function closeModal(id) { document.getElementById(id)?.classList.remove('active'); }
-document.querySelectorAll('[data-open-modal]').forEach(btn => btn.addEventListener('click', () => {
+
+const COLOR_SUGGESTIONS = [
+    { label: 'Teal', value: '#14b8a6' },
+    { label: 'Green', value: '#22c55e' },
+    { label: 'Blue', value: '#2563eb' },
+    { label: 'Orange', value: '#f97316' },
+    { label: 'Pink', value: '#e11d48' },
+    { label: 'Purple', value: '#8b5cf6' },
+    { label: 'Yellow', value: '#facc15' },
+    { label: 'Sky', value: '#0ea5e9' }
+];
+
+const colorState = { chips: [] };
+const eventForm = document.getElementById('eventForm');
+const colorChipsEl = document.getElementById('eventColorChips');
+const colorInput = document.getElementById('eventColorEntry');
+const colorHidden = document.getElementById('eventColors');
+const colorSuggestionsEl = document.getElementById('eventColorSuggestions');
+
+function normalizeColor(value) {
+    return String(value || '').trim();
+}
+
+function parseColorString(value) {
+    return String(value || '')
+        .split(',')
+        .map(normalizeColor)
+        .filter(Boolean);
+}
+
+function updateHiddenColors() {
+    colorHidden.value = colorState.chips.join(',');
+}
+
+function renderColorChips() {
+    colorChipsEl.innerHTML = '';
+
+    colorState.chips.forEach((color, index) => {
+        const chip = document.createElement('span');
+        chip.className = 'color-chip';
+        chip.innerHTML = `
+            <span class="color-chip-swatch" style="background:${color};"></span>
+            <span class="color-chip-label">${color}</span>
+            <button type="button" class="color-chip-remove" aria-label="Remove ${color}">&times;</button>
+        `;
+        chip.querySelector('.color-chip-remove')?.addEventListener('click', () => {
+            colorState.chips.splice(index, 1);
+            renderColorChips();
+            updateHiddenColors();
+            updateSuggestions(colorInput.value.trim());
+        });
+        colorChipsEl.appendChild(chip);
+    });
+}
+
+function isValidColor(value) {
+    if (!value) return false;
+    const normalized = normalizeColor(value).replace(/,$/, '');
+    return CSS.supports('color', normalized);
+}
+
+function addColorChip(value) {
+    const color = normalizeColor(value).replace(/,$/, '');
+    if (!color || colorState.chips.includes(color)) return;
+    if (!isValidColor(color)) return;
+    colorState.chips.push(color);
+    renderColorChips();
+    updateHiddenColors();
+}
+
+function clearColorEntry() {
+    colorInput.value = '';
+}
+
+function setColorChips(values) {
+    colorState.chips = Array.from(new Set(parseColorString(values))).filter(Boolean);
+    renderColorChips();
+    updateHiddenColors();
+}
+
+function filterSuggestions(query) {
+    const normalized = String(query || '').toLowerCase().trim();
+    if (!normalized) {
+        return COLOR_SUGGESTIONS;
+    }
+    return COLOR_SUGGESTIONS.filter(item =>
+        item.label.toLowerCase().includes(normalized) || item.value.toLowerCase().includes(normalized)
+    );
+}
+
+function renderSuggestions(query) {
+    const suggestions = filterSuggestions(query);
+    colorSuggestionsEl.innerHTML = '';
+
+    if (!suggestions.length) {
+        colorSuggestionsEl.classList.remove('active');
+        return;
+    }
+
+    suggestions.forEach(item => {
+        const option = document.createElement('button');
+        option.type = 'button';
+        option.className = 'color-suggestion';
+        option.innerHTML = `
+            <span class="color-swatch" style="background:${item.value};"></span>
+            <span>${item.label}</span>
+            <small>${item.value}</small>
+        `;
+        option.addEventListener('click', () => {
+            addColorChip(item.value);
+            clearColorEntry();
+            renderSuggestions('');
+            colorInput.focus();
+        });
+        colorSuggestionsEl.appendChild(option);
+    });
+    colorSuggestionsEl.classList.add('active');
+}
+
+function commitColorEntry() {
+    const value = normalizeColor(colorInput.value);
+    if (!value) return;
+    addColorChip(value);
+    clearColorEntry();
+    renderSuggestions('');
+}
+
+colorInput?.addEventListener('input', (event) => {
+    renderSuggestions(event.target.value);
+});
+
+colorInput?.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter' || event.key === ',') {
+        event.preventDefault();
+        commitColorEntry();
+    }
+});
+
+document.addEventListener('click', (event) => {
+    if (!event.target.closest('.color-input-container') && !event.target.closest('.color-suggestion')) {
+        colorSuggestionsEl.classList.remove('active');
+    }
+});
+
+function resetEventModal() {
     document.getElementById('eventForm').reset();
+    setColorChips('');
+    colorSuggestionsEl.classList.remove('active');
+    document.getElementById('eventStatusSelect').value = 'draft';
+    document.getElementById('eventIntro').value = '1';
+    document.getElementById('eventScoreboard').value = '1';
+}
+
+document.querySelectorAll('[data-open-modal]').forEach(btn => btn.addEventListener('click', () => {
+    resetEventModal();
     document.getElementById('eventModalTitle').textContent = 'Create Event';
     document.getElementById('eventAction').value = 'create';
     document.getElementById('eventId').value = '';
+    document.getElementById('eventStatusRow').classList.add('hidden');
+    document.getElementById('eventStatusSelect').value = 'draft';
     openModal(btn.dataset.openModal);
 }));
-document.querySelectorAll('[data-close-modal]').forEach(btn => btn.addEventListener('click', () => closeModal(btn.dataset.closeModal)));
-document.querySelectorAll('.modal-overlay').forEach(modal => modal.addEventListener('click', e => { if (e.target === modal) closeModal(modal.id); }));
 document.querySelectorAll('[data-edit-event]').forEach(btn => btn.addEventListener('click', () => {
     const event = JSON.parse(btn.dataset.editEvent);
     document.getElementById('eventModalTitle').textContent = 'Edit Event';
@@ -307,14 +463,16 @@ document.querySelectorAll('[data-edit-event]').forEach(btn => btn.addEventListen
     document.getElementById('eventId').value = event.id || '';
     document.getElementById('eventTitle').value = event.title || '';
     document.getElementById('eventSlug').value = event.slug || '';
-    document.getElementById('eventColors').value = event.theme_colors || '';
+    setColorChips(event.theme_colors || '');
     document.getElementById('eventMode').value = event.scoreboard_mode || 'system';
-    document.getElementById('eventStatus').value = event.status || 'draft';
+    document.getElementById('eventStatusSelect').value = event.status || 'draft';
+    document.getElementById('eventStatusRow').classList.remove('hidden');
+    document.getElementById('eventIntro').value = String(event.intro_enabled) === '1' ? '1' : '0';
+    document.getElementById('eventScoreboard').value = String(event.scoreboard_enabled) === '1' ? '1' : '0';
     document.getElementById('eventStart').value = event.start_date || '';
     document.getElementById('eventEnd').value = event.end_date || '';
     document.getElementById('eventDescription').value = event.description || '';
-    document.getElementById('eventIntro').checked = String(event.intro_enabled) === '1';
-    document.getElementById('eventScoreboard').checked = String(event.scoreboard_enabled) === '1';
+    colorSuggestionsEl.classList.remove('active');
     openModal('eventModal');
 }));
 document.querySelectorAll('[data-delete-id]').forEach(btn => btn.addEventListener('click', () => {
@@ -322,6 +480,10 @@ document.querySelectorAll('[data-delete-id]').forEach(btn => btn.addEventListene
     document.getElementById('deleteName').textContent = btn.dataset.deleteName || 'this event';
     openModal('deleteModal');
 }));
+
+eventForm?.addEventListener('submit', () => {
+    updateHiddenColors();
+});
 </script>
 
 </body>

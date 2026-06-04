@@ -19,7 +19,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $teamName = trim((string)($_POST['team_name'] ?? ''));
     $shortName = trim((string)($_POST['short_name'] ?? ''));
     $teamColor = trim((string)($_POST['team_color'] ?? '#14b8a6'));
-    $numberPrefix = (int)($_POST['number_prefix'] ?? 0);
 
     if ($action === 'delete') {
         try {
@@ -44,18 +43,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         admin_redirect('/admin/teams.php');
     }
 
-    if ($teamName === '' || $numberPrefix <= 0) {
-        admin_flash('error', 'Team name and chest number prefix are required.');
+    if ($teamName === '') {
+        admin_flash('error', 'Team name is required.');
         admin_redirect('/admin/teams.php');
     }
 
     try {
-        $dup = $pdo->prepare('SELECT id FROM musabaqa_teams WHERE event_id = ? AND number_prefix = ? AND id <> ? LIMIT 1');
-        $dup->execute([$activeEventId, $numberPrefix, $teamId]);
-        if ($dup->fetchColumn()) {
-            throw new RuntimeException('Chest number prefix is already used.');
-        }
-
         $dup = $pdo->prepare('SELECT id FROM musabaqa_teams WHERE event_id = ? AND team_name = ? AND id <> ? LIMIT 1');
         $dup->execute([$activeEventId, $teamName, $teamId]);
         if ($dup->fetchColumn()) {
@@ -63,10 +56,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         if ($action === 'update' && $teamId > 0) {
-            $stmt = $pdo->prepare('UPDATE musabaqa_teams SET team_name = ?, short_name = ?, team_color = ?, number_prefix = ? WHERE id = ? AND event_id = ?');
-            $stmt->execute([$teamName, $shortName ?: null, $teamColor, $numberPrefix, $teamId, $activeEventId]);
+            $stmt = $pdo->prepare('UPDATE musabaqa_teams SET team_name = ?, short_name = ?, team_color = ? WHERE id = ? AND event_id = ?');
+            $stmt->execute([$teamName, $shortName ?: null, $teamColor, $teamId, $activeEventId]);
             admin_flash('success', 'Team updated successfully.');
         } else {
+            $stmt = $pdo->prepare('SELECT MAX(number_prefix) FROM musabaqa_teams WHERE event_id = ?');
+            $stmt->execute([$activeEventId]);
+            $maxPrefix = (int)$stmt->fetchColumn();
+            $numberPrefix = $maxPrefix > 0 ? $maxPrefix + 100 : 100;
             $stmt = $pdo->prepare('INSERT INTO musabaqa_teams (event_id, team_name, short_name, team_color, number_prefix) VALUES (?, ?, ?, ?, ?)');
             $stmt->execute([$activeEventId, $teamName, $shortName ?: null, $teamColor, $numberPrefix]);
             admin_flash('success', 'Team created successfully.');
@@ -135,7 +132,7 @@ require_once __DIR__ . '/../includes/sidebar.php';
             <?php foreach ($teams as $team): ?>
                 <div class="team-card" style="border-top:4px solid <?= e($team['team_color'] ?: '#14b8a6') ?>;">
                     <div class="team-top"><div class="team-color-dot" style="background: <?= e($team['team_color'] ?: '#14b8a6') ?>;"></div><div class="team-prefix"><?= e((string)$team['number_prefix']) ?>+</div></div>
-                    <div class="team-name"><?= e($team['team_name']) ?></div>
+                    <div class="team-name team-color-pill" style="background: <?= e($team['team_color'] ?: '#14b8a6') ?>22; color: <?= e($team['team_color'] ? '#111' : '#111') ?>;"><?= e($team['team_name']) ?></div>
                     <div class="team-short"><?= e($team['short_name'] ?: 'No short name') ?></div>
                     <div class="team-score"><?= number_format((float)($team['total_score'] ?? 0), 2) ?> <span>points</span></div>
                     <div class="event-meta">
@@ -166,8 +163,15 @@ require_once __DIR__ . '/../includes/sidebar.php';
             <div class="form-grid">
                 <div class="input-group full-width"><label>Team Name <span class="required">*</span></label><input type="text" name="team_name" id="teamName" required></div>
                 <div class="input-group"><label>Short Name</label><input type="text" name="short_name" id="teamShort"></div>
-                <div class="input-group"><label>Team Color</label><input type="color" name="team_color" id="teamColor" value="#14b8a6"></div>
-                <div class="input-group full-width"><label>Chest Number Prefix <span class="required">*</span></label><input type="number" name="number_prefix" id="teamPrefix" min="1" required></div>
+                <div class="input-group">
+                    <label>Team Color</label>
+                    <div class="color-input-container">
+                        <div class="color-chip-list" id="teamColorChips" aria-live="polite"></div>
+                        <input type="text" id="teamColorEntry" autocomplete="off" placeholder="Type a color name or hex code">
+                    </div>
+                    <input type="hidden" name="team_color" id="teamColor" value="#14b8a6">
+                    <div class="color-suggestions" id="teamColorSuggestions" role="listbox" aria-label="Team color suggestions"></div>
+                </div>
             </div>
             <div class="form-actions"><button type="button" class="btn btn-secondary btn-md" data-close="teamModal">Cancel</button><button class="btn btn-success btn-md" type="submit">Save Team</button></div>
         </form>
@@ -194,6 +198,121 @@ document.querySelector('[data-open-team]')?.addEventListener('click', () => {
 });
 document.querySelectorAll('[data-close]').forEach(btn => btn.addEventListener('click', () => closeModal(btn.dataset.close)));
 document.querySelectorAll('.modal-overlay').forEach(modal => modal.addEventListener('click', e => { if (e.target === modal) closeModal(modal.id); }));
+const TEAM_COLOR_SUGGESTIONS = [
+    { label: 'Teal', value: '#14b8a6' },
+    { label: 'Green', value: '#22c55e' },
+    { label: 'Blue', value: '#2563eb' },
+    { label: 'Orange', value: '#f97316' },
+    { label: 'Pink', value: '#e11d48' },
+    { label: 'Purple', value: '#8b5cf6' },
+    { label: 'Yellow', value: '#facc15' },
+    { label: 'Sky', value: '#0ea5e9' }
+];
+
+const teamColorState = { color: '' };
+const teamColorChipsEl = document.getElementById('teamColorChips');
+const teamColorInput = document.getElementById('teamColorEntry');
+const teamColorHidden = document.getElementById('teamColor');
+const teamColorSuggestionsEl = document.getElementById('teamColorSuggestions');
+
+function normalizeColorValue(value) {
+    return String(value || '').trim();
+}
+
+function isValidColorValue(value) {
+    if (!value) return false;
+    return CSS.supports('color', normalizeColorValue(value));
+}
+
+function renderTeamColorChip() {
+    teamColorChipsEl.innerHTML = '';
+    const color = normalizeColorValue(teamColorState.color);
+    if (!color) return;
+    const chip = document.createElement('span');
+    chip.className = 'color-chip';
+    chip.innerHTML = `
+        <span class="color-chip-swatch" style="background:${color};"></span>
+        <span class="color-chip-label">${color}</span>
+        <button type="button" class="color-chip-remove" aria-label="Remove ${color}">&times;</button>
+    `;
+    chip.querySelector('.color-chip-remove')?.addEventListener('click', () => {
+        teamColorState.color = '';
+        teamColorHidden.value = '#14b8a6';
+        renderTeamColorChip();
+        renderTeamColorSuggestions(teamColorInput.value.trim());
+    });
+    teamColorChipsEl.appendChild(chip);
+}
+
+function setTeamColor(value) {
+    const color = normalizeColorValue(value);
+    if (!color || !isValidColorValue(color)) return;
+    teamColorState.color = color;
+    teamColorHidden.value = color;
+    renderTeamColorChip();
+}
+
+function filterTeamColorSuggestions(query) {
+    const normalized = String(query || '').toLowerCase().trim();
+    if (!normalized) return TEAM_COLOR_SUGGESTIONS;
+    return TEAM_COLOR_SUGGESTIONS.filter(item => item.label.toLowerCase().includes(normalized) || item.value.toLowerCase().includes(normalized));
+}
+
+function renderTeamColorSuggestions(query) {
+    const suggestions = filterTeamColorSuggestions(query);
+    teamColorSuggestionsEl.innerHTML = '';
+    if (!suggestions.length) {
+        teamColorSuggestionsEl.classList.remove('active');
+        return;
+    }
+    suggestions.forEach(item => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'color-suggestion';
+        button.innerHTML = `
+            <span class="color-swatch" style="background:${item.value};"></span>
+            <span>${item.label}</span>
+            <small>${item.value}</small>
+        `;
+        button.addEventListener('click', () => {
+            setTeamColor(item.value);
+            teamColorInput.value = '';
+            teamColorSuggestionsEl.classList.remove('active');
+            teamColorInput.focus();
+        });
+        teamColorSuggestionsEl.appendChild(button);
+    });
+    teamColorSuggestionsEl.classList.add('active');
+}
+
+teamColorInput?.addEventListener('input', event => renderTeamColorSuggestions(event.target.value));
+teamColorInput?.addEventListener('keydown', event => {
+    if (event.key === 'Enter' || event.key === ',') {
+        event.preventDefault();
+        setTeamColor(teamColorInput.value);
+        teamColorInput.value = '';
+        teamColorSuggestionsEl.classList.remove('active');
+    }
+});
+
+document.addEventListener('click', event => {
+    if (!event.target.closest('.color-input-container') && !event.target.closest('.color-suggestion')) {
+        teamColorSuggestionsEl.classList.remove('active');
+    }
+});
+
+document.querySelector('[data-open-team]')?.addEventListener('click', () => {
+    document.getElementById('teamForm').reset();
+    document.getElementById('teamModalTitle').textContent = 'Create Team';
+    document.getElementById('teamAction').value = 'create';
+    document.getElementById('teamId').value = '';
+    teamColorState.color = '';
+    teamColorHidden.value = '#14b8a6';
+    renderTeamColorChip();
+    teamColorSuggestionsEl.classList.remove('active');
+    openModal('teamModal');
+});
+
 document.querySelectorAll('[data-edit-team]').forEach(btn => btn.addEventListener('click', () => {
     const team = JSON.parse(btn.dataset.editTeam);
     document.getElementById('teamModalTitle').textContent = 'Edit Team';
@@ -201,8 +320,8 @@ document.querySelectorAll('[data-edit-team]').forEach(btn => btn.addEventListene
     document.getElementById('teamId').value = team.id || '';
     document.getElementById('teamName').value = team.team_name || '';
     document.getElementById('teamShort').value = team.short_name || '';
-    document.getElementById('teamColor').value = team.team_color || '#14b8a6';
-    document.getElementById('teamPrefix').value = team.number_prefix || '';
+    setTeamColor(team.team_color || '#14b8a6');
+    teamColorSuggestionsEl.classList.remove('active');
     openModal('teamModal');
 }));
 document.querySelectorAll('[data-delete-id]').forEach(btn => btn.addEventListener('click', () => {

@@ -39,6 +39,119 @@ function admin_csrf_field(): string
     return '<input type="hidden" name="csrf_token" value="' . e(generate_csrf_token()) . '">';
 }
 
+function admin_class_type_tiers(): array
+{
+    return [
+        'all' => 'All',
+        'senior' => 'Senior',
+        'junior' => 'Junior',
+        'subjunior' => 'Sub Junior',
+    ];
+}
+
+function admin_class_type_tier_from_name(?string $name): ?string
+{
+    $name = trim((string) $name);
+    if ($name === '') {
+        return null;
+    }
+
+    if (str_contains($name, 'حفظ')) {
+        return 'subjunior';
+    }
+
+    if (str_contains($name, 'ثانوية') || str_contains($name, 'الثانوية')) {
+        return 'junior';
+    }
+
+    if (str_contains($name, 'عالية') || str_contains($name, 'العالية')) {
+        return 'senior';
+    }
+
+    return null;
+}
+
+function admin_class_type_tier_label(?string $tier): string
+{
+    $tiers = admin_class_type_tiers();
+
+    if (!$tier || $tier === 'all') {
+        return $tiers['all'];
+    }
+
+    return $tiers[$tier] ?? ucfirst($tier);
+}
+
+function admin_class_type_display(?string $arabicName, ?int $classTypeId = null): string
+{
+    if (!$arabicName && ($classTypeId === null || $classTypeId <= 0)) {
+        return 'All Classes';
+    }
+
+    $tier = admin_class_type_tier_from_name($arabicName);
+    $english = $tier ? admin_class_type_tier_label($tier) : '—';
+    $arabic = trim((string) $arabicName);
+
+    if ($arabic === '') {
+        return $english;
+    }
+
+    return $english . ' · ' . $arabic;
+}
+
+function admin_class_type_badge_class(?string $tier): string
+{
+    return match ($tier) {
+        'senior' => 'badge-info',
+        'junior' => 'badge-warning',
+        'subjunior' => 'badge-success',
+        default => 'badge-neutral',
+    };
+}
+
+function admin_class_type_ids_for_tier(PDO $dashboardPdo, string $tier): array
+{
+    if (!in_array($tier, ['senior', 'junior', 'subjunior'], true)) {
+        return [];
+    }
+
+    $stmt = $dashboardPdo->query('SELECT id, name FROM class_types ORDER BY id ASC');
+    $ids = [];
+
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        if (admin_class_type_tier_from_name($row['name'] ?? '') === $tier) {
+            $ids[] = (int) $row['id'];
+        }
+    }
+
+    return $ids;
+}
+
+/**
+ * @return array{0: string, 1: array<int>}
+ */
+function admin_program_class_filter_sql(PDO $dashboardPdo, string $classFilter, string $programAlias = 'mp'): array
+{
+    $classFilter = trim($classFilter);
+
+    if ($classFilter === '' || $classFilter === 'all') {
+        return ['', []];
+    }
+
+    if (!in_array($classFilter, ['senior', 'junior', 'subjunior'], true)) {
+        return ['', []];
+    }
+
+    $ids = admin_class_type_ids_for_tier($dashboardPdo, $classFilter);
+    if (!$ids) {
+        return [' AND 1 = 0', []];
+    }
+
+    $placeholders = implode(',', array_fill(0, count($ids), '?'));
+
+    return [" AND {$programAlias}.class_type_id IN ({$placeholders})", $ids];
+}
+
 function admin_require_active_event(PDO $pdo): array
 {
     $activeEventId = (int)($_SESSION['active_event_id'] ?? 0);

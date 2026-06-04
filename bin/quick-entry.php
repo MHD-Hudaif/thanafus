@@ -3,6 +3,7 @@
 $pageTitle = 'Program Entries';
 
 require_once __DIR__ . '/../config/auth.php';
+require_once __DIR__ . '/../includes/admin-helpers.php';
 
 require_login();
 
@@ -103,11 +104,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'get_team_members') {
             SELECT
                 mtm.id AS team_member_id,
                 mtm.chest_number,
-                s.full_name,
-                s.id AS student_id
-            FROM musabaqa_team_members mtm
-            INNER JOIN kauzariyya.students s
-                ON s.id = mtm.student_id
+                    COALESCE(NULLIF(s.display_name, ''), s.full_name) AS full_name,
             LEFT JOIN kauzariyya.classes c
                 ON c.id = s.class_id
             WHERE mtm.team_id = ?
@@ -136,19 +133,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'get_team_members') {
             ORDER BY
                 CAST(NULLIF(mtm.chest_number, '') AS UNSIGNED) ASC,
                 mtm.chest_number ASC,
-                s.full_name ASC
-        ";
-
-        $params[] = $programId;
-
-        $stmtMembers = $musabaqa_pdo->prepare($sql);
-        $stmtMembers->execute($params);
-        $members = $stmtMembers->fetchAll(PDO::FETCH_ASSOC);
-    }
-
-    header('Content-Type: application/json; charset=utf-8');
-    echo json_encode($members);
-    exit;
+                full_name ASC
 }
 
 /*
@@ -187,7 +172,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'manage_members' && isset($_GET['e
                     em.id AS entry_member_id,
                     tm.id AS team_member_id,
                     tm.chest_number,
-                    s.full_name,
+                    COALESCE(NULLIF(s.display_name, ''), s.full_name) AS full_name,
                     c.name AS class_name
                 FROM musabaqa_entry_members em
                 JOIN musabaqa_team_members tm
@@ -197,7 +182,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'manage_members' && isset($_GET['e
                 LEFT JOIN kauzariyya.classes c
                     ON c.id = s.class_id
                 WHERE em.entry_id = ?
-                ORDER BY s.full_name ASC
+                ORDER BY full_name ASC
             ");
             $stmtCurrent->execute([$entryId]);
             $payload['current_members'] = $stmtCurrent->fetchAll(PDO::FETCH_ASSOC);
@@ -206,7 +191,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'manage_members' && isset($_GET['e
                 SELECT
                     tm.id AS team_member_id,
                     tm.chest_number,
-                    s.full_name,
+                    COALESCE(NULLIF(s.display_name, ''), s.full_name) AS full_name,
                     c.name AS class_name
                 FROM musabaqa_team_members tm
                 JOIN kauzariyya.students s
@@ -237,7 +222,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'manage_members' && isset($_GET['e
                 ORDER BY
                     CAST(NULLIF(tm.chest_number, '') AS UNSIGNED) ASC,
                     tm.chest_number ASC,
-                    s.full_name ASC
+                    full_name ASC
             ";
 
             $availParams[] = $entryId;
@@ -365,7 +350,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     mtm.chest_number,
                     mtm.status,
 
-                    s.full_name,
+                    COALESCE(NULLIF(s.display_name, ''), s.full_name) AS full_name,
 
                     c.id AS class_id,
                     c.name AS class_name,
@@ -869,7 +854,9 @@ $statusMap = [
                 Entries
             </div>
             <div class="page-subtitle">
-                <?= e($program['title']) ?> · <?= e(ucfirst($programType)) ?> · <?= e($program['class_type_name'] ?: 'All Class Types') ?>
+                <?= e($program['title']) ?>
+                · <?= e(ucfirst($programType)) ?>
+                · <?= e(admin_class_type_display($program['class_type_name'] ?? null, (int)($program['class_type_id'] ?? 0))) ?>
             </div>
         </div>
 

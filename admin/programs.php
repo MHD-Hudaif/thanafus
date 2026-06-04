@@ -282,6 +282,7 @@ $flash = admin_take_flash();
 $search = trim((string)($_GET['search'] ?? ''));
 $statusFilter = trim((string)($_GET['status'] ?? 'all'));
 $typeFilter = trim((string)($_GET['type'] ?? 'all'));
+$classFilter = trim((string)($_GET['class'] ?? 'all'));
 
 $classTypes = $dashboardPdo->query('SELECT id, name FROM class_types ORDER BY name ASC')->fetchAll(PDO::FETCH_ASSOC);
 $stageTypes = $pdo->query('SELECT id, name FROM musabaqa_stage_types ORDER BY name ASC')->fetchAll(PDO::FETCH_ASSOC);
@@ -302,6 +303,9 @@ if ($typeFilter !== 'all' && in_array($typeFilter, ['individual', 'group'], true
     $where .= ' AND mp.program_type = ?';
     $params[] = $typeFilter;
 }
+[$classSql, $classParams] = admin_program_class_filter_sql($dashboardPdo, $classFilter, 'mp');
+$where .= $classSql;
+array_push($params, ...$classParams);
 
 $stmt = $pdo->prepare("
     SELECT
@@ -324,6 +328,18 @@ $stmt = $pdo->prepare("
 $stmt->execute($params);
 $programs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+$latestProgram = null;
+if ($programs) {
+    // Find the program with the latest end_time
+    foreach ($programs as $program) {
+        if ($program['end_time']) {
+            if (!$latestProgram || $program['end_time'] > $latestProgram['end_time']) {
+                $latestProgram = $program;
+            }
+        }
+    }
+}
+
 $categoryRows = [];
 if ($programs) {
     $ids = array_map('intval', array_column($programs, 'id'));
@@ -338,6 +354,16 @@ if ($programs) {
     foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $category) {
         $categoryRows[(int)$category['program_id']][] = $category;
     }
+}
+
+// Get the latest program for auto-filling start time
+$latestProgramData = null;
+if ($latestProgram) {
+    $latestProgramData = [
+        'end_time' => $latestProgram['end_time'],
+        'stage_type_id' => $latestProgram['stage_type_id'],
+        'location' => $latestProgram['location']
+    ];
 }
 
 require_once __DIR__ . '/../includes/header.php';
@@ -380,9 +406,17 @@ require_once __DIR__ . '/../includes/sidebar.php';
                     <option value="completed" <?= $statusFilter === 'completed' ? 'selected' : '' ?>>Completed</option>
                 </select>
             </div>
+            <div class="input-group">
+                <label>Class</label>
+                <select name="class">
+                    <?php foreach (admin_class_type_tiers() as $value => $label): ?>
+                        <option value="<?= e($value) ?>" <?= $classFilter === $value ? 'selected' : '' ?>><?= e($label) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
             <div class="form-actions full-width">
                 <button class="btn btn-secondary btn-md" type="submit"><i class="fa-solid fa-filter"></i> Filter</button>
-                <?php if ($search !== '' || $typeFilter !== 'all' || $statusFilter !== 'all'): ?>
+                <?php if ($search !== '' || $typeFilter !== 'all' || $statusFilter !== 'all' || $classFilter !== 'all'): ?>
                     <a class="btn btn-secondary btn-md" href="<?= APP_URL ?>/admin/programs.php">Clear</a>
                 <?php endif; ?>
             </div>
@@ -422,7 +456,12 @@ require_once __DIR__ . '/../includes/sidebar.php';
                             </td>
                             <td><span class="badge badge-neutral"><?= e(ucfirst($program['program_type'])) ?></span></td>
                             <td><?= e($program['stage_type_name'] ?: '-') ?></td>
-                            <td><?= e($program['class_type_name'] ?: 'All') ?></td>
+                            <td>
+                                <?php $classTier = admin_class_type_tier_from_name($program['class_type_name'] ?? ''); ?>
+                                <span class="badge <?= admin_class_type_badge_class($classTier) ?>">
+                                    <?= e(admin_class_type_display($program['class_type_name'] ?? null, (int)($program['class_type_id'] ?? 0))) ?>
+                                </span>
+                            </td>
                             <td>
                                 <?php if ($program['start_time']): ?>
                                     <div><?= e(date('d M Y h:i A', strtotime($program['start_time']))) ?></div>
@@ -482,7 +521,7 @@ require_once __DIR__ . '/../includes/sidebar.php';
                     <select name="class_type_id" id="classTypeId">
                         <option value="">All Class Types</option>
                         <?php foreach ($classTypes as $type): ?>
-                            <option value="<?= (int)$type['id'] ?>"><?= e($type['name']) ?></option>
+                            <option value="<?= (int)$type['id'] ?>"><?= e(admin_class_type_display($type['name'] ?? null, (int)$type['id'])) ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>
@@ -595,11 +634,21 @@ function updateEndTimeFromDuration() {
     document.getElementById('endTime').value = formatLocalDatetime(startDate);
 }
 
+const latestProgramData = <?= json_encode($latestProgramData) ?>;
+
 document.querySelector('[data-open-program]')?.addEventListener('click', () => {
     document.getElementById('programForm').reset();
     document.getElementById('programModalTitle').textContent = 'Add Program';
     document.getElementById('programAction').value = 'create';
     document.getElementById('programId').value = '';
+    
+    // Auto-fill with latest program data if available
+    if (latestProgramData && latestProgramData.end_time) {
+        document.getElementById('startTime').value = toLocalDatetime(latestProgramData.end_time);
+        document.getElementById('stageTypeId').value = latestProgramData.stage_type_id || '';
+        document.getElementById('programLocation').value = latestProgramData.location || '';
+    }
+    
     openModal('programModal');
 });
 

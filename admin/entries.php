@@ -5,6 +5,7 @@ require_once __DIR__ . '/../includes/admin-helpers.php';
 require_login();
 
 $pdo = $GLOBALS['musabaqa_pdo'];
+$dashboardPdo = $GLOBALS['dashboard_pdo'];
 $activeEvent = admin_require_active_event($pdo);
 $activeEventId = (int)$activeEvent['id'];
 
@@ -49,14 +50,22 @@ function entries_load_program(PDO $pdo, int $eventId, int $programId): ?array
     return $program ?: null;
 }
 
+$classFilter = trim((string)($_GET['class'] ?? 'all'));
+
+$programWhere = 'WHERE mp.event_id = ?';
+$programParams = [$activeEventId];
+[$classSql, $classParams] = admin_program_class_filter_sql($dashboardPdo, $classFilter, 'mp');
+$programWhere .= $classSql;
+array_push($programParams, ...$classParams);
+
 $stmt = $pdo->prepare("
     SELECT mp.*, ct.name AS class_type_name
     FROM musabaqa_programs mp
     LEFT JOIN kauzariyya.class_types ct ON ct.id = mp.class_type_id
-    WHERE mp.event_id = ?
+    {$programWhere}
     ORDER BY mp.title ASC
 ");
-$stmt->execute([$activeEventId]);
+$stmt->execute($programParams);
 $programs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 if (!$programs) {
@@ -118,7 +127,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
 
                     $stmt = $pdo->prepare("
-                        SELECT tm.*, s.full_name, c.class_type_id
+                        SELECT tm.*, COALESCE(NULLIF(s.display_name, ''), s.full_name) AS full_name, c.class_type_id
                         FROM musabaqa_team_members tm
                         JOIN kauzariyya.students s ON s.id = tm.student_id
                         LEFT JOIN kauzariyya.classes c ON c.id = s.class_id
@@ -331,7 +340,7 @@ if (isset($_GET['action'])) {
             }
 
             $sql = "
-                SELECT tm.id, tm.chest_number, s.full_name, c.name AS class_name, ct.name AS class_type
+                SELECT tm.id, tm.chest_number, COALESCE(NULLIF(s.display_name, ''), s.full_name) AS full_name, c.name AS class_name, ct.name AS class_type
                 FROM musabaqa_team_members tm
                 JOIN kauzariyya.students s ON s.id = tm.student_id
                 LEFT JOIN kauzariyya.classes c ON c.id = s.class_id
@@ -371,7 +380,7 @@ if (isset($_GET['action'])) {
                 $params[] = $entryId;
             }
 
-            $sql .= ' ORDER BY CAST(tm.chest_number AS UNSIGNED), s.full_name ASC';
+            $sql .= ' ORDER BY CAST(tm.chest_number AS UNSIGNED), full_name ASC';
             $stmt = $pdo->prepare($sql);
             $stmt->execute($params);
             echo json_encode(['success' => true, 'members' => $stmt->fetchAll(PDO::FETCH_ASSOC)], JSON_UNESCAPED_UNICODE);
@@ -398,13 +407,13 @@ if (isset($_GET['action'])) {
 
             $stmt = $pdo->prepare("
                 SELECT em.id AS entry_member_id, tm.id AS team_member_id, tm.chest_number, em.role_name,
-                       s.full_name, c.name AS class_name
+                       COALESCE(NULLIF(s.display_name, ''), s.full_name) AS full_name, c.name AS class_name
                 FROM musabaqa_entry_members em
                 JOIN musabaqa_team_members tm ON tm.id = em.team_member_id
                 JOIN kauzariyya.students s ON s.id = tm.student_id
                 LEFT JOIN kauzariyya.classes c ON c.id = s.class_id
                 WHERE em.entry_id = ?
-                ORDER BY CAST(tm.chest_number AS UNSIGNED), s.full_name ASC
+                ORDER BY CAST(tm.chest_number AS UNSIGNED), full_name ASC
             ");
             $stmt->execute([$entryId]);
 
@@ -450,13 +459,18 @@ if ($teamFilter > 0) {
     $where .= ' AND pe.team_id = ?';
     $params[] = $teamFilter;
 }
+[$entryClassSql, $entryClassParams] = admin_program_class_filter_sql($dashboardPdo, $classFilter, 'mp');
+$where .= $entryClassSql;
+array_push($params, ...$entryClassParams);
 
 $stmt = $pdo->prepare("
-    SELECT pe.*, mp.title AS program_title, mp.program_type, t.team_name,
+    SELECT pe.*, mp.title AS program_title, mp.program_type, mp.class_type_id,
+           ct.name AS class_type_name, t.team_name, t.team_color,
            COALESCE(member_counts.member_count, 0) AS member_count,
            ss.final_total, ss.status AS score_sheet_status
     FROM musabaqa_program_entries pe
     JOIN musabaqa_programs mp ON mp.id = pe.program_id
+    LEFT JOIN kauzariyya.class_types ct ON ct.id = mp.class_type_id
     JOIN musabaqa_teams t ON t.id = pe.team_id
     LEFT JOIN (
         SELECT entry_id, COUNT(*) AS member_count
@@ -490,11 +504,21 @@ require_once __DIR__ . '/../includes/sidebar.php';
     <div class="panel mb-6">
         <form method="GET" class="form-grid">
             <div class="input-group">
+                <label>Class</label>
+                <select name="class">
+                    <?php foreach (admin_class_type_tiers() as $value => $label): ?>
+                        <option value="<?= e($value) ?>" <?= $classFilter === $value ? 'selected' : '' ?>><?= e($label) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="input-group">
                 <label>Program</label>
                 <select name="program">
                     <option value="0">All Programs</option>
                     <?php foreach ($programs as $program): ?>
-                        <option value="<?= (int)$program['id'] ?>" <?= $selectedProgramId === (int)$program['id'] ? 'selected' : '' ?>><?= e($program['title']) ?></option>
+                        <option value="<?= (int)$program['id'] ?>" <?= $selectedProgramId === (int)$program['id'] ? 'selected' : '' ?>>
+                            <?= e($program['title']) ?> · <?= e(admin_class_type_display($program['class_type_name'] ?? null, (int)($program['class_type_id'] ?? 0))) ?>
+                        </option>
                     <?php endforeach; ?>
                 </select>
             </div>
@@ -522,7 +546,7 @@ require_once __DIR__ . '/../includes/sidebar.php';
             </div>
             <div class="form-actions full-width">
                 <button class="btn btn-secondary btn-md" type="submit"><i class="fa-solid fa-filter"></i> Filter</button>
-                <?php if ($search !== '' || $selectedProgramId || $teamFilter || $statusFilter !== 'all'): ?>
+                <?php if ($search !== '' || $selectedProgramId || $teamFilter || $statusFilter !== 'all' || $classFilter !== 'all'): ?>
                     <a href="<?= APP_URL ?>/admin/entries.php" class="btn btn-secondary btn-md">Clear</a>
                 <?php endif; ?>
             </div>
@@ -534,14 +558,20 @@ require_once __DIR__ . '/../includes/sidebar.php';
     <?php else: ?>
         <div class="table-wrapper">
             <table class="table">
-                <thead><tr><th>No.</th><th>Entry</th><th>Program</th><th>Team</th><th>Members</th><th>Score</th><th>Status</th><th>Actions</th></tr></thead>
+                <thead><tr><th>No.</th><th>Entry</th><th>Program</th><th>Class</th><th>Team</th><th>Members</th><th>Score</th><th>Status</th><th>Actions</th></tr></thead>
                 <tbody>
                     <?php foreach ($entries as $entry): ?>
                         <tr>
                             <td><strong>#<?= e(str_pad((string)$entry['entry_number'], 3, '0', STR_PAD_LEFT)) ?></strong></td>
                             <td><?= e($entry['entry_name'] ?: 'Unnamed Entry') ?></td>
                             <td><?= e($entry['program_title']) ?></td>
-                            <td><?= e($entry['team_name']) ?></td>
+                            <td>
+                                <?php $classTier = admin_class_type_tier_from_name($entry['class_type_name'] ?? ''); ?>
+                                <span class="badge <?= admin_class_type_badge_class($classTier) ?>">
+                                    <?= e(admin_class_type_display($entry['class_type_name'] ?? null, (int)($entry['class_type_id'] ?? 0))) ?>
+                                </span>
+                            </td>
+                            <td><span class="team-color-pill" style="background: <?= e($entry['team_color'] ?? '#64748b') ?>22;"><?= e($entry['team_name']) ?></span></td>
                             <td><?= (int)$entry['member_count'] ?></td>
                             <td><?= $entry['final_total'] !== null ? e(number_format((float)$entry['final_total'], 2)) : '<span class="badge badge-neutral">Not scored</span>' ?></td>
                             <td><span class="badge <?= entries_status_badge($entry['status']) ?>"><?= e(ucfirst((string)$entry['status'])) ?></span></td>
@@ -584,7 +614,9 @@ require_once __DIR__ . '/../includes/sidebar.php';
                     <select name="program_id" id="entryProgramId" required>
                         <option value="">Select Program</option>
                         <?php foreach ($programs as $program): ?>
-                            <option value="<?= (int)$program['id'] ?>"><?= e($program['title']) ?></option>
+                            <option value="<?= (int)$program['id'] ?>">
+                                <?= e($program['title']) ?> · <?= e(admin_class_type_display($program['class_type_name'] ?? null, (int)($program['class_type_id'] ?? 0))) ?>
+                            </option>
                         <?php endforeach; ?>
                     </select>
                 </div>
@@ -642,6 +674,7 @@ require_once __DIR__ . '/../includes/sidebar.php';
 const APP_URL = <?= json_encode(APP_URL) ?>;
 const PROGRAMS = <?= json_encode(array_values($programs), JSON_UNESCAPED_UNICODE) ?>;
 const CSRF = <?= json_encode(generate_csrf_token()) ?>;
+const SELECTED_PROGRAM_ID = <?= (int)$selectedProgramId ?>;
 const RETURN_FIELDS = `
     <input type="hidden" name="return_program" value="<?= (int)$selectedProgramId ?>">
     <input type="hidden" name="return_search" value="<?= e($search) ?>">
@@ -669,7 +702,13 @@ function openCreateModal() {
     document.getElementById('entryId').value = '';
     document.getElementById('entryTeamId').disabled = false;
     document.getElementById('teamMemberId').innerHTML = '<option value="">Select Program and Team First</option>';
-    syncEntryFields(false);
+    if (SELECTED_PROGRAM_ID > 0) {
+        document.getElementById('entryProgramId').value = SELECTED_PROGRAM_ID;
+        syncEntryFields(false);
+        loadMembers();
+    } else {
+        syncEntryFields(false);
+    }
     openModal('entryModal');
 }
 

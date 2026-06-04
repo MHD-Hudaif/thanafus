@@ -5,6 +5,7 @@ require_once __DIR__ . '/../includes/admin-helpers.php';
 require_login();
 
 $pdo = $GLOBALS['musabaqa_pdo'];
+$dashboardPdo = $GLOBALS['dashboard_pdo'];
 $activeEvent = admin_require_active_event($pdo);
 $activeEventId = (int)$activeEvent['id'];
 
@@ -156,20 +157,31 @@ $flash = admin_take_flash();
 
 $stageTypes = $pdo->query('SELECT id, name FROM musabaqa_stage_types ORDER BY name ASC')->fetchAll(PDO::FETCH_ASSOC);
 $selectedStageId = (int)($_GET['stage'] ?? 0);
+$classFilter = trim((string)($_GET['class'] ?? 'all'));
 if ($selectedStageId <= 0 && $stageTypes) {
     $selectedStageId = (int)$stageTypes[0]['id'];
 }
 
+$programWhere = "
+    WHERE mp.event_id = ?
+      AND mp.stage_type_id = ?
+      AND mp.{$startExpr} IS NOT NULL
+      AND mp.{$endExpr} IS NOT NULL
+";
+$programParams = [$activeEventId, $selectedStageId];
+[$classSql, $classParams] = admin_program_class_filter_sql($dashboardPdo, $classFilter, 'mp');
+$programWhere .= $classSql;
+array_push($programParams, ...$classParams);
+
 $stmt = $pdo->prepare("
-    SELECT id, title, location, {$startExpr} AS start_at, {$endExpr} AS end_at
-    FROM musabaqa_programs
-    WHERE event_id = ?
-      AND stage_type_id = ?
-      AND {$startExpr} IS NOT NULL
-      AND {$endExpr} IS NOT NULL
-    ORDER BY {$startExpr} ASC, {$endExpr} ASC, id ASC
+    SELECT mp.id, mp.title, mp.location, mp.class_type_id, ct.name AS class_type_name,
+           mp.{$startExpr} AS start_at, mp.{$endExpr} AS end_at
+    FROM musabaqa_programs mp
+    LEFT JOIN kauzariyya.class_types ct ON ct.id = mp.class_type_id
+    {$programWhere}
+    ORDER BY mp.{$startExpr} ASC, mp.{$endExpr} ASC, mp.id ASC
 ");
-$stmt->execute([$activeEventId, $selectedStageId]);
+$stmt->execute($programParams);
 $programs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 $stmt = $pdo->prepare("
@@ -216,6 +228,14 @@ require_once __DIR__ . '/../includes/sidebar.php';
                     <?php endforeach; ?>
                 </select>
             </div>
+            <div class="input-group">
+                <label>Class</label>
+                <select name="class" onchange="this.form.submit()">
+                    <?php foreach (admin_class_type_tiers() as $value => $label): ?>
+                        <option value="<?= e($value) ?>" <?= $classFilter === $value ? 'selected' : '' ?>><?= e($label) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
         </form>
     </div>
 
@@ -230,7 +250,15 @@ require_once __DIR__ . '/../includes/sidebar.php';
                         <div class="flex-between">
                             <div>
                                 <div class="dashboard-heading"><?= e($program['title']) ?></div>
-                                <div class="page-subtitle"><?= e($program['location'] ?: '-') ?></div>
+                                <div class="page-subtitle">
+                                    <?php $classTier = admin_class_type_tier_from_name($program['class_type_name'] ?? ''); ?>
+                                    <span class="badge <?= admin_class_type_badge_class($classTier) ?>">
+                                        <?= e(admin_class_type_display($program['class_type_name'] ?? null, (int)($program['class_type_id'] ?? 0))) ?>
+                                    </span>
+                                    <?php if (!empty($program['location'])): ?>
+                                        · <?= e($program['location']) ?>
+                                    <?php endif; ?>
+                                </div>
                             </div>
                             <span class="badge badge-info"><?= e(date('h:i A', strtotime($program['start_at']))) ?> - <?= e(date('h:i A', strtotime($program['end_at']))) ?></span>
                         </div>

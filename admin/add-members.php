@@ -94,7 +94,7 @@ foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
 }
 
 $query = "
-    SELECT s.id, s.full_name, c.name AS class_name, ct.name AS class_type
+    SELECT s.id, COALESCE(NULLIF(s.display_name, ''), s.full_name) AS full_name, c.name AS class_name, ct.name AS class_type
     FROM students s
     LEFT JOIN classes c ON c.id = s.class_id
     LEFT JOIN class_types ct ON ct.id = c.class_type_id
@@ -102,12 +102,12 @@ $query = "
 ";
 $params = [];
 if ($search !== '') {
-    $query .= ' AND (s.full_name LIKE ? OR s.admission_no LIKE ?)';
+    $query .= " AND (COALESCE(NULLIF(s.display_name, ''), s.full_name) LIKE ? OR s.admission_no LIKE ?)";
     $like = '%' . $search . '%';
     $params[] = $like;
     $params[] = $like;
 }
-$query .= ' ORDER BY c.name ASC, s.full_name ASC';
+$query .= ' ORDER BY c.name ASC, full_name ASC';
 $stmt = $dashboardPdo->prepare($query);
 $stmt->execute($params);
 $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -123,7 +123,7 @@ require_once __DIR__ . '/../includes/sidebar.php';
 
 <div class="main-content">
     <div class="topbar">
-        <div><div class="page-title">Add Members</div><div class="page-subtitle"><?= e($activeTeam['team_name']) ?></div></div>
+        <div><div class="page-title">Add Members</div><div class="page-subtitle"><span class="team-color-pill" style="background: <?= e($activeTeam['team_color'] ?? '#64748b') ?>22; color: <?= e($activeTeam['team_color'] ? '#111' : '#111') ?>;"><?= e($activeTeam['team_name']) ?></span></div></div>
         <a href="<?= APP_URL ?>/admin/members.php?team=<?= $activeTeamId ?>" class="btn btn-secondary btn-md"><i class="fa-solid fa-arrow-left"></i> Back to Members</a>
     </div>
 

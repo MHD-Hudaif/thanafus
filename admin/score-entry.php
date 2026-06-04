@@ -5,6 +5,7 @@ require_once __DIR__ . '/../includes/admin-helpers.php';
 require_login();
 
 $pdo = $GLOBALS['musabaqa_pdo'];
+$dashboardPdo = $GLOBALS['dashboard_pdo'];
 $activeEvent = admin_require_active_event($pdo);
 $activeEventId = (int)$activeEvent['id'];
 
@@ -31,6 +32,7 @@ $flash = admin_take_flash();
 $search = trim((string)($_GET['search'] ?? ''));
 $statusFilter = trim((string)($_GET['status'] ?? 'all'));
 $approvalFilter = trim((string)($_GET['approval'] ?? 'all'));
+$classFilter = trim((string)($_GET['class'] ?? 'all'));
 
 $where = 'WHERE p.event_id = ?';
 $params = [$activeEventId];
@@ -48,15 +50,20 @@ if ($approvalFilter !== 'all' && in_array($approvalFilter, ['none', 'submitted',
     $where .= ' AND p.approval_status = ?';
     $params[] = $approvalFilter;
 }
+[$classSql, $classParams] = admin_program_class_filter_sql($dashboardPdo, $classFilter, 'p');
+$where .= $classSql;
+array_push($params, ...$classParams);
 
 $stmt = $pdo->prepare("
     SELECT
         p.*,
+        ct.name AS class_type_name,
         COUNT(DISTINCT pe.id) AS entry_count,
         COUNT(DISTINCT CASE WHEN ss.status IN ('completed','submitted','approved','rejected') THEN pe.id END) AS scored_count,
         COALESCE(category_data.category_count, 0) AS category_count,
         COALESCE(category_data.category_total, 0) AS category_total
     FROM musabaqa_programs p
+    LEFT JOIN kauzariyya.class_types ct ON ct.id = p.class_type_id
     LEFT JOIN musabaqa_program_entries pe ON pe.program_id = p.id
     LEFT JOIN musabaqa_score_sheets ss ON ss.entry_id = pe.id
     LEFT JOIN (
@@ -110,13 +117,21 @@ require_once __DIR__ . '/../includes/sidebar.php';
                     <?php endforeach; ?>
                 </select>
             </div>
+            <div class="input-group">
+                <label>Class</label>
+                <select name="class">
+                    <?php foreach (admin_class_type_tiers() as $value => $label): ?>
+                        <option value="<?= e($value) ?>" <?= $classFilter === $value ? 'selected' : '' ?>><?= e($label) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
             <div class="input-group full-width">
                 <label>Search</label>
                 <input type="text" name="search" value="<?= e($search) ?>" placeholder="Program title or location">
             </div>
             <div class="form-actions full-width">
                 <button class="btn btn-secondary btn-md" type="submit"><i class="fa-solid fa-filter"></i> Filter</button>
-                <?php if ($search !== '' || $statusFilter !== 'all' || $approvalFilter !== 'all'): ?>
+                <?php if ($search !== '' || $statusFilter !== 'all' || $approvalFilter !== 'all' || $classFilter !== 'all'): ?>
                     <a href="<?= APP_URL ?>/admin/score-entry.php" class="btn btn-secondary btn-md">Clear</a>
                 <?php endif; ?>
             </div>
@@ -131,6 +146,7 @@ require_once __DIR__ . '/../includes/sidebar.php';
                 <thead>
                     <tr>
                         <th>Program</th>
+                        <th>Class</th>
                         <th>Entries</th>
                         <th>Scored</th>
                         <th>Categories</th>
@@ -149,6 +165,12 @@ require_once __DIR__ . '/../includes/sidebar.php';
                         ?>
                         <tr>
                             <td><strong><?= e($program['title']) ?></strong><div class="muted"><?= e($program['location'] ?: '-') ?></div></td>
+                            <td>
+                                <?php $classTier = admin_class_type_tier_from_name($program['class_type_name'] ?? ''); ?>
+                                <span class="badge <?= admin_class_type_badge_class($classTier) ?>">
+                                    <?= e(admin_class_type_display($program['class_type_name'] ?? null, (int)($program['class_type_id'] ?? 0))) ?>
+                                </span>
+                            </td>
                             <td><?= $entryCount ?></td>
                             <td><?= $scoredCount ?> / <?= $entryCount ?></td>
                             <td>

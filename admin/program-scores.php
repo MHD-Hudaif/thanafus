@@ -92,7 +92,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'score_data') {
 
     try {
         $stmt = $pdo->prepare("
-            SELECT pe.*, t.team_name
+            SELECT pe.*, t.team_name, t.team_color
             FROM musabaqa_program_entries pe
             JOIN musabaqa_teams t ON t.id = pe.team_id
             WHERE pe.id = ?
@@ -387,6 +387,7 @@ $stmt = $pdo->prepare("
     SELECT
         pe.*,
         t.team_name,
+        t.team_color,
         ss.id AS score_sheet_id,
         ss.judge1_total,
         ss.judge2_total,
@@ -415,7 +416,11 @@ require_once __DIR__ . '/../includes/sidebar.php';
     <div class="topbar">
         <div>
             <div class="page-title">Program Scores</div>
-            <div class="page-subtitle"><?= e($program['title']) ?> · <?= e(ucfirst((string)$program['program_type'])) ?></div>
+            <div class="page-subtitle">
+                <?= e($program['title']) ?>
+                · <?= e(ucfirst((string)$program['program_type'])) ?>
+                · <?= e(admin_class_type_display($program['class_type_name'] ?? null, (int)($program['class_type_id'] ?? 0))) ?>
+            </div>
         </div>
         <div class="flex gap-2 flex-wrap">
             <a class="btn btn-secondary btn-md" href="<?= APP_URL ?>/admin/score-entry.php"><i class="fa-solid fa-arrow-left"></i> Programs</a>
@@ -565,7 +570,7 @@ require_once __DIR__ . '/../includes/sidebar.php';
                         <tr>
                             <td><strong>#<?= e(str_pad((string)$entry['entry_number'], 3, '0', STR_PAD_LEFT)) ?></strong></td>
                             <td><?= e($entry['entry_name'] ?: 'Unnamed Entry') ?></td>
-                            <td><?= e($entry['team_name']) ?></td>
+                            <td><span class="team-color-pill" style="background: <?= e($entry['team_color'] ?? '#64748b') ?>22;"><?= e($entry['team_name']) ?></span></td>
                             <td><span class="badge <?= program_scores_badge($entry['status']) ?>"><?= e(ucfirst((string)$entry['status'])) ?></span></td>
                             <td><?= $hasSheet ? e(number_format((float)$entry['final_total'], 2)) : '<span class="badge badge-neutral">Missing</span>' ?></td>
                             <td>

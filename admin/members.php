@@ -106,7 +106,7 @@ $studentIds = array_values(array_unique(array_map('intval', array_column($rawMem
 if ($studentIds) {
     $placeholders = implode(',', array_fill(0, count($studentIds), '?'));
     $stmt = $dashboardPdo->prepare("
-        SELECT s.id, s.full_name, c.name AS class_name, ct.name AS class_type
+        SELECT s.id, COALESCE(NULLIF(s.display_name, ''), s.full_name) AS full_name, c.name AS class_name, ct.name AS class_type
         FROM students s
         LEFT JOIN classes c ON c.id = s.class_id
         LEFT JOIN class_types ct ON ct.id = c.class_type_id
@@ -141,7 +141,7 @@ require_once __DIR__ . '/../includes/sidebar.php';
 
 <div class="main-content">
     <div class="topbar">
-        <div><div class="page-title">Members</div><div class="page-subtitle"><?= e($activeTeam['team_name']) ?></div></div>
+        <div><div class="page-title">Members</div><div class="page-subtitle"><span class="team-color-pill" style="background: <?= e($activeTeam['team_color'] ?? '#64748b') ?>22; color: <?= e($activeTeam['team_color'] ? '#111' : '#111') ?>;"><?= e($activeTeam['team_name']) ?></span></div></div>
         <a href="<?= APP_URL ?>/admin/add-members.php?team=<?= $activeTeamId ?>" class="btn btn-success btn-md"><i class="fa-solid fa-plus"></i> Add Members</a>
     </div>
 
