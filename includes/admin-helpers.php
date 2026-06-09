@@ -388,8 +388,42 @@ function admin_submit_program_for_approval(PDO $pdo, int $eventId, int $programI
     admin_log_activity($pdo, $userId, $eventId, 'submit_for_approval', 'musabaqa_programs', $programId, 'Program scores submitted for approval.');
 }
 
+function admin_program_approvable(?string $approvalStatus): bool
+{
+    return in_array((string) $approvalStatus, ['submitted', 'rejected'], true);
+}
+
 function admin_approve_program_scores(PDO $pdo, int $eventId, int $programId, int $userId): void
 {
+    $stmt = $pdo->prepare('SELECT approval_status FROM musabaqa_programs WHERE id = ? AND event_id = ? LIMIT 1');
+    $stmt->execute([$programId, $eventId]);
+    $approvalStatus = (string) ($stmt->fetchColumn() ?: '');
+
+    if (!admin_program_approvable($approvalStatus)) {
+        throw new RuntimeException('Only submitted or rejected programs can be approved.');
+    }
+
+    if ($approvalStatus === 'rejected') {
+        if (!admin_program_ready_for_approval($pdo, $programId)) {
+            throw new RuntimeException('Every entry must have a score sheet before approval.');
+        }
+
+        $pdo->prepare("
+            UPDATE musabaqa_score_sheets
+            SET status = 'submitted'
+            WHERE program_id = ?
+              AND status IN ('rejected', 'completed')
+        ")->execute([$programId]);
+
+        $pdo->prepare("
+            UPDATE musabaqa_programs
+            SET approval_status = 'submitted',
+                status = 'scoring'
+            WHERE id = ?
+              AND event_id = ?
+        ")->execute([$programId, $eventId]);
+    }
+
     $stmt = $pdo->prepare("
         SELECT pe.id AS entry_id, pe.team_id, ss.final_total
         FROM musabaqa_program_entries pe
@@ -499,4 +533,60 @@ function admin_reject_program_scores(PDO $pdo, int $eventId, int $programId, int
     }
 
     admin_log_activity($pdo, $userId, $eventId, 'reject_program_scores', 'musabaqa_programs', $programId, $description);
+}
+
+function admin_revoke_program_approval(PDO $pdo, int $eventId, int $programId, int $userId, string $notes = ''): void
+{
+    $stmt = $pdo->prepare('SELECT approval_status FROM musabaqa_programs WHERE id = ? AND event_id = ? LIMIT 1');
+    $stmt->execute([$programId, $eventId]);
+    $approvalStatus = (string) ($stmt->fetchColumn() ?: '');
+
+    if ($approvalStatus !== 'approved') {
+        throw new RuntimeException('Only approved programs can be revoked.');
+    }
+
+    $pdo->prepare("
+        UPDATE musabaqa_score_sheets
+        SET status = 'rejected'
+        WHERE program_id = ?
+          AND status = 'approved'
+    ")->execute([$programId]);
+
+    $pdo->prepare("
+        DELETE FROM musabaqa_scores
+        WHERE event_id = ?
+          AND program_id = ?
+          AND judge_name = 'System Final'
+    ")->execute([$eventId, $programId]);
+
+    $pdo->prepare('DELETE FROM musabaqa_member_scores WHERE program_id = ?')->execute([$programId]);
+
+    $pdo->prepare("
+        UPDATE musabaqa_program_entries
+        SET final_score = 0,
+            final_rank = NULL,
+            status = 'approved'
+        WHERE event_id = ?
+          AND program_id = ?
+    ")->execute([$eventId, $programId]);
+
+    $pdo->prepare("
+        UPDATE musabaqa_programs
+        SET status = 'scoring',
+            approval_status = 'rejected',
+            reviewed_by = ?,
+            reviewed_at = NOW()
+        WHERE id = ?
+          AND event_id = ?
+    ")->execute([$userId, $programId, $eventId]);
+
+    admin_recalculate_team_totals($pdo, $eventId);
+
+    $description = 'Approved program scores revoked; finalized marks removed.';
+    if (trim($notes) !== '') {
+        $description .= ' Notes: ' . trim($notes);
+    }
+
+    admin_log_activity($pdo, $userId, $eventId, 'revoke_program_approval', 'musabaqa_programs', $programId, $description);
+    admin_log_activity($pdo, $userId, $eventId, 'leaderboard_update', 'musabaqa_teams', null, 'Leaderboard totals recalculated after approval revocation.');
 }

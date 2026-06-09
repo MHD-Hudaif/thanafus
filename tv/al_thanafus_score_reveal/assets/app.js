@@ -18,6 +18,9 @@
         program_count: 0,
     };
 
+    const ORB_RADIUS = 44;
+
+
     const app = {
         snapshot: normalizeSnapshot(window.__INITIAL_STATE__?.snapshot || DEFAULT_STATE),
         cursor: 0,
@@ -173,7 +176,7 @@
 
     function updateOrb(completion, animate = true) {
         const percent = clamp(Number(completion.percentage || 0), 0, 100);
-        const radius = 76;
+        const radius = ORB_RADIUS;
         const circumference = 2 * Math.PI * radius;
         const dashOffset = circumference - (percent / 100) * circumference;
 
@@ -347,6 +350,10 @@
             const card = document.createElement('article');
             card.className = 'program-card';
 
+            const placements = Array.isArray(program.placements) ? program.placements.slice(0, 3) : [];
+            const leadColor = placements[0]?.team_color || '#10b981';
+            card.style.setProperty('--program-accent', leadColor);
+
             const title = document.createElement('h3');
             title.className = 'program-title';
             title.textContent = program.title;
@@ -358,12 +365,10 @@
             const list = document.createElement('div');
             list.className = 'placement-list';
 
-            const placements = Array.isArray(program.placements) ? program.placements.slice(0, 3) : [];
-            const medals = ['First Place Team', 'Second Place Team', 'Third Place Team'];
-
             placements.forEach((entry, index) => {
                 const row = document.createElement('div');
                 row.className = 'placement-row';
+                row.style.setProperty('--team-color', entry.team_color || leadColor);
 
                 const rank = document.createElement('div');
                 rank.className = 'placement-rank';
@@ -371,7 +376,6 @@
 
                 const token = document.createElement('div');
                 token.className = 'team-token';
-                token.style.setProperty('--team-color', entry.team_color || '#10b981');
 
                 const dot = document.createElement('span');
                 dot.className = 'dot';
@@ -380,12 +384,7 @@
                 name.textContent = entry.team_name;
 
                 token.append(dot, name);
-
-                const score = document.createElement('div');
-                score.className = 'placement-score';
-                score.textContent = formatScore(entry.final_score);
-
-                row.append(rank, token, score);
+                row.append(rank, token);
                 list.append(row);
             });
 
@@ -587,7 +586,7 @@
             animateValue(startPercent, endPercent, 1050, value => {
                 const percent = Math.round(value);
                 els.orbPercent.textContent = `${percent}%`;
-                const radius = 76;
+                const radius = ORB_RADIUS;
                 const circumference = 2 * Math.PI * radius;
                 els.orbProgress.style.strokeDashoffset = String(circumference - (value / 100) * circumference);
             }),

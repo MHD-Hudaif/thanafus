@@ -673,6 +673,7 @@ require_once __DIR__ . '/../includes/sidebar.php';
 <script>
 const APP_URL = <?= json_encode(APP_URL) ?>;
 const PROGRAMS = <?= json_encode(array_values($programs), JSON_UNESCAPED_UNICODE) ?>;
+const TEAMS = <?= json_encode(array_values($teams), JSON_UNESCAPED_UNICODE) ?>;
 const CSRF = <?= json_encode(generate_csrf_token()) ?>;
 const SELECTED_PROGRAM_ID = <?= (int)$selectedProgramId ?>;
 const RETURN_FIELDS = `
@@ -686,6 +687,29 @@ function openModal(id){document.getElementById(id)?.classList.add('active')}
 function closeModal(id){document.getElementById(id)?.classList.remove('active')}
 function escapeHtml(value){return String(value ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;')}
 function selectedProgram(){return PROGRAMS.find(program => Number(program.id) === Number(document.getElementById('entryProgramId').value));}
+function selectedTeam(){return TEAMS.find(team => Number(team.id) === Number(document.getElementById('entryTeamId').value));}
+
+function updateGroupEntryName(isEdit = false) {
+    if (isEdit) {
+        return;
+    }
+
+    const program = selectedProgram();
+    const team = selectedTeam();
+    const entryName = document.getElementById('entryName');
+
+    if (!program || program.program_type !== 'group') {
+        entryName.value = '';
+        return;
+    }
+
+    if (!team) {
+        entryName.value = '';
+        return;
+    }
+
+    entryName.value = `${program.title} - ${team.team_name}`;
+}
 
 function syncEntryFields(isEdit = false, entryType = null) {
     const program = selectedProgram();
@@ -693,6 +717,7 @@ function syncEntryFields(isEdit = false, entryType = null) {
     const isIndividual = type === 'individual';
     document.getElementById('participantWrap').style.display = isIndividual && !isEdit ? '' : 'none';
     document.getElementById('entryNameWrap').style.display = isIndividual ? 'none' : '';
+    updateGroupEntryName(isEdit);
 }
 
 function openCreateModal() {
@@ -750,7 +775,10 @@ async function loadMembers() {
 }
 
 document.getElementById('entryProgramId').addEventListener('change', () => { syncEntryFields(false); loadMembers(); });
-document.getElementById('entryTeamId').addEventListener('change', loadMembers);
+document.getElementById('entryTeamId').addEventListener('change', () => {
+    updateGroupEntryName(false);
+    loadMembers();
+});
 
 document.querySelectorAll('[data-edit]').forEach(button => button.addEventListener('click', () => openEditModal(JSON.parse(button.dataset.edit))));
 

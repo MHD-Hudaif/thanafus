@@ -48,7 +48,7 @@ $initialState = $initialEvent ? reveal_leaderboard_snapshot((int) $initialEvent[
 
             <section class="arena" id="arena">
                 <div class="orb-stage">
-                    <svg class="orb-ring" viewBox="0 0 200 200" aria-hidden="true">
+                    <svg class="orb-ring" viewBox="0 0 120 120" aria-hidden="true">
                         <defs>
                             <filter id="orbGlow">
                                 <feGaussianBlur stdDeviation="4" result="blur"></feGaussianBlur>
@@ -63,8 +63,8 @@ $initialState = $initialEvent ? reveal_leaderboard_snapshot((int) $initialEvent[
                                 </feMerge>
                             </filter>
                         </defs>
-                        <circle class="orb-track" cx="100" cy="100" r="76"></circle>
-                        <circle class="orb-progress" cx="100" cy="100" r="76" id="orbProgress"></circle>
+                        <circle class="orb-track" cx="60" cy="60" r="44"></circle>
+                        <circle class="orb-progress" cx="60" cy="60" r="44" id="orbProgress"></circle>
                     </svg>
 
                     <div class="orb-core">

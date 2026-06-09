@@ -26,6 +26,11 @@ function approval_badge(?string $status): string
     };
 }
 
+function approval_can_approve(?string $status): bool
+{
+    return admin_program_approvable($status);
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
         admin_flash('error', 'Invalid security token.');
@@ -52,8 +57,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!$program) {
                 throw new RuntimeException('Program not found.');
             }
-            if (($program['approval_status'] ?? '') !== 'submitted') {
-                throw new RuntimeException('Only submitted programs can be reviewed.');
+            if (!approval_can_approve($program['approval_status'] ?? null)) {
+                throw new RuntimeException('Only submitted or rejected programs can be approved.');
             }
             admin_approve_program_scores($pdo, $activeEventId, $programId, $currentUserId);
             admin_flash('success', 'Program scores approved.');
@@ -71,9 +76,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 FROM musabaqa_programs p
                 LEFT JOIN kauzariyya.users submitter ON submitter.id = p.submitted_by
                 WHERE p.event_id = ?
-                  AND p.approval_status = 'submitted'
+                  AND p.approval_status IN ('submitted', 'rejected')
             ";
             $queryParams = [$activeEventId];
+
+            if ($returnFilters['status'] === 'submitted' || $returnFilters['status'] === 'rejected') {
+                $query .= ' AND p.approval_status = ?';
+                $queryParams[] = $returnFilters['status'];
+            }
 
             if ($returnFilters['search'] !== '') {
                 $query .= ' AND (p.title LIKE ? OR submitter.full_name LIKE ? OR submitter.username LIKE ?)';
@@ -89,7 +99,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute($queryParams);
             $selectedProgramIds = array_map('intval', array_column($stmt->fetchAll(PDO::FETCH_ASSOC), 'id'));
             if (!$selectedProgramIds) {
-                throw new RuntimeException('No submitted programs match the current filter to approve.');
+                throw new RuntimeException('No submitted or rejected programs match the current filter to approve.');
             }
             foreach ($selectedProgramIds as $selectedProgramId) {
                 admin_approve_program_scores($pdo, $activeEventId, $selectedProgramId, $currentUserId);
@@ -103,10 +113,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new RuntimeException('Program not found.');
             }
             if (($program['approval_status'] ?? '') !== 'submitted') {
-                throw new RuntimeException('Only submitted programs can be reviewed.');
+                throw new RuntimeException('Only submitted programs can be rejected.');
             }
             admin_reject_program_scores($pdo, $activeEventId, $programId, $currentUserId, $notes);
             admin_flash('success', 'Program scores rejected.');
+        } elseif ($action === 'revoke_approved') {
+            $stmt = $pdo->prepare('SELECT * FROM musabaqa_programs WHERE id = ? AND event_id = ? LIMIT 1');
+            $stmt->execute([$programId, $activeEventId]);
+            $program = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$program) {
+                throw new RuntimeException('Program not found.');
+            }
+            if (($program['approval_status'] ?? '') !== 'approved') {
+                throw new RuntimeException('Only approved programs can be revoked.');
+            }
+            admin_revoke_program_approval($pdo, $activeEventId, $programId, $currentUserId, $notes);
+            admin_flash('success', 'Approval revoked. Finalized marks were removed and score sheets can be corrected.');
         } else {
             throw new RuntimeException('Invalid approval action.');
         }
@@ -285,16 +307,16 @@ require_once __DIR__ . '/../includes/sidebar.php';
             <input type="hidden" name="return_class" value="<?= e($classFilter) ?>">
             <div class="flex gap-2 mb-4">
                 <button type="button" class="btn btn-success btn-md" id="approveSelectedBtn"><i class="fa-solid fa-check"></i> Approve Selected</button>
-                <?php if ($statusFilter === 'submitted' || $statusFilter === 'all'): ?>
+                <?php if (in_array($statusFilter, ['submitted', 'rejected', 'all'], true)): ?>
                     <button type="button" class="btn btn-success btn-md" id="approveAllBtn"><i class="fa-solid fa-list-check"></i> Approve All</button>
                 <?php endif; ?>
             </div>
         </form>
-        <div class="table-wrapper mb-6">
-            <table class="table">
+        <div class="table-wrapper mb-6 approval-table-wrap">
+            <table class="table approval-table">
                 <thead>
                     <tr>
-                        <th style="width: 1%;"><input type="checkbox" id="selectAllPrograms" aria-label="Select all programs"></th>
+                        <th class="checkbox-cell"><input type="checkbox" class="approval-checkbox" id="selectAllPrograms" aria-label="Select all approvable programs"></th>
                         <th>Program Name</th>
                         <th>Class</th>
                         <th>Entry Count</th>
@@ -313,9 +335,9 @@ require_once __DIR__ . '/../includes/sidebar.php';
                         $toggleUrl = APP_URL . '/admin/score-approval.php?' . http_build_query($isExpanded ? $baseQuery : $viewQuery);
                         ?>
                         <tr>
-                            <td>
-                                <?php if ($program['approval_status'] === 'submitted'): ?>
-                                    <input type="checkbox" class="program-checkbox" data-program-id="<?= (int)$program['id'] ?>" aria-label="Select program <?= e($program['title']) ?>">
+                            <td class="checkbox-cell">
+                                <?php if (approval_can_approve($program['approval_status'] ?? null)): ?>
+                                    <input type="checkbox" class="approval-checkbox program-checkbox" data-program-id="<?= (int)$program['id'] ?>" aria-label="Select program <?= e($program['title']) ?>">
                                 <?php endif; ?>
                             </td>
                             <td><strong><?= e($program['title']) ?></strong></td>
@@ -337,9 +359,24 @@ require_once __DIR__ . '/../includes/sidebar.php';
                                             <?= admin_csrf_field() ?>
                                             <input type="hidden" name="program_id" value="<?= (int)$program['id'] ?>">
                                             <input type="hidden" name="approval_action" value="approve">
+                                            <input type="hidden" name="return_status" value="<?= e($statusFilter) ?>">
+                                            <input type="hidden" name="return_search" value="<?= e($search) ?>">
+                                            <input type="hidden" name="return_class" value="<?= e($classFilter) ?>">
                                             <button class="btn btn-success btn-sm" type="submit">Approve</button>
                                         </form>
-                                        <button class="btn btn-danger btn-sm" type="button" data-reject-id="<?= (int)$program['id'] ?>" data-reject-name="<?= e($program['title']) ?>">Reject</button>
+                                        <button class="btn btn-danger btn-sm" type="button" data-reject-id="<?= (int)$program['id'] ?>" data-reject-name="<?= e($program['title']) ?>" data-reject-action="reject">Reject</button>
+                                    <?php elseif ($program['approval_status'] === 'rejected'): ?>
+                                        <form method="POST">
+                                            <?= admin_csrf_field() ?>
+                                            <input type="hidden" name="program_id" value="<?= (int)$program['id'] ?>">
+                                            <input type="hidden" name="approval_action" value="approve">
+                                            <input type="hidden" name="return_status" value="<?= e($statusFilter) ?>">
+                                            <input type="hidden" name="return_search" value="<?= e($search) ?>">
+                                            <input type="hidden" name="return_class" value="<?= e($classFilter) ?>">
+                                            <button class="btn btn-success btn-sm" type="submit"><i class="fa-solid fa-check"></i> Approve</button>
+                                        </form>
+                                    <?php elseif ($program['approval_status'] === 'approved'): ?>
+                                        <button class="btn btn-danger btn-sm" type="button" data-reject-id="<?= (int)$program['id'] ?>" data-reject-name="<?= e($program['title']) ?>" data-reject-action="revoke_approved">Reject Approval</button>
                                     <?php endif; ?>
                                 </div>
                             </td>
@@ -401,14 +438,17 @@ require_once __DIR__ . '/../includes/sidebar.php';
 
 <div class="modal-overlay" id="rejectModal">
     <div class="modal-box modal-md">
-        <div class="modal-header"><div class="modal-title">Reject Program</div><button class="modal-close" type="button" data-close="rejectModal"><i class="fa-solid fa-xmark"></i></button></div>
+        <div class="modal-header"><div class="modal-title" id="rejectModalTitle">Reject Program</div><button class="modal-close" type="button" data-close="rejectModal"><i class="fa-solid fa-xmark"></i></button></div>
         <form method="POST">
             <?= admin_csrf_field() ?>
             <input type="hidden" name="program_id" id="rejectProgramId">
-            <input type="hidden" name="approval_action" value="reject">
-            <div class="panel mb-6">Reject <strong id="rejectProgramName"></strong>? Score sheets will become editable again.</div>
-            <div class="input-group full-width"><label>Rejection Notes</label><textarea name="rejection_notes" rows="4" placeholder="Optional notes for the scoring team"></textarea></div>
-            <div class="form-actions"><button type="button" class="btn btn-secondary btn-md" data-close="rejectModal">Cancel</button><button class="btn btn-danger btn-md" type="submit">Reject</button></div>
+            <input type="hidden" name="approval_action" id="rejectApprovalAction" value="reject">
+            <input type="hidden" name="return_status" value="<?= e($statusFilter) ?>">
+            <input type="hidden" name="return_search" value="<?= e($search) ?>">
+            <input type="hidden" name="return_class" value="<?= e($classFilter) ?>">
+            <div class="panel mb-6" id="rejectModalMessage">Reject <strong id="rejectProgramName"></strong>? Score sheets will become editable again.</div>
+            <div class="input-group full-width"><label>Notes</label><textarea name="rejection_notes" rows="4" placeholder="Optional notes for the scoring team"></textarea></div>
+            <div class="form-actions"><button type="button" class="btn btn-secondary btn-md" data-close="rejectModal">Cancel</button><button class="btn btn-danger btn-md" type="submit" id="rejectModalSubmit">Reject</button></div>
         </form>
     </div>
 </div>
@@ -437,9 +477,21 @@ const selectAllCheckbox = document.getElementById('selectAllPrograms');
 const approveSelectedBtn = document.getElementById('approveSelectedBtn');
 const approveAllBtn = document.getElementById('approveAllBtn');
 
+function syncSelectAllCheckbox() {
+    if (!selectAllCheckbox) return;
+    const boxes = document.querySelectorAll('.program-checkbox');
+    const checked = document.querySelectorAll('.program-checkbox:checked');
+    selectAllCheckbox.checked = boxes.length > 0 && boxes.length === checked.length;
+    selectAllCheckbox.indeterminate = checked.length > 0 && checked.length < boxes.length;
+}
+
 if (selectAllCheckbox) {
     selectAllCheckbox.addEventListener('change', () => {
         document.querySelectorAll('.program-checkbox').forEach(cb => { cb.checked = selectAllCheckbox.checked; });
+        selectAllCheckbox.indeterminate = false;
+    });
+    document.querySelectorAll('.program-checkbox').forEach(cb => {
+        cb.addEventListener('change', syncSelectAllCheckbox);
     });
 }
 
@@ -447,7 +499,7 @@ if (approveSelectedBtn && batchForm) {
     approveSelectedBtn.addEventListener('click', () => {
         const ids = collectSelectedProgramIds();
         if (!ids.length) {
-            alert('Select at least one submitted program to approve.');
+            alert('Select at least one submitted or rejected program to approve.');
             return;
         }
         clearBatchProgramInputs(batchForm);
@@ -459,7 +511,7 @@ if (approveSelectedBtn && batchForm) {
 
 if (approveAllBtn && batchForm) {
     approveAllBtn.addEventListener('click', () => {
-        if (!confirm('Approve all submitted programs that match the current filter?')) {
+        if (!confirm('Approve all submitted or rejected programs that match the current filter?')) {
             return;
         }
         clearBatchProgramInputs(batchForm);
@@ -471,8 +523,26 @@ if (approveAllBtn && batchForm) {
 document.querySelectorAll('[data-close]').forEach(btn => btn.addEventListener('click', () => closeModal(btn.dataset.close)));
 document.querySelectorAll('.modal-overlay').forEach(modal => modal.addEventListener('click', e => { if (e.target === modal) closeModal(modal.id); }));
 document.querySelectorAll('[data-reject-id]').forEach(btn => btn.addEventListener('click', () => {
+    const isRevoke = btn.dataset.rejectAction === 'revoke_approved';
+    const programName = btn.dataset.rejectName || 'this program';
+
     document.getElementById('rejectProgramId').value = btn.dataset.rejectId;
-    document.getElementById('rejectProgramName').textContent = btn.dataset.rejectName || 'this program';
+    document.getElementById('rejectApprovalAction').value = isRevoke ? 'revoke_approved' : 'reject';
+    document.getElementById('rejectModalTitle').textContent = isRevoke ? 'Reject Approved Scores' : 'Reject Program';
+    const msgEl = document.getElementById('rejectModalMessage');
+    const nameEl = document.getElementById('rejectProgramName');
+    nameEl.textContent = programName;
+    msgEl.replaceChildren(
+        document.createTextNode(isRevoke ? 'Reject approval for ' : 'Reject '),
+        nameEl,
+        document.createTextNode(
+            isRevoke
+                ? '? This removes finalized marks from score sheets, system scores, member scores, entry ranks, and team totals. Score sheets will become editable again.'
+                : '? Score sheets will become editable again.'
+        )
+    );
+    document.getElementById('rejectModalSubmit').textContent = isRevoke ? 'Reject Approval' : 'Reject';
+
     openModal('rejectModal');
 }));
 </script>
