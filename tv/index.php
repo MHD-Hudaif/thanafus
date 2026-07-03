@@ -662,7 +662,7 @@ if (isset($_GET['api'])) {
     }
 }
 
-$assetBase = rtrim(APP_URL, '/') . '/tv/assets';
+$assetBase = tv_asset_url();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -670,7 +670,7 @@ $assetBase = rtrim(APP_URL, '/') . '/tv/assets';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TV Mode</title>
-    <link rel="stylesheet" href="<?= e($assetBase) ?>/tv.css">
+    <link rel="stylesheet" href="<?= e($assetBase) ?>/css/tv.css">
     <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js" defer></script>
 </head>
 <body>
@@ -683,7 +683,7 @@ $assetBase = rtrim(APP_URL, '/') . '/tv/assets';
 
         <header class="tv-topbar">
             <div class="tv-brand">
-                <img src="<?= e(rtrim(APP_URL, '/') . '/assets/images/thanafus-logo.png') ?>" alt="Thanafus">
+                <img src="<?= e(asset_url('images/thanafus-logo.png')) ?>" alt="Thanafus">
                 <div class="tv-brand-copy">
                     <div class="tv-brand-kicker">Kauzariyya Digital Musabaqa</div>
                     <div class="tv-brand-title">Broadcast Display</div>
@@ -695,10 +695,10 @@ $assetBase = rtrim(APP_URL, '/') . '/tv/assets';
         <main class="tv-stage">
             <section class="tv-slide tv-slide--active" data-slide="intro" id="slide-intro">
                 <video id="introVideo" class="tv-intro-video" autoplay muted playsinline preload="auto">
-                    <source src="<?= e($assetBase) ?>/intro.mp4" type="video/mp4">
+                    <source src="<?= e($assetBase) ?>/videos/intro.mp4" type="video/mp4">
                 </video>
                 <div class="tv-intro-overlay">
-                    <img src="<?= e(rtrim(APP_URL, '/') . '/assets/images/kauzariyya-logo.png') ?>" alt="Kauzariyya" class="tv-intro-mark">
+                    <img src="<?= e(asset_url('images/kauzariyya-logo.png')) ?>" alt="Kauzariyya" class="tv-intro-mark">
                     <div class="tv-intro-copy">
                         <div class="tv-intro-eyebrow">Welcome to the arena</div>
                         <div class="tv-intro-title">Kauzariyya Musabaqa</div>
@@ -777,10 +777,10 @@ $assetBase = rtrim(APP_URL, '/') . '/tv/assets';
     <script>
         window.TV_APP = {
             api: {
-                bootstrap: '<?= e(rtrim(APP_URL, '/') . '/tv/index.php?api=bootstrap') ?>',
-                leaderboard: '<?= e(rtrim(APP_URL, '/') . '/tv/index.php?api=leaderboard') ?>',
-                schedule: '<?= e(rtrim(APP_URL, '/') . '/tv/index.php?api=schedule') ?>',
-                current: '<?= e(rtrim(APP_URL, '/') . '/tv/index.php?api=current') ?>'
+                bootstrap: '<?= e(app_url('/tv/index.php?api=bootstrap')) ?>',
+                leaderboard: '<?= e(app_url('/tv/index.php?api=leaderboard')) ?>',
+                schedule: '<?= e(app_url('/tv/index.php?api=schedule')) ?>',
+                current: '<?= e(app_url('/tv/index.php?api=current')) ?>'
             },
             slideDurations: {
                 leaderboard: 15000,
@@ -789,6 +789,6 @@ $assetBase = rtrim(APP_URL, '/') . '/tv/assets';
             }
         };
     </script>
-    <script src="<?= e($assetBase) ?>/tv.js" defer></script>
+    <script src="<?= e($assetBase) ?>/js/tv.js" defer></script>
 </body>
 </html>

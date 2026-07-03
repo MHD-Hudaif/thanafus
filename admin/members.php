@@ -218,5 +218,4 @@ document.querySelectorAll('[data-delete-id]').forEach(btn => btn.addEventListene
     openModal('deleteModal');
 }));
 </script>
-</body>
-</html>
+<?php admin_close_page(); ?>

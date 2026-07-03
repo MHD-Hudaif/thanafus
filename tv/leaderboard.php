@@ -115,14 +115,14 @@ $pageTitle = 'Ceremonial Leaderboard';
 <meta name="theme-color" content="#06120e">
 <title><?= e($pageTitle) ?></title>
 
-<link rel="stylesheet" href="<?= e(APP_URL) ?>/tv/assets/css/leaderboard.css">
+<link rel="stylesheet" href="<?= e(tv_asset_url('css/leaderboard.css')) ?>">
 </head>
 <body>
 <div class="tv-shell">
     <header class="tv-topbar">
         <div class="brand">
             <div class="brand-mark">
-                <img src="<?= e(APP_URL) ?>/tv/assets/thanafus-logo.png" alt="Thanafus Logo">
+                <img src="<?= e(tv_asset_url('thanafus-logo.png')) ?>" alt="Thanafus Logo">
             </div>
             <div class="brand-copy">
                 <div class="eyebrow">Musabaqa Ceremonial Ranking</div>
@@ -138,7 +138,7 @@ $pageTitle = 'Ceremonial Leaderboard';
                 <h1 class="title">Team Ceremony Arena</h1>
             </div>
             <div class="brand-mark">
-                <img src="<?= e(APP_URL) ?>/tv/assets/kauzariyya-logo.png" alt="Kauzariyya Logo">
+                <img src="<?= e(tv_asset_url('kauzariyya-logo.png')) ?>" alt="Kauzariyya Logo">
             </div>
         </div>
     </header>
@@ -224,7 +224,7 @@ $pageTitle = 'Ceremonial Leaderboard';
 
 <script>
 window.TV_LEADERBOARD_CONFIG = {
-    apiUrl: <?= json_encode('leaderboard.php?api=leaderboard', JSON_UNESCAPED_SLASHES) ?>,
+    apiUrl: <?= json_encode(app_url('/tv/leaderboard.php?api=leaderboard'), JSON_UNESCAPED_SLASHES) ?>,
     refreshMs: 5000
 };
 
@@ -232,6 +232,6 @@ window.TV_LEADERBOARD_INITIAL = <?= json_encode($initialPayload, JSON_UNESCAPED_
 </script>
 
 <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
-<script src="<?= e(APP_URL) ?>/tv/assets/js/leaderboard.js"></script>
+<script src="<?= e(tv_asset_url('js/leaderboard.js')) ?>"></script>
 </body>
 </html>

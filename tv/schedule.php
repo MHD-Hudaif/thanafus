@@ -180,7 +180,7 @@ if (!empty($event['start_date']) && !empty($event['end_date'])) {
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#05070a">
 <title><?= e($pageTitle) ?></title>
-<link rel="stylesheet" href="schedules.css">
+<link rel="stylesheet" href="<?= e(app_url('/tv/schedules.css')) ?>">
 </head>
 <body>
 <div class="schedule-app" id="scheduleApp">
@@ -267,6 +267,6 @@ if (!empty($event['start_date']) && !empty($event['end_date'])) {
 <script>
 window.TV_SCHEDULE_DATA = <?= json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 </script>
-<script src="schedules.js"></script>
+<script src="<?= e(app_url('/tv/schedules.js')) ?>"></script>
 </body>
 </html>

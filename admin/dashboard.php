@@ -121,6 +121,4 @@ require_once __DIR__ . '/../includes/sidebar.php';
         </div>
     <?php endif; ?>
 </div>
-
-</body>
-</html>
+<?php admin_close_page(); ?>

@@ -20,8 +20,7 @@ unset($_SESSION['active_team_id']);
 
 header(
     'Location: '
-    . APP_URL
-    . '/admin/dashboard'
+    . app_url('/admin/dashboard')
 );
 
 exit;

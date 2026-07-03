@@ -29,10 +29,7 @@ function id_card_category_label(?string $classTypeName, ?int $classTypeId = null
 
 function id_card_absolute_url(string $path): string
 {
-    $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-
-    return $scheme . '://' . $host . APP_URL . $path;
+    return app_absolute_url($path);
 }
 
 function id_card_qr_filename(?string $chestNumber): ?string
@@ -53,8 +50,8 @@ function id_card_qr_paths(int $eventId, ?string $chestNumber): array
     }
 
     $relativeDir = '/assets/qr/id-cards/event-' . $eventId;
-    $file = dirname(__DIR__) . $relativeDir . '/' . $filename;
-    $web = APP_URL . $relativeDir . '/' . rawurlencode($filename);
+    $file = public_path(ltrim($relativeDir, '/') . '/' . $filename);
+    $web = app_url($relativeDir . '/' . rawurlencode($filename));
 
     return [
         'file' => $file,
@@ -108,24 +105,45 @@ function id_card_members(PDO $pdo, int $eventId): array
 function id_card_member(PDO $pdo, int $memberId): ?array
 {
     $stmt = $pdo->prepare("
-        SELECT mtm.event_id
+        SELECT
+            mtm.id AS member_id,
+            mtm.student_id,
+            mtm.event_id,
+            mtm.chest_number,
+            mtm.status,
+            t.team_name,
+            t.team_color,
+            ev.title AS event_title,
+            COALESCE(NULLIF(s.display_name, ''), s.full_name) AS display_name,
+            s.full_name,
+            s.name_arabic,
+            s.place,
+            s.admission_no,
+            c.class_type_id,
+            c.name AS section,
+            ct.name AS class_type_name
         FROM musabaqa_team_members mtm
+        JOIN musabaqa_teams t ON t.id = mtm.team_id
+        JOIN musabaqa_events ev ON ev.id = mtm.event_id
+        JOIN kauzariyya.students s ON s.id = mtm.student_id
+        LEFT JOIN kauzariyya.classes c ON c.id = s.class_id
+        LEFT JOIN kauzariyya.class_types ct ON ct.id = c.class_type_id
         WHERE mtm.id = ?
+          AND mtm.status = 'active'
         LIMIT 1
     ");
     $stmt->execute([$memberId]);
-    $eventId = (int)($stmt->fetchColumn() ?: 0);
-    if ($eventId <= 0) {
+    $member = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$member) {
         return null;
     }
 
-    foreach (id_card_members($pdo, $eventId) as $member) {
-        if ((int)$member['member_id'] === $memberId) {
-            return $member;
-        }
-    }
+    $member['category'] = id_card_category_label($member['class_type_name'] ?? null, (int)($member['class_type_id'] ?? 0));
+    $member['qr_url'] = id_card_absolute_url('/member-details.php?id=' . (int)$member['member_id']);
+    $member['qr_paths'] = id_card_qr_paths((int)$member['event_id'], $member['chest_number'] ?? null);
 
-    return null;
+    return $member;
 }
 
 function id_card_generate_qrs(array $members): array
@@ -134,6 +152,7 @@ function id_card_generate_qrs(array $members): array
 
     $generated = 0;
     $skipped = 0;
+    $logoPath = asset_path('images/thanafus-logo.png');
 
     foreach ($members as $member) {
         $paths = $member['qr_paths'] ?? [];
@@ -142,7 +161,8 @@ function id_card_generate_qrs(array $members): array
             continue;
         }
 
-        qr_write_png((string)$member['qr_url'], (string)$paths['file']);
+        $teamColor = $member['team_color'] ?? null;
+        qr_write_png((string)$member['qr_url'], (string)$paths['file'], 10, 4, $teamColor, $logoPath);
         $generated++;
     }
 

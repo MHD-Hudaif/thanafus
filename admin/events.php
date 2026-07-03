@@ -485,6 +485,4 @@ eventForm?.addEventListener('submit', () => {
     updateHiddenColors();
 });
 </script>
-
-</body>
-</html>
+<?php admin_close_page(); ?>

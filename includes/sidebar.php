@@ -23,6 +23,9 @@ function admin_sidebar_is_active($path) {
     return str_contains($currentPath, $path) ? 'active' : '';
 }
 }
+
+/* Skip sidebar rendering for AJAX requests */
+if (!empty($isAjaxRequest)) return;
 ?>
 
 <div class="sidebar">
@@ -35,7 +38,7 @@ function admin_sidebar_is_active($path) {
 
         <!-- LOGO -->
         <div class="sidebar-logo-wrap">
-            <img src="<?= APP_URL ?>/assets/images/thanafus-logo.png" 
+            <img src="<?= asset_url('images/thanafus-logo.png') ?>" 
                  class="sidebar-logo" alt="Thanafus Logo">
         </div>
 
@@ -48,14 +51,14 @@ function admin_sidebar_is_active($path) {
         <div class="sidebar-menu">
 
             <!-- DASHBOARD -->
-            <a href="<?= APP_URL ?>/admin/dashboard" 
+            <a href="<?= app_url('/admin/dashboard') ?>" 
                class="sidebar-link <?= admin_sidebar_is_active('/admin/dashboard') ?>">
                 <i class="fa-solid fa-table-columns"></i>
                 <span>Dashboard</span>
             </a>
 
             <!-- EVENTS -->
-            <a href="<?= APP_URL ?>/admin/events" 
+            <a href="<?= app_url('/admin/events') ?>" 
                class="sidebar-link <?= admin_sidebar_is_active('/admin/events') ?>">
                 <i class="fa-solid fa-calendar-days"></i>
                 <span>Events</span>
@@ -68,66 +71,67 @@ function admin_sidebar_is_active($path) {
             <?php if ($activeEventId): ?>
 
                 <!-- TEAMS HUB -->
-                <a href="<?= APP_URL ?>/admin/teams" 
+                <a href="<?= app_url('/admin/teams') ?>" 
                    class="sidebar-link <?= admin_sidebar_is_active('/admin/teams') ?>">
                     <i class="fa-solid fa-people-group"></i>
                     <span>Teams</span>
                 </a>
 
-                <a href="<?= APP_URL ?>/admin/chest-numbers"
+                <a href="<?= app_url('/admin/chest-numbers') ?>"
                    class="sidebar-link <?= admin_sidebar_is_active('/admin/chest-numbers') ?>">
                     <i class="fa-solid fa-hashtag"></i>
                     <span>Chest Numbers</span>
                 </a>
 
-                <a href="<?= APP_URL ?>/admin/id-cards"
+                <a href="<?= app_url('/admin/id-cards') ?>"
                    class="sidebar-link <?= admin_sidebar_is_active('/admin/id-cards') ?>">
                     <i class="fa-solid fa-id-card"></i>
                     <span>ID Cards</span>
                 </a>
 
                 <!-- PROGRAMS -->
-                <a href="<?= APP_URL ?>/admin/programs" 
+                <a href="<?= app_url('/admin/programs') ?>" 
                    class="sidebar-link <?= admin_sidebar_is_active('/admin/programs') ?>">
                     <i class="fa-solid fa-microphone-lines"></i>
                     <span>Programs</span>
                 </a>
 
                 <!-- SCHEDULE -->
-                <a href="<?= APP_URL ?>/admin/schedule" 
+                <a href="<?= app_url('/admin/schedule') ?>" 
                    class="sidebar-link <?= admin_sidebar_is_active('/admin/schedule') ?>">
                     <i class="fa-solid fa-clock"></i>
                     <span>Schedule</span>
                 </a>
 
                 <!-- ENTRIES -->
-                <a href="<?= APP_URL ?>/admin/entries" 
+                <a href="<?= app_url('/admin/entries') ?>" 
                    class="sidebar-link <?= admin_sidebar_is_active('/admin/entries') ?>">
                     <i class="fa-solid fa-list-check"></i>
                     <span>Entries</span>
                 </a>
 
                 <!-- SCORES -->
-                <a href="<?= APP_URL ?>/admin/score-entry" 
+                <a href="<?= app_url('/admin/score-entry') ?>" 
                    class="sidebar-link <?= admin_sidebar_is_active('/admin/score-entry') ?>">
                     <i class="fa-solid fa-pen"></i>
                     <span>Scores</span>
                 </a>
 
                 <!-- SCORE APPROVAL -->
-                <a href="<?= APP_URL ?>/admin/score-approval" 
+                <a href="<?= app_url('/admin/score-approval') ?>" 
                    class="sidebar-link <?= admin_sidebar_is_active('/admin/score-approval') ?>">
                     <i class="fa-solid fa-check"></i>
                     <span>Approval</span>
                 </a>
 
                 <!-- TV MODE -->
-                <a href="<?= APP_URL ?>/tv/index.php" 
-                   class="sidebar-link <?= admin_sidebar_is_active('/tv') ?>">
+                <a href="<?= app_url('/tv') ?>" 
+                   class="sidebar-link <?= admin_sidebar_is_active('/tv') ?>"
+                   data-ajax-ignore>
                     <i class="fa-solid fa-tv"></i>
                     <span>TV Mode</span>
                 </a>
-                <a href="<?= APP_URL ?>/admin/logs.php"
+                <a href="<?= app_url('/admin/logs') ?>"
    class="sidebar-link <?= basename($_SERVER['PHP_SELF']) === 'logs.php' ? 'active' : '' ?>">
     <i class="fa-solid fa-clock-rotate-left"></i>
     <span>Activity Logs</span>
@@ -150,7 +154,7 @@ function admin_sidebar_is_active($path) {
             <div class="sidebar-user-image">
                 <img src="<?=
                     !empty($user['profile_photo'])
-                        ? APP_URL . '/uploads/profile/' . rawurlencode((string)$user['profile_photo'])
+                        ? app_url('/uploads/profile/' . rawurlencode((string)$user['profile_photo']))
                         : 'https://ui-avatars.com/api/?name=' . urlencode($user['full_name'] ?? $user['username'])
                 ?>" alt="Profile">
             </div>
@@ -165,8 +169,14 @@ function admin_sidebar_is_active($path) {
             </div>
         </div>
 
+        <!-- BACK TO HOME -->
+        <a href="<?= app_url('/home') ?>" class="home-btn" data-ajax-ignore>
+            <i class="fa-solid fa-arrow-left"></i>
+            Back to Home
+        </a>
+
         <!-- LOGOUT -->
-        <a href="<?= APP_URL ?>/auth/logout.php" class="logout-btn">
+        <a href="<?= app_url('/auth/logout') ?>" class="logout-btn" data-ajax-ignore>
             <i class="fa-solid fa-right-from-bracket"></i>
             Logout
         </a>

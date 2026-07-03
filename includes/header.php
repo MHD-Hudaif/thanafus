@@ -6,10 +6,13 @@ require_login();
 
 $user = current_user();
 
+$isAjaxRequest = admin_is_ajax();
+
 $pageTitle =
     $pageTitle
     ?? 'Kauzariyya Musabaqa';
 
+if (!$isAjaxRequest):
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -60,9 +63,8 @@ CSS
 ===================================================== -->
 <link
     rel="stylesheet"
-    href="<?= APP_URL ?>/assets/css/admin.css"
+    href="<?= asset_url('css/admin.css') ?>"
 >
-
 
 
 <!-- =====================================================
@@ -70,9 +72,17 @@ GSAP
 ===================================================== -->
 
 <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<script>
+window.APP_CONFIG = {
+    baseUrl: <?= json_encode(APP_BASE_URL, JSON_UNESCAPED_SLASHES) ?>,
+    assetUrl: <?= json_encode(asset_url(), JSON_UNESCAPED_SLASHES) ?>
+};
+</script>
+<script src="<?= asset_url('js/admin.js') ?>" defer></script>
 
 </head>
 
 <body>
 
 <div class="admin-layout">
+<?php endif; ?>

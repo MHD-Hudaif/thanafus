@@ -833,6 +833,4 @@ document.querySelectorAll('[data-delete-id]').forEach(button => button.addEventL
 document.querySelectorAll('.modal-overlay').forEach(modal => modal.addEventListener('click', event => { if (event.target === modal) closeModal(modal.id); }));
 if (new URLSearchParams(window.location.search).get('create') === '1') openCreateModal();
 </script>
-
-</body>
-</html>
+<?php admin_close_page(); ?>

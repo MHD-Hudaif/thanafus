@@ -2,9 +2,26 @@
 
 require_once __DIR__ . '/../config/auth.php';
 
+/* =====================================================
+   AJAX HELPERS
+   ===================================================== */
+
+function admin_is_ajax(): bool
+{
+    return !empty($_SERVER['HTTP_X_REQUESTED_WITH'])
+        && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
+}
+
+function admin_close_page(): void
+{
+    if (!admin_is_ajax()) {
+        echo '</body></html>';
+    }
+}
+
 function admin_redirect(string $path, array $query = []): void
 {
-    $url = APP_URL . $path;
+    $url = app_url($path);
     $query = array_filter(
         $query,
         static fn ($value) => $value !== null && $value !== '' && $value !== 'all'
@@ -12,6 +29,12 @@ function admin_redirect(string $path, array $query = []): void
 
     if ($query) {
         $url .= '?' . http_build_query($query);
+    }
+
+    if (admin_is_ajax()) {
+        header('Content-Type: application/json');
+        echo json_encode(['redirect' => $url]);
+        exit;
     }
 
     header('Location: ' . $url);

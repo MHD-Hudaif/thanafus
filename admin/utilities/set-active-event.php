@@ -21,8 +21,7 @@ if($id <= 0){
 
     header(
         'Location: '
-        . APP_URL
-        . '/admin/events'
+        . app_url('/admin/events')
     );
 
     exit;
@@ -56,8 +55,7 @@ if(!$event){
 
     header(
         'Location: '
-        . APP_URL
-        . '/admin/events'
+        . app_url('/admin/events')
     );
 
     exit;
@@ -87,8 +85,7 @@ unset($_SESSION['active_team_id']);
 
 header(
     'Location: '
-    . APP_URL
-    . '/admin/dashboard'
+    . app_url('/admin/dashboard')
 );
 
 exit;

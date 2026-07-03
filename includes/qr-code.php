@@ -269,7 +269,7 @@ function qr_create_matrix(string $text): array
     return $qr['modules'];
 }
 
-function qr_write_png(string $text, string $filePath, int $scale = 10, int $border = 4): void
+function qr_write_png(string $text, string $filePath, int $scale = 10, int $border = 4, ?string $colorHex = null, ?string $logoPath = null): void
 {
     if (!extension_loaded('gd')) {
         throw new RuntimeException('The GD extension is required to generate QR PNG files.');
@@ -283,9 +283,27 @@ function qr_write_png(string $text, string $filePath, int $scale = 10, int $bord
         throw new RuntimeException('Unable to create QR image.');
     }
 
-    $white = imagecolorallocate($image, 255, 255, 255);
-    $black = imagecolorallocate($image, 0, 0, 0);
-    imagefilledrectangle($image, 0, 0, $imageSize, $imageSize, $white);
+    // Transparent canvas for id-card overlays.
+    imagealphablending($image, false);
+    imagesavealpha($image, true);
+    $transparent = imagecolorallocatealpha($image, 0, 0, 0, 127);
+    imagefilledrectangle($image, 0, 0, $imageSize, $imageSize, $transparent);
+    imagealphablending($image, true);
+
+    $red = 0;
+    $green = 0;
+    $blue = 0;
+    if ($colorHex && preg_match('/^#?([a-f0-9]{3}|[a-f0-9]{6})$/i', trim($colorHex), $matches)) {
+        $hex = $matches[1];
+        if (strlen($hex) === 3) {
+            $hex = $hex[0] . $hex[0] . $hex[1] . $hex[1] . $hex[2] . $hex[2];
+        }
+        $val = hexdec($hex);
+        $red = ($val >> 16) & 0xFF;
+        $green = ($val >> 8) & 0xFF;
+        $blue = $val & 0xFF;
+    }
+    $qrColor = imagecolorallocate($image, $red, $green, $blue);
 
     foreach ($matrix as $y => $row) {
         foreach ($row as $x => $dark) {
@@ -294,7 +312,45 @@ function qr_write_png(string $text, string $filePath, int $scale = 10, int $bord
             }
             $left = ($x + $border) * $scale;
             $top = ($y + $border) * $scale;
-            imagefilledrectangle($image, $left, $top, $left + $scale - 1, $top + $scale - 1, $black);
+            imagefilledrectangle($image, $left, $top, $left + $scale - 1, $top + $scale - 1, $qrColor);
+        }
+    }
+
+    if ($logoPath && file_exists($logoPath)) {
+        $logo = imagecreatefrompng($logoPath);
+        if ($logo) {
+            imagealphablending($logo, true);
+            imagesavealpha($logo, true);
+
+            $logoWidth = imagesx($logo);
+            $logoHeight = imagesy($logo);
+
+            $matrixPixelSize = $moduleCount * $scale;
+            $targetLogoWidth = max(1, (int)round($matrixPixelSize * 0.18));
+            $targetLogoHeight = max(1, (int)round($logoHeight * ($targetLogoWidth / $logoWidth)));
+            $logoX = (int)round(($imageSize - $targetLogoWidth) / 2);
+            $logoY = (int)round(($imageSize - $targetLogoHeight) / 2);
+            $padding = max(2, (int)round($scale * 0.8));
+
+            imagealphablending($image, false);
+            imagefilledrectangle(
+                $image,
+                max(0, $logoX - $padding),
+                max(0, $logoY - $padding),
+                min($imageSize - 1, $logoX + $targetLogoWidth + $padding - 1),
+                min($imageSize - 1, $logoY + $targetLogoHeight + $padding - 1),
+                $transparent
+            );
+            imagealphablending($image, true);
+
+            imagecopyresampled(
+                $image, $logo,
+                $logoX, $logoY,
+                0, 0,
+                $targetLogoWidth, $targetLogoHeight,
+                $logoWidth, $logoHeight
+            );
+            imagedestroy($logo);
         }
     }
 

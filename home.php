@@ -356,7 +356,7 @@ img { max-width: 100%; display: block; }
     border-bottom: 1px solid var(--border);
     background:
         linear-gradient(90deg, rgba(7,16,13,.96), rgba(7,16,13,.72)),
-        url('<?= APP_URL ?>/assets/images/kauzariyya-logo.png') center right 8% / min(420px, 65vw) no-repeat,
+        url('<?= asset_url('images/kauzariyya-logo.png') ?>') center right 8% / min(420px, 65vw) no-repeat,
         #07100d;
 }
 .welcome .section-inner {
@@ -415,8 +415,8 @@ img { max-width: 100%; display: block; }
 
 <body>
 <header class="site-header">
-    <a href="<?= APP_URL ?>/home" class="brand">
-        <img src="<?= APP_URL ?>/assets/images/thanafus-logo.png" alt="Kauzariyya Musabaqa">
+    <a href="<?= app_url('/home') ?>" class="brand">
+        <img src="<?= asset_url('images/thanafus-logo.png') ?>" alt="Kauzariyya Musabaqa">
         <div>
             <div class="brand-title">Kauzariyya Musabaqa</div>
             <div class="brand-subtitle">Digital Competition Platform</div>
@@ -432,11 +432,11 @@ img { max-width: 100%; display: block; }
     </nav>
 
     <div class="header-actions">
-        <a href="<?= APP_URL ?>/tv/index.php" class="btn btn-secondary"><i class="fa-solid fa-tv"></i> TV Mode</a>
+        <a href="<?= app_url('/tv') ?>" class="btn btn-secondary"><i class="fa-solid fa-tv"></i> TV Mode</a>
         <?php if ($isLoggedIn): ?>
-            <a href="<?= APP_URL ?>/admin/dashboard" class="btn btn-primary"><i class="fa-solid fa-table-columns"></i> Dashboard</a>
+            <a href="<?= app_url('/admin/dashboard') ?>" class="btn btn-primary"><i class="fa-solid fa-table-columns"></i> Dashboard</a>
         <?php else: ?>
-            <a href="<?= APP_URL ?>/auth/login" class="btn btn-primary"><i class="fa-solid fa-right-to-bracket"></i> Login</a>
+            <a href="<?= app_url('/auth/login') ?>" class="btn btn-primary"><i class="fa-solid fa-right-to-bracket"></i> Login</a>
         <?php endif; ?>
     </div>
 </header>
@@ -445,7 +445,7 @@ img { max-width: 100%; display: block; }
     <section class="hero">
         <div class="hero-bg" aria-hidden="true">
             <?php foreach ($backgroundImages as $index => $imagePath): ?>
-                <div class="bg-image<?= $index === 0 ? ' active' : '' ?>" style="background-image:url('<?= APP_URL ?>/assets/images/<?= e(basename($imagePath)) ?>')"></div>
+                <div class="bg-image<?= $index === 0 ? ' active' : '' ?>" style="background-image:url('<?= e(asset_url('images/' . basename($imagePath))) ?>')"></div>
             <?php endforeach; ?>
         </div>
 
@@ -455,7 +455,7 @@ img { max-width: 100%; display: block; }
             <p class="hero-copy">Competing in excellence, growing in knowledge, and standing together in faith. The official digital platform for Kauzariyya's student competitions, live scores, schedules, teams and results.</p>
             <p class="motto">Excellence Through Knowledge • Unity Through Faith • Success Through Sincerity</p>
             <div class="hero-actions">
-                <a href="<?= APP_URL ?>/tv/index.php" class="btn btn-primary"><i class="fa-solid fa-tower-broadcast"></i> Watch Live Display</a>
+                <a href="<?= app_url('/tv') ?>" class="btn btn-primary"><i class="fa-solid fa-tower-broadcast"></i> Watch Live Display</a>
                 <a href="#events" class="btn btn-secondary"><i class="fa-solid fa-list-check"></i> Explore Events</a>
             </div>
         </div>
@@ -550,9 +550,9 @@ img { max-width: 100%; display: block; }
             </div>
             <p class="welcome-message">We warmly welcome all participants, judges, teachers, parents and guests to the Kauzariyya Musabaqa. May Allah accept our efforts, strengthen Islamic values through this gathering, and grant every participant success with sincerity. Ameen.</p>
             <div class="hero-actions">
-                <a href="<?= APP_URL ?>/tv/index.php" class="btn btn-primary"><i class="fa-solid fa-tv"></i> Open TV Mode</a>
+                <a href="<?= app_url('/tv') ?>" class="btn btn-primary"><i class="fa-solid fa-tv"></i> Open TV Mode</a>
                 <?php if ($isLoggedIn): ?>
-                    <a href="<?= APP_URL ?>/admin/dashboard" class="btn btn-secondary"><i class="fa-solid fa-shield"></i> Admin Panel</a>
+                    <a href="<?= app_url('/admin/dashboard') ?>" class="btn btn-secondary"><i class="fa-solid fa-shield"></i> Admin Panel</a>
                 <?php endif; ?>
             </div>
         </div>

@@ -149,8 +149,7 @@ function require_login(): void {
 
         header(
             'Location: '
-            . APP_URL
-            . '/auth/login'
+            . app_url('/auth/login')
         );
 
         exit;
@@ -171,8 +170,7 @@ function require_login(): void {
 
         header(
             'Location: '
-            . APP_URL
-            . '/auth/login'
+            . app_url('/auth/login')
         );
 
         exit;

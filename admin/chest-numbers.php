@@ -8,6 +8,8 @@ $pdo = $GLOBALS['musabaqa_pdo'];
 $activeEvent = admin_require_active_event($pdo);
 $activeEventId = (int)$activeEvent['id'];
 
+$search = trim((string)($_GET['search'] ?? ''));
+
 $stmt = $pdo->prepare("
     SELECT t.*,
            COUNT(mtm.id) AS member_count,
@@ -146,6 +148,16 @@ $stmt->execute([$activeEventId]);
 $members = [];
 foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $member) {
     $member['category'] = id_card_category_label($member['class_type_name'] ?? null, (int)($member['class_type_id'] ?? 0));
+    if (
+        $search !== ''
+        && stripos((string)($member['display_name'] ?? ''), $search) === false
+        && stripos((string)($member['chest_number'] ?? ''), $search) === false
+        && stripos((string)($member['team_name'] ?? ''), $search) === false
+        && stripos((string)($member['section'] ?? ''), $search) === false
+        && stripos((string)($member['category'] ?? ''), $search) === false
+    ) {
+        continue;
+    }
     $members[] = $member;
 }
 
@@ -173,7 +185,7 @@ require_once __DIR__ . '/../includes/sidebar.php';
         </div>
         <div class="flex gap-2 flex-wrap">
             <button class="btn btn-success btn-md" type="button" data-open-generate><i class="fa-solid fa-wand-magic-sparkles"></i> Generate</button>
-            <a href="<?= APP_URL ?>/admin/teams.php" class="btn btn-secondary btn-md"><i class="fa-solid fa-people-group"></i> Teams</a>
+            <a href="<?= app_url('/admin/teams.php') ?>" class="btn btn-secondary btn-md"><i class="fa-solid fa-people-group"></i> Teams</a>
         </div>
     </div>
 
@@ -189,8 +201,21 @@ require_once __DIR__ . '/../includes/sidebar.php';
         <div class="alert alert-warning">Generating again will reset <?= $assignedCount ?> existing active chest number(s).</div>
     <?php endif; ?>
 
+    <div class="panel mb-6">
+        <form method="GET" class="form-grid">
+            <div class="input-group full-width">
+                <label>Search</label>
+                <input type="text" name="search" value="<?= e($search) ?>" placeholder="Chest number, name, team, section or category">
+            </div>
+            <div class="form-actions full-width">
+                <button class="btn btn-secondary btn-md" type="submit"><i class="fa-solid fa-magnifying-glass"></i> Search</button>
+                <?php if ($search !== ''): ?><a href="<?= app_url('/admin/chest-numbers.php') ?>" class="btn btn-secondary btn-md">Clear</a><?php endif; ?>
+            </div>
+        </form>
+    </div>
+
     <?php if (!$members): ?>
-        <div class="empty-state"><div class="empty-icon"><i class="fa-solid fa-hashtag"></i></div><div class="empty-title">No Members Found</div><div class="empty-subtitle">Add team members before generating chest numbers.</div></div>
+        <div class="empty-state"><div class="empty-icon"><i class="fa-solid fa-hashtag"></i></div><div class="empty-title">No Members Found</div><div class="empty-subtitle"><?= $search !== '' ? 'No members match your search.' : 'Add team members before generating chest numbers.' ?></div></div>
     <?php else: ?>
         <div class="table-wrapper">
             <table class="table">
@@ -279,5 +304,4 @@ document.querySelectorAll('.modal-overlay').forEach(modal => modal.addEventListe
     if (event.target === modal) closeModal(modal.id);
 }));
 </script>
-</body>
-</html>
+<?php admin_close_page(); ?>

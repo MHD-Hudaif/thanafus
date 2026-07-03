@@ -732,5 +732,4 @@ document.querySelectorAll('[data-categories]').forEach(btn => btn.addEventListen
     openModal('categoryModal');
 }));
 </script>
-</body>
-</html>
+<?php admin_close_page(); ?>

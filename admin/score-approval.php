@@ -546,5 +546,4 @@ document.querySelectorAll('[data-reject-id]').forEach(btn => btn.addEventListene
     openModal('rejectModal');
 }));
 </script>
-</body>
-</html>
+<?php admin_close_page(); ?>

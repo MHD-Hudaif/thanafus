@@ -12,8 +12,7 @@ if (!empty($_SESSION['user_id'])) {
 
     header(
         'Location: '
-        . APP_URL
-        . '/admin/dashboard'
+        . app_url('/admin/dashboard')
     );
 
     exit;
@@ -72,8 +71,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             header(
                 'Location: '
-                . APP_URL
-                . '/admin/dashboard'
+                . app_url('/admin/dashboard')
             );
 
             exit;
@@ -122,9 +120,11 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"
 >
 
 <link
-rel="stylesheet"
-href="<?= APP_URL ?>/assets/css/auth.css"
+    rel="stylesheet"
+    href="<?= asset_url('css/auth.css') ?>"
 >
+
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
 
 </head>
 
@@ -154,8 +154,9 @@ LOGIN CARD
     >
 
         <img
-            src="<?= APP_URL ?>/assets/images/thanafus-logo.png"
+            src="<?= asset_url('images/thanafus-logo.png') ?>"
             class="auth-logo"
+            alt="Thanafus"
         >
 
         <div class="auth-title">
@@ -238,7 +239,7 @@ LOGIN CARD
         </button>
 
         <a
-            href="<?= APP_URL ?>/home"
+            href="<?= app_url('/home') ?>"
             class="back-home"
         >
 
@@ -251,6 +252,55 @@ LOGIN CARD
     </form>
 
 </div>
+
+<script>
+window.addEventListener('DOMContentLoaded', () => {
+    if (!window.gsap) return;
+
+    // Set initial states
+    gsap.set('.auth-card', { opacity: 0, y: 30, scale: 0.95 });
+    gsap.set([
+        '.auth-logo',
+        '.auth-title',
+        '.auth-subtitle',
+        '.auth-error',
+        '.input-group',
+        '.auth-btn',
+        '.back-home'
+    ], { opacity: 0, y: 15 });
+
+    // Animate Card
+    gsap.to('.auth-card', {
+        opacity: 1,
+        y: 0,
+        scale: 1,
+        duration: 0.85,
+        ease: 'power4.out',
+        onComplete: () => {
+            // Remove transform from auth-card to prevent rendering artifacts/issues
+            gsap.set('.auth-card', { clearProps: 'transform,scale' });
+        }
+    });
+
+    // Stagger elements in
+    gsap.to([
+        '.auth-logo',
+        '.auth-title',
+        '.auth-subtitle',
+        '.auth-error',
+        '.input-group',
+        '.auth-btn',
+        '.back-home'
+    ], {
+        opacity: 1,
+        y: 0,
+        duration: 0.6,
+        stagger: 0.08,
+        delay: 0.15,
+        ease: 'power3.out'
+    });
+});
+</script>
 
 </body>
 </html>

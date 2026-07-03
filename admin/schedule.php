@@ -158,6 +158,7 @@ $flash = admin_take_flash();
 $stageTypes = $pdo->query('SELECT id, name FROM musabaqa_stage_types ORDER BY name ASC')->fetchAll(PDO::FETCH_ASSOC);
 $selectedStageId = (int)($_GET['stage'] ?? 0);
 $classFilter = trim((string)($_GET['class'] ?? 'all'));
+$search = trim((string)($_GET['search'] ?? ''));
 if ($selectedStageId <= 0 && $stageTypes) {
     $selectedStageId = (int)$stageTypes[0]['id'];
 }
@@ -169,6 +170,12 @@ $programWhere = "
       AND mp.{$endExpr} IS NOT NULL
 ";
 $programParams = [$activeEventId, $selectedStageId];
+if ($search !== '') {
+    $programWhere .= ' AND (mp.title LIKE ? OR mp.location LIKE ?)';
+    $like = '%' . $search . '%';
+    $programParams[] = $like;
+    $programParams[] = $like;
+}
 [$classSql, $classParams] = admin_program_class_filter_sql($dashboardPdo, $classFilter, 'mp');
 $programWhere .= $classSql;
 array_push($programParams, ...$classParams);
@@ -236,11 +243,21 @@ require_once __DIR__ . '/../includes/sidebar.php';
                     <?php endforeach; ?>
                 </select>
             </div>
+            <div class="input-group full-width">
+                <label>Search</label>
+                <input type="text" name="search" value="<?= e($search) ?>" placeholder="Program title or location">
+            </div>
+            <div class="form-actions full-width">
+                <button class="btn btn-secondary btn-md" type="submit"><i class="fa-solid fa-filter"></i> Filter</button>
+                <?php if ($search !== '' || $classFilter !== 'all'): ?>
+                    <a href="<?= APP_URL ?>/admin/schedule.php?stage=<?= (int)$selectedStageId ?>" class="btn btn-secondary btn-md">Clear</a>
+                <?php endif; ?>
+            </div>
         </form>
     </div>
 
     <?php if (!$programs): ?>
-        <div class="empty-state"><div class="empty-icon"><i class="fa-solid fa-clock"></i></div><div class="empty-title">No Timed Programs</div><div class="empty-subtitle">Add timed programs to the selected stage to build the timeline.</div></div>
+        <div class="empty-state"><div class="empty-icon"><i class="fa-solid fa-clock"></i></div><div class="empty-title">No Timed Programs</div><div class="empty-subtitle"><?= $search !== '' ? 'No timed programs match your search.' : 'Add timed programs to the selected stage to build the timeline.' ?></div></div>
     <?php else: ?>
         <div class="panel">
             <div class="dashboard-heading mb-6">Program Timeline</div>
@@ -353,5 +370,4 @@ document.querySelectorAll('[data-open-break]').forEach(button => button.addEvent
     openModal('breakModal');
 }));
 </script>
-</body>
-</html>
+<?php admin_close_page(); ?>

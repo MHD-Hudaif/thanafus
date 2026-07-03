@@ -118,7 +118,7 @@ require_once __DIR__ . '/../includes/sidebar.php';
 <div class="main-content">
     <div class="topbar">
         <div><div class="page-title">Add Members</div><div class="page-subtitle"><span class="team-color-pill" style="background: <?= e($activeTeam['team_color'] ?? '#64748b') ?>22; color: <?= e($activeTeam['team_color'] ? '#111' : '#111') ?>;"><?= e($activeTeam['team_name']) ?></span></div></div>
-        <a href="<?= APP_URL ?>/admin/members.php?team=<?= $activeTeamId ?>" class="btn btn-secondary btn-md"><i class="fa-solid fa-arrow-left"></i> Back to Members</a>
+        <a href="<?= app_url('/admin/members.php') ?>?team=<?= $activeTeamId ?>" class="btn btn-secondary btn-md"><i class="fa-solid fa-arrow-left"></i> Back to Members</a>
     </div>
 
     <?php if ($flash): ?><div class="alert <?= $flash['type'] === 'success' ? 'alert-success' : 'alert-error' ?>"><?= e($flash['message']) ?></div><?php endif; ?>
@@ -127,7 +127,7 @@ require_once __DIR__ . '/../includes/sidebar.php';
         <form method="GET" class="form-grid">
             <input type="hidden" name="team" value="<?= $activeTeamId ?>">
             <div class="input-group full-width"><label>Search Students</label><input type="text" name="search" value="<?= e($search) ?>" placeholder="Student name or admission number"></div>
-            <div class="form-actions full-width"><button class="btn btn-secondary btn-md" type="submit"><i class="fa-solid fa-magnifying-glass"></i> Search</button><?php if ($search !== ''): ?><a href="<?= APP_URL ?>/admin/add-members.php?team=<?= $activeTeamId ?>" class="btn btn-secondary btn-md">Clear</a><?php endif; ?></div>
+            <div class="form-actions full-width"><button class="btn btn-secondary btn-md" type="submit"><i class="fa-solid fa-magnifying-glass"></i> Search</button><?php if ($search !== ''): ?><a href="<?= app_url('/admin/add-members.php') ?>?team=<?= $activeTeamId ?>" class="btn btn-secondary btn-md">Clear</a><?php endif; ?></div>
         </form>
     </div>
 
@@ -178,5 +178,4 @@ document.querySelectorAll('.class-header').forEach(header => {
 });
 document.querySelector('.class-body')?.classList.add('active');
 </script>
-</body>
-</html>
+<?php admin_close_page(); ?>

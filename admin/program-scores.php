@@ -382,6 +382,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $flash = admin_take_flash();
+$entrySearch = trim((string)($_GET['search'] ?? ''));
 
 $stmt = $pdo->prepare("
     SELECT
@@ -401,7 +402,23 @@ $stmt = $pdo->prepare("
     ORDER BY pe.entry_number ASC, pe.id ASC
 ");
 $stmt->execute([$activeEventId, $programId]);
-$entries = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$rawEntries = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$entries = [];
+foreach ($rawEntries as $entry) {
+    $statusText = $entry['status'] ?? '';
+    $scoreText = !empty($entry['score_sheet_id']) ? (string)($entry['final_total'] ?? '') : 'missing';
+    if (
+        $entrySearch !== ''
+        && stripos((string)($entry['entry_number'] ?? ''), $entrySearch) === false
+        && stripos((string)($entry['entry_name'] ?? ''), $entrySearch) === false
+        && stripos((string)($entry['team_name'] ?? ''), $entrySearch) === false
+        && stripos((string)$statusText, $entrySearch) === false
+        && stripos((string)$scoreText, $entrySearch) === false
+    ) {
+        continue;
+    }
+    $entries[] = $entry;
+}
 
 $readyForSubmission = admin_program_ready_for_approval($pdo, $programId);
 $scoresLocked = in_array((string)$program['approval_status'], ['submitted', 'approved'], true);
@@ -447,6 +464,22 @@ require_once __DIR__ . '/../includes/sidebar.php';
         <div class="stat-card"><div class="stat-icon"><i class="fa-solid fa-list-check"></i></div><div class="stat-value"><?= count($entries) ?></div><div class="stat-label">Entries</div></div>
         <div class="stat-card"><div class="stat-icon"><i class="fa-solid fa-clipboard-check"></i></div><div class="stat-value"><?= count(array_filter($entries, static fn ($row) => in_array((string)($row['sheet_status'] ?? ''), ['completed','submitted','approved','rejected'], true))) ?></div><div class="stat-label">Scored</div></div>
         <div class="stat-card"><div class="stat-icon"><i class="fa-solid fa-sliders"></i></div><div class="stat-value"><?= number_format($categoryTotal, 2) ?></div><div class="stat-label">Category Total</div></div>
+    </div>
+
+    <div class="panel mb-6">
+        <form method="GET" class="form-grid">
+            <input type="hidden" name="program_id" value="<?= (int)$programId ?>">
+            <div class="input-group full-width">
+                <label>Search Entries</label>
+                <input type="text" name="search" value="<?= e($entrySearch) ?>" placeholder="Entry number, entry name, team, status or score">
+            </div>
+            <div class="form-actions full-width">
+                <button class="btn btn-secondary btn-md" type="submit"><i class="fa-solid fa-magnifying-glass"></i> Search</button>
+                <?php if ($entrySearch !== ''): ?>
+                    <a href="<?= APP_URL ?>/admin/program-scores.php?program_id=<?= (int)$programId ?>" class="btn btn-secondary btn-md">Clear</a>
+                <?php endif; ?>
+            </div>
+        </form>
     </div>
 
     <div class="panel mb-6">
@@ -550,7 +583,7 @@ require_once __DIR__ . '/../includes/sidebar.php';
     </div>
 
     <?php if (!$entries): ?>
-        <div class="empty-state"><div class="empty-icon"><i class="fa-solid fa-list-check"></i></div><div class="empty-title">No Entries Found</div><div class="empty-subtitle">Add entries to this program before scoring.</div></div>
+        <div class="empty-state"><div class="empty-icon"><i class="fa-solid fa-list-check"></i></div><div class="empty-title">No Entries Found</div><div class="empty-subtitle"><?= $entrySearch !== '' ? 'No entries match your search.' : 'Add entries to this program before scoring.' ?></div></div>
     <?php else: ?>
         <div class="table-wrapper">
             <table class="table">
@@ -723,5 +756,4 @@ if (document.getElementById('programReadyAlert')) {
     }, 350);
 }
 </script>
-</body>
-</html>
+<?php admin_close_page(); ?>

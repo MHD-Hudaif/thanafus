@@ -1,4 +1,8 @@
-```php
+<?php
+require_once __DIR__ . '/../config/app.php';
+
+$introVideoUrl = htmlspecialchars(tv_asset_url('videos/intro.mp4'), ENT_QUOTES, 'UTF-8');
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -52,7 +56,7 @@ body {
         preload="auto"
     >
         <source
-            src="assets/intro.mp4"
+            src="<?= $introVideoUrl ?>"
             type="video/mp4"
         >
     </video>
@@ -122,4 +126,3 @@ body {
 
 </body>
 </html>
-```

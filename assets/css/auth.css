@@ -131,7 +131,7 @@ img {
 .auth-image {
   position: absolute;
   inset: -5%;
-  background-image: url('/kauzariyya-musabaqa/assets/images/kauzariyya-4-d.png');
+  background-image: url('../images/kauzariyya.png');
   background-size: cover;
   background-position: center;
   animation: kenBurns 30s linear infinite alternate;

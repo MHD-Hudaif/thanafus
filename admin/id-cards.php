@@ -8,6 +8,7 @@ $pdo = $GLOBALS['musabaqa_pdo'];
 $activeEvent = admin_require_active_event($pdo);
 $activeEventId = (int)$activeEvent['id'];
 $members = id_card_members($pdo, $activeEventId);
+$search = trim((string)($_GET['search'] ?? ''));
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
@@ -69,10 +70,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $flash = admin_take_flash();
-$totalMembers = count($members);
+$filteredMembers = [];
+foreach ($members as $member) {
+    if (
+        $search !== ''
+        && stripos((string)($member['chest_number'] ?? ''), $search) === false
+        && stripos((string)($member['display_name'] ?? ''), $search) === false
+        && stripos((string)($member['team_name'] ?? ''), $search) === false
+        && stripos((string)($member['section'] ?? ''), $search) === false
+        && stripos((string)($member['category'] ?? ''), $search) === false
+    ) {
+        continue;
+    }
+    $filteredMembers[] = $member;
+}
+$totalMembers = count($filteredMembers);
 $missingChest = 0;
 $existingQr = 0;
-foreach ($members as $member) {
+foreach ($filteredMembers as $member) {
     if (trim((string)($member['chest_number'] ?? '')) === '') {
         $missingChest++;
         continue;
@@ -117,8 +132,21 @@ require_once __DIR__ . '/../includes/sidebar.php';
         </div>
     </div>
 
-    <?php if (!$members): ?>
-        <div class="empty-state"><div class="empty-icon"><i class="fa-solid fa-id-card"></i></div><div class="empty-title">No Members Found</div><div class="empty-subtitle">Add members before exporting ID card data.</div></div>
+    <div class="panel mb-6">
+        <form method="GET" class="form-grid">
+            <div class="input-group full-width">
+                <label>Search</label>
+                <input type="text" name="search" value="<?= e($search) ?>" placeholder="Chest number, display name, team, section or category">
+            </div>
+            <div class="form-actions full-width">
+                <button class="btn btn-secondary btn-md" type="submit"><i class="fa-solid fa-magnifying-glass"></i> Search</button>
+                <?php if ($search !== ''): ?><a href="<?= APP_URL ?>/admin/id-cards.php" class="btn btn-secondary btn-md">Clear</a><?php endif; ?>
+            </div>
+        </form>
+    </div>
+
+    <?php if (!$filteredMembers): ?>
+        <div class="empty-state"><div class="empty-icon"><i class="fa-solid fa-id-card"></i></div><div class="empty-title">No Members Found</div><div class="empty-subtitle"><?= $search !== '' ? 'No members match your search.' : 'Add members before exporting ID card data.' ?></div></div>
     <?php else: ?>
         <div class="table-wrapper">
             <table class="table">
@@ -126,7 +154,7 @@ require_once __DIR__ . '/../includes/sidebar.php';
                     <tr><th>Chest #</th><th>Display Name</th><th>Team</th><th>Section</th><th>Category</th><th>QR</th></tr>
                 </thead>
                 <tbody>
-                    <?php foreach ($members as $member): ?>
+                    <?php foreach ($filteredMembers as $member): ?>
                         <?php $hasQr = !empty($member['qr_paths']['file']) && file_exists((string)$member['qr_paths']['file']); ?>
                         <tr>
                             <td><strong><?= trim((string)($member['chest_number'] ?? '')) !== '' ? '#' . e((string)$member['chest_number']) : '-' ?></strong></td>
@@ -149,5 +177,4 @@ require_once __DIR__ . '/../includes/sidebar.php';
         </div>
     <?php endif; ?>
 </div>
-</body>
-</html>
+<?php admin_close_page(); ?>
