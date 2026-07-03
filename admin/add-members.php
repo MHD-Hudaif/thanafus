@@ -55,15 +55,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             throw new RuntimeException('All selected students are already assigned in this event.');
         }
 
-        $stmt = $pdo->prepare('SELECT MAX(CAST(chest_number AS UNSIGNED)) FROM musabaqa_team_members WHERE team_id = ? AND event_id = ?');
-        $stmt->execute([$activeTeamId, $activeEventId]);
-        $lastChest = (int)$stmt->fetchColumn();
-        $nextChest = $lastChest > 0 ? $lastChest + 1 : (int)$activeTeam['number_prefix'];
-
         $insert = $pdo->prepare('INSERT INTO musabaqa_team_members (event_id, team_id, student_id, chest_number, status) VALUES (?, ?, ?, ?, "active")');
         foreach ($newStudentIds as $studentId) {
-            $insert->execute([$activeEventId, $activeTeamId, $studentId, (string)$nextChest]);
-            $nextChest++;
+            $insert->execute([$activeEventId, $activeTeamId, $studentId, null]);
         }
 
         $pdo->commit();

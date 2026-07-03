@@ -380,7 +380,7 @@ if (isset($_GET['action'])) {
                 $params[] = $entryId;
             }
 
-            $sql .= ' ORDER BY CAST(tm.chest_number AS UNSIGNED), full_name ASC';
+            $sql .= ' ORDER BY tm.chest_number IS NULL ASC, CAST(tm.chest_number AS UNSIGNED), full_name ASC';
             $stmt = $pdo->prepare($sql);
             $stmt->execute($params);
             echo json_encode(['success' => true, 'members' => $stmt->fetchAll(PDO::FETCH_ASSOC)], JSON_UNESCAPED_UNICODE);
@@ -413,7 +413,7 @@ if (isset($_GET['action'])) {
                 JOIN kauzariyya.students s ON s.id = tm.student_id
                 LEFT JOIN kauzariyya.classes c ON c.id = s.class_id
                 WHERE em.entry_id = ?
-                ORDER BY CAST(tm.chest_number AS UNSIGNED), full_name ASC
+                ORDER BY tm.chest_number IS NULL ASC, CAST(tm.chest_number AS UNSIGNED), full_name ASC
             ");
             $stmt->execute([$entryId]);
 
@@ -794,7 +794,7 @@ async function openMembers(entryId, manage = false) {
     if (data.members.length) {
         current += '<div class="table-wrapper mt-4"><table class="table"><tbody>';
         data.members.forEach(member => {
-            current += `<tr><td>${escapeHtml(member.full_name)}</td><td>#${escapeHtml(member.chest_number)}</td><td>${escapeHtml(member.class_name || '-')}</td><td>${escapeHtml(member.role_name || 'Member')}</td>`;
+            current += `<tr><td>${escapeHtml(member.full_name)}</td><td>#${escapeHtml(member.chest_number || '-')}</td><td>${escapeHtml(member.class_name || '-')}</td><td>${escapeHtml(member.role_name || 'Member')}</td>`;
             if (manage) {
                 current += `<td><form method="POST"><input type="hidden" name="csrf_token" value="${CSRF}"><input type="hidden" name="action" value="remove_member"><input type="hidden" name="entry_member_id" value="${escapeHtml(member.entry_member_id)}">${RETURN_FIELDS}<button class="btn btn-danger btn-sm" type="submit">Remove</button></form></td>`;
             }

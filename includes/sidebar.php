@@ -74,6 +74,18 @@ function admin_sidebar_is_active($path) {
                     <span>Teams</span>
                 </a>
 
+                <a href="<?= APP_URL ?>/admin/chest-numbers"
+                   class="sidebar-link <?= admin_sidebar_is_active('/admin/chest-numbers') ?>">
+                    <i class="fa-solid fa-hashtag"></i>
+                    <span>Chest Numbers</span>
+                </a>
+
+                <a href="<?= APP_URL ?>/admin/id-cards"
+                   class="sidebar-link <?= admin_sidebar_is_active('/admin/id-cards') ?>">
+                    <i class="fa-solid fa-id-card"></i>
+                    <span>ID Cards</span>
+                </a>
+
                 <!-- PROGRAMS -->
                 <a href="<?= APP_URL ?>/admin/programs" 
                    class="sidebar-link <?= admin_sidebar_is_active('/admin/programs') ?>">

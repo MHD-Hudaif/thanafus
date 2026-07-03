@@ -38,13 +38,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($action === 'update') {
             $chestNumber = trim((string)($_POST['chest_number'] ?? ''));
             $status = in_array($_POST['status'] ?? 'active', ['active', 'inactive'], true) ? $_POST['status'] : 'active';
-            if ($chestNumber === '') {
-                throw new RuntimeException('Chest number is required.');
-            }
-            $dup = $pdo->prepare('SELECT id FROM musabaqa_team_members WHERE event_id = ? AND chest_number = ? AND id <> ? LIMIT 1');
-            $dup->execute([$activeEventId, $chestNumber, $memberId]);
-            if ($dup->fetchColumn()) {
-                throw new RuntimeException('Chest number is already used in this event.');
+            $chestNumber = $chestNumber === '' ? null : $chestNumber;
+            if ($chestNumber !== null) {
+                $dup = $pdo->prepare('SELECT id FROM musabaqa_team_members WHERE event_id = ? AND chest_number = ? AND id <> ? LIMIT 1');
+                $dup->execute([$activeEventId, $chestNumber, $memberId]);
+                if ($dup->fetchColumn()) {
+                    throw new RuntimeException('Chest number is already used in this event.');
+                }
             }
             $stmt = $pdo->prepare('UPDATE musabaqa_team_members SET chest_number = ?, status = ? WHERE id = ? AND team_id = ? AND event_id = ?');
             $stmt->execute([$chestNumber, $status, $memberId, $activeTeamId, $activeEventId]);
@@ -96,7 +96,7 @@ $stmt = $pdo->prepare("
         GROUP BY team_member_id
     ) entry_data ON entry_data.team_member_id = mtm.id
     {$where}
-    ORDER BY CAST(mtm.chest_number AS UNSIGNED) ASC, mtm.id ASC
+    ORDER BY mtm.chest_number IS NULL ASC, CAST(mtm.chest_number AS UNSIGNED) ASC, mtm.id ASC
 ");
 $stmt->execute($params);
 $rawMembers = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -170,7 +170,7 @@ require_once __DIR__ . '/../includes/sidebar.php';
                 <tbody>
                     <?php foreach ($members as $member): ?>
                         <tr>
-                            <td><strong>#<?= e(str_pad((string)$member['chest_number'], 3, '0', STR_PAD_LEFT)) ?></strong></td>
+                            <td><strong><?= $member['chest_number'] !== null && $member['chest_number'] !== '' ? '#' . e(str_pad((string)$member['chest_number'], 3, '0', STR_PAD_LEFT)) : '-' ?></strong></td>
                             <td><?= e($member['full_name']) ?></td>
                             <td><?= e($member['class_name']) ?></td>
                             <td><?= e($member['class_type']) ?></td>
@@ -188,7 +188,7 @@ require_once __DIR__ . '/../includes/sidebar.php';
 <div class="modal-overlay" id="memberModal">
     <div class="modal-box modal-md">
         <div class="modal-header"><div class="modal-title">Edit Member</div><button class="modal-close" type="button" data-close="memberModal"><i class="fa-solid fa-xmark"></i></button></div>
-        <form method="POST"><?= admin_csrf_field() ?><input type="hidden" name="action" value="update"><input type="hidden" name="member_id" id="memberId"><div class="form-grid"><div class="input-group"><label>Chest Number</label><input type="text" name="chest_number" id="memberChest" required></div><div class="input-group"><label>Status</label><select name="status" id="memberStatus"><option value="active">Active</option><option value="inactive">Inactive</option></select></div></div><div class="form-actions"><button type="button" class="btn btn-secondary btn-md" data-close="memberModal">Cancel</button><button class="btn btn-success btn-md" type="submit">Save</button></div></form>
+        <form method="POST"><?= admin_csrf_field() ?><input type="hidden" name="action" value="update"><input type="hidden" name="member_id" id="memberId"><div class="form-grid"><div class="input-group"><label>Chest Number</label><input type="text" name="chest_number" id="memberChest" placeholder="Leave empty"></div><div class="input-group"><label>Status</label><select name="status" id="memberStatus"><option value="active">Active</option><option value="inactive">Inactive</option></select></div></div><div class="form-actions"><button type="button" class="btn btn-secondary btn-md" data-close="memberModal">Cancel</button><button class="btn btn-success btn-md" type="submit">Save</button></div></form>
     </div>
 </div>
 
