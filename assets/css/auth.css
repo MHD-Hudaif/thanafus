@@ -8,16 +8,16 @@
    --------------------------------------------------------- */
 :root {
   /* Primary Colors */
-  --primary-green: #10b981;
-  --primary-green-light: #34d399;
-  --primary-green-dark: #059669;
-  --primary-yellow: #facc15;
-  --primary-yellow-light: #fde047;
-  --primary-yellow-dark: #eab308;
+  --primary-green: #2e7d32;
+  --primary-green-light: #4caf50;
+  --primary-green-dark: #1b5e20;
+  --primary-yellow: #4caf50;
+  --primary-yellow-light: #81c784;
+  --primary-yellow-dark: #2e7d32;
   
   /* Accent Colors */
-  --accent-teal: #14b8a6;
-  --accent-cyan: #22d3ee;
+  --accent-teal: #4caf50;
+  --accent-cyan: #81c784;
   --accent-rose: #f43f5e;
   
   /* Neutral Colors */
@@ -25,18 +25,18 @@
   --black: #000000;
   
   /* Dark Theme */
-  --dark-bg-primary: #020617;
-  --dark-bg-secondary: #0f172a;
-  --dark-bg-tertiary: #1e293b;
+  --dark-bg-primary: #000000;
+  --dark-bg-secondary: #07100d;
+  --dark-bg-tertiary: #0e1915;
   
   /* Gradients */
-  --gradient-primary: linear-gradient(135deg, var(--primary-green) 0%, var(--primary-yellow) 100%);
-  --gradient-glass: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.02) 100%);
+  --gradient-primary: linear-gradient(135deg, var(--primary-green) 0%, var(--primary-green-light) 100%);
+  --gradient-glass: linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%);
   
   /* Shadows */
-  --shadow-glow-green: 0 0 40px rgba(16,185,129,0.3);
-  --shadow-glow-yellow: 0 0 40px rgba(250,204,21,0.3);
-  --shadow-card: 0 25px 50px -12px rgba(0,0,0,0.5);
+  --shadow-glow-green: 0 0 40px rgba(46,125,50,0.35);
+  --shadow-glow-yellow: 0 0 40px rgba(76,175,80,0.25);
+  --shadow-card: 0 25px 50px -12px rgba(0,0,0,0.85);
   
   /* Typography */
   --font-family-primary: 'Cairo', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -130,24 +130,12 @@ img {
 
 .auth-image {
   position: absolute;
-  inset: -5%;
-  background-image: url('../images/kauzariyya.png');
+  inset: 0;
+  background-image: 
+    linear-gradient(rgba(0, 0, 0, 0.72), rgba(0, 0, 0, 0.72)),
+    url('/kauzariyya-dashboard/images/kn4.png');
   background-size: cover;
   background-position: center;
-  animation: kenBurns 30s linear infinite alternate;
-  will-change: transform;
-}
-
-@keyframes kenBurns {
-  0% {
-    transform: scale(1) translate3d(0, 0, 0);
-  }
-  50% {
-    transform: scale(1.08) translate3d(-10px, -5px, 0);
-  }
-  100% {
-    transform: scale(1.12) translate3d(20px, 10px, 0);
-  }
 }
 
 .auth-overlay {
@@ -155,32 +143,10 @@ img {
   inset: 0;
   background: linear-gradient(
     to bottom,
-    rgba(0, 0, 0, 0.4) 0%,
-    rgba(0, 0, 0, 0.6) 50%,
-    rgba(0, 0, 0, 0.75) 100%
+    rgba(0, 0, 0, 0.3) 0%,
+    rgba(0, 0, 0, 0.5) 50%,
+    rgba(0, 0, 0, 0.7) 100%
   );
-}
-
-/* Animated Grid Overlay */
-.auth-overlay::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-image: 
-    linear-gradient(rgba(16, 185, 129, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(16, 185, 129, 0.03) 1px, transparent 1px);
-  background-size: 50px 50px;
-  animation: gridMove 20s linear infinite;
-  pointer-events: none;
-}
-
-@keyframes gridMove {
-  0% {
-    transform: translateY(0);
-  }
-  100% {
-    transform: translateY(50px);
-  }
 }
 
 /* ---------------------------------------------------------
@@ -264,10 +230,10 @@ img {
   border-radius: 37px;
   background: linear-gradient(
     145deg,
-    rgba(16, 185, 129, 0.3) 0%,
+    rgba(46, 125, 50, 0.4) 0%,
     transparent 30%,
     transparent 70%,
-    rgba(250, 204, 21, 0.3) 100%
+    rgba(76, 175, 80, 0.3) 100%
   );
   z-index: -1;
   opacity: 0;
@@ -283,12 +249,12 @@ img {
   width: 170px;
   margin: 0 auto 30px auto;
   display: block;
-  filter: drop-shadow(0 4px 20px rgba(16, 185, 129, 0.2));
+  filter: drop-shadow(0 4px 20px rgba(46, 125, 50, 0.3));
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .auth-logo:hover {
-  filter: drop-shadow(0 6px 30px rgba(16, 185, 129, 0.35));
+  filter: drop-shadow(0 6px 30px rgba(76, 175, 80, 0.5));
   transform: scale(1.03);
 }
 
@@ -380,10 +346,10 @@ img {
 
 .input-wrap:focus-within {
   background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(16, 185, 129, 0.5);
+  border-color: var(--primary-green-light);
   box-shadow: 
-    0 0 0 4px rgba(16, 185, 129, 0.1),
-    0 4px 20px rgba(16, 185, 129, 0.15);
+    0 0 0 4px rgba(76, 175, 80, 0.15),
+    0 4px 20px rgba(46, 125, 50, 0.15);
 }
 
 .input-wrap i {
@@ -443,9 +409,8 @@ img {
   border-radius: 18px;
   background: linear-gradient(
     135deg,
-    rgba(16, 185, 129, 0.9) 0%,
-    rgba(16, 185, 129, 0.7) 50%,
-    rgba(250, 204, 21, 0.6) 100%
+    var(--primary-green) 0%,
+    var(--primary-green-light) 100%
   );
   background-size: 200% 200%;
   display: flex;
@@ -461,7 +426,7 @@ img {
   overflow: hidden;
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow:
-    0 10px 30px rgba(16, 185, 129, 0.3),
+    0 10px 30px rgba(46, 125, 50, 0.4),
     0 0 0 1px rgba(255, 255, 255, 0.1) inset;
 }
 
@@ -499,8 +464,8 @@ img {
   transform: translateY(-3px) scale(1.02);
   background-position: 100% 100%;
   box-shadow:
-    0 20px 40px rgba(16, 185, 129, 0.4),
-    0 0 60px rgba(250, 204, 21, 0.2),
+    0 20px 40px rgba(46, 125, 50, 0.55),
+    0 0 60px rgba(76, 175, 80, 0.3),
     0 0 0 1px rgba(255, 255, 255, 0.15) inset;
 }
 
@@ -593,7 +558,7 @@ img {
   left: 10%;
   width: 300px;
   height: 300px;
-  background: radial-gradient(circle, rgba(16, 185, 129, 0.15) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(46, 125, 50, 0.22) 0%, transparent 70%);
   filter: blur(40px);
   animation: float-decoration 8s ease-in-out infinite;
 }
@@ -603,7 +568,7 @@ img {
   right: 10%;
   width: 400px;
   height: 400px;
-  background: radial-gradient(circle, rgba(250, 204, 21, 0.12) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(76, 175, 80, 0.16) 0%, transparent 70%);
   filter: blur(50px);
   animation: float-decoration 10s ease-in-out infinite reverse;
 }
@@ -699,7 +664,7 @@ input:focus-visible {
 
 /* Selection styling */
 ::selection {
-  background: rgba(16, 185, 129, 0.3);
+  background: rgba(46, 125, 50, 0.45);
   color: white;
 }
 
@@ -724,4 +689,31 @@ input:focus-visible {
 /* Smooth scroll behavior */
 html {
   scroll-behavior: smooth;
+}
+
+/* Google Sign-In button styles */
+.divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 20px 0;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 14px;
+}
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+.divider:not(:empty)::before {
+  margin-right: .8em;
+}
+.divider:not(:empty)::after {
+  margin-left: .8em;
+}
+.google-btn-wrapper {
+  display: flex;
+  justify-content: center;
+  margin: 18px 0 20px 0;
 }

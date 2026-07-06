@@ -119,6 +119,64 @@ if ($statusFilter !== 'all' && in_array($statusFilter, ['draft', 'active', 'comp
 $stmt = $pdo->prepare("SELECT * FROM musabaqa_events {$where} ORDER BY id DESC");
 $stmt->execute($params);
 $events = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$totalEvents = count($events);
+
+if (isset($_GET['limit'])) {
+    $perPage = max(5, min(5000, (int)$_GET['limit']));
+    $_SESSION['events_limit'] = $perPage;
+} else {
+    $perPage = isset($_SESSION['events_limit']) ? $_SESSION['events_limit'] : 15;
+}
+$page = max(1, (int)($_GET['page'] ?? 1));
+$offset = ($page - 1) * $perPage;
+$paginatedEvents = array_slice($events, $offset, $perPage);
+
+if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
+    ob_start();
+    if (!$paginatedEvents) {
+        echo '<div class="empty-state" style="grid-column: 1 / -1;"><div class="empty-icon"><i class="fa-solid fa-calendar-days"></i></div><div class="empty-title">No Events Found</div><div class="empty-subtitle">No matching events.</div></div>';
+    } else {
+        foreach ($paginatedEvents as $event) {
+            $colors = array_map('trim', explode(',', $event['theme_colors'] ?: '#14b8a6,#22c55e'));
+            $color1 = $colors[0] ?? '#14b8a6';
+            $isActive = (int)($_SESSION['active_event_id'] ?? 0) === (int)$event['id'];
+            ?>
+            <div class="event-card" style="border-top: 4px solid <?= e($color1) ?>;">
+                <div class="event-top">
+                    <span class="badge badge-neutral"><?= e(strtoupper((string)$event['scoreboard_mode'])) ?></span>
+                    <span class="badge <?= $isActive ? 'badge-success' : 'badge-neutral' ?>"><?= $isActive ? 'ACTIVE CONTEXT' : e(strtoupper((string)$event['status'])) ?></span>
+                </div>
+                <div class="event-title"><?= e($event['title']) ?></div>
+                <div class="event-description"><?= e($event['description'] ?: 'No description') ?></div>
+                <div class="event-meta">
+                    <div class="event-meta-item"><span>Start</span><strong><?= e($event['start_date'] ?: '-') ?></strong></div>
+                    <div class="event-meta-item"><span>End</span><strong><?= e($event['end_date'] ?: '-') ?></strong></div>
+                </div>
+                <div class="event-actions">
+                    <a class="btn btn-success btn-sm" href="<?= app_url('/admin/utilities/set-active-event.php') ?>?id=<?= (int)$event['id'] ?>">
+                        <i class="fa-solid fa-door-open"></i> Open
+                    </a>
+                    <button class="btn btn-secondary btn-sm" data-edit-event='<?= e(json_encode($event, JSON_HEX_APOS | JSON_HEX_QUOT)) ?>'>
+                        <i class="fa-solid fa-pen"></i> Edit
+                    </button>
+                    <button class="btn btn-danger btn-sm" data-delete-id="<?= (int)$event['id'] ?>" data-delete-name="<?= e($event['title']) ?>">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+            <?php
+        }
+    }
+    $tbodyHtml = ob_get_clean();
+
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode([
+        'success' => true,
+        'html' => $tbodyHtml,
+        'pagination' => admin_render_pagination_html($page, $perPage, $totalEvents)
+    ]);
+    exit;
+}
 
 require_once __DIR__ . '/../includes/header.php';
 require_once __DIR__ . '/../includes/sidebar.php';
@@ -140,7 +198,7 @@ require_once __DIR__ . '/../includes/sidebar.php';
     <?php endif; ?>
 
     <div class="panel mb-6">
-        <form method="GET" class="form-grid">
+        <form method="GET" class="form-grid" id="search-form">
             <div class="input-group">
                 <label>Search</label>
                 <input type="text" name="search" value="<?= e($search) ?>" placeholder="Title, slug or description">
@@ -157,7 +215,7 @@ require_once __DIR__ . '/../includes/sidebar.php';
             <div class="form-actions full-width">
                 <button class="btn btn-secondary btn-md" type="submit"><i class="fa-solid fa-filter"></i> Filter</button>
                 <?php if ($search !== '' || $statusFilter !== 'all'): ?>
-                    <a class="btn btn-secondary btn-md" href="<?= APP_URL ?>/admin/events.php">Clear</a>
+                    <a class="btn btn-secondary btn-md" href="<?= app_url('/admin/events.php') ?>">Clear</a>
                 <?php endif; ?>
             </div>
         </form>
@@ -170,8 +228,8 @@ require_once __DIR__ . '/../includes/sidebar.php';
             <div class="empty-subtitle">Create an event to begin the workflow.</div>
         </div>
     <?php else: ?>
-        <div class="events-grid">
-            <?php foreach ($events as $event): ?>
+        <div class="events-grid" id="table-body">
+            <?php foreach ($paginatedEvents as $event): ?>
                 <?php
                     $colors = array_map('trim', explode(',', $event['theme_colors'] ?: '#14b8a6,#22c55e'));
                     $color1 = $colors[0] ?? '#14b8a6';
@@ -190,7 +248,7 @@ require_once __DIR__ . '/../includes/sidebar.php';
                         <div class="event-meta-item"><span>End</span><strong><?= e($event['end_date'] ?: '-') ?></strong></div>
                     </div>
                     <div class="event-actions">
-                        <a class="btn btn-success btn-sm" href="<?= APP_URL ?>/admin/utilities/set-active-event.php?id=<?= (int)$event['id'] ?>">
+                        <a class="btn btn-success btn-sm" href="<?= app_url('/admin/utilities/set-active-event.php') ?>?id=<?= (int)$event['id'] ?>">
                             <i class="fa-solid fa-door-open"></i> Open
                         </a>
                         <button class="btn btn-secondary btn-sm" data-edit-event='<?= e(json_encode($event, JSON_HEX_APOS | JSON_HEX_QUOT)) ?>'>
@@ -203,8 +261,10 @@ require_once __DIR__ . '/../includes/sidebar.php';
                 </div>
             <?php endforeach; ?>
         </div>
+        <div id="pagination-container">
+            <?= admin_render_pagination_html($page, $perPage, $totalEvents) ?>
     <?php endif; ?>
-</div>
+
 
 <div class="modal-overlay" id="eventModal" aria-hidden="true">
     <div class="modal-box modal-lg">
@@ -292,8 +352,7 @@ require_once __DIR__ . '/../includes/sidebar.php';
 </div>
 
 <script>
-function openModal(id) { document.getElementById(id)?.classList.add('active'); }
-function closeModal(id) { document.getElementById(id)?.classList.remove('active'); }
+(() => {
 
 const COLOR_SUGGESTIONS = [
     { label: 'Teal', value: '#14b8a6' },
@@ -454,35 +513,46 @@ document.querySelectorAll('[data-open-modal]').forEach(btn => btn.addEventListen
     document.getElementById('eventId').value = '';
     document.getElementById('eventStatusRow').classList.add('hidden');
     document.getElementById('eventStatusSelect').value = 'draft';
-    openModal(btn.dataset.openModal);
+   window.openModal(btn.dataset.openModal);
 }));
-document.querySelectorAll('[data-edit-event]').forEach(btn => btn.addEventListener('click', () => {
-    const event = JSON.parse(btn.dataset.editEvent);
-    document.getElementById('eventModalTitle').textContent = 'Edit Event';
-    document.getElementById('eventAction').value = 'update';
-    document.getElementById('eventId').value = event.id || '';
-    document.getElementById('eventTitle').value = event.title || '';
-    document.getElementById('eventSlug').value = event.slug || '';
-    setColorChips(event.theme_colors || '');
-    document.getElementById('eventMode').value = event.scoreboard_mode || 'system';
-    document.getElementById('eventStatusSelect').value = event.status || 'draft';
-    document.getElementById('eventStatusRow').classList.remove('hidden');
-    document.getElementById('eventIntro').value = String(event.intro_enabled) === '1' ? '1' : '0';
-    document.getElementById('eventScoreboard').value = String(event.scoreboard_enabled) === '1' ? '1' : '0';
-    document.getElementById('eventStart').value = event.start_date || '';
-    document.getElementById('eventEnd').value = event.end_date || '';
-    document.getElementById('eventDescription').value = event.description || '';
-    colorSuggestionsEl.classList.remove('active');
-    openModal('eventModal');
-}));
-document.querySelectorAll('[data-delete-id]').forEach(btn => btn.addEventListener('click', () => {
-    document.getElementById('deleteId').value = btn.dataset.deleteId;
-    document.getElementById('deleteName').textContent = btn.dataset.deleteName || 'this event';
-    openModal('deleteModal');
-}));
+document.addEventListener('click', (e) => {
+    const editBtn = e.target.closest('[data-edit-event]');
+    if (editBtn) {
+        const event = JSON.parse(editBtn.dataset.editEvent);
+        document.getElementById('eventModalTitle').textContent = 'Edit Event';
+        document.getElementById('eventAction').value = 'update';
+        document.getElementById('eventId').value = event.id || '';
+        document.getElementById('eventTitle').value = event.title || '';
+        document.getElementById('eventSlug').value = event.slug || '';
+        setColorChips(event.theme_colors || '');
+        document.getElementById('eventMode').value = event.scoreboard_mode || 'system';
+        document.getElementById('eventStatusSelect').value = event.status || 'draft';
+        document.getElementById('eventStatusRow').classList.remove('hidden');
+        document.getElementById('eventIntro').value = String(event.intro_enabled) === '1' ? '1' : '0';
+        document.getElementById('eventScoreboard').value = String(event.scoreboard_enabled) === '1' ? '1' : '0';
+        document.getElementById('eventStart').value = event.start_date || '';
+        document.getElementById('eventEnd').value = event.end_date || '';
+        document.getElementById('eventDescription').value = event.description || '';
+        colorSuggestionsEl.classList.remove('active');
+       window.openModal('eventModal');
+        return;
+    }
+
+    const deleteBtn = e.target.closest('[data-delete-id]');
+    if (deleteBtn) {
+        document.getElementById('deleteId').value = deleteBtn.dataset.deleteId;
+        document.getElementById('deleteName').textContent = deleteBtn.dataset.deleteName || 'this event';
+       window.openModal('deleteModal');
+        return;
+    }
+});
 
 eventForm?.addEventListener('submit', () => {
     updateHiddenColors();
 });
+
+})();
 </script>
+</div>
+<?= admin_ajax_pagination_script() ?>
 <?php admin_close_page(); ?>

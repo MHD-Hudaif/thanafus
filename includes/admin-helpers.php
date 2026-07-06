@@ -613,3 +613,233 @@ function admin_revoke_program_approval(PDO $pdo, int $eventId, int $programId, i
     admin_log_activity($pdo, $userId, $eventId, 'revoke_program_approval', 'musabaqa_programs', $programId, $description);
     admin_log_activity($pdo, $userId, $eventId, 'leaderboard_update', 'musabaqa_teams', null, 'Leaderboard totals recalculated after approval revocation.');
 }
+
+function admin_render_pagination_html(int $page, int $limit, int $totalItems): string
+{
+    if ($totalItems <= 0) {
+        return '';
+    }
+
+    $totalPages = max(1, (int)ceil($totalItems / $limit));
+    if ($page > $totalPages) {
+        $page = $totalPages;
+    }
+    if ($page < 1) {
+        $page = 1;
+    }
+    $offset = ($page - 1) * $limit;
+    $showingStart = $offset + 1;
+    $showingEnd = min($offset + $limit, $totalItems);
+
+    $html = '<div class="flex-between pagination-bar mt-4" style="margin-top: 20px; display: flex; justify-content: space-between; align-items: center; width: 100%; flex-wrap: wrap; gap: 10px;">';
+    
+    // Left side: Showing entries text with inline limit trigger
+    $html .= '<div class="text-muted text-sm" style="display: flex; align-items: center; gap: 8px;">';
+    $html .= 'Showing ' . $showingStart . ' to ' . $showingEnd . ' of ' . $totalItems . ' entries';
+    $html .= '<span style="margin-left: 8px; color: var(--muted); font-size: 13px;">Limit:</span>';
+    
+    $html .= '<div class="limit-popover-container" style="position: relative; display: inline-block;">';
+    $html .= '<button type="button" class="btn btn-secondary btn-sm active-limit-trigger" style="padding: 2px 6px; font-size: 12px; height: 24px; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.05); color: #fff; min-width: 28px;">';
+    $html .= '<span>' . ($limit === 5000 ? 'All' : $limit) . '</span>';
+    $html .= '</button>';
+    $html .= '<div class="limit-options-popover">';
+    foreach ([10, 15, 30, 5000] as $lOpt) {
+        $btnClass = $limit === $lOpt ? 'btn-primary' : 'btn-secondary';
+        $label = $lOpt === 5000 ? 'All' : $lOpt;
+        $html .= '<button type="button" class="btn ' . $btnClass . ' btn-xs limit-btn" data-limit="' . $lOpt . '" style="padding: 2px 6px; font-size: 11px;">' . $label . '</button>';
+    }
+    $html .= '</div>';
+    $html .= '</div>';
+    $html .= '</div>'; // End left side
+    
+    $html .= '<div class="flex gap-2" style="display: flex; align-items: center; gap: 12px;">';
+    $html .= '<div class="flex gap-1" style="display: flex; gap: 4px;">';
+    
+    if ($page > 1) {
+        $html .= '<button type="button" data-page="' . ($page - 1) . '" class="btn btn-secondary btn-sm ajax-page-btn" style="padding: 4px 8px;"><i class="fa-solid fa-angle-left"></i> Previous</button>';
+    }
+    
+    $startPage = max(1, $page - 2);
+    $endPage = min($totalPages, $page + 2);
+    for ($i = $startPage; $i <= $endPage; $i++) {
+        $btnClass = $i === $page ? 'btn-primary' : 'btn-secondary';
+        $html .= '<button type="button" data-page="' . $i . '" class="btn ' . $btnClass . ' btn-sm ajax-page-btn" style="padding: 4px 8px;">' . $i . '</button>';
+    }
+    
+    if ($page < $totalPages) {
+        $html .= '<button type="button" data-page="' . ($page + 1) . '" class="btn btn-secondary btn-sm ajax-page-btn" style="padding: 4px 8px;">Next <i class="fa-solid fa-angle-right"></i></button>';
+    }
+    
+    $html .= '</div>';
+    $html .= '</div>';
+    $html .= '</div>';
+
+    return $html;
+}
+
+function admin_ajax_pagination_script(): string
+{
+    return <<<'HTML'
+<style>
+.limit-options-popover {
+    display: flex;
+    align-items: center;
+    position: absolute;
+    left: 100%;
+    top: 50%;
+    transform: translateY(-50%) scaleX(0);
+    transform-origin: left center;
+    margin-left: 8px;
+    background: #1e293b;
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 6px;
+    padding: 4px;
+    gap: 4px;
+    z-index: 100;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    opacity: 0;
+    pointer-events: none;
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.15s linear;
+}
+.limit-options-popover.active {
+    transform: translateY(-50%) scaleX(1);
+    opacity: 1;
+    pointer-events: auto;
+}
+</style>
+<script>
+(() => {
+    const tableBody = document.getElementById('table-body');
+    const paginationContainer = document.getElementById('pagination-container');
+    const searchForm = document.getElementById('search-form');
+    
+    if (!tableBody || !paginationContainer) return;
+
+    let currentPage = new URLSearchParams(window.location.search).get('page') || 1;
+    let currentLimit = new URLSearchParams(window.location.search).get('limit') || '';
+    
+    function fetchResults(page, limit) {
+        const url = new URL(window.location.href);
+        url.searchParams.set('ajax', '1');
+        if (page) url.searchParams.set('page', page);
+        if (limit) url.searchParams.set('limit', limit);
+        
+        // Include form filters if searchForm exists
+        if (searchForm) {
+            const formData = new FormData(searchForm);
+            for (const [key, value] of formData.entries()) {
+                url.searchParams.set(key, value);
+            }
+        }
+        
+        tableBody.style.opacity = '0.5';
+        
+        fetch(url)
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    tableBody.innerHTML = data.html;
+                    paginationContainer.innerHTML = data.pagination;
+                    
+                    // Update URL without reloading
+                    const newUrl = new URL(window.location.href);
+                    if (page) newUrl.searchParams.set('page', page);
+                    if (limit) newUrl.searchParams.set('limit', limit);
+                    
+                    // Also carry over search form params
+                    if (searchForm) {
+                        const formData = new FormData(searchForm);
+                        for (const [key, value] of formData.entries()) {
+                            if (value) {
+                                newUrl.searchParams.set(key, value);
+                            } else {
+                                newUrl.searchParams.delete(key);
+                            }
+                        }
+                    }
+                    
+                    window.history.pushState({}, '', newUrl);
+                }
+            })
+            .catch(err => console.error(err))
+            .finally(() => {
+                tableBody.style.opacity = '1';
+            });
+    }
+
+    // Handle pagination clicks and limits
+    if (!window._paginationInit) {
+        window._paginationInit = true;
+        document.addEventListener('click', (e) => {
+            // Page buttons
+            const pageBtn = e.target.closest('.ajax-page-btn');
+            if (pageBtn) {
+                e.preventDefault();
+                currentPage = pageBtn.dataset.page;
+                fetchResults(currentPage, currentLimit);
+                return;
+            }
+            
+            // Limit buttons
+            const limitBtn = e.target.closest('.limit-btn');
+            if (limitBtn) {
+                e.preventDefault();
+                currentLimit = limitBtn.dataset.limit;
+                currentPage = 1; // reset to page 1
+                fetchResults(currentPage, currentLimit);
+                return;
+            }
+            
+            // Toggle popover
+            const trigger = e.target.closest('.active-limit-trigger');
+            if (trigger) {
+                const popover = trigger.nextElementSibling;
+                if (popover && popover.classList.contains('limit-options-popover')) {
+                    popover.classList.toggle('active');
+                }
+                return;
+            } else {
+                // Close popover if clicked outside
+                document.querySelectorAll('.limit-options-popover.active').forEach(p => {
+                    if (!e.target.closest('.limit-popover-container')) {
+                        p.classList.remove('active');
+                    }
+                });
+            }
+        });
+    }
+
+    // Handle Search Form Submit (this re-binds per page load since the form element is new)
+    if (searchForm) {
+        searchForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            currentPage = 1;
+            fetchResults(currentPage, currentLimit);
+        });
+        
+        // Debounce search input
+        const searchInputs = searchForm.querySelectorAll('input[type="text"], input[type="search"]');
+        let timeout = null;
+        searchInputs.forEach(input => {
+            input.addEventListener('input', () => {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => {
+                    currentPage = 1;
+                    fetchResults(currentPage, currentLimit);
+                }, 400);
+            });
+        });
+
+        // Auto-fetch on select change
+        const selectInputs = searchForm.querySelectorAll('select');
+        selectInputs.forEach(select => {
+            select.addEventListener('change', () => {
+                currentPage = 1;
+                fetchResults(currentPage, currentLimit);
+            });
+        });
+    }
+})();
+</script>
+HTML;
+}

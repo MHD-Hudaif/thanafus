@@ -125,6 +125,7 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"
 >
 
 <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 
 </head>
 
@@ -167,13 +168,20 @@ LOGIN CARD
             Kauzariyya Digital Musabaqa System
         </div>
 
-        <?php if($error): ?>
+        <?php 
+        $displayError = $error;
+        if (!empty($_SESSION['oauth_error'])) {
+            $displayError = $_SESSION['oauth_error'];
+            unset($_SESSION['oauth_error']);
+        }
+        if($displayError): 
+        ?>
 
             <div class="auth-error">
 
                 <i class="fa-solid fa-circle-exclamation"></i>
 
-                <?= e($error) ?>
+                <?= e($displayError) ?>
 
             </div>
 
@@ -237,6 +245,27 @@ LOGIN CARD
             Login
 
         </button>
+
+        <!-- GOOGLE SIGN IN -->
+        <div class="divider"><span>OR</span></div>
+        <div class="google-btn-wrapper">
+            <div id="g_id_onload"
+                 data-client_id="<?= GOOGLE_CLIENT_ID ?>"
+                 data-context="signin"
+                 data-ux_mode="redirect"
+                 data-login_uri="<?= app_absolute_url('/auth/google-oauth.php') ?>"
+                 data-auto_prompt="false">
+            </div>
+            <div class="g_id_signin"
+                 data-type="standard"
+                 data-shape="rectangular"
+                 data-theme="filled_blue"
+                 data-text="signin_with"
+                 data-size="large"
+                 data-logo_alignment="left"
+                 data-width="370">
+            </div>
+        </div>
 
         <a
             href="<?= app_url('/home') ?>"

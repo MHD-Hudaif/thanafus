@@ -170,6 +170,8 @@ require_once __DIR__ . '/../includes/sidebar.php';
 </div>
 
 <script>
+(() => {
+
 document.querySelectorAll('.class-header').forEach(header => {
     header.addEventListener('click', () => {
         header.classList.toggle('active');
@@ -177,5 +179,7 @@ document.querySelectorAll('.class-header').forEach(header => {
     });
 });
 document.querySelector('.class-body')?.classList.add('active');
+
+})();
 </script>
 <?php admin_close_page(); ?>

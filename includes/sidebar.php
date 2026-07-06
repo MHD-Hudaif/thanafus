@@ -124,12 +124,11 @@ if (!empty($isAjaxRequest)) return;
                     <span>Approval</span>
                 </a>
 
-                <!-- TV MODE -->
-                <a href="<?= app_url('/tv') ?>" 
-                   class="sidebar-link <?= admin_sidebar_is_active('/tv') ?>"
-                   data-ajax-ignore>
+                <!-- TV CONTROL -->
+                <a href="<?= app_url('/tv/dashboard') ?>" 
+                   class="sidebar-link <?= admin_sidebar_is_active('/tv') ?>">
                     <i class="fa-solid fa-tv"></i>
-                    <span>TV Mode</span>
+                    <span>TV Control</span>
                 </a>
                 <a href="<?= app_url('/admin/logs') ?>"
    class="sidebar-link <?= basename($_SERVER['PHP_SELF']) === 'logs.php' ? 'active' : '' ?>">
@@ -154,8 +153,8 @@ if (!empty($isAjaxRequest)) return;
             <div class="sidebar-user-image">
                 <img src="<?=
                     !empty($user['profile_photo'])
-                        ? app_url('/uploads/profile/' . rawurlencode((string)$user['profile_photo']))
-                        : 'https://ui-avatars.com/api/?name=' . urlencode($user['full_name'] ?? $user['username'])
+                        ? avatar_url($user['profile_photo'])
+                        : 'https://ui-avatars.com/api/?name=' . urlencode($user['full_name'] ?? $user['username']) . '&background=0d1420&color=14b8a6&bold=true'
                 ?>" alt="Profile">
             </div>
 

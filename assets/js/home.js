@@ -11,85 +11,8 @@ if (backgrounds.length > 1) {
   }, 9000);
 }
 
-const canvas = document.getElementById('bgCanvas');
+// Particles disabled
 let particlesMaterial = null;
-let particlesMesh = null;
-
-if (canvas && window.THREE) {
-  const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000);
-  camera.position.z = 5;
-
-  const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-  renderer.setSize(window.innerWidth, window.innerHeight);
-
-  const particlesCount = window.innerWidth < 700 ? 1800 : 4200;
-  const positions = new Float32Array(particlesCount * 3);
-  const colors = new Float32Array(particlesCount * 3);
-  const green = new THREE.Color('#10b981');
-  const gold = new THREE.Color('#facc15');
-
-  for (let i = 0; i < particlesCount; i++) {
-    const i3 = i * 3;
-    positions[i3] = (Math.random() - 0.5) * 18;
-    positions[i3 + 1] = (Math.random() - 0.5) * 12;
-    positions[i3 + 2] = (Math.random() - 0.5) * 12;
-
-    const color = Math.random() > 0.28 ? green : gold;
-    colors[i3] = color.r;
-    colors[i3 + 1] = color.g;
-    colors[i3 + 2] = color.b;
-  }
-
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-
-  particlesMaterial = new THREE.PointsMaterial({
-    size: 0.018,
-    vertexColors: true,
-    transparent: true,
-    opacity: 0,
-    depthWrite: false
-  });
-
-  particlesMesh = new THREE.Points(geometry, particlesMaterial);
-  scene.add(particlesMesh);
-
-  let mouseX = 0;
-  let mouseY = 0;
-  let targetX = 0;
-  let targetY = 0;
-
-  window.addEventListener('mousemove', (event) => {
-    mouseX = (event.clientX - window.innerWidth / 2) * 0.0015;
-    mouseY = (event.clientY - window.innerHeight / 2) * 0.0015;
-  });
-
-  function animate() {
-    requestAnimationFrame(animate);
-
-    targetX += (mouseX - targetX) * 0.045;
-    targetY += (mouseY - targetY) * 0.045;
-
-    particlesMesh.rotation.y += 0.00055;
-    particlesMesh.rotation.x += 0.00018;
-
-    particlesMesh.position.x = targetX;
-    particlesMesh.position.y = -targetY;
-
-    renderer.render(scene, camera);
-  }
-
-  animate();
-
-  window.addEventListener('resize', () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-  });
-}
 
 const hasGsap = Boolean(window.gsap);
 let skipped = false;

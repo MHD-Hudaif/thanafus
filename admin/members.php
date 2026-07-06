@@ -134,6 +134,45 @@ foreach ($rawMembers as $member) {
     $members[] = $member;
 }
 $totalMembers = count($members);
+if (isset($_GET['limit'])) {
+    $perPage = max(5, min(5000, (int)$_GET['limit']));
+    $_SESSION['members_limit'] = $perPage;
+} else {
+    $perPage = isset($_SESSION['members_limit']) ? $_SESSION['members_limit'] : 15;
+}
+$page = max(1, (int)($_GET['page'] ?? 1));
+$offset = ($page - 1) * $perPage;
+$paginatedMembers = array_slice($members, $offset, $perPage);
+
+if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
+    ob_start();
+    if (!$paginatedMembers) {
+        echo '<tr><td colspan="7" class="empty-state-row" style="text-align: center; padding: 30px; color: var(--muted);"><div class="empty-title">No Members Found</div></td></tr>';
+    } else {
+        foreach ($paginatedMembers as $member) {
+            ?>
+            <tr>
+                <td><strong><?= $member['chest_number'] !== null && $member['chest_number'] !== '' ? '#' . e(str_pad((string)$member['chest_number'], 3, '0', STR_PAD_LEFT)) : '-' ?></strong></td>
+                <td><?= e($member['full_name']) ?></td>
+                <td><?= e($member['class_name']) ?></td>
+                <td><?= e($member['class_type']) ?></td>
+                <td><?= number_format((float)$member['total_score'], 2) ?></td>
+                <td><span class="badge <?= $member['status'] === 'active' ? 'badge-success' : 'badge-neutral' ?>"><?= e(ucfirst($member['status'])) ?></span></td>
+                <td><div class="flex gap-2 flex-wrap"><button class="btn btn-secondary btn-sm" data-edit-member='<?= e(json_encode($member, JSON_HEX_APOS | JSON_HEX_QUOT)) ?>'><i class="fa-solid fa-pen"></i> Edit</button><button class="btn btn-danger btn-sm" data-delete-id="<?= (int)$member['id'] ?>" data-delete-name="<?= e($member['full_name']) ?>"><i class="fa-solid fa-trash"></i></button></div></td>
+            </tr>
+            <?php
+        }
+    }
+    $tbodyHtml = ob_get_clean();
+
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode([
+        'success' => true,
+        'html' => $tbodyHtml,
+        'pagination' => admin_render_pagination_html($page, $perPage, $totalMembers)
+    ]);
+    exit;
+}
 
 require_once __DIR__ . '/../includes/header.php';
 require_once __DIR__ . '/../includes/sidebar.php';
@@ -142,17 +181,17 @@ require_once __DIR__ . '/../includes/sidebar.php';
 <div class="main-content">
     <div class="topbar">
         <div><div class="page-title">Members</div><div class="page-subtitle"><span class="team-color-pill" style="background: <?= e($activeTeam['team_color'] ?? '#64748b') ?>22; color: <?= e($activeTeam['team_color'] ? '#111' : '#111') ?>;"><?= e($activeTeam['team_name']) ?></span></div></div>
-        <a href="<?= APP_URL ?>/admin/add-members.php?team=<?= $activeTeamId ?>" class="btn btn-success btn-md"><i class="fa-solid fa-plus"></i> Add Members</a>
+        <a href="<?= app_url('/admin/add-members.php') ?>?team=<?= $activeTeamId ?>" class="btn btn-success btn-md"><i class="fa-solid fa-plus"></i> Add Members</a>
     </div>
 
     <?php if ($flash): ?><div class="alert <?= $flash['type'] === 'success' ? 'alert-success' : 'alert-error' ?>"><?= e($flash['message']) ?></div><?php endif; ?>
 
     <div class="panel mb-6">
-        <form method="GET" class="form-grid">
+        <form method="GET" class="form-grid" id="search-form">
             <input type="hidden" name="team" value="<?= $activeTeamId ?>">
             <div class="input-group"><label>Search</label><input type="text" name="search" value="<?= e($search) ?>" placeholder="Name or chest number"></div>
             <div class="input-group"><label>Status</label><select name="status"><option value="active" <?= $statusFilter === 'active' ? 'selected' : '' ?>>Active</option><option value="inactive" <?= $statusFilter === 'inactive' ? 'selected' : '' ?>>Inactive</option><option value="all" <?= $statusFilter === 'all' ? 'selected' : '' ?>>All</option></select></div>
-            <div class="form-actions full-width"><button class="btn btn-secondary btn-md" type="submit"><i class="fa-solid fa-filter"></i> Filter</button><?php if ($search !== '' || $statusFilter !== 'active'): ?><a href="<?= APP_URL ?>/admin/members.php?team=<?= $activeTeamId ?>" class="btn btn-secondary btn-md">Clear</a><?php endif; ?></div>
+            <div class="form-actions full-width"><button class="btn btn-secondary btn-md" type="submit"><i class="fa-solid fa-filter"></i> Filter</button><?php if ($search !== '' || $statusFilter !== 'active'): ?><a href="<?= app_url('/admin/members.php') ?>?team=<?= $activeTeamId ?>" class="btn btn-secondary btn-md">Clear</a><?php endif; ?></div>
         </form>
     </div>
 
@@ -167,8 +206,8 @@ require_once __DIR__ . '/../includes/sidebar.php';
         <div class="table-wrapper">
             <table class="table">
                 <thead><tr><th>Chest #</th><th>Name</th><th>Class</th><th>Type</th><th>Score</th><th>Status</th><th>Actions</th></tr></thead>
-                <tbody>
-                    <?php foreach ($members as $member): ?>
+                <tbody id="table-body">
+                    <?php foreach ($paginatedMembers as $member): ?>
                         <tr>
                             <td><strong><?= $member['chest_number'] !== null && $member['chest_number'] !== '' ? '#' . e(str_pad((string)$member['chest_number'], 3, '0', STR_PAD_LEFT)) : '-' ?></strong></td>
                             <td><?= e($member['full_name']) ?></td>
@@ -182,8 +221,10 @@ require_once __DIR__ . '/../includes/sidebar.php';
                 </tbody>
             </table>
         </div>
+        <div id="pagination-container">
+            <?= admin_render_pagination_html($page, $perPage, $totalMembers) ?>
     <?php endif; ?>
-</div>
+
 
 <div class="modal-overlay" id="memberModal">
     <div class="modal-box modal-md">
@@ -201,21 +242,32 @@ require_once __DIR__ . '/../includes/sidebar.php';
 </div>
 
 <script>
-function openModal(id){document.getElementById(id)?.classList.add('active')}
-function closeModal(id){document.getElementById(id)?.classList.remove('active')}
-document.querySelectorAll('[data-close]').forEach(btn => btn.addEventListener('click', () => closeModal(btn.dataset.close)));
-document.querySelectorAll('.modal-overlay').forEach(modal => modal.addEventListener('click', e => { if (e.target === modal) closeModal(modal.id); }));
-document.querySelectorAll('[data-edit-member]').forEach(btn => btn.addEventListener('click', () => {
-    const member = JSON.parse(btn.dataset.editMember);
-    document.getElementById('memberId').value = member.id || '';
-    document.getElementById('memberChest').value = member.chest_number || '';
-    document.getElementById('memberStatus').value = member.status || 'active';
-    openModal('memberModal');
-}));
-document.querySelectorAll('[data-delete-id]').forEach(btn => btn.addEventListener('click', () => {
-    document.getElementById('deleteId').value = btn.dataset.deleteId;
-    document.getElementById('deleteName').textContent = btn.dataset.deleteName || 'this member';
-    openModal('deleteModal');
-}));
+(() => {
+
+document.querySelectorAll('[data-close]').forEach(btn => btn.addEventListener('click', () =>window.closeModal(btn.dataset.close)));
+document.querySelectorAll('.modal-overlay').forEach(modal => modal.addEventListener('click', e => { if (e.target === modal)window.closeModal(modal.id); }));
+document.addEventListener('click', (e) => {
+    const editBtn = e.target.closest('[data-edit-member]');
+    if (editBtn) {
+        const member = JSON.parse(editBtn.dataset.editMember);
+        document.getElementById('memberId').value = member.id || '';
+        document.getElementById('memberChest').value = member.chest_number || '';
+        document.getElementById('memberStatus').value = member.status || 'active';
+       window.openModal('memberModal');
+        return;
+    }
+
+    const deleteBtn = e.target.closest('[data-delete-id]');
+    if (deleteBtn) {
+        document.getElementById('deleteId').value = deleteBtn.dataset.deleteId;
+        document.getElementById('deleteName').textContent = deleteBtn.dataset.deleteName || 'this member';
+       window.openModal('deleteModal');
+        return;
+    }
+});
+
+})();
 </script>
+</div>
+<?= admin_ajax_pagination_script() ?>
 <?php admin_close_page(); ?>

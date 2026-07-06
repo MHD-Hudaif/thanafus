@@ -50,7 +50,7 @@ if (!function_exists('app_url')) {
 
         if (
             $path !== ''
-            && preg_match('#^(?:[a-z][a-z0-9+.-]*:|//|#)#i', $path)
+            && preg_match('~^(?:[a-z][a-z0-9+.-]*:|//|\#)~i', $path)
         ) {
             return $path;
         }

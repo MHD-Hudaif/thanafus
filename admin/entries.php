@@ -483,6 +483,63 @@ $stmt = $pdo->prepare("
 ");
 $stmt->execute($params);
 $entries = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$totalEntries = count($entries);
+
+if (isset($_GET['limit'])) {
+    $perPage = max(5, min(5000, (int)$_GET['limit']));
+    $_SESSION['entries_limit'] = $perPage;
+} else {
+    $perPage = isset($_SESSION['entries_limit']) ? $_SESSION['entries_limit'] : 15;
+}
+$page = max(1, (int)($_GET['page'] ?? 1));
+$offset = ($page - 1) * $perPage;
+$paginatedEntries = array_slice($entries, $offset, $perPage);
+
+if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
+    ob_start();
+    if (!$paginatedEntries) {
+        echo '<tr><td colspan="9" class="empty-state-row" style="text-align: center; padding: 30px; color: var(--muted);"><div class="empty-title">No Entries Found</div></td></tr>';
+    } else {
+        foreach ($paginatedEntries as $entry) {
+            $classTier = admin_class_type_tier_from_name($entry['class_type_name'] ?? '');
+            ?>
+            <tr>
+                <td><strong>#<?= e(str_pad((string)$entry['entry_number'], 3, '0', STR_PAD_LEFT)) ?></strong></td>
+                <td><?= e($entry['entry_name'] ?: 'Unnamed Entry') ?></td>
+                <td><?= e($entry['program_title']) ?></td>
+                <td>
+                    <span class="badge <?= admin_class_type_badge_class($classTier) ?>">
+                        <?= e(admin_class_type_display($entry['class_type_name'] ?? null, (int)($entry['class_type_id'] ?? 0))) ?>
+                    </span>
+                </td>
+                <td><span class="team-color-pill" style="background: <?= e($entry['team_color'] ?? '#64748b') ?>22;"><?= e($entry['team_name']) ?></span></td>
+                <td><?= (int)$entry['member_count'] ?></td>
+                <td><?= $entry['final_total'] !== null ? e(number_format((float)$entry['final_total'], 2)) : '<span class="badge badge-neutral">Not scored</span>' ?></td>
+                <td><span class="badge <?= entries_status_badge($entry['status']) ?>"><?= e(ucfirst((string)$entry['status'])) ?></span></td>
+                <td>
+                    <div class="flex gap-2 flex-wrap">
+                        <button class="btn btn-secondary btn-sm" type="button" data-view-id="<?= (int)$entry['id'] ?>"><i class="fa-solid fa-eye"></i></button>
+                        <button class="btn btn-secondary btn-sm" type="button" data-edit='<?= e(json_encode($entry, JSON_HEX_APOS | JSON_HEX_QUOT)) ?>'><i class="fa-solid fa-pen"></i></button>
+                        <?php if ($entry['program_type'] === 'group'): ?>
+                            <button class="btn btn-info btn-sm" type="button" data-manage-id="<?= (int)$entry['id'] ?>"><i class="fa-solid fa-users"></i></button>
+                        <?php endif; ?>
+                        <button class="btn btn-danger btn-sm" type="button" data-delete-id="<?= (int)$entry['id'] ?>" data-delete-name="<?= e($entry['entry_name']) ?>"><i class="fa-solid fa-trash"></i></button>
+                    </div>
+                </td>
+            </tr>
+            <?php
+        }
+    }
+    $tbodyHtml = ob_get_clean();
+
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode([
+        'success' => true,
+        'html' => $tbodyHtml,
+        'pagination' => admin_render_pagination_html($page, $perPage, $totalEntries)
+    ]);
+    exit;
+}
 
 require_once __DIR__ . '/../includes/header.php';
 require_once __DIR__ . '/../includes/sidebar.php';
@@ -502,7 +559,7 @@ require_once __DIR__ . '/../includes/sidebar.php';
     <?php endif; ?>
 
     <div class="panel mb-6">
-        <form method="GET" class="form-grid">
+        <form method="GET" class="form-grid" id="search-form">
             <div class="input-group">
                 <label>Class</label>
                 <select name="class">
@@ -547,7 +604,7 @@ require_once __DIR__ . '/../includes/sidebar.php';
             <div class="form-actions full-width">
                 <button class="btn btn-secondary btn-md" type="submit"><i class="fa-solid fa-filter"></i> Filter</button>
                 <?php if ($search !== '' || $selectedProgramId || $teamFilter || $statusFilter !== 'all' || $classFilter !== 'all'): ?>
-                    <a href="<?= APP_URL ?>/admin/entries.php" class="btn btn-secondary btn-md">Clear</a>
+                    <a href="<?= app_url('/admin/entries.php') ?>" class="btn btn-secondary btn-md">Clear</a>
                 <?php endif; ?>
             </div>
         </form>
@@ -559,8 +616,8 @@ require_once __DIR__ . '/../includes/sidebar.php';
         <div class="table-wrapper">
             <table class="table">
                 <thead><tr><th>No.</th><th>Entry</th><th>Program</th><th>Class</th><th>Team</th><th>Members</th><th>Score</th><th>Status</th><th>Actions</th></tr></thead>
-                <tbody>
-                    <?php foreach ($entries as $entry): ?>
+                <tbody id="table-body">
+                    <?php foreach ($paginatedEntries as $entry): ?>
                         <tr>
                             <td><strong>#<?= e(str_pad((string)$entry['entry_number'], 3, '0', STR_PAD_LEFT)) ?></strong></td>
                             <td><?= e($entry['entry_name'] ?: 'Unnamed Entry') ?></td>
@@ -590,8 +647,11 @@ require_once __DIR__ . '/../includes/sidebar.php';
                 </tbody>
             </table>
         </div>
+        <div id="pagination-container">
+            <?= admin_render_pagination_html($page, $perPage, $totalEntries) ?>
+        </div>
     <?php endif; ?>
-</div>
+
 
 <div class="modal-overlay" id="entryModal">
     <div class="modal-box modal-lg">
@@ -671,7 +731,9 @@ require_once __DIR__ . '/../includes/sidebar.php';
 </div>
 
 <script>
-const APP_URL = <?= json_encode(APP_URL) ?>;
+(() => {
+
+const ADMIN_ENTRIES_URL = <?= json_encode(app_url('/admin/entries.php'), JSON_UNESCAPED_SLASHES) ?>;
 const PROGRAMS = <?= json_encode(array_values($programs), JSON_UNESCAPED_UNICODE) ?>;
 const TEAMS = <?= json_encode(array_values($teams), JSON_UNESCAPED_UNICODE) ?>;
 const CSRF = <?= json_encode(generate_csrf_token()) ?>;
@@ -683,8 +745,6 @@ const RETURN_FIELDS = `
     <input type="hidden" name="return_team" value="<?= (int)$teamFilter ?>">
 `;
 
-function openModal(id){document.getElementById(id)?.classList.add('active')}
-function closeModal(id){document.getElementById(id)?.classList.remove('active')}
 function escapeHtml(value){return String(value ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;')}
 function selectedProgram(){return PROGRAMS.find(program => Number(program.id) === Number(document.getElementById('entryProgramId').value));}
 function selectedTeam(){return TEAMS.find(team => Number(team.id) === Number(document.getElementById('entryTeamId').value));}
@@ -734,7 +794,7 @@ function openCreateModal() {
     } else {
         syncEntryFields(false);
     }
-    openModal('entryModal');
+   window.openModal('entryModal');
 }
 
 function openEditModal(entry) {
@@ -747,7 +807,7 @@ function openEditModal(entry) {
     document.getElementById('entryTeamId').disabled = true;
     document.getElementById('entryName').value = entry.entry_name || '';
     syncEntryFields(true, entry.program_type || '');
-    openModal('entryModal');
+   window.openModal('entryModal');
 }
 
 async function loadMembers() {
@@ -759,7 +819,7 @@ async function loadMembers() {
         return;
     }
     select.innerHTML = '<option value="">Loading...</option>';
-    const response = await fetch(`${APP_URL}/admin/entries.php?action=team_members&program_id=${encodeURIComponent(programId)}&team_id=${encodeURIComponent(teamId)}`);
+    const response = await fetch(`${ADMIN_ENTRIES_URL}?action=team_members&program_id=${encodeURIComponent(programId)}&team_id=${encodeURIComponent(teamId)}`);
     const data = await response.json();
     select.innerHTML = '<option value="">Select Participant</option>';
     if (!data.success || !Array.isArray(data.members) || data.members.length === 0) {
@@ -780,10 +840,10 @@ document.getElementById('entryTeamId').addEventListener('change', () => {
     loadMembers();
 });
 
-document.querySelectorAll('[data-edit]').forEach(button => button.addEventListener('click', () => openEditModal(JSON.parse(button.dataset.edit))));
+
 
 async function openMembers(entryId, manage = false) {
-    const response = await fetch(`${APP_URL}/admin/entries.php?action=entry&entry_id=${entryId}`);
+    const response = await fetch(`${ADMIN_ENTRIES_URL}?action=entry&entry_id=${entryId}`);
     const data = await response.json();
     if (!data.success) return;
 
@@ -808,11 +868,11 @@ async function openMembers(entryId, manage = false) {
 
     if (!manage) {
         document.getElementById('membersBody').innerHTML = current;
-        openModal('membersModal');
+       window.openModal('membersModal');
         return;
     }
 
-    const availableResponse = await fetch(`${APP_URL}/admin/entries.php?action=team_members&program_id=${data.entry.program_id}&team_id=${data.entry.team_id}&entry_id=${entryId}`);
+    const availableResponse = await fetch(`${ADMIN_ENTRIES_URL}?action=team_members&program_id=${data.entry.program_id}&team_id=${data.entry.team_id}&entry_id=${entryId}`);
     const available = await availableResponse.json();
     const members = available.success ? available.members : [];
     let add = `<div class="panel"><div class="page-subtitle">Add Member</div><form method="POST" class="form-grid mt-4"><input type="hidden" name="csrf_token" value="${CSRF}"><input type="hidden" name="action" value="add_member"><input type="hidden" name="entry_id" value="${entryId}">${RETURN_FIELDS}<div class="input-group"><label>Member</label><select name="team_member_id" required>`;
@@ -820,17 +880,41 @@ async function openMembers(entryId, manage = false) {
     members.forEach(member => add += `<option value="${escapeHtml(member.id)}">${escapeHtml(member.full_name)} (#${escapeHtml(member.chest_number || '-')})</option>`);
     add += '</select></div><div class="input-group"><label>Role</label><input name="role_name" value="Member"></div><div class="form-actions full-width"><button class="btn btn-success btn-md" type="submit">Add Member</button></div></form></div>';
     document.getElementById('membersBody').innerHTML = current + add;
-    openModal('membersModal');
+   window.openModal('membersModal');
 }
 
-document.querySelectorAll('[data-view-id]').forEach(button => button.addEventListener('click', () => openMembers(button.dataset.viewId, false)));
-document.querySelectorAll('[data-manage-id]').forEach(button => button.addEventListener('click', () => openMembers(button.dataset.manageId, true)));
-document.querySelectorAll('[data-delete-id]').forEach(button => button.addEventListener('click', () => {
-    document.getElementById('deleteId').value = button.dataset.deleteId;
-    document.getElementById('deleteName').textContent = button.dataset.deleteName || 'this entry';
-    openModal('deleteModal');
-}));
-document.querySelectorAll('.modal-overlay').forEach(modal => modal.addEventListener('click', event => { if (event.target === modal) closeModal(modal.id); }));
+document.addEventListener('click', (e) => {
+    const editBtn = e.target.closest('[data-edit]');
+    if (editBtn) {
+        openEditModal(JSON.parse(editBtn.dataset.edit));
+        return;
+    }
+
+    const viewBtn = e.target.closest('[data-view-id]');
+    if (viewBtn) {
+        openMembers(viewBtn.dataset.viewId, false);
+        return;
+    }
+
+    const manageBtn = e.target.closest('[data-manage-id]');
+    if (manageBtn) {
+        openMembers(manageBtn.dataset.manageId, true);
+        return;
+    }
+
+    const deleteBtn = e.target.closest('[data-delete-id]');
+    if (deleteBtn) {
+        document.getElementById('deleteId').value = deleteBtn.dataset.deleteId;
+        document.getElementById('deleteName').textContent = deleteBtn.dataset.deleteName || 'this entry';
+       window.openModal('deleteModal');
+        return;
+    }
+});
+document.querySelectorAll('.modal-overlay').forEach(modal => modal.addEventListener('click', event => { if (event.target === modal)window.closeModal(modal.id); }));
 if (new URLSearchParams(window.location.search).get('create') === '1') openCreateModal();
+
+})();
 </script>
+</div>
+<?= admin_ajax_pagination_script() ?>
 <?php admin_close_page(); ?>

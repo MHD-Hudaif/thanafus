@@ -88,7 +88,7 @@ require_once __DIR__ . '/../includes/sidebar.php';
             <div class="page-title">Score Entry</div>
             <div class="page-subtitle">Select a program, then score all entries together</div>
         </div>
-        <a href="<?= APP_URL ?>/admin/programs.php" class="btn btn-secondary btn-md">
+        <a href="<?= app_url('/admin/programs.php') ?>" class="btn btn-secondary btn-md">
             <i class="fa-solid fa-microphone-lines"></i> Programs
         </a>
     </div>
@@ -132,7 +132,7 @@ require_once __DIR__ . '/../includes/sidebar.php';
             <div class="form-actions full-width">
                 <button class="btn btn-secondary btn-md" type="submit"><i class="fa-solid fa-filter"></i> Filter</button>
                 <?php if ($search !== '' || $statusFilter !== 'all' || $approvalFilter !== 'all' || $classFilter !== 'all'): ?>
-                    <a href="<?= APP_URL ?>/admin/score-entry.php" class="btn btn-secondary btn-md">Clear</a>
+                    <a href="<?= app_url('/admin/score-entry.php') ?>" class="btn btn-secondary btn-md">Clear</a>
                 <?php endif; ?>
             </div>
         </form>
@@ -182,10 +182,10 @@ require_once __DIR__ . '/../includes/sidebar.php';
                             <td><span class="badge <?= score_entry_approval_badge($program['approval_status']) ?>"><?= e(ucfirst((string)$program['approval_status'])) ?></span></td>
                             <td>
                                 <div class="flex gap-2 flex-wrap">
-                                    <a class="btn btn-success btn-sm" href="<?= APP_URL ?>/admin/program-scores.php?program_id=<?= (int)$program['id'] ?>">
+                                    <a class="btn btn-success btn-sm" href="<?= app_url('/admin/program-scores.php') ?>?program_id=<?= (int)$program['id'] ?>">
                                         <i class="fa-solid fa-pen-to-square"></i> Score Entry
                                     </a>
-                                    <a class="btn btn-secondary btn-sm" href="<?= APP_URL ?>/admin/entries.php?program=<?= (int)$program['id'] ?>">
+                                    <a class="btn btn-secondary btn-sm" href="<?= app_url('/admin/entries.php') ?>?program=<?= (int)$program['id'] ?>">
                                         <i class="fa-solid fa-list-check"></i> Entries
                                     </a>
                                 </div>

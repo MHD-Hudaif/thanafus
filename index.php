@@ -44,11 +44,9 @@ $liveFeatures = [
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
 
 <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 
 <body>
-<canvas id="bgCanvas" aria-hidden="true"></canvas>
 
 <section class="intro" id="intro" aria-label="Kauzariyya Musabaqa intro">
     <div class="intro-stage">

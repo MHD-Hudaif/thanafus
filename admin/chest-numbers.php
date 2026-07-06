@@ -163,6 +163,45 @@ foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $member) {
 
 $flash = admin_take_flash();
 $totalMembers = count($members);
+
+if (isset($_GET['limit'])) {
+    $perPage = max(5, min(5000, (int)$_GET['limit']));
+    $_SESSION['chest_numbers_limit'] = $perPage;
+} else {
+    $perPage = isset($_SESSION['chest_numbers_limit']) ? $_SESSION['chest_numbers_limit'] : 15;
+}
+$page = max(1, (int)($_GET['page'] ?? 1));
+$offset = ($page - 1) * $perPage;
+$paginatedMembers = array_slice($members, $offset, $perPage);
+
+if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
+    ob_start();
+    if (!$paginatedMembers) {
+        echo '<tr><td colspan="5" class="empty-state-row" style="text-align: center; padding: 30px; color: var(--muted);"><div class="empty-title">No Members Found</div></td></tr>';
+    } else {
+        foreach ($paginatedMembers as $member) {
+            ?>
+            <tr>
+                <td><strong><?= trim((string)($member['chest_number'] ?? '')) !== '' ? '#' . e((string)$member['chest_number']) : '-' ?></strong></td>
+                <td><?= e($member['display_name'] ?? '') ?></td>
+                <td><span class="team-color-pill" style="background: <?= e($member['team_color'] ?: '#14b8a6') ?>22; color:#fff;"><span class="team-color-dot" style="width:12px;height:12px;background:<?= e($member['team_color'] ?: '#14b8a6') ?>;"></span><?= e($member['team_name'] ?? '') ?></span></td>
+                <td><?= e($member['section'] ?: '-') ?></td>
+                <td><span class="badge badge-info"><?= e($member['category'] ?: '-') ?></span></td>
+            </tr>
+            <?php
+        }
+    }
+    $tbodyHtml = ob_get_clean();
+
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode([
+        'success' => true,
+        'html' => $tbodyHtml,
+        'pagination' => admin_render_pagination_html($page, $perPage, $totalMembers)
+    ]);
+    exit;
+}
+
 $assignedCount = 0;
 $missingCount = 0;
 foreach ($members as $member) {
@@ -202,7 +241,7 @@ require_once __DIR__ . '/../includes/sidebar.php';
     <?php endif; ?>
 
     <div class="panel mb-6">
-        <form method="GET" class="form-grid">
+        <form method="GET" class="form-grid" id="search-form">
             <div class="input-group full-width">
                 <label>Search</label>
                 <input type="text" name="search" value="<?= e($search) ?>" placeholder="Chest number, name, team, section or category">
@@ -222,8 +261,8 @@ require_once __DIR__ . '/../includes/sidebar.php';
                 <thead>
                     <tr><th>Chest #</th><th>Display Name</th><th>Team</th><th>Section</th><th>Category</th></tr>
                 </thead>
-                <tbody>
-                    <?php foreach ($members as $member): ?>
+                <tbody id="table-body">
+                    <?php foreach ($paginatedMembers as $member): ?>
                         <tr>
                             <td><strong><?= trim((string)($member['chest_number'] ?? '')) !== '' ? '#' . e((string)$member['chest_number']) : '-' ?></strong></td>
                             <td><?= e($member['display_name'] ?? '') ?></td>
@@ -235,8 +274,10 @@ require_once __DIR__ . '/../includes/sidebar.php';
                 </tbody>
             </table>
         </div>
+        <div id="pagination-container">
+            <?= admin_render_pagination_html($page, $perPage, $totalMembers) ?>
     <?php endif; ?>
-</div>
+
 
 <div class="modal-overlay" id="generateModal">
     <div class="modal-box modal-lg">
@@ -296,12 +337,16 @@ require_once __DIR__ . '/../includes/sidebar.php';
 </div>
 
 <script>
-function openModal(id){document.getElementById(id)?.classList.add('active')}
-function closeModal(id){document.getElementById(id)?.classList.remove('active')}
-document.querySelector('[data-open-generate]')?.addEventListener('click', () => openModal('generateModal'));
-document.querySelectorAll('[data-close]').forEach(btn => btn.addEventListener('click', () => closeModal(btn.dataset.close)));
+(() => {
+
+document.querySelector('[data-open-generate]')?.addEventListener('click', () =>window.openModal('generateModal'));
+document.querySelectorAll('[data-close]').forEach(btn => btn.addEventListener('click', () =>window.closeModal(btn.dataset.close)));
 document.querySelectorAll('.modal-overlay').forEach(modal => modal.addEventListener('click', event => {
-    if (event.target === modal) closeModal(modal.id);
+    if (event.target === modal)window.closeModal(modal.id);
 }));
+
+})();
 </script>
+</div>
+<?= admin_ajax_pagination_script() ?>
 <?php admin_close_page(); ?>

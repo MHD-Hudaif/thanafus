@@ -96,6 +96,53 @@ $stmt = $pdo->prepare("
 ");
 $stmt->execute($params);
 $teams = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$totalTeams = count($teams);
+
+if (isset($_GET['limit'])) {
+    $perPage = max(5, min(5000, (int)$_GET['limit']));
+    $_SESSION['teams_limit'] = $perPage;
+} else {
+    $perPage = isset($_SESSION['teams_limit']) ? $_SESSION['teams_limit'] : 15;
+}
+$page = max(1, (int)($_GET['page'] ?? 1));
+$offset = ($page - 1) * $perPage;
+$paginatedTeams = array_slice($teams, $offset, $perPage);
+
+if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
+    ob_start();
+    if (!$paginatedTeams) {
+        echo '<div class="empty-state" style="grid-column: 1 / -1;"><div class="empty-icon"><i class="fa-solid fa-people-group"></i></div><div class="empty-title">No Teams Found</div><div class="empty-subtitle">No matching teams.</div></div>';
+    } else {
+        foreach ($paginatedTeams as $team) {
+            ?>
+            <div class="team-card" style="border-top:4px solid <?= e($team['team_color'] ?: '#14b8a6') ?>;">
+                <div class="team-top"><div class="team-color-dot" style="background: <?= e($team['team_color'] ?: '#14b8a6') ?>;"></div><div class="team-prefix"><?= e((string)$team['number_prefix']) ?>+</div></div>
+                <div class="team-name team-color-pill" style="background: <?= e($team['team_color'] ?: '#14b8a6') ?>22; color: <?= e($team['team_color'] ? '#111' : '#111') ?>;"><?= e($team['team_name']) ?></div>
+                <div class="team-short"><?= e($team['short_name'] ?: 'No short name') ?></div>
+                <div class="team-score"><?= number_format((float)($team['total_score'] ?? 0), 2) ?> <span>points</span></div>
+                <div class="event-meta">
+                    <div class="event-meta-item"><span>Members</span><strong><?= (int)$team['member_count'] ?></strong></div>
+                    <div class="event-meta-item"><span>Entries</span><strong><?= (int)$team['entry_count'] ?></strong></div>
+                </div>
+                <div class="team-actions">
+                    <a href="<?= app_url('/admin/members.php') ?>?team=<?= (int)$team['id'] ?>" class="btn btn-success btn-sm">Members</a>
+                    <button class="btn btn-secondary btn-sm" data-edit-team='<?= e(json_encode($team, JSON_HEX_APOS | JSON_HEX_QUOT)) ?>'><i class="fa-solid fa-pen"></i> Edit</button>
+                    <button class="btn btn-danger btn-sm" data-delete-id="<?= (int)$team['id'] ?>" data-delete-name="<?= e($team['team_name']) ?>"><i class="fa-solid fa-trash"></i></button>
+                </div>
+            </div>
+            <?php
+        }
+    }
+    $tbodyHtml = ob_get_clean();
+
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode([
+        'success' => true,
+        'html' => $tbodyHtml,
+        'pagination' => admin_render_pagination_html($page, $perPage, $totalTeams)
+    ]);
+    exit;
+}
 
 require_once __DIR__ . '/../includes/header.php';
 require_once __DIR__ . '/../includes/sidebar.php';
@@ -113,14 +160,14 @@ require_once __DIR__ . '/../includes/sidebar.php';
     <?php if ($flash): ?><div class="alert <?= $flash['type'] === 'success' ? 'alert-success' : 'alert-error' ?>"><?= e($flash['message']) ?></div><?php endif; ?>
 
     <div class="panel mb-6">
-        <form method="GET" class="form-grid">
+        <form method="GET" class="form-grid" id="search-form">
             <div class="input-group full-width">
                 <label>Search</label>
                 <input type="text" name="search" value="<?= e($search) ?>" placeholder="Team name, short name or prefix">
             </div>
             <div class="form-actions full-width">
                 <button class="btn btn-secondary btn-md" type="submit"><i class="fa-solid fa-magnifying-glass"></i> Search</button>
-                <?php if ($search !== ''): ?><a class="btn btn-secondary btn-md" href="<?= APP_URL ?>/admin/teams.php">Clear</a><?php endif; ?>
+                <?php if ($search !== ''): ?><a class="btn btn-secondary btn-md" href="<?= app_url('/admin/teams.php') ?>">Clear</a><?php endif; ?>
             </div>
         </form>
     </div>
@@ -128,8 +175,8 @@ require_once __DIR__ . '/../includes/sidebar.php';
     <?php if (!$teams): ?>
         <div class="empty-state"><div class="empty-icon"><i class="fa-solid fa-people-group"></i></div><div class="empty-title">No Teams Found</div><div class="empty-subtitle">Create teams for this event.</div></div>
     <?php else: ?>
-        <div class="teams-grid">
-            <?php foreach ($teams as $team): ?>
+        <div class="teams-grid" id="table-body">
+            <?php foreach ($paginatedTeams as $team): ?>
                 <div class="team-card" style="border-top:4px solid <?= e($team['team_color'] ?: '#14b8a6') ?>;">
                     <div class="team-top"><div class="team-color-dot" style="background: <?= e($team['team_color'] ?: '#14b8a6') ?>;"></div><div class="team-prefix"><?= e((string)$team['number_prefix']) ?>+</div></div>
                     <div class="team-name team-color-pill" style="background: <?= e($team['team_color'] ?: '#14b8a6') ?>22; color: <?= e($team['team_color'] ? '#111' : '#111') ?>;"><?= e($team['team_name']) ?></div>
@@ -140,15 +187,17 @@ require_once __DIR__ . '/../includes/sidebar.php';
                         <div class="event-meta-item"><span>Entries</span><strong><?= (int)$team['entry_count'] ?></strong></div>
                     </div>
                     <div class="team-actions">
-                        <a href="<?= APP_URL ?>/admin/members.php?team=<?= (int)$team['id'] ?>" class="btn btn-success btn-sm">Members</a>
+                        <a href="<?= app_url('/admin/members.php') ?>?team=<?= (int)$team['id'] ?>" class="btn btn-success btn-sm">Members</a>
                         <button class="btn btn-secondary btn-sm" data-edit-team='<?= e(json_encode($team, JSON_HEX_APOS | JSON_HEX_QUOT)) ?>'><i class="fa-solid fa-pen"></i> Edit</button>
                         <button class="btn btn-danger btn-sm" data-delete-id="<?= (int)$team['id'] ?>" data-delete-name="<?= e($team['team_name']) ?>"><i class="fa-solid fa-trash"></i></button>
                     </div>
                 </div>
             <?php endforeach; ?>
         </div>
+        <div id="pagination-container">
+            <?= admin_render_pagination_html($page, $perPage, $totalTeams) ?>
     <?php endif; ?>
-</div>
+
 
 <div class="modal-overlay" id="teamModal">
     <div class="modal-box">
@@ -187,147 +236,184 @@ require_once __DIR__ . '/../includes/sidebar.php';
 </div>
 
 <script>
-function openModal(id){document.getElementById(id)?.classList.add('active')}
-function closeModal(id){document.getElementById(id)?.classList.remove('active')}
-document.querySelector('[data-open-team]')?.addEventListener('click', () => {
-    document.getElementById('teamForm').reset();
-    document.getElementById('teamModalTitle').textContent = 'Create Team';
-    document.getElementById('teamAction').value = 'create';
-    document.getElementById('teamId').value = '';
-    openModal('teamModal');
-});
-document.querySelectorAll('[data-close]').forEach(btn => btn.addEventListener('click', () => closeModal(btn.dataset.close)));
-document.querySelectorAll('.modal-overlay').forEach(modal => modal.addEventListener('click', e => { if (e.target === modal) closeModal(modal.id); }));
-const TEAM_COLOR_SUGGESTIONS = [
-    { label: 'Teal', value: '#14b8a6' },
-    { label: 'Green', value: '#22c55e' },
-    { label: 'Blue', value: '#2563eb' },
-    { label: 'Orange', value: '#f97316' },
-    { label: 'Pink', value: '#e11d48' },
-    { label: 'Purple', value: '#8b5cf6' },
-    { label: 'Yellow', value: '#facc15' },
-    { label: 'Sky', value: '#0ea5e9' }
-];
-
-const teamColorState = { color: '' };
-const teamColorChipsEl = document.getElementById('teamColorChips');
-const teamColorInput = document.getElementById('teamColorEntry');
-const teamColorHidden = document.getElementById('teamColor');
-const teamColorSuggestionsEl = document.getElementById('teamColorSuggestions');
-
-function normalizeColorValue(value) {
-    return String(value || '').trim();
-}
-
-function isValidColorValue(value) {
-    if (!value) return false;
-    return CSS.supports('color', normalizeColorValue(value));
-}
-
-function renderTeamColorChip() {
-    teamColorChipsEl.innerHTML = '';
-    const color = normalizeColorValue(teamColorState.color);
-    if (!color) return;
-    const chip = document.createElement('span');
-    chip.className = 'color-chip';
-    chip.innerHTML = `
-        <span class="color-chip-swatch" style="background:${color};"></span>
-        <span class="color-chip-label">${color}</span>
-        <button type="button" class="color-chip-remove" aria-label="Remove ${color}">&times;</button>
-    `;
-    chip.querySelector('.color-chip-remove')?.addEventListener('click', () => {
+(() => {
+    // Re-bind modal triggers for the new DOM elements injected via AJAX
+    document.querySelector('[data-open-team]')?.addEventListener('click', () => {
+        document.getElementById('teamForm').reset();
+        document.getElementById('teamModalTitle').textContent = 'Create Team';
+        document.getElementById('teamAction').value = 'create';
+        document.getElementById('teamId').value = '';
         teamColorState.color = '';
         teamColorHidden.value = '#14b8a6';
         renderTeamColorChip();
-        renderTeamColorSuggestions(teamColorInput.value.trim());
-    });
-    teamColorChipsEl.appendChild(chip);
-}
-
-function setTeamColor(value) {
-    const color = normalizeColorValue(value);
-    if (!color || !isValidColorValue(color)) return;
-    teamColorState.color = color;
-    teamColorHidden.value = color;
-    renderTeamColorChip();
-}
-
-function filterTeamColorSuggestions(query) {
-    const normalized = String(query || '').toLowerCase().trim();
-    if (!normalized) return TEAM_COLOR_SUGGESTIONS;
-    return TEAM_COLOR_SUGGESTIONS.filter(item => item.label.toLowerCase().includes(normalized) || item.value.toLowerCase().includes(normalized));
-}
-
-function renderTeamColorSuggestions(query) {
-    const suggestions = filterTeamColorSuggestions(query);
-    teamColorSuggestionsEl.innerHTML = '';
-    if (!suggestions.length) {
         teamColorSuggestionsEl.classList.remove('active');
-        return;
+        window.openModal('teamModal');
+    });
+
+    document.querySelectorAll('[data-close]').forEach(btn => btn.addEventListener('click', () => window.closeModal(btn.dataset.close)));
+    document.querySelectorAll('.modal-overlay').forEach(modal => modal.addEventListener('click', e => { if (e.target === modal) window.closeModal(modal.id); }));
+
+    const TEAM_COLOR_SUGGESTIONS = [
+        { label: 'Teal', value: '#14b8a6' },
+        { label: 'Green', value: '#22c55e' },
+        { label: 'Blue', value: '#2563eb' },
+        { label: 'Orange', value: '#f97316' },
+        { label: 'Pink', value: '#e11d48' },
+        { label: 'Purple', value: '#8b5cf6' },
+        { label: 'Yellow', value: '#facc15' },
+        { label: 'Sky', value: '#0ea5e9' }
+    ];
+
+    const teamColorState = { color: '' };
+    const teamColorChipsEl = document.getElementById('teamColorChips');
+    const teamColorInput = document.getElementById('teamColorEntry');
+    const teamColorHidden = document.getElementById('teamColor');
+    const teamColorSuggestionsEl = document.getElementById('teamColorSuggestions');
+
+    function normalizeColorValue(value) {
+        return String(value || '').trim();
     }
-    suggestions.forEach(item => {
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = 'color-suggestion';
-        button.innerHTML = `
-            <span class="color-swatch" style="background:${item.value};"></span>
-            <span>${item.label}</span>
-            <small>${item.value}</small>
+
+    function isValidColorValue(value) {
+        if (!value) return false;
+        return CSS.supports('color', normalizeColorValue(value));
+    }
+
+    function renderTeamColorChip() {
+        if (!teamColorChipsEl) return;
+        teamColorChipsEl.innerHTML = '';
+        const color = normalizeColorValue(teamColorState.color);
+        if (!color) return;
+        const chip = document.createElement('span');
+        chip.className = 'color-chip';
+        chip.innerHTML = `
+            <span class="color-chip-swatch" style="background:${color};"></span>
+            <span class="color-chip-label">${color}</span>
+            <button type="button" class="color-chip-remove" aria-label="Remove ${color}">&times;</button>
         `;
-        button.addEventListener('click', () => {
-            setTeamColor(item.value);
-            teamColorInput.value = '';
-            teamColorSuggestionsEl.classList.remove('active');
-            teamColorInput.focus();
+        chip.querySelector('.color-chip-remove')?.addEventListener('click', () => {
+            teamColorState.color = '';
+            if (teamColorHidden) teamColorHidden.value = '#14b8a6';
+            renderTeamColorChip();
+            if (teamColorInput) renderTeamColorSuggestions(teamColorInput.value.trim());
         });
-        teamColorSuggestionsEl.appendChild(button);
+        teamColorChipsEl.appendChild(chip);
+    }
+
+    function setTeamColor(value) {
+        const color = normalizeColorValue(value);
+        if (!color || !isValidColorValue(color)) return;
+        teamColorState.color = color;
+        if (teamColorHidden) teamColorHidden.value = color;
+        renderTeamColorChip();
+    }
+
+    function filterTeamColorSuggestions(query) {
+        const normalized = String(query || '').toLowerCase().trim();
+        if (!normalized) return TEAM_COLOR_SUGGESTIONS;
+        return TEAM_COLOR_SUGGESTIONS.filter(item => item.label.toLowerCase().includes(normalized) || item.value.toLowerCase().includes(normalized));
+    }
+
+    function renderTeamColorSuggestions(query) {
+        if (!teamColorSuggestionsEl) return;
+        const suggestions = filterTeamColorSuggestions(query);
+        teamColorSuggestionsEl.innerHTML = '';
+        if (!suggestions.length) {
+            teamColorSuggestionsEl.classList.remove('active');
+            return;
+        }
+        suggestions.forEach(item => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'color-suggestion';
+            button.innerHTML = `
+                <span class="color-swatch" style="background:${item.value};"></span>
+                <span>${item.label}</span>
+                <small>${item.value}</small>
+            `;
+            button.addEventListener('click', () => {
+                setTeamColor(item.value);
+                if (teamColorInput) teamColorInput.value = '';
+                teamColorSuggestionsEl.classList.remove('active');
+                if (teamColorInput) teamColorInput.focus();
+            });
+            teamColorSuggestionsEl.appendChild(button);
+        });
+        teamColorSuggestionsEl.classList.add('active');
+    }
+
+    teamColorInput?.addEventListener('input', event => renderTeamColorSuggestions(event.target.value));
+    teamColorInput?.addEventListener('keydown', event => {
+        if (event.key === 'Enter' || event.key === ',') {
+            event.preventDefault();
+            setTeamColor(teamColorInput.value);
+            teamColorInput.value = '';
+            if (teamColorSuggestionsEl) teamColorSuggestionsEl.classList.remove('active');
+        }
     });
-    teamColorSuggestionsEl.classList.add('active');
-}
 
-teamColorInput?.addEventListener('input', event => renderTeamColorSuggestions(event.target.value));
-teamColorInput?.addEventListener('keydown', event => {
-    if (event.key === 'Enter' || event.key === ',') {
-        event.preventDefault();
-        setTeamColor(teamColorInput.value);
-        teamColorInput.value = '';
-        teamColorSuggestionsEl.classList.remove('active');
+    // Only attach global document listeners ONCE per session to prevent duplication
+    if (!window._teamsPageInit) {
+        window._teamsPageInit = true;
+        
+        document.addEventListener('click', event => {
+            if (!event.target.closest('.color-input-container') && !event.target.closest('.color-suggestion')) {
+                const sugg = document.getElementById('teamColorSuggestions');
+                if (sugg) sugg.classList.remove('active');
+            }
+        });
+
+        document.addEventListener('click', (e) => {
+            const editBtn = e.target.closest('[data-edit-team]');
+            if (editBtn) {
+                const team = JSON.parse(editBtn.dataset.editTeam);
+                document.getElementById('teamModalTitle').textContent = 'Edit Team';
+                document.getElementById('teamAction').value = 'update';
+                document.getElementById('teamId').value = team.id || '';
+                document.getElementById('teamName').value = team.team_name || '';
+                document.getElementById('teamShort').value = team.short_name || '';
+                
+                // We must re-query the inputs because the DOM might have been swapped via AJAX
+                const hiddenInput = document.getElementById('teamColor');
+                if (hiddenInput) hiddenInput.value = team.team_color || '#14b8a6';
+                
+                // Hack to render chip using latest DOM elements
+                const chipsEl = document.getElementById('teamColorChips');
+                if (chipsEl) {
+                    chipsEl.innerHTML = '';
+                    const color = team.team_color || '#14b8a6';
+                    const chip = document.createElement('span');
+                    chip.className = 'color-chip';
+                    chip.innerHTML = `
+                        <span class="color-chip-swatch" style="background:${color};"></span>
+                        <span class="color-chip-label">${color}</span>
+                        <button type="button" class="color-chip-remove" aria-label="Remove ${color}">&times;</button>
+                    `;
+                    chip.querySelector('.color-chip-remove')?.addEventListener('click', () => {
+                        if (hiddenInput) hiddenInput.value = '#14b8a6';
+                        chipsEl.innerHTML = '';
+                    });
+                    chipsEl.appendChild(chip);
+                }
+
+                const suggEl = document.getElementById('teamColorSuggestions');
+                if (suggEl) suggEl.classList.remove('active');
+                
+                window.openModal('teamModal');
+                return;
+            }
+
+            const deleteBtn = e.target.closest('[data-delete-id]');
+            if (deleteBtn) {
+                document.getElementById('deleteId').value = deleteBtn.dataset.deleteId;
+                document.getElementById('deleteName').textContent = deleteBtn.dataset.deleteName || 'this team';
+                window.openModal('deleteModal');
+                return;
+            }
+        });
     }
-});
-
-document.addEventListener('click', event => {
-    if (!event.target.closest('.color-input-container') && !event.target.closest('.color-suggestion')) {
-        teamColorSuggestionsEl.classList.remove('active');
-    }
-});
-
-document.querySelector('[data-open-team]')?.addEventListener('click', () => {
-    document.getElementById('teamForm').reset();
-    document.getElementById('teamModalTitle').textContent = 'Create Team';
-    document.getElementById('teamAction').value = 'create';
-    document.getElementById('teamId').value = '';
-    teamColorState.color = '';
-    teamColorHidden.value = '#14b8a6';
-    renderTeamColorChip();
-    teamColorSuggestionsEl.classList.remove('active');
-    openModal('teamModal');
-});
-
-document.querySelectorAll('[data-edit-team]').forEach(btn => btn.addEventListener('click', () => {
-    const team = JSON.parse(btn.dataset.editTeam);
-    document.getElementById('teamModalTitle').textContent = 'Edit Team';
-    document.getElementById('teamAction').value = 'update';
-    document.getElementById('teamId').value = team.id || '';
-    document.getElementById('teamName').value = team.team_name || '';
-    document.getElementById('teamShort').value = team.short_name || '';
-    setTeamColor(team.team_color || '#14b8a6');
-    teamColorSuggestionsEl.classList.remove('active');
-    openModal('teamModal');
-}));
-document.querySelectorAll('[data-delete-id]').forEach(btn => btn.addEventListener('click', () => {
-    document.getElementById('deleteId').value = btn.dataset.deleteId;
-    document.getElementById('deleteName').textContent = btn.dataset.deleteName || 'this team';
-    openModal('deleteModal');
-}));
+})();
 </script>
+</div>
+<?= admin_ajax_pagination_script() ?>
 <?php admin_close_page(); ?>

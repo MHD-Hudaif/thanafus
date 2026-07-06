@@ -13,3 +13,6 @@ define('APP_BASE_URL', app_normalize_base_url($configuredBaseUrl));
 
 // Backward-compatible alias for existing pages and scripts.
 define('APP_URL', APP_BASE_URL);
+
+// Google OAuth Configuration
+define('GOOGLE_CLIENT_ID', '464975385970-kncgn8d9jqd418ail0evu182sejugfk8.apps.googleusercontent.com');

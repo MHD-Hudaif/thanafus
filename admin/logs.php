@@ -41,8 +41,13 @@ $whereSql = $where
     ? 'WHERE ' . implode(' AND ', $where)
     : '';
 
+if (isset($_GET['limit'])) {
+    $perPage = max(5, min(5000, (int)$_GET['limit']));
+    $_SESSION['logs_limit'] = $perPage;
+} else {
+    $perPage = isset($_SESSION['logs_limit']) ? $_SESSION['logs_limit'] : 15;
+}
 $page = max(1, (int)($_GET['page'] ?? 1));
-$perPage = 50;
 $offset = ($page - 1) * $perPage;
 
 $countStmt = $pdo->prepare("
@@ -112,13 +117,42 @@ function badgeClass(string $action): string
     };
 }
 
+if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
+    ob_start();
+    if (!$logs) {
+        echo '<tr><td colspan="7" class="empty-state-row" style="text-align: center; padding: 30px; color: var(--muted);"><div class="empty-title">No Logs Found</div></td></tr>';
+    } else {
+        foreach ($logs as $log) {
+            ?>
+            <tr>
+                <td>#<?= (int)$log['id'] ?></td>
+                <td><span class="badge <?= badgeClass($log['action_type']) ?>"><?= e($log['action_type']) ?></span></td>
+                <td><?= e($log['description']) ?></td>
+                <td><?= e($log['target_table']) ?></td>
+                <td><?= e((string)$log['target_id']) ?></td>
+                <td>#<?= (int)$log['user_id'] ?></td>
+                <td><?= date('d M Y h:i A', strtotime($log['created_at'])) ?></td>
+            </tr>
+            <?php
+        }
+    }
+    $tbodyHtml = ob_get_clean();
+
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode([
+        'success' => true,
+        'html' => $tbodyHtml,
+        'pagination' => admin_render_pagination_html($page, $perPage, $totalLogs)
+    ]);
+    exit;
+}
+
 require_once __DIR__ . '/../includes/header.php';
 require_once __DIR__ . '/../includes/sidebar.php';
 ?>
 
 <div class="main-content">
 
-```
 <div class="topbar">
     <div>
         <div class="page-title">Activity Logs</div>
@@ -170,7 +204,7 @@ require_once __DIR__ . '/../includes/sidebar.php';
 
 <div class="panel mb-6">
 
-    <form method="get" class="form-grid">
+    <form method="get" class="form-grid" id="search-form">
 
         <div class="field">
             <label class="field-label">
@@ -269,7 +303,7 @@ require_once __DIR__ . '/../includes/sidebar.php';
                 </tr>
                 </thead>
 
-                <tbody>
+                <tbody id="table-body">
 
                 <?php foreach ($logs as $log): ?>
 
@@ -318,37 +352,13 @@ require_once __DIR__ . '/../includes/sidebar.php';
 
         </div>
 
-        <?php
-        $pages = max(
-            1,
-            ceil($totalLogs / $perPage)
-        );
-        ?>
-
-        <?php if ($pages > 1): ?>
-
-            <div class="form-actions mt-5">
-
-                <?php for ($i = 1; $i <= $pages; $i++): ?>
-
-                    <a
-                        href="?page=<?= $i ?>"
-                        class="btn <?= $i === $page ? 'btn-success' : 'btn-secondary' ?>"
-                    >
-                        <?= $i ?>
-                    </a>
-
-                <?php endfor; ?>
-
-            </div>
-
-        <?php endif; ?>
+        <div id="pagination-container">
+            <?= admin_render_pagination_html($page, $perPage, $totalLogs) ?>
+        </div>
 
     <?php endif; ?>
 
-</div>
-
-
+<?= admin_ajax_pagination_script() ?>
 </div>
 
 <?php admin_close_page(); ?>

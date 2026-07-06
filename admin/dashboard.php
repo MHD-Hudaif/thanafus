@@ -50,7 +50,7 @@ require_once __DIR__ . '/../includes/sidebar.php';
             <div class="page-title">Musabaqa Control Center</div>
             <div class="page-subtitle">Event overview and management</div>
         </div>
-        <a class="btn btn-success btn-md" href="<?= APP_URL ?>/admin/events.php">
+        <a class="btn btn-success btn-md" href="<?= app_url('/admin/events.php') ?>">
             <i class="fa-solid fa-calendar-plus"></i> Manage Events
         </a>
     </div>
@@ -77,7 +77,7 @@ require_once __DIR__ . '/../includes/sidebar.php';
             <div class="dashboard-grid">
                 <?php foreach ($events as $event): ?>
                     <?php $color = trim(explode(',', $event['theme_colors'] ?: '#14b8a6')[0]); ?>
-                    <a href="<?= APP_URL ?>/admin/utilities/set-active-event.php?id=<?= (int)$event['id'] ?>" class="dashboard-card" style="border-top:4px solid <?= e($color) ?>;">
+                    <a href="<?= app_url('/admin/utilities/set-active-event.php') ?>?id=<?= (int)$event['id'] ?>" class="dashboard-card" style="border-top:4px solid <?= e($color) ?>;">
                         <div class="dashboard-card-title"><?= e($event['title']) ?></div>
                         <div class="dashboard-card-description"><?= e($event['description'] ?: 'No description') ?></div>
                         <div class="mt-4"><span class="badge badge-neutral"><?= e(strtoupper((string)$event['status'])) ?></span></div>
@@ -92,10 +92,10 @@ require_once __DIR__ . '/../includes/sidebar.php';
                 <div class="dashboard-heading"><?= e($activeEvent['title']) ?></div>
             </div>
             <div class="flex gap-3 flex-wrap">
-                <a href="<?= APP_URL ?>/admin/utilities/clear-event.php" class="btn btn-secondary btn-md">
+                <a href="<?= app_url('/admin/utilities/clear-event.php') ?>" class="btn btn-secondary btn-md">
                     <i class="fa-solid fa-rotate-left"></i> Change Event
                 </a>
-                <a href="<?= APP_URL ?>/admin/teams.php" class="btn btn-success btn-md">
+                <a href="<?= app_url('/admin/teams.php') ?>" class="btn btn-success btn-md">
                     <i class="fa-solid fa-users"></i> Manage Teams
                 </a>
             </div>
@@ -111,12 +111,12 @@ require_once __DIR__ . '/../includes/sidebar.php';
         <div class="panel">
             <div class="dashboard-heading">Quick Actions</div>
             <div class="quick-actions">
-                <a href="<?= APP_URL ?>/admin/teams.php" class="quick-action-btn">Manage Teams</a>
-                <a href="<?= APP_URL ?>/admin/programs.php" class="quick-action-btn">Programs</a>
-                <a href="<?= APP_URL ?>/admin/schedule.php" class="quick-action-btn">Schedule</a>
-                <a href="<?= APP_URL ?>/admin/score-entry.php" class="quick-action-btn">Program Scores</a>
-                <a href="<?= APP_URL ?>/admin/score-approval.php" class="quick-action-btn">Program Approval</a>
-                <a href="<?= APP_URL ?>/tv/index.php" class="quick-action-btn">TV Mode</a>
+                <a href="<?= app_url('/admin/teams.php') ?>" class="quick-action-btn">Manage Teams</a>
+                <a href="<?= app_url('/admin/programs.php') ?>" class="quick-action-btn">Programs</a>
+                <a href="<?= app_url('/admin/schedule.php') ?>" class="quick-action-btn">Schedule</a>
+                <a href="<?= app_url('/admin/score-entry.php') ?>" class="quick-action-btn">Program Scores</a>
+                <a href="<?= app_url('/admin/score-approval.php') ?>" class="quick-action-btn">Program Approval</a>
+                <a href="<?= app_url('/tv') ?>" class="quick-action-btn">TV Mode</a>
             </div>
         </div>
     <?php endif; ?>

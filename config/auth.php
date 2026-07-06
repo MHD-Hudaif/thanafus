@@ -313,3 +313,19 @@ function current_user(): ?array {
 
     return $_SESSION['user'] ?? null;
 }
+
+/*
+|--------------------------------------------------------------------------
+| AVATAR URL
+|--------------------------------------------------------------------------
+*/
+
+function avatar_url(?string $photo): ?string {
+    if (empty($photo)) {
+        return null;
+    }
+    if (str_starts_with($photo, 'http://') || str_starts_with($photo, 'https://')) {
+        return $photo;
+    }
+    return "/kauzariyya-dashboard/profile-pic-uploads/" . $photo;
+}

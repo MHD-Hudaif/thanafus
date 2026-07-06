@@ -420,10 +420,56 @@ foreach ($rawEntries as $entry) {
     $entries[] = $entry;
 }
 
+$totalEntries = count($entries);
+
+if (isset($_GET['limit'])) {
+    $perPage = max(5, min(5000, (int)$_GET['limit']));
+    $_SESSION['program_scores_limit'] = $perPage;
+} else {
+    $perPage = isset($_SESSION['program_scores_limit']) ? $_SESSION['program_scores_limit'] : 15;
+}
+$page = max(1, (int)($_GET['page'] ?? 1));
+$offset = ($page - 1) * $perPage;
+$paginatedEntries = array_slice($entries, $offset, $perPage);
+
 $readyForSubmission = admin_program_ready_for_approval($pdo, $programId);
 $scoresLocked = in_array((string)$program['approval_status'], ['submitted', 'approved'], true);
 $categoriesEditable = program_scores_categories_editable($program);
 $canSubmit = $readyForSubmission && !$scoresLocked && $categoriesValid;
+
+if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
+    ob_start();
+    if (!$paginatedEntries) {
+        echo '<tr><td colspan="6" class="empty-state-row" style="text-align: center; padding: 30px; color: var(--muted);"><div class="empty-title">No Entries Found</div></td></tr>';
+    } else {
+        foreach ($paginatedEntries as $entry) {
+            $hasSheet = !empty($entry['score_sheet_id']);
+            ?>
+            <tr>
+                <td><strong>#<?= e(str_pad((string)$entry['entry_number'], 3, '0', STR_PAD_LEFT)) ?></strong></td>
+                <td><?= e($entry['entry_name'] ?: 'Unnamed Entry') ?></td>
+                <td><span class="team-color-pill" style="background: <?= e($entry['team_color'] ?? '#64748b') ?>22;"><?= e($entry['team_name']) ?></span></td>
+                <td><span class="badge <?= program_scores_badge($entry['status']) ?>"><?= e(ucfirst((string)$entry['status'])) ?></span></td>
+                <td><?= $hasSheet ? e(number_format((float)$entry['final_total'], 2)) : '<span class="badge badge-neutral">Missing</span>' ?></td>
+                <td>
+                    <button class="btn btn-secondary btn-sm" type="button" data-score-entry="<?= (int)$entry['id'] ?>" <?= $categoriesValid ? '' : 'disabled' ?>>
+                        <i class="fa-solid fa-pen-to-square"></i> <?= $hasSheet ? ($scoresLocked ? 'View' : 'Edit') : 'Score' ?>
+                    </button>
+                </td>
+            </tr>
+            <?php
+        }
+    }
+    $tbodyHtml = ob_get_clean();
+
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode([
+        'success' => true,
+        'html' => $tbodyHtml,
+        'pagination' => admin_render_pagination_html($page, $perPage, $totalEntries)
+    ]);
+    exit;
+}
 
 require_once __DIR__ . '/../includes/header.php';
 require_once __DIR__ . '/../includes/sidebar.php';
@@ -440,7 +486,7 @@ require_once __DIR__ . '/../includes/sidebar.php';
             </div>
         </div>
         <div class="flex gap-2 flex-wrap">
-            <a class="btn btn-secondary btn-md" href="<?= APP_URL ?>/admin/score-entry.php"><i class="fa-solid fa-arrow-left"></i> Programs</a>
+            <a class="btn btn-secondary btn-md" href="<?= app_url('/admin/score-entry.php') ?>"><i class="fa-solid fa-arrow-left"></i> Programs</a>
             <form method="POST">
                 <?= admin_csrf_field() ?>
                 <input type="hidden" name="action" value="submit_program">
@@ -467,7 +513,7 @@ require_once __DIR__ . '/../includes/sidebar.php';
     </div>
 
     <div class="panel mb-6">
-        <form method="GET" class="form-grid">
+        <form method="GET" class="form-grid" id="search-form">
             <input type="hidden" name="program_id" value="<?= (int)$programId ?>">
             <div class="input-group full-width">
                 <label>Search Entries</label>
@@ -476,7 +522,7 @@ require_once __DIR__ . '/../includes/sidebar.php';
             <div class="form-actions full-width">
                 <button class="btn btn-secondary btn-md" type="submit"><i class="fa-solid fa-magnifying-glass"></i> Search</button>
                 <?php if ($entrySearch !== ''): ?>
-                    <a href="<?= APP_URL ?>/admin/program-scores.php?program_id=<?= (int)$programId ?>" class="btn btn-secondary btn-md">Clear</a>
+                    <a href="<?= app_url('/admin/program-scores.php') ?>?program_id=<?= (int)$programId ?>" class="btn btn-secondary btn-md">Clear</a>
                 <?php endif; ?>
             </div>
         </form>
@@ -597,8 +643,8 @@ require_once __DIR__ . '/../includes/sidebar.php';
                         <th>Actions</th>
                     </tr>
                 </thead>
-                <tbody>
-                    <?php foreach ($entries as $entry): ?>
+                <tbody id="table-body">
+                    <?php foreach ($paginatedEntries as $entry): ?>
                         <?php $hasSheet = !empty($entry['score_sheet_id']); ?>
                         <tr>
                             <td><strong>#<?= e(str_pad((string)$entry['entry_number'], 3, '0', STR_PAD_LEFT)) ?></strong></td>
@@ -616,8 +662,11 @@ require_once __DIR__ . '/../includes/sidebar.php';
                 </tbody>
             </table>
         </div>
+        <div id="pagination-container">
+            <?= admin_render_pagination_html($page, $perPage, $totalEntries) ?>
+        </div>
     <?php endif; ?>
-</div>
+
 
 <style>
 @keyframes submitPulse {
@@ -637,7 +686,7 @@ require_once __DIR__ . '/../includes/sidebar.php';
 </style>
 
 <script>
-const PROGRAM_SCORE_URL = <?= json_encode(APP_URL . '/admin/program-scores.php?program_id=' . $programId) ?>;
+const PROGRAM_SCORE_URL = <?= json_encode(app_url('/admin/program-scores.php?program_id=' . $programId), JSON_UNESCAPED_SLASHES) ?>;
 const CATEGORIES_EDITABLE = <?= json_encode($categoriesEditable) ?>;
 
 function escapeHtml(value){return String(value ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;')}
@@ -747,7 +796,12 @@ async function openScoreModal(entryId) {
     }
 }
 
-document.querySelectorAll('[data-score-entry]').forEach(btn => btn.addEventListener('click', () => openScoreModal(btn.dataset.scoreEntry)));
+document.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-score-entry]');
+    if (btn) {
+        openScoreModal(btn.dataset.scoreEntry);
+    }
+});
 document.getElementById('closeScorePanel')?.addEventListener('click', () => document.getElementById('scorePanel')?.classList.add('hidden'));
 document.getElementById('cancelScorePanel')?.addEventListener('click', () => document.getElementById('scorePanel')?.classList.add('hidden'));
 if (document.getElementById('programReadyAlert')) {
@@ -756,4 +810,6 @@ if (document.getElementById('programReadyAlert')) {
     }, 350);
 }
 </script>
+</div>
+<?= admin_ajax_pagination_script() ?>
 <?php admin_close_page(); ?>
