@@ -277,25 +277,106 @@
         return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`;
     }
 
-    function renderLeaderboard(rows, completionPercent = 0) {
-        const barsList = document.getElementById('chart-bars-list');
-        const legend = document.getElementById('chart-legend');
-        const axis = document.getElementById('chart-axis');
-        const gridlines = document.getElementById('chart-gridlines');
-        if (!barsList || !legend || !axis || !gridlines) return;
+    function getTeamTheme(colorHex) {
+        const rgb = hexToRgb(colorHex || '#ffffff');
+        const r = rgb.r / 255;
+        const g = rgb.g / 255;
+        const b = rgb.b / 255;
+        const max = Math.max(r, g, b), min = Math.min(r, g, b);
+        let h = 0, s = 0, l = (max + min) / 2;
 
-        if (rows.length === 0) {
-            barsList.innerHTML = `
-                <div class="tv-chart-row" style="display: flex; align-items: center; justify-content: center; border-color: rgba(255,255,255,0.08);">
-                    <div style="font-size: 20px; color: var(--muted);">No teams or scores recorded yet</div>
-                </div>
-            `;
-            legend.innerHTML = '';
-            axis.innerHTML = '';
-            gridlines.innerHTML = '';
-            return;
+        if (max !== min) {
+            const d = max - min;
+            s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+            switch (max) {
+                case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+                case g: h = (b - r) / d + 2; break;
+                case b: h = (r - g) / d + 4; break;
+            }
+            h /= 6;
         }
+        
+        const hueDegrees = h * 360;
+        
+        if (s < 0.15 || l > 0.85) {
+            return { key: 'frost', icon: '❄️', name: 'Frost' };
+        }
+        
+        if (hueDegrees >= 45 && hueDegrees < 85) {
+            return { key: 'lightning', icon: '⚡', name: 'Lightning' };
+        } else if (hueDegrees >= 165 && hueDegrees < 280) {
+            return { key: 'water', icon: '🌊', name: 'Water' };
+        } else if (hueDegrees >= 85 && hueDegrees < 165) {
+            return { key: 'frost', icon: '❄️', name: 'Frost' };
+        } else {
+            return { key: 'fire', icon: '🔥', name: 'Fire' };
+        }
+    }
 
+    function triggerGoldenConfetti(container) {
+        const canvas = container.querySelector('.confetti-canvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        canvas.width = container.clientWidth;
+        canvas.height = container.clientHeight;
+        
+        const colors = ['#ffd700', '#f1c40f', '#e67e22', '#ffffff'];
+        const particles = [];
+        for (let i = 0; i < 200; i++) {
+            particles.push({
+                x: Math.random() * canvas.width,
+                y: Math.random() * -canvas.height,
+                r: Math.random() * 6 + 4,
+                d: Math.random() * canvas.height,
+                color: colors[Math.floor(Math.random() * colors.length)],
+                tilt: Math.random() * 10 - 5,
+                tiltAngleIncremental: Math.random() * 0.07 + 0.02,
+                tiltAngle: 0
+            });
+        }
+        
+        let active = true;
+        
+        function draw() {
+            if (!active) return;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            particles.forEach((p, idx) => {
+                p.tiltAngle += p.tiltAngleIncremental;
+                p.y += (Math.cos(p.d) + 3 + p.r / 2) / 2;
+                p.x += Math.sin(p.tiltAngle);
+                p.tilt = Math.sin(p.tiltAngle - (idx / 3)) * 15;
+                
+                ctx.beginPath();
+                ctx.lineWidth = p.r;
+                ctx.strokeStyle = p.color;
+                ctx.moveTo(p.x + p.tilt + p.r / 2, p.y);
+                ctx.lineTo(p.x + p.tilt, p.y + p.tilt + p.r / 2);
+                ctx.stroke();
+            });
+            
+            update();
+            requestAnimationFrame(draw);
+        }
+        
+        function update() {
+            let remaining = 0;
+            particles.forEach(p => {
+                if (p.y < canvas.height) {
+                    remaining++;
+                }
+            });
+            if (remaining === 0) {
+                active = false;
+            }
+        }
+        
+        draw();
+    }
+
+    function renderLeaderboard(rows, completionPercent = 0) {
+        state.leaderboardData = rows;
+        
         // 1. Dynamic background based on 1st place team color
         if (rows.length > 0 && typeof gsap !== 'undefined') {
             const firstColor = rows[0].team_color || '#00ff88';
@@ -320,259 +401,150 @@
             });
         }
 
-        // 2. Render horizontal Legend at the top (sorted by rank)
-        legend.innerHTML = rows.map(team => `
-            <div class="tv-legend-item">
-                <span class="tv-legend-dot" style="background: ${escapeHtml(team.team_color || '#3b82f6')}; color: ${escapeHtml(team.team_color || '#3b82f6')};"></span>
-                <span>${escapeHtml(team.team_name || 'Team')}</span>
-            </div>
-        `).join('');
+        const container = document.querySelector('[data-leaderboard]');
+        if (!container) return;
 
-        // 3. Compute scale target and ticks
-        const maxVal = Math.max(...rows.map(r => Number(r.total_score || 0)), 10);
-        
-        let step = 50;
-        if (maxVal <= 100) {
-            step = 25;
-        } else if (maxVal <= 300) {
-            step = 50;
-        } else {
-            step = 100;
-        }
-        
-        const scaleMax = Math.ceil((maxVal * 1.05) / step) * step;
-        const ticks = [];
-        for (let val = 0; val <= scaleMax; val += step) {
-            ticks.push(val);
-        }
-        const targetVal = scaleMax;
+        const slots = Array.from({ length: 4 }, (_, index) => rows[index] || null);
+        const maxScore = Math.max(...slots.map(t => t ? Number(t.total_score || 0) : 0), 10);
 
-        // Render Axis ticks
-        axis.innerHTML = ticks.map(t => `<span class="tv-axis-tick">${t}</span>`).join('');
+        container.className = 'tv-floating-leaderboard';
+        container.innerHTML = `
+            <canvas class="confetti-canvas"></canvas>
+            <div class="tv-floating-card-grid">
+                ${slots.map((team, index) => {
+                    const color = team?.team_color || ['#38bdf8', '#f7c948', '#34d399', '#fb7185'][index];
+                    const rgb = hexToRgb(color);
+                    const rgbStr = `${rgb.r}, ${rgb.g}, ${rgb.b}`;
+                    const theme = getTeamTheme(color);
+                    
+                    const scoreVal = team ? Number(team.total_score || 0) : 0;
+                    const targetHeight = team ? Math.max(60, Math.round((scoreVal / maxScore) * 440)) : 60;
+                    
+                    const rank = team ? `#${team.rank}` : `#${index + 1}`;
+                    const name = team ? (team.team_name || team.short_name || 'Team') : 'Awaiting Team';
 
-        // Render Background Gridlines
-        gridlines.innerHTML = ticks.map(() => `<div class="tv-gridline"></div>`).join('');
-
-        // 4. Render or update bars
-        const renderCard = (team, index) => {
-            const cardId = `team-card-${team.id}`;
-            let card = document.getElementById(cardId);
-            const isNew = !card;
-            
-            const score = Number(team.total_score || 0);
-            const percent = Math.min(100, Math.round((score / targetVal) * 100));
-            const color = team.team_color || '#3b82f6';
-            const rgb = hexToRgb(color);
-            const rgbStr = `${rgb.r}, ${rgb.g}, ${rgb.b}`;
-            
-            if (isNew) {
-                card = document.createElement('div');
-                card.className = 'tv-chart-row-wrapper';
-                card.id = cardId;
-                card.style.setProperty('--card-team-color', color);
-                card.style.setProperty('--card-team-color-rgb', rgbStr);
-                
-                card.innerHTML = `
-                    <article class="tv-chart-row">
-                        <div class="tv-chart-bar-bg">
-                            <div class="tv-chart-bar-fill" style="background: ${escapeHtml(color)}; box-shadow: 0 0 25px ${rgbaColor(color, 0.25)}, 0 0 50px ${rgbaColor(color, 0.15)}; width: 0%;">
-                                <div class="tv-chart-bar-badge" style="--card-team-color: ${escapeHtml(color)}; --card-team-color-rgb: ${rgbStr};">
-                                    <span class="tv-chart-bar-badge-arrow"></span>
-                                    <span>${escapeHtml(team.team_name)}:</span>
-                                    <span class="tv-chart-bar-badge-val" data-score="0">0</span>
+                    return `
+                        <div class="team-slot-3d" style="--team-color: ${color}; --team-color-rgb: ${rgbStr};">
+                            <!-- Circular Neon Base Ring -->
+                            <div class="base-ring-3d">
+                                <div class="base-icon-3d">${theme.icon}</div>
+                            </div>
+                            
+                            <!-- Spotlight Flare -->
+                            <div class="pillar-spotlight"></div>
+                            
+                            <!-- 3D Column (Pillar) -->
+                            <div class="pillar-3d" style="--pillar-height: ${targetHeight}px;">
+                                <div class="face front">
+                                    <div class="pillar-fx ${theme.key}"></div>
+                                    <div class="pillar-score-text" data-score="${scoreVal}">0</div>
                                 </div>
+                                <div class="face back"><div class="pillar-fx ${theme.key}"></div></div>
+                                <div class="face left"><div class="pillar-fx ${theme.key}"></div></div>
+                                <div class="face right"><div class="pillar-fx ${theme.key}"></div></div>
+                                <div class="face top"></div>
+                            </div>
+                            
+                            <!-- Team Name Tag -->
+                            <div class="pillar-name-tag">
+                                <span>${escapeHtml(name)}</span>
+                                <small>${escapeHtml(rank)}</small>
                             </div>
                         </div>
-                    </article>
-                `;
-            } else {
-                card.style.setProperty('--card-team-color', color);
-                card.style.setProperty('--card-team-color-rgb', rgbStr);
+                    `;
+                }).join('')}
+            </div>
+        `;
+
+        // Animate the height of the pillars using GSAP (sequenced as in the video)
+        setTimeout(() => {
+            const slots3d = container.querySelectorAll('.team-slot-3d');
+            const pillars = container.querySelectorAll('.pillar-3d');
+            const scores = container.querySelectorAll('.pillar-score-text');
+            
+            if (typeof gsap !== 'undefined') {
+                // Initialize scale to 0
+                gsap.set(pillars, { scaleY: 0 });
                 
-                const fillEl = card.querySelector('.tv-chart-bar-fill');
-                const badgeEl = card.querySelector('.tv-chart-bar-badge');
-                const scoreEl = card.querySelector('.tv-chart-bar-badge-val');
-                
-                if (badgeEl) {
-                    badgeEl.style.setProperty('--card-team-color', color);
-                    badgeEl.style.setProperty('--card-team-color-rgb', rgbStr);
+                // Animate score text counters
+                scores.forEach(scoreEl => {
+                    const target = Number(scoreEl.dataset.score);
+                    const scoreObj = { value: 0 };
+                    gsap.to(scoreObj, {
+                        value: target,
+                        duration: 3,
+                        ease: 'power2.out',
+                        delay: 0.5,
+                        onUpdate: () => {
+                            scoreEl.textContent = formatScore(scoreObj.value);
+                        }
+                    });
+                });
+
+                // Pillar 1 (Left / Water) rises first (after 0.5s delay)
+                if (pillars[0]) {
+                    gsap.to(pillars[0], {
+                        scaleY: 1,
+                        duration: 2.8,
+                        ease: 'power2.out',
+                        delay: 0.5
+                    });
                 }
                 
-                if (state.activeSlide === 'leaderboard') {
-                    if (scoreEl) {
-                        const prevScore = Number(scoreEl.dataset.score || 0);
-                        if (prevScore !== score) {
-                            scoreEl.dataset.score = score;
-                            const scoreObj = { value: prevScore };
-                            gsap.to(scoreObj, {
-                                value: score,
-                                duration: 1.8,
-                                ease: 'power2.out',
-                                onUpdate: () => {
-                                    scoreEl.textContent = Math.round(scoreObj.value);
+                // Pillars 2 & 3 (Lightning & Frost) rise together next
+                if (pillars[1] || pillars[2]) {
+                    gsap.to([pillars[1], pillars[2]].filter(Boolean), {
+                        scaleY: 1,
+                        duration: 2.4,
+                        ease: 'power2.out',
+                        stagger: 0.15,
+                        delay: 1.4
+                    });
+                }
+                
+                // Pillar 4 (Right / Fire) rises fastest last
+                if (pillars[3]) {
+                    gsap.to(pillars[3], {
+                        scaleY: 1,
+                        duration: 2.0,
+                        ease: 'power3.out',
+                        delay: 2.4,
+                        onComplete: () => {
+                            // Find the team with the highest score
+                            let winnerIdx = 0;
+                            let maxS = -1;
+                            slots.forEach((t, i) => {
+                                if (t && Number(t.total_score || 0) > maxS) {
+                                    maxS = Number(t.total_score || 0);
+                                    winnerIdx = i;
                                 }
                             });
                             
-                            const article = card.querySelector('.tv-chart-row');
-                            if (article) {
-                                gsap.timeline()
-                                    .to(article, { scaleY: 1.05, duration: 0.3, ease: 'power2.out' })
-                                    .to(article, { scaleY: 1, duration: 0.35, ease: 'power2.in', clearProps: 'transform' });
+                            // Turn on the spotlight flare on the winner
+                            if (slots3d[winnerIdx]) {
+                                const spotlight = slots3d[winnerIdx].querySelector('.pillar-spotlight');
+                                if (spotlight) {
+                                    spotlight.classList.add('winner-spotlight');
+                                }
+                            }
+                            
+                            // Trigger the golden confetti rain
+                            if (maxS > 0) {
+                                triggerGoldenConfetti(container);
                             }
                         }
-                    }
-                    
-                    if (fillEl) {
-                        fillEl.style.background = color;
-                        fillEl.style.boxShadow = `0 0 25px ${rgbaColor(color, 0.25)}, 0 0 50px ${rgbaColor(color, 0.15)}`;
-                        gsap.to(fillEl, { width: `${percent}%`, duration: 1.8, ease: 'power3.out' });
-                    }
-                } else {
-                    if (scoreEl) {
-                        scoreEl.dataset.score = 0;
-                        scoreEl.textContent = '0';
-                    }
-                    if (fillEl) {
-                        fillEl.style.width = '0%';
-                    }
-                }
-            }
-            
-            return { card, isNew };
-        };
-
-        // Measure initial positions of wrappers in DOM
-        const rects = {};
-        rows.forEach(team => {
-            const card = document.getElementById(`team-card-${team.id}`);
-            if (card) {
-                rects[team.id] = card.getBoundingClientRect();
-            }
-        });
-
-        // Render or move elements to new slots
-        rows.forEach((team, idx) => {
-            const { card, isNew } = renderCard(team, idx);
-            if (isNew) {
-                barsList.appendChild(card);
-                
-                if (state.activeSlide === 'leaderboard') {
-                    // Score counter and fill animation from 0% width starting on load
-                    setTimeout(() => {
-                        const scoreEl = card.querySelector('.tv-chart-bar-badge-val');
-                        const fillEl = card.querySelector('.tv-chart-bar-fill');
-                        const score = Number(team.total_score || 0);
-                        const percent = Math.min(100, Math.round((score / targetVal) * 100));
-
-                        if (scoreEl) {
-                            scoreEl.dataset.score = score;
-                            const scoreObj = { value: 0 };
-                            gsap.to(scoreObj, {
-                                value: score,
-                                duration: 1.8,
-                                ease: 'power2.out',
-                                onUpdate: () => {
-                                    scoreEl.textContent = Math.round(scoreObj.value);
-                                }
-                            });
-                        }
-
-                        if (fillEl) {
-                            gsap.to(fillEl, {
-                                width: `${percent}%`,
-                                duration: 1.8,
-                                ease: 'power3.out'
-                            });
-                        }
-                    }, 50);
+                    });
                 }
             } else {
-                if (barsList.children[idx] !== card) {
-                    barsList.insertBefore(card, barsList.children[idx] || null);
-                }
+                // Fallback if GSAP is missing
+                pillars.forEach(p => p.style.transform = 'scaleY(1)');
+                scores.forEach(s => s.textContent = s.dataset.score);
             }
-        });
-
-        // FLIP Animation: animate vertical position swaps
-        if (state.activeSlide === 'leaderboard') {
-            rows.forEach(team => {
-                const card = document.getElementById(`team-card-${team.id}`);
-                const oldRect = rects[team.id];
-                if (card && oldRect) {
-                    const newRect = card.getBoundingClientRect();
-                    const deltaX = oldRect.left - newRect.left;
-                    const deltaY = oldRect.top - newRect.top;
-                    
-                    if (deltaX !== 0 || deltaY !== 0) {
-                        const article = card.querySelector('.tv-chart-row');
-                        gsap.fromTo(article, {
-                            x: deltaX,
-                            y: deltaY - 40,
-                            scale: 1.05
-                        }, {
-                            x: 0,
-                            y: 0,
-                            scale: 1,
-                            duration: 0.9,
-                            ease: 'back.out(1.2)',
-                            clearProps: 'transform'
-                        });
-                    }
-                }
-            });
-        }
+        }, 100);
     }
 
     function triggerLeaderboardAnimations() {
-        if (!state.leaderboardData || state.leaderboardData.length === 0) return;
-
-        const maxVal = Math.max(...state.leaderboardData.map(r => Number(r.total_score || 0)), 10);
-        let step = 50;
-        if (maxVal <= 100) {
-            step = 25;
-        } else if (maxVal <= 300) {
-            step = 50;
-        } else {
-            step = 100;
-        }
-        const scaleMax = Math.ceil((maxVal * 1.05) / step) * step;
-        const targetVal = scaleMax;
-
-        state.leaderboardData.forEach((team) => {
-            const card = document.getElementById(`team-card-${team.id}`);
-            if (!card) return;
-
-            const score = Number(team.total_score || 0);
-            const percent = Math.min(100, Math.round((score / targetVal) * 100));
-            const fillEl = card.querySelector('.tv-chart-bar-fill');
-            const scoreEl = card.querySelector('.tv-chart-bar-badge-val');
-
-            if (scoreEl) {
-                const prevScore = Number(scoreEl.dataset.score || 0);
-                scoreEl.dataset.score = score;
-                const scoreObj = { value: prevScore };
-                
-                gsap.killTweensOf(scoreObj);
-                gsap.to(scoreObj, {
-                    value: score,
-                    duration: 1.8,
-                    ease: 'power2.out',
-                    onUpdate: () => {
-                        scoreEl.textContent = Math.round(scoreObj.value);
-                    }
-                });
-            }
-
-            if (fillEl) {
-                gsap.killTweensOf(fillEl);
-                gsap.to(fillEl, {
-                    width: `${percent}%`,
-                    duration: 1.8,
-                    ease: 'power3.out'
-                });
-            }
-        });
-    }
+        // Handled dynamically by renderLeaderboard
     }
 
     function renderSchedule(scheduleData) {

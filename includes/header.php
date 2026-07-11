@@ -63,7 +63,7 @@ CSS
 ===================================================== -->
 <link
     rel="stylesheet"
-    href="<?= asset_url('css/admin.css') ?>"
+    href="<?= asset_url('css/admin.css') ?>?v=<?= filemtime(__DIR__ . '/../assets/css/admin.css') ?>"
 >
 
 
@@ -78,7 +78,7 @@ window.APP_CONFIG = {
     assetUrl: <?= json_encode(asset_url(), JSON_UNESCAPED_SLASHES) ?>
 };
 </script>
-<script src="<?= asset_url('js/admin.js') ?>" defer></script>
+<script src="<?= asset_url('js/admin.js') ?>?v=<?= filemtime(__DIR__ . '/../assets/js/admin.js') ?>" defer></script>
 
 </head>
 

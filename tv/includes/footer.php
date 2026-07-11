@@ -10,9 +10,6 @@ $enabledSlides = array_values(array_filter(
     </main>
 
 
-
-
-
     <div class="tv-emergency" data-emergency hidden>
         <strong>Emergency</strong>
         <span data-emergency-message></span>
@@ -40,9 +37,9 @@ window.TV_BOOT = {
         winners: <?= json_encode(app_url('/tv/api/winners.php'), JSON_UNESCAPED_SLASHES) ?>,
         announcements: <?= json_encode(app_url('/tv/api/announcements.php'), JSON_UNESCAPED_SLASHES) ?>
     },
-    initial: <?= json_encode(tv_bootstrap_data(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>
+    initial: <?= json_encode($tvBootstrapData ?? tv_bootstrap_data(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>
 };
 </script>
-<script src="<?= e(tv_asset_url('js/tv.js')) ?>" defer></script>
+<script src="<?= e(tv_asset_url('js/tv.js')) ?>?v=<?= filemtime(app_path('tv/assets/js/tv.js')) ?>" defer></script>
 </body>
 </html>

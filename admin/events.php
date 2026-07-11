@@ -270,7 +270,7 @@ require_once __DIR__ . '/../includes/sidebar.php';
     <div class="modal-box modal-lg">
         <div class="modal-header">
             <div class="modal-title" id="eventModalTitle">Create Event</div>
-            <button class="modal-close" type="button" data-close-modal="eventModal"><i class="fa-solid fa-xmark"></i></button>
+            <button class="modal-close" type="button" data-modal-close><i class="fa-solid fa-xmark"></i></button>
         </div>
         <form method="POST" id="eventForm">
             <?= admin_csrf_field() ?>
@@ -325,7 +325,7 @@ require_once __DIR__ . '/../includes/sidebar.php';
                 </div>
             </div>
             <div class="form-actions">
-                <button type="button" class="btn btn-secondary btn-md" data-close-modal="eventModal">Cancel</button>
+                <button type="button" class="btn btn-secondary btn-md" data-modal-close>Cancel</button>
                 <button type="submit" class="btn btn-success btn-md">Save Event</button>
             </div>
         </form>
@@ -336,7 +336,7 @@ require_once __DIR__ . '/../includes/sidebar.php';
     <div class="modal-box modal-md">
         <div class="modal-header">
             <div class="modal-title">Delete Event</div>
-            <button class="modal-close" type="button" data-close-modal="deleteModal"><i class="fa-solid fa-xmark"></i></button>
+            <button class="modal-close" type="button" data-modal-close><i class="fa-solid fa-xmark"></i></button>
         </div>
         <div class="panel">Delete <strong id="deleteName"></strong>? Events with entries are protected from deletion.</div>
         <form method="POST">
@@ -344,7 +344,7 @@ require_once __DIR__ . '/../includes/sidebar.php';
             <input type="hidden" name="action" value="delete">
             <input type="hidden" name="event_id" id="deleteId">
             <div class="form-actions">
-                <button type="button" class="btn btn-secondary btn-md" data-close-modal="deleteModal">Cancel</button>
+                <button type="button" class="btn btn-secondary btn-md" data-modal-close>Cancel</button>
                 <button type="submit" class="btn btn-danger btn-md">Delete</button>
             </div>
         </form>

@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../../config/bootstrap.php';
+require_once __DIR__ . '/../../config/rate-limiter.php';
 
 if (!function_exists('e')) {
     function e($value): string
@@ -211,6 +212,13 @@ function tv_legacy_component_settings(PDO $pdo, int $eventId): array
         return [];
     }
 
+    // Dynamic database column self-healing initialization
+    try {
+        $pdo->exec("ALTER TABLE musabaqa_tv_components ADD COLUMN style VARCHAR(50) NOT NULL DEFAULT 'classic'");
+    } catch (PDOException $e) {
+        // Suppress error if column already exists
+    }
+
     $params = [];
     if ($eventId > 0) {
         $where = 'event_id = ? OR (event_id IS NULL AND NOT EXISTS (SELECT 1 FROM musabaqa_tv_components WHERE event_id = ?))';
@@ -220,7 +228,7 @@ function tv_legacy_component_settings(PDO $pdo, int $eventId): array
     }
 
     $stmt = $pdo->prepare("
-        SELECT slide_key, title, duration, is_enabled, sort_order
+        SELECT slide_key, title, duration, is_enabled, sort_order, style
         FROM musabaqa_tv_components
         WHERE {$where}
         ORDER BY sort_order ASC, id ASC
@@ -236,6 +244,7 @@ function tv_legacy_component_settings(PDO $pdo, int $eventId): array
             'duration' => max(3000, (int)$row['duration']),
             'enabled' => (int)$row['is_enabled'] === 1,
             'sort_order' => (int)$row['sort_order'],
+            'style' => (string)($row['style'] ?? 'classic'),
         ];
     }
 
@@ -263,6 +272,11 @@ function tv_normalize_settings(array $settings): array
         $cleanSlides[$key]['duration'] = max(3000, min(120000, (int)$cleanSlides[$key]['duration']));
         $cleanSlides[$key]['enabled'] = (bool)$cleanSlides[$key]['enabled'];
         $cleanSlides[$key]['sort_order'] = (int)$cleanSlides[$key]['sort_order'];
+        if ($key === 'leaderboard') {
+            $cleanSlides[$key]['style'] = in_array($cleanSlides[$key]['style'] ?? 'classic', ['classic', 'orbit', 'podium', 'staggered'], true)
+                ? $cleanSlides[$key]['style']
+                : 'classic';
+        }
     }
     $settings['slides'] = $cleanSlides;
 
@@ -517,6 +531,52 @@ function tv_leaderboard(?int $eventId = null): array
     }
 
     return $rows;
+}
+
+function tv_latest_score_update(?int $eventId = null): ?array
+{
+    $eventId = $eventId ?? tv_active_event_id();
+    if ($eventId <= 0) {
+        return null;
+    }
+
+    $pdo = tv_pdo();
+    $stmt = $pdo->prepare("
+        SELECT
+            ms.id,
+            ms.total_mark,
+            COALESCE(ms.approved_at, ms.updated_at, ms.created_at) AS approved_time,
+            p.title AS program_title,
+            pe.entry_name,
+            t.team_name,
+            t.short_name,
+            t.team_color
+        FROM musabaqa_scores ms
+        JOIN musabaqa_program_entries pe ON pe.id = ms.entry_id
+        JOIN musabaqa_programs p ON p.id = ms.program_id
+        JOIN musabaqa_teams t ON t.id = pe.team_id
+        WHERE ms.event_id = ?
+          AND ms.status = 'approved'
+        ORDER BY COALESCE(ms.approved_at, ms.updated_at, ms.created_at) DESC, ms.id DESC
+        LIMIT 1
+    ");
+    $stmt->execute([$eventId]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$row) {
+        return null;
+    }
+
+    return [
+        'id' => (int)$row['id'],
+        'program_title' => $row['program_title'],
+        'entry_name' => $row['entry_name'],
+        'team_name' => $row['team_name'],
+        'short_name' => $row['short_name'] ?: $row['team_name'],
+        'team_color' => tv_color($row['team_color'] ?? null),
+        'score' => round((float)$row['total_mark'], 2),
+        'approved_time' => $row['approved_time'],
+    ];
 }
 
 function tv_program_rows(int $eventId): array
@@ -1141,6 +1201,7 @@ function tv_bootstrap_data(): array
         'settings' => $settings,
         'stats' => tv_stats($eventId),
         'leaderboard' => tv_leaderboard($eventId),
+        'latest_score_update' => tv_latest_score_update($eventId),
         'current' => tv_current_program($eventId),
         'schedule' => tv_schedule($eventId),
         'winners' => tv_winners($eventId),

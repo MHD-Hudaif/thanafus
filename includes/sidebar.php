@@ -28,7 +28,27 @@ function admin_sidebar_is_active($path) {
 if (!empty($isAjaxRequest)) return;
 ?>
 
-<div class="sidebar">
+<div class="mobile-admin-bar">
+    <button
+        type="button"
+        class="mobile-sidebar-toggle"
+        data-sidebar-toggle
+        aria-controls="adminSidebar"
+        aria-expanded="false"
+        aria-label="Open sidebar menu"
+    >
+        <i class="fa-solid fa-bars"></i>
+    </button>
+
+    <div class="mobile-admin-brand">
+        <img src="<?= asset_url('images/thanafus-logo.png') ?>" alt="Thanafus Logo">
+        <span>Admin Panel</span>
+    </div>
+</div>
+
+<div class="sidebar-overlay" data-sidebar-overlay></div>
+
+<div class="sidebar" id="adminSidebar">
 
     <!-- =====================================================
     TOP
@@ -131,10 +151,15 @@ if (!empty($isAjaxRequest)) return;
                     <span>TV Control</span>
                 </a>
                 <a href="<?= app_url('/admin/logs') ?>"
-   class="sidebar-link <?= basename($_SERVER['PHP_SELF']) === 'logs.php' ? 'active' : '' ?>">
-    <i class="fa-solid fa-clock-rotate-left"></i>
-    <span>Activity Logs</span>
-</a>
+                   class="sidebar-link <?= admin_sidebar_is_active('/admin/logs') ?>">
+                    <i class="fa-solid fa-clock-rotate-left"></i>
+                    <span>Activity Logs</span>
+                </a>
+                <a href="#" id="sidebarChatBtn" class="sidebar-link" data-ajax-ignore>
+                    <i class="fa-solid fa-comments"></i>
+                    <span>Admin Chat</span>
+                    <span id="chatUnreadCount" class="chat-unread-badge" style="display: none;">0</span>
+                </a>
 
             <?php endif; ?>
 
@@ -182,4 +207,55 @@ if (!empty($isAjaxRequest)) return;
 
     </div>
 
+</div>
+
+<!-- GLOBAL CHAT MODAL OVERLAY -->
+<div class="chat-modal-overlay" id="globalChatModal" aria-hidden="true">
+    <div class="chat-modal-container">
+        <!-- Chat Header -->
+        <div class="chat-header-bar">
+            <div class="chat-header-info">
+                <i class="fa-solid fa-comments text-primary"></i>
+                <h3 id="chatActiveRoomName">Global Lounge</h3>
+            </div>
+            <button type="button" class="chat-close-btn" id="closeChatModalBtn">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <!-- Chat Main Area -->
+        <div class="chat-main-body">
+            <!-- Left User Sidebar -->
+            <div class="chat-user-sidebar">
+                <div class="chat-user-item active" id="chatRoomGlobal" data-room-type="global">
+                    <div class="chat-item-avatar global-avatar">
+                        <i class="fa-solid fa-users"></i>
+                    </div>
+                    <div class="chat-item-details">
+                        <span class="chat-item-name">Global Lounge</span>
+                        <span class="chat-item-status">Public Room</span>
+                    </div>
+                </div>
+                <div class="chat-user-divider">Direct Messages</div>
+                <div class="chat-users-list" id="chatUsersListContainer">
+                    <!-- Loaded dynamically via JS -->
+                </div>
+            </div>
+
+            <!-- Right Message Feed -->
+            <div class="chat-feed-pane">
+                <div class="chat-messages-container" id="chatMessagesFeed">
+                    <!-- Messages loaded dynamically -->
+                </div>
+                <form id="chatMessageForm" class="chat-input-area" autocomplete="off" data-ajax-ignore>
+                    <?= admin_csrf_field() ?>
+                    <input type="hidden" id="chatActiveReceiverId" name="receiver_id" value="">
+                    <input type="text" id="chatInputMessage" name="message" placeholder="Type a message..." required>
+                    <button type="submit" class="chat-send-btn">
+                        <i class="fa-solid fa-paper-plane"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
 </div>

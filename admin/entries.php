@@ -551,7 +551,7 @@ require_once __DIR__ . '/../includes/sidebar.php';
             <div class="page-title">Entries</div>
             <div class="page-subtitle">Manage approved entries and program assignments</div>
         </div>
-        <button type="button" class="btn btn-success btn-md" onclick="openCreateModal()"><i class="fa-solid fa-plus"></i> Create Entry</button>
+        <button type="button" class="btn btn-success btn-md" data-create-entry><i class="fa-solid fa-plus"></i> Create Entry</button>
     </div>
 
     <?php if ($flash): ?>
@@ -797,6 +797,8 @@ function openCreateModal() {
    window.openModal('entryModal');
 }
 
+window.openCreateEntryModal = openCreateModal;
+
 function openEditModal(entry) {
     document.getElementById('entryForm').reset();
     document.getElementById('entryModalTitle').textContent = 'Edit Entry';
@@ -884,6 +886,12 @@ async function openMembers(entryId, manage = false) {
 }
 
 document.addEventListener('click', (e) => {
+    const createBtn = e.target.closest('[data-create-entry]');
+    if (createBtn) {
+        openCreateModal();
+        return;
+    }
+
     const editBtn = e.target.closest('[data-edit]');
     if (editBtn) {
         openEditModal(JSON.parse(editBtn.dataset.edit));

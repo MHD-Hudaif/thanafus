@@ -1,4 +1,3 @@
-
 /* =====================================================
    KAUZARIYYA MUSABAQA — ADMIN JS
    GSAP Animations + AJAX SPA Router
@@ -15,6 +14,15 @@
     const APP_URL = window.APP_CONFIG?.baseUrl || '';
 
     const AJAX_HEADER = { 'X-Requested-With': 'XMLHttpRequest' };
+
+    function escapeHtml(value) {
+        return String(value ?? '')
+            .replaceAll('&', '&amp;')
+            .replaceAll('<', '&lt;')
+            .replaceAll('>', '&gt;')
+            .replaceAll('"', '&quot;')
+            .replaceAll("'", '&#039;');
+    }
 
     /* =====================================================
        LOADING BAR
@@ -38,7 +46,13 @@
        GSAP ANIMATIONS
        ===================================================== */
 
+    function hasGsap() {
+        return typeof window.gsap !== 'undefined';
+    }
+
     function runEntryAnimations() {
+
+        if (!hasGsap()) return;
 
         const mc = document.querySelector('.main-content');
         if (!mc) return;
@@ -129,17 +143,180 @@
        ===================================================== */
 
     function runSidebarAnimations() {
-        gsap.from('.sidebar', {
-            x: -40, opacity: 0,
-            duration: 1, ease: 'power3.out'
+        const links = document.querySelectorAll('.sidebar-link');
+
+        /* Keep the sidebar usable even if an animation is interrupted. */
+        links.forEach(link => {
+            link.style.opacity = '';
+            link.style.transform = '';
         });
 
-        document.querySelectorAll('.sidebar-link').forEach((link, i) => {
-            gsap.from(link, {
-                x: -20, opacity: 0,
+        if (window.matchMedia('(max-width: 920px)').matches) return;
+
+        if (!hasGsap()) return;
+
+        gsap.from('.sidebar', {
+            x: -40,
+            duration: 1,
+            ease: 'power3.out',
+            clearProps: 'transform'
+        });
+
+        links.forEach((link, i) => {
+            gsap.fromTo(link,
+                { x: -20 },
+                {
+                x: 0,
                 duration: 0.7, stagger: 0.04,
-                delay: 0.25 + i * 0.04, ease: 'power2.out'
+                delay: 0.25 + i * 0.04, ease: 'power2.out',
+                clearProps: 'transform'
+                }
+            );
+        });
+    }
+
+    /* =====================================================
+       MOBILE SIDEBAR
+       ===================================================== */
+
+    function setSidebarOpen(isOpen) {
+        const toggle = document.querySelector('[data-sidebar-toggle]');
+        document.body.classList.toggle('sidebar-open', isOpen);
+
+        if (toggle) {
+            toggle.setAttribute('aria-expanded', String(isOpen));
+            toggle.setAttribute('aria-label', isOpen ? 'Close sidebar menu' : 'Open sidebar menu');
+        }
+    }
+
+    function closeSidebarOnMobile() {
+        if (window.matchMedia('(max-width: 920px)').matches) {
+            setSidebarOpen(false);
+        }
+    }
+
+    function initSidebarToggle() {
+        const toggle = document.querySelector('[data-sidebar-toggle]');
+        const overlay = document.querySelector('[data-sidebar-overlay]');
+
+        if (toggle) {
+            toggle.addEventListener('click', () => {
+                setSidebarOpen(!document.body.classList.contains('sidebar-open'));
             });
+        }
+
+        if (overlay) {
+            overlay.addEventListener('click', () => setSidebarOpen(false));
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                setSidebarOpen(false);
+            }
+        });
+
+        document.addEventListener('click', (e) => {
+            const sidebarLink = e.target.closest('.sidebar a');
+            if (sidebarLink) {
+                closeSidebarOnMobile();
+            }
+        });
+
+        window.addEventListener('resize', () => {
+            if (!window.matchMedia('(max-width: 920px)').matches) {
+                setSidebarOpen(false);
+            }
+        });
+    }
+
+    /* =====================================================
+       ALERT SYSTEM
+       ===================================================== */
+
+    function initAlerts() {
+        document.querySelectorAll('.alert').forEach(alert => {
+            if (alert.dataset.initialized) return;
+            alert.dataset.initialized = 'true';
+
+            // Wrap text in span
+            const content = alert.innerHTML;
+            alert.innerHTML = `<span style="flex-grow: 1; padding-right: 8px;">${content}</span>`;
+
+            // Close button
+            const closeBtn = document.createElement('button');
+            closeBtn.className = 'alert-close-btn';
+            closeBtn.innerHTML = '<i class="fa-solid fa-xmark"></i>';
+            closeBtn.setAttribute('type', 'button');
+            alert.appendChild(closeBtn);
+
+            // Progress bar
+            const progressBar = document.createElement('div');
+            progressBar.className = 'alert-progress';
+            alert.appendChild(progressBar);
+
+            if (hasGsap()) {
+                const tl = gsap.timeline();
+                
+                // Animate entry with a 3D tilt and bounce
+                tl.fromTo(alert, 
+                    { opacity: 0, y: -24, rotationX: -15, transformPerspective: 800, transformOrigin: "top center" }, 
+                    { opacity: 1, y: 0, rotationX: 1.5, duration: 0.75, ease: 'back.out(1.1)' }
+                );
+
+                // Progress indicator (12 seconds)
+                tl.fromTo(progressBar, 
+                    { scaleX: 1 }, 
+                    { scaleX: 0, duration: 12, ease: 'none' }
+                );
+
+                // Auto dismiss (1.2s fadeout with tilt back)
+                tl.to(alert, {
+                    opacity: 0,
+                    y: -16,
+                    rotationX: -10,
+                    height: 0,
+                    paddingTop: 0,
+                    paddingBottom: 0,
+                    marginTop: 0,
+                    marginBottom: 0,
+                    borderWidth: 0,
+                    duration: 1.2,
+                    ease: 'power3.inOut',
+                    onComplete: () => alert.remove()
+                });
+
+                closeBtn.addEventListener('click', () => {
+                    tl.kill();
+                    gsap.to(alert, {
+                        opacity: 0,
+                        y: -16,
+                        rotationX: -10,
+                        height: 0,
+                        paddingTop: 0,
+                        paddingBottom: 0,
+                        marginTop: 0,
+                        marginBottom: 0,
+                        borderWidth: 0,
+                        duration: 0.45,
+                        ease: 'power3.out',
+                        onComplete: () => alert.remove()
+                    });
+                });
+            } else {
+                // Fallback
+                setTimeout(() => {
+                    alert.style.transition = 'opacity 1.2s ease, height 1.2s ease, transform 1.2s ease';
+                    alert.style.opacity = '0';
+                    alert.style.transform = 'perspective(800px) rotateX(-10deg) translateY(-16px)';
+                    setTimeout(() => alert.remove(), 1200);
+                }, 12000);
+
+                closeBtn.addEventListener('click', () => {
+                    alert.style.transition = 'opacity 0.4s ease, height 0.4s ease';
+                    alert.style.opacity = '0';
+                    setTimeout(() => alert.remove(), 400);
+                });
+            }
         });
     }
 
@@ -206,9 +383,10 @@
        ===================================================== */
 
     function updateSidebarActive(url) {
-        const path = new URL(url, location.origin).pathname;
+        const normalize = (u) => new URL(u, location.origin).pathname.replace(/\.php$/i, '').replace(/\/$/, '');
+        const path = normalize(url);
         document.querySelectorAll('.sidebar-link').forEach(link => {
-            const linkPath = new URL(link.href, location.origin).pathname;
+            const linkPath = normalize(link.href);
             if (path === linkPath || path.startsWith(linkPath + '/')) {
                 link.classList.add('active');
             } else {
@@ -317,6 +495,7 @@
 
                 /* Re-init modals */
                 initModals();
+                initAlerts();
 
                 /* Animate in new content */
                 mainContent.style.opacity = '0';
@@ -324,6 +503,7 @@
 
                 /* Update sidebar */
                 updateSidebarActive(url);
+                closeSidebarOnMobile();
 
                 /* Update browser URL */
                 if (pushState) {
@@ -444,9 +624,302 @@
     window.addEventListener('DOMContentLoaded', () => {
         runSidebarAnimations();
         runEntryAnimations();
+        initSidebarToggle();
         initModals();
+        initAlerts();
         initRouter();
+        initAdminChat();
     });
+
+    /* =====================================================
+       ADMIN CHAT SYSTEM JS
+       ===================================================== */
+    let chatPollInterval = null;
+    let chatUnreadInterval = null;
+    let activeRoomId = 'global'; // 'global' or integer user ID
+
+    function chatApiUrl(action, params = {}) {
+        const url = new URL(`${APP_URL}/admin/chat-api.php`, window.location.origin);
+        url.searchParams.set('action', action);
+        Object.entries(params).forEach(([key, value]) => {
+            url.searchParams.set(key, value ?? '');
+        });
+        return url.toString();
+    }
+
+    function setChatFeedState(message, type = 'muted') {
+        const feed = document.getElementById('chatMessagesFeed');
+        if (!feed) return;
+
+        feed.innerHTML = `<div class="chat-empty-state chat-empty-state--${escapeHtml(type)}">${escapeHtml(message)}</div>`;
+    }
+
+    async function parseChatResponse(res) {
+        const data = await res.json().catch(() => null);
+        if (!res.ok || !data?.success) {
+            throw new Error(data?.error || 'Chat request failed.');
+        }
+        return data;
+    }
+
+    async function fetchChatMessages() {
+        const receiverId = activeRoomId === 'global' ? '' : activeRoomId;
+        const feed = document.getElementById('chatMessagesFeed');
+        if (!feed) return;
+
+        try {
+            const res = await fetch(chatApiUrl('get_messages', { receiver_id: receiverId }), {
+                headers: AJAX_HEADER,
+                credentials: 'same-origin',
+                cache: 'no-store'
+            });
+            const data = await parseChatResponse(res);
+            if (Array.isArray(data.messages)) {
+                let html = '';
+                let maxMsgId = 0;
+                data.messages.forEach(msg => {
+                    const isMe = msg.is_me ? 'me' : '';
+                    html += `
+                        <div class="chat-msg ${isMe}">
+                            ${!msg.is_me ? `<img class="chat-msg-avatar" src="${escapeHtml(msg.sender_avatar)}" alt="${escapeHtml(msg.sender_name)}">` : ''}
+                            <div class="chat-msg-content">
+                                ${!msg.is_me ? `<span class="chat-sender-name">${escapeHtml(msg.sender_name)}</span>` : ''}
+                                <div class="chat-bubble">
+                                    ${escapeHtml(msg.message)}
+                                </div>
+                                <span class="chat-meta">${msg.time}</span>
+                            </div>
+                        </div>
+                    `;
+                    maxMsgId = Math.max(maxMsgId, parseInt(msg.id, 10));
+                });
+
+                const oldHtml = feed.innerHTML;
+                feed.innerHTML = html || '<div class="chat-empty-state">No messages yet. Say hello!</div>';
+
+                if (oldHtml !== feed.innerHTML) {
+                    feed.scrollTop = feed.scrollHeight;
+                }
+
+                if (maxMsgId > 0) {
+                    localStorage.setItem('chat_last_seen_' + activeRoomId, String(maxMsgId));
+                    if (activeRoomId === 'global') {
+                        const badge = document.getElementById('chatUnreadCount');
+                        if (badge) badge.style.display = 'none';
+                    }
+                }
+            }
+        } catch (e) {
+            console.error('Chat poll failed:', e);
+            setChatFeedState(e.message || 'Unable to load chat messages.', 'error');
+        }
+    }
+
+    async function loadChatUsers() {
+        const container = document.getElementById('chatUsersListContainer');
+        if (!container) return;
+
+        try {
+            const res = await fetch(chatApiUrl('get_users'), {
+                headers: AJAX_HEADER,
+                credentials: 'same-origin',
+                cache: 'no-store'
+            });
+            const data = await parseChatResponse(res);
+            if (Array.isArray(data.users)) {
+                let html = '';
+                data.users.forEach(user => {
+                    const isActive = activeRoomId === parseInt(user.id, 10) ? 'active' : '';
+                    html += `
+                        <div class="chat-user-item ${isActive}" data-user-id="${user.id}" data-room-type="direct">
+                            <img class="chat-item-avatar" src="${escapeHtml(user.avatar)}" alt="${escapeHtml(user.full_name || user.username)}">
+                            <div class="chat-item-details">
+                                <span class="chat-item-name">${escapeHtml(user.full_name || user.username)}</span>
+                                <span class="chat-item-status">${escapeHtml(user.status)}</span>
+                            </div>
+                        </div>
+                    `;
+                });
+                container.innerHTML = html;
+
+                container.querySelectorAll('.chat-user-item').forEach(item => {
+                    item.addEventListener('click', function() {
+                        const userId = parseInt(this.dataset.userId, 10);
+                        switchChatRoom(userId, this.querySelector('.chat-item-name').textContent);
+                    });
+                });
+            }
+        } catch (e) {
+            console.error('Failed to load chat users:', e);
+            container.innerHTML = '<div class="chat-user-empty">Unable to load users</div>';
+        }
+    }
+
+    function switchChatRoom(roomId, roomName) {
+        activeRoomId = roomId;
+        const receiverInput = document.getElementById('chatActiveReceiverId');
+        if (receiverInput) receiverInput.value = roomId === 'global' ? '' : String(roomId);
+        
+        const activeRoomNameEl = document.getElementById('chatActiveRoomName');
+        if (activeRoomNameEl) activeRoomNameEl.textContent = roomName;
+
+        document.querySelectorAll('.chat-user-item').forEach(item => {
+            if (roomId === 'global' && item.id === 'chatRoomGlobal') {
+                item.classList.add('active');
+            } else if (roomId !== 'global' && parseInt(item.dataset.userId, 10) === roomId) {
+                item.classList.add('active');
+            } else {
+                item.classList.remove('active');
+            }
+        });
+
+        const feed = document.getElementById('chatMessagesFeed');
+        if (feed) feed.innerHTML = '';
+        fetchChatMessages();
+    }
+
+    async function checkUnreadMessages() {
+        if (document.getElementById('globalChatModal')?.classList.contains('active') && activeRoomId === 'global') {
+            return;
+        }
+        try {
+            const res = await fetch(chatApiUrl('get_messages', { receiver_id: '' }), {
+                headers: AJAX_HEADER,
+                credentials: 'same-origin',
+                cache: 'no-store'
+            });
+            const data = await parseChatResponse(res);
+            if (Array.isArray(data.messages)) {
+                const lastSeen = parseInt(localStorage.getItem('chat_last_seen_global') || '0', 10);
+                let unreadCount = 0;
+                data.messages.forEach(msg => {
+                    if (!msg.is_me && parseInt(msg.id, 10) > lastSeen) {
+                        unreadCount++;
+                    }
+                });
+
+                const badge = document.getElementById('chatUnreadCount');
+                if (badge) {
+                    if (unreadCount > 0) {
+                        badge.textContent = String(unreadCount);
+                        badge.style.display = 'inline-block';
+                    } else {
+                        badge.style.display = 'none';
+                    }
+                }
+            }
+        } catch (e) {
+            console.error('Failed to check unread chat messages:', e);
+        }
+    }
+
+    function initAdminChat() {
+        const chatOpenBtn = document.getElementById('sidebarChatBtn');
+        const chatCloseBtn = document.getElementById('closeChatModalBtn');
+        const chatOverlay = document.getElementById('globalChatModal');
+        const chatForm = document.getElementById('chatMessageForm');
+        const chatGlobalRoom = document.getElementById('chatRoomGlobal');
+
+        if (!chatOpenBtn || !chatOverlay) return;
+
+        // Open chat modal
+        chatOpenBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            switchChatRoom(activeRoomId || 'global', activeRoomId === 'global' ? 'Global Lounge' : (document.getElementById('chatActiveRoomName')?.textContent || 'Direct Message'));
+            chatOverlay.classList.add('active');
+            chatOverlay.setAttribute('aria-hidden', 'false');
+            
+            // GSAP slide-in
+            if (typeof window.gsap !== 'undefined') {
+                window.gsap.fromTo('#globalChatModal .chat-modal-container', 
+                    { x: '100%' }, 
+                    { x: '0%', duration: 0.45, ease: 'power3.out' }
+                );
+            }
+
+            loadChatUsers();
+            fetchChatMessages();
+
+            // Start polling loop (every 3 seconds)
+            clearInterval(chatPollInterval);
+            chatPollInterval = setInterval(fetchChatMessages, 3000);
+        });
+
+        // Close chat modal
+        const closeChat = () => {
+            clearInterval(chatPollInterval);
+            if (typeof window.gsap !== 'undefined') {
+                window.gsap.to('#globalChatModal .chat-modal-container', {
+                    x: '100%', 
+                    duration: 0.35, 
+                    ease: 'power2.in',
+                    onComplete: () => {
+                        chatOverlay.classList.remove('active');
+                        chatOverlay.setAttribute('aria-hidden', 'true');
+                        checkUnreadMessages();
+                    }
+                });
+            } else {
+                chatOverlay.classList.remove('active');
+                chatOverlay.setAttribute('aria-hidden', 'true');
+                checkUnreadMessages();
+            }
+        };
+
+        if (chatCloseBtn) chatCloseBtn.addEventListener('click', closeChat);
+        chatOverlay.addEventListener('click', (e) => {
+            if (e.target === chatOverlay) closeChat();
+        });
+
+        // Switch to global room
+        if (chatGlobalRoom) {
+            chatGlobalRoom.addEventListener('click', () => {
+                switchChatRoom('global', 'Global Lounge');
+            });
+        }
+
+        // Send message form handler
+        if (chatForm) {
+            chatForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const input = document.getElementById('chatInputMessage');
+                const sendBtn = chatForm.querySelector('.chat-send-btn');
+                if (!input) return;
+                const messageText = input.value.trim();
+                if (messageText === '') return;
+
+                const formData = new FormData(chatForm);
+                formData.append('action', 'send_message');
+
+                try {
+                    input.value = '';
+                    input.disabled = true;
+                    if (sendBtn) sendBtn.disabled = true;
+                    const res = await fetch(`${APP_URL}/admin/chat-api.php`, {
+                        method: 'POST',
+                        body: formData,
+                        headers: AJAX_HEADER,
+                        credentials: 'same-origin'
+                    });
+                    await parseChatResponse(res);
+                    await fetchChatMessages();
+                } catch (err) {
+                    console.error('Failed to send chat message:', err);
+                    setChatFeedState(err.message || 'Unable to send message.', 'error');
+                    input.value = messageText;
+                } finally {
+                    input.disabled = false;
+                    if (sendBtn) sendBtn.disabled = false;
+                    input.focus();
+                }
+            });
+        }
+
+        // Start background unread polling (every 8 seconds)
+        clearInterval(chatUnreadInterval);
+        checkUnreadMessages();
+        chatUnreadInterval = setInterval(checkUnreadMessages, 8000);
+    }
 
     /* Expose for pages that need to call openModal / closeModal */
     window.openModal = function (id) {

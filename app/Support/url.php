@@ -30,19 +30,6 @@ if (!function_exists('app_normalize_base_url')) {
     }
 }
 
-if (!function_exists('app_env')) {
-    function app_env(string $key, ?string $default = null): ?string
-    {
-        $value = $_ENV[$key] ?? $_SERVER[$key] ?? getenv($key);
-
-        if ($value === false || $value === null || $value === '') {
-            return $default;
-        }
-
-        return (string)$value;
-    }
-}
-
 if (!function_exists('app_url')) {
     function app_url(string $path = ''): string
     {

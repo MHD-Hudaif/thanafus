@@ -9,6 +9,7 @@ try {
     tv_json_success([
         'event' => tv_event_payload($event),
         'leaderboard' => tv_leaderboard($eventId),
+        'latest_score_update' => tv_latest_score_update($eventId),
         'stats' => tv_stats($eventId),
     ]);
 } catch (Throwable $exception) {

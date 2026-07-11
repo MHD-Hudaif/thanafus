@@ -15,22 +15,34 @@ if (!defined('TV_STAGE')) {
 ?>
 <div class="tv-now">
     <div class="tv-now-main">
-        <div class="tv-kicker" data-current-stage>Main Stage</div>
+        <div class="tv-now-brow">
+            <div class="tv-kicker" data-current-stage>Main Stage</div>
+            <span class="tv-stage-chip" data-current-status>Break</span>
+        </div>
         <h1 data-current-title>Break Time</h1>
         <div class="tv-now-performer" data-current-performer>No active performer</div>
         <div class="tv-team-badge" data-current-team>Awaiting next program</div>
-        <div style="display: flex; gap: 32px; margin-top: 32px; border-top: 1px solid var(--line-2); padding-top: 24px;">
+
+        <div class="tv-now-progress">
+            <div class="tv-now-progress-head">
+                <span>Entry Progress</span>
+                <strong data-current-progress-label>Waiting for entries</strong>
+            </div>
+            <div class="tv-now-progress-track"><span data-current-progress-fill></span></div>
+        </div>
+
+        <div class="tv-now-meta-grid">
             <div>
-                <span style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.15em; color: var(--muted); display: block; margin-bottom: 6px;">Category</span>
-                <strong data-current-category style="font-size: 18px; font-weight: 700;">All Classes</strong>
+                <span>Category</span>
+                <strong data-current-category>All Classes</strong>
             </div>
             <div>
-                <span style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.15em; color: var(--muted); display: block; margin-bottom: 6px;">Status</span>
-                <strong data-current-status style="font-size: 18px; font-weight: 700; color: var(--emerald);">Break</strong>
+                <span>Entries</span>
+                <strong data-current-entry-count>0</strong>
             </div>
             <div>
-                <span style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.15em; color: var(--muted); display: block; margin-bottom: 6px;">Room</span>
-                <strong data-current-room style="font-size: 18px; font-weight: 700;">Main Hall</strong>
+                <span>Room</span>
+                <strong data-current-room>Main Hall</strong>
             </div>
         </div>
     </div>

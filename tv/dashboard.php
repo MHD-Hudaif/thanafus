@@ -95,20 +95,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $isEnabled = isset($slideData['is_enabled']) ? 1 : 0;
             $sortOrder = (int)($slideData['sort_order'] ?? 0);
             
+            $style = trim((string)($slideData['style'] ?? 'classic'));
+            if (!in_array($style, ['classic', 'orbit', 'podium', 'staggered'], true)) {
+                $style = 'classic';
+            }
+
             if ($activeEventId > 0) {
                 $stmt = $pdo->prepare("
                     UPDATE musabaqa_tv_components 
-                    SET title = ?, duration = ?, is_enabled = ?, sort_order = ?
+                    SET title = ?, duration = ?, is_enabled = ?, sort_order = ?, style = ?
                     WHERE event_id = ? AND slide_key = ?
                 ");
-                $stmt->execute([$title, $duration, $isEnabled, $sortOrder, $activeEventId, $key]);
+                $stmt->execute([$title, $duration, $isEnabled, $sortOrder, $style, $activeEventId, $key]);
             } else {
                 $stmt = $pdo->prepare("
                     UPDATE musabaqa_tv_components 
-                    SET title = ?, duration = ?, is_enabled = ?, sort_order = ?
+                    SET title = ?, duration = ?, is_enabled = ?, sort_order = ?, style = ?
                     WHERE event_id IS NULL AND slide_key = ?
                 ");
-                $stmt->execute([$title, $duration, $isEnabled, $sortOrder, $key]);
+                $stmt->execute([$title, $duration, $isEnabled, $sortOrder, $style, $key]);
             }
         }
         $pdo->commit();
@@ -132,12 +137,190 @@ if ($activeEventId > 0) {
     $stmt->execute();
     $components = $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
-
 $flash = admin_take_flash();
+
+// Load TV functions to fetch live statistics
+require_once __DIR__ . '/includes/functions.php';
+$stats = tv_stats($activeEventId);
 
 require_once __DIR__ . '/../includes/header.php';
 require_once __DIR__ . '/../includes/sidebar.php';
 ?>
+
+<style>
+/* TV Control Layout */
+.tv-control-layout {
+    display: grid;
+    grid-template-columns: 1.2fr 0.8fr;
+    gap: 24px;
+    align-items: start;
+    margin-top: 20px;
+}
+
+@media (max-width: 1024px) {
+    .tv-control-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+.sticky-preview {
+    position: sticky;
+    top: 24px;
+}
+
+/* TV Bezel and Frame */
+.tv-frame-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    margin: 0 auto;
+}
+
+.tv-bezel {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    background: #1e1e24;
+    border: 12px solid #2d2d35;
+    border-radius: 8px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    position: relative;
+    box-sizing: border-box;
+}
+
+.tv-screen {
+    width: 100%;
+    height: 100%;
+    background: #000;
+    overflow: hidden;
+    position: relative;
+}
+
+.tv-screen iframe {
+    width: 1920px;
+    height: 1080px;
+    border: none;
+    transform-origin: top left;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+.tv-stand {
+    width: 60px;
+    height: 20px;
+    background: #23232a;
+    border-bottom: 2px solid #1a1a20;
+}
+
+.tv-base {
+    width: 160px;
+    height: 8px;
+    background: #2d2d35;
+    border-radius: 4px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+/* Live Badge */
+.live-badge {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+    padding: 4px 10px;
+    border-radius: 9999px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.live-dot {
+    width: 8px;
+    height: 8px;
+    background-color: #ef4444;
+    border-radius: 50%;
+    display: inline-block;
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(0.9);
+        opacity: 1;
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+    }
+    70% {
+        transform: scale(1);
+        opacity: 0.8;
+        box-shadow: 0 0 0 6px rgba(239, 68, 68, 0);
+    }
+    100% {
+        transform: scale(0.9);
+        opacity: 1;
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+    }
+}
+
+/* Analytics Stats Grid */
+.tv-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+}
+
+@media (max-width: 480px) {
+    .tv-stats-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.tv-stat-card {
+    background: var(--bg-secondary, #f8fafc);
+    border: 1px solid var(--border-color, #e2e8f0);
+    padding: 20px;
+    border-radius: 12px;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.admin-layout.dark-mode .tv-stat-card,
+body.dark .tv-stat-card {
+    background: #1e1e24;
+    border-color: #2d2d35;
+}
+
+.tv-stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+.tv-stat-val {
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--text-primary, #0f172a);
+    line-height: 1;
+    margin-bottom: 4px;
+}
+
+.tv-stat-lbl {
+    font-size: 13px;
+    color: var(--text-secondary, #64748b);
+    font-weight: 500;
+}
+
+.tv-stat-icon {
+    position: absolute;
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 32px;
+    color: var(--primary-color-light, rgba(20, 184, 166, 0.15));
+    opacity: 0.8;
+}
+</style>
 
 <div class="main-content">
     <div class="topbar">
@@ -156,78 +339,183 @@ require_once __DIR__ . '/../includes/sidebar.php';
         <div class="alert <?= $flash['type'] === 'success' ? 'alert-success' : 'alert-error' ?>"><?= e($flash['message']) ?></div>
     <?php endif; ?>
 
-    <div class="panel">
-        <form method="POST" class="form-grid">
-            <?= admin_csrf_field() ?>
-            
-            <div class="full-width table-responsive">
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th style="width: 100px;">Sort Order</th>
-                            <th>Slide Component</th>
-                            <th>Broadcast Title</th>
-                            <th style="width: 150px;">Duration (sec)</th>
-                            <th style="width: 120px; text-align: center;">Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($components as $c): ?>
-                            <tr>
-                                <td>
-                                    <input type="number" 
-                                           name="slides[<?= e($c['slide_key']) ?>][sort_order]" 
-                                           value="<?= (int)$c['sort_order'] ?>" 
-                                           class="form-control" 
-                                           style="width: 80px;"
-                                           required>
-                                </td>
-                                <td>
-                                    <strong><?= e(ucfirst($c['slide_key'])) ?></strong>
-                                    <span class="block text-muted text-xs"><?= e($c['slide_key']) ?></span>
-                                </td>
-                                <td>
-                                    <input type="text" 
-                                           name="slides[<?= e($c['slide_key']) ?>][title]" 
-                                           value="<?= e($c['title']) ?>" 
-                                           class="form-control" 
-                                           required>
-                                </td>
-                                <td>
-                                    <input type="number" 
-                                           name="slides[<?= e($c['slide_key']) ?>][duration]" 
-                                           value="<?= (int)($c['duration'] / 1000) ?>" 
-                                           min="1" 
-                                           class="form-control" 
-                                           style="width: 100px;"
-                                           required>
-                                </td>
-                                <td style="text-align: center;">
-                                    <div class="slide-status-wrap">
-                                        <label class="toggle-switch">
-                                            <input type="checkbox"
-                                                   class="slide-toggle"
-                                                   name="slides[<?= e($c['slide_key']) ?>][is_enabled]"
-                                                   value="1"
-                                                   data-slide-name="<?= e($c['title']) ?>"
-                                                   <?= $c['is_enabled'] ? 'checked' : '' ?>>
-                                            <span class="toggle-slider"></span>
-                                        </label>
-                                        <span class="slide-status-label <?= $c['is_enabled'] ? 'is-on' : '' ?>"><?= $c['is_enabled'] ? 'On Air' : 'Off' ?></span>
-                                    </div>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
+    <div class="tv-control-layout">
+        <!-- Left Column: Slide Controls & Analytics -->
+        <div class="tv-control-left">
+            <div class="panel">
+                <form method="POST" class="form-grid">
+                    <?= admin_csrf_field() ?>
+                    
+                    <div class="full-width table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 100px;">Sort Order</th>
+                                    <th>Slide Component</th>
+                                    <th>Broadcast Title</th>
+                                    <th style="width: 150px;">Duration (sec)</th>
+                                    <th style="width: 140px;">Layout / Style</th>
+                                    <th style="width: 120px; text-align: center;">Status</th>
+                                    <th style="width: 200px; text-align: center;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($components as $c): ?>
+                                    <tr>
+                                        <td>
+                                            <input type="number" 
+                                                   name="slides[<?= e($c['slide_key']) ?>][sort_order]" 
+                                                   value="<?= (int)$c['sort_order'] ?>" 
+                                                   class="form-control" 
+                                                   style="width: 80px;"
+                                                   required>
+                                        </td>
+                                        <td>
+                                            <strong><?= e(ucfirst($c['slide_key'])) ?></strong>
+                                            <span class="block text-muted text-xs"><?= e($c['slide_key']) ?></span>
+                                        </td>
+                                        <td>
+                                            <input type="text" 
+                                                   name="slides[<?= e($c['slide_key']) ?>][title]" 
+                                                   value="<?= e($c['title']) ?>" 
+                                                   class="form-control" 
+                                                   required>
+                                        </td>
+                                        <td>
+                                            <input type="number" 
+                                                   name="slides[<?= e($c['slide_key']) ?>][duration]" 
+                                                   value="<?= (int)($c['duration'] / 1000) ?>" 
+                                                   min="1" 
+                                                   class="form-control" 
+                                                   style="width: 100px;"
+                                                   required>
+                                        </td>
+                                        <td>
+                                            <?php if ($c['slide_key'] === 'leaderboard'): ?>
+                                                <select name="slides[<?= e($c['slide_key']) ?>][style]" class="form-control" style="width: 130px;">
+                                                    <option value="classic" <?= ($c['style'] ?? 'classic') === 'classic' ? 'selected' : '' ?>>Classic (Bars)</option>
+                                                    <option value="orbit" <?= ($c['style'] ?? 'classic') === 'orbit' ? 'selected' : '' ?>>Orbit (Radial)</option>
+                                                    <option value="podium" <?= ($c['style'] ?? 'classic') === 'podium' ? 'selected' : '' ?>>Podium (3D)</option>
+                                                    <option value="staggered" <?= ($c['style'] ?? 'classic') === 'staggered' ? 'selected' : '' ?>>Staggered</option>
+                                                </select>
+                                            <?php else: ?>
+                                                <input type="hidden" name="slides[<?= e($c['slide_key']) ?>][style]" value="classic">
+                                                <span class="text-muted text-xs">—</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td style="text-align: center;">
+                                            <div class="slide-status-wrap">
+                                                <label class="toggle-switch">
+                                                    <input type="checkbox"
+                                                           class="slide-toggle"
+                                                           name="slides[<?= e($c['slide_key']) ?>][is_enabled]"
+                                                           value="1"
+                                                           data-slide-name="<?= e($c['title']) ?>"
+                                                           <?= $c['is_enabled'] ? 'checked' : '' ?>>
+                                                    <span class="toggle-slider"></span>
+                                                </label>
+                                                <span class="slide-status-label <?= $c['is_enabled'] ? 'is-on' : '' ?>"><?= $c['is_enabled'] ? 'On Air' : 'Off' ?></span>
+                                            </div>
+                                        </td>
+                                        <td style="text-align: center;">
+                                            <div style="display: flex; gap: 8px; justify-content: center; align-items: center;">
+                                                <button type="button" 
+                                                        class="btn btn-secondary btn-sm preview-slide-btn" 
+                                                        data-url="<?= APP_URL ?>/tv/<?= e($c['slide_key']) ?>.php"
+                                                        style="min-height: 28px; padding: 4px 8px; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;"
+                                                        title="Preview in Frame">
+                                                    <i class="fa-solid fa-eye"></i> Preview
+                                                </button>
+                                                <a href="<?= APP_URL ?>/tv/<?= e($c['slide_key']) ?>.php" 
+                                                   target="_blank" 
+                                                   class="btn btn-primary btn-sm" 
+                                                   style="min-height: 28px; padding: 4px 8px; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;"
+                                                   title="Launch Standalone"
+                                                   data-ajax-ignore>
+                                                    <i class="fa-solid fa-arrow-up-right-from-square"></i> Open
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="full-width flex justify-end gap-3 mt-4">
+                        <button type="submit" class="btn btn-success btn-md">
+                            <i class="fa-solid fa-floppy-disk"></i> Save TV Settings
+                        </button>
+                    </div>
+                </form>
             </div>
 
-            <div class="full-width flex justify-end gap-3 mt-4">
-                <button type="submit" class="btn btn-success btn-md">
-                    <i class="fa-solid fa-floppy-disk"></i> Save TV Settings
-                </button>
+            <!-- Analytics Panel (Placed below the controls as requested) -->
+            <div class="panel mt-6">
+                <div class="flex justify-between items-center mb-4" style="border-bottom: 1px solid var(--border-color, #e2e8f0); padding-bottom: 12px;">
+                    <h3 style="font-size: 16px; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 8px;">
+                        <i class="fa-solid fa-chart-simple text-primary"></i> Broadcast Analytics
+                    </h3>
+                </div>
+                <div class="tv-stats-grid">
+                    <div class="tv-stat-card">
+                        <div class="tv-stat-val"><?= number_format($stats['teams']) ?></div>
+                        <div class="tv-stat-lbl">Competing Teams</div>
+                        <i class="fa-solid fa-users tv-stat-icon"></i>
+                    </div>
+                    <div class="tv-stat-card">
+                        <div class="tv-stat-val"><?= number_format($stats['programs']) ?></div>
+                        <div class="tv-stat-lbl">Total Programs</div>
+                        <i class="fa-solid fa-list-check tv-stat-icon"></i>
+                    </div>
+                    <div class="tv-stat-card">
+                        <div class="tv-stat-val"><?= number_format($stats['completed_programs']) ?></div>
+                        <div class="tv-stat-lbl">Completed Programs</div>
+                        <i class="fa-solid fa-circle-check tv-stat-icon"></i>
+                    </div>
+                    <div class="tv-stat-card">
+                        <div class="tv-stat-val"><?= number_format($stats['entries']) ?></div>
+                        <div class="tv-stat-lbl">Score Entries</div>
+                        <i class="fa-solid fa-clipboard-list tv-stat-icon"></i>
+                    </div>
+                </div>
             </div>
-        </form>
+        </div>
+
+        <!-- Right Column: Live TV Display Preview -->
+        <div class="tv-control-right">
+            <div class="panel sticky-preview">
+                <div class="flex justify-between items-center mb-4" style="border-bottom: 1px solid var(--border-color, #e2e8f0); padding-bottom: 12px;">
+                    <h3 style="font-size: 16px; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 8px;">
+                        <i class="fa-solid fa-tv text-primary"></i> Live TV Preview
+                    </h3>
+                    <span class="live-badge"><span class="live-dot"></span> LIVE FEED</span>
+                </div>
+                
+                <!-- Realistically designed TV screen frame -->
+                <div class="tv-frame-container">
+                    <div class="tv-bezel">
+                        <div class="tv-screen">
+                            <iframe id="tvPreviewIframe" src="<?= APP_URL ?>/tv/index.php" frameborder="0"></iframe>
+                        </div>
+                    </div>
+                    <div class="tv-stand"></div>
+                    <div class="tv-base"></div>
+                </div>
+                
+                <div class="flex justify-center gap-3 mt-4">
+                    <button class="btn btn-secondary btn-sm" onclick="document.getElementById('tvPreviewIframe').src = '<?= APP_URL ?>/tv/index.php';">
+                        <i class="fa-solid fa-arrows-spin"></i> Loop All Slides
+                    </button>
+                    <button class="btn btn-secondary btn-sm" onclick="document.getElementById('tvPreviewIframe').src = document.getElementById('tvPreviewIframe').src;">
+                        <i class="fa-solid fa-arrows-rotate"></i> Refresh
+                    </button>
+                    <a href="<?= APP_URL ?>/tv/index.php" target="_blank" class="btn btn-primary btn-sm" data-ajax-ignore>
+                        <i class="fa-solid fa-expand"></i> Fullscreen Loop
+                    </a>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -336,6 +624,30 @@ require_once __DIR__ . '/../includes/sidebar.php';
             closeModal('slideToggleModal');
         });
     });
+
+    // Handle individual slide preview button click
+    document.querySelectorAll('.preview-slide-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const url = this.dataset.url;
+            const iframe = document.getElementById('tvPreviewIframe');
+            if (iframe) {
+                iframe.src = url;
+            }
+        });
+    });
+
+    // TV Preview scaling
+    const tvScreen = document.querySelector('.tv-screen');
+    const tvIframe = document.getElementById('tvPreviewIframe');
+    if (tvScreen && tvIframe) {
+        const resizeObserver = new ResizeObserver(entries => {
+            for (let entry of entries) {
+                const scale = entry.contentRect.width / 1920;
+                tvIframe.style.transform = `scale(${scale})`;
+            }
+        });
+        resizeObserver.observe(tvScreen);
+    }
 })();
 </script>
 

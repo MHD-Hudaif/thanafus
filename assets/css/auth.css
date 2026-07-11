@@ -713,7 +713,58 @@ html {
   margin-left: .8em;
 }
 .google-btn-wrapper {
+  position: relative;
   display: flex;
   justify-content: center;
   margin: 18px 0 20px 0;
+  width: 100%;
+}
+
+.google-custom-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  max-width: 370px;
+  height: 44px;
+  background: #182025; /* Dark grey matching theme input bg */
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: #fff;
+  font-family: 'Cairo', 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.google-custom-btn:hover {
+  background: #1f2930;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.google-icon-svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
+}
+
+/* Stack the real GSI iframe on top invisibly so click triggers standard OAuth flow */
+.google-btn-wrapper .g_id_signin {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 370px;
+  height: 44px;
+  opacity: 0.01;
+  z-index: 10;
+  cursor: pointer;
+}
+
+.google-btn-wrapper .g_id_signin iframe {
+  cursor: pointer !important;
 }
