@@ -258,7 +258,25 @@
 
     function hexToRgb(hex) {
         if (!hex) return { r: 255, g: 255, b: 255 };
-        const h = hex.replace(/^#/, '');
+        
+        const colorNames = {
+            'green': { r: 0, g: 255, b: 136 },
+            'red': { r: 255, g: 34, b: 85 },
+            'blue': { r: 0, g: 170, b: 255 },
+            'yellow': { r: 255, g: 238, b: 0 },
+            'white': { r: 224, g: 247, b: 255 },
+            'purple': { r: 208, g: 0, b: 255 },
+            'orange': { r: 255, g: 136, b: 0 },
+            'pink': { r: 255, g: 0, b: 187 },
+            'black': { r: 24, g: 24, b: 30 }
+        };
+
+        const name = String(hex).toLowerCase().trim();
+        if (colorNames[name]) {
+            return colorNames[name];
+        }
+
+        const h = String(hex).replace(/^#/, '');
         let r = 0, g = 0, b = 0;
         if (h.length === 3) {
             r = parseInt(h.charAt(0) + h.charAt(0), 16);
@@ -269,12 +287,42 @@
             g = parseInt(h.slice(2, 4), 16);
             b = parseInt(h.slice(4, 6), 16);
         }
+        
+        if (isNaN(r) || isNaN(g) || isNaN(b)) {
+            return { r: 0, g: 255, b: 136 }; 
+        }
+        
         return { r, g, b };
     }
 
     function rgbaColor(hex, alpha) {
         const rgb = hexToRgb(hex);
         return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`;
+    }
+
+    function getTeamMascot(name) {
+        const lower = String(name).toLowerCase();
+        if (lower.includes('3') || lower.includes('anas')) {
+            return {
+                name: 'Lion',
+                svg: `<svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M50 10 L85 25 L80 65 L50 90 L20 65 L15 25 Z" /><path d="M38 45 L45 48 L42 52 Z" /><path d="M62 45 L55 48 L58 52 Z" /><path d="M48 55 L52 55 L50 62 Z" /><path d="M50 62 L45 68 L50 72 L55 68 Z" /><path d="M50 10 L50 25" /><path d="M35 20 L45 28" /><path d="M65 20 L55 28" /></svg>`
+            };
+        } else if (lower.includes('1') || lower.includes('noufal')) {
+            return {
+                name: 'Falcon',
+                svg: `<svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M50 10 L85 25 L80 65 L50 90 L20 65 L15 25 Z" /><path d="M25 35 L40 45 L50 35 L60 45 L75 35" /><path d="M22 45 L40 52 L50 45 L60 52 L78 45" /><path d="M50 45 L46 55 L50 65 L54 55 Z" /><circle cx="44" cy="48" r="1.5" fill="currentColor" /><circle cx="56" cy="48" r="1.5" fill="currentColor" /><path d="M42 68 L50 82 L58 68 Z" /></svg>`
+            };
+        } else if (lower.includes('2') || lower.includes('imran')) {
+            return {
+                name: 'Wolf',
+                svg: `<svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M50 10 L85 25 L80 65 L50 90 L20 65 L15 25 Z" /><path d="M30 35 L38 22 L44 32" /><path d="M70 35 L62 22 L56 32" /><path d="M30 48 L42 48 L50 68 L58 48 L70 48" /><path d="M36 42 L44 45" /><path d="M64 42 L56 45" /><circle cx="50" cy="72" r="3" fill="currentColor" /></svg>`
+            };
+        } else {
+            return {
+                name: 'Dragon',
+                svg: `<svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M50 10 L85 25 L80 65 L50 90 L20 65 L15 25 Z" /><path d="M35 30 L22 18 L32 32" /><path d="M65 30 L78 18 L68 32" /><path d="M40 45 L50 35 L60 45 L55 68 L45 68 Z" /><path d="M38 52 L26 62 L42 58" /><path d="M62 52 L74 62 L58 58" /><path d="M42 42 L46 44" /><path d="M58 42 L54 44" /></svg>`
+            };
+        }
     }
 
     function getTeamTheme(colorHex) {
@@ -298,18 +346,18 @@
         
         const hueDegrees = h * 360;
         
+        // Pure neon FX — no icons
         if (s < 0.15 || l > 0.85) {
-            return { key: 'frost', icon: '❄️', name: 'Frost' };
+            return { key: 'neon', name: 'Neon' };
         }
-        
         if (hueDegrees >= 45 && hueDegrees < 85) {
-            return { key: 'lightning', icon: '⚡', name: 'Lightning' };
+            return { key: 'neon', name: 'Neon' };
         } else if (hueDegrees >= 165 && hueDegrees < 280) {
-            return { key: 'water', icon: '🌊', name: 'Water' };
+            return { key: 'neon', name: 'Neon' };
         } else if (hueDegrees >= 85 && hueDegrees < 165) {
-            return { key: 'frost', icon: '❄️', name: 'Frost' };
+            return { key: 'neon', name: 'Neon' };
         } else {
-            return { key: 'fire', icon: '🔥', name: 'Fire' };
+            return { key: 'neon', name: 'Neon' };
         }
     }
 
@@ -407,48 +455,105 @@
         const slots = Array.from({ length: 4 }, (_, index) => rows[index] || null);
         const maxScore = Math.max(...slots.map(t => t ? Number(t.total_score || 0) : 0), 10);
 
-        container.className = 'tv-floating-leaderboard';
+        // Get event title from the topbar
+        const eventTitleEl = document.querySelector('[data-event-title]');
+        const eventTitle = eventTitleEl ? eventTitleEl.textContent : 'SCORE REVEAL';
+
+        container.className = 'tv-floating-leaderboard cinema-stage';
         container.innerHTML = `
             <canvas class="confetti-canvas"></canvas>
-            <div class="tv-floating-card-grid">
+
+            <!-- Stage Haze Overlay -->
+            <div class="stage-haze"></div>
+
+            <!-- Event Header with LIVE Badge -->
+            <div class="cinema-header">
+                <div class="cinema-header-inner">
+                    <div class="cinema-logo-mark">
+                        <img src="${escapeHtml(document.querySelector('.tv-brand img')?.src || '')}" alt="" />
+                    </div>
+                    <div class="cinema-title-block">
+                        <div class="cinema-event-title">${escapeHtml(eventTitle)}</div>
+                        <div class="cinema-subtitle">SCORE REVEAL</div>
+                    </div>
+                    <div class="cinema-live-badge"><span></span>LIVE</div>
+                </div>
+            </div>
+
+            <!-- Score Overlay Table -->
+            <div class="cinema-score-table">
+                <div class="score-table-inner">
+                    <div class="score-table-header">
+                        <span class="st-rank">RANK</span>
+                        <span class="st-team">TEAM</span>
+                        <span class="st-score">TOTAL SCORE</span>
+                    </div>
+                    ${slots.map((team, index) => {
+                        const color = team?.team_color || ['#38bdf8', '#f7c948', '#34d399', '#fb7185'][index];
+                        const scoreVal = team ? Number(team.total_score || 0) : 0;
+                        const name = team ? (team.team_name || team.short_name || 'Team') : '—';
+                        const rank = team ? team.rank : index + 1;
+                        return `
+                            <div class="score-table-row" style="--row-color: ${color};">
+                                <span class="st-rank"><strong>${rank}</strong></span>
+                                <span class="st-team">${escapeHtml(name)}</span>
+                                <span class="st-score score-table-val" data-target="${scoreVal}">0</span>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            </div>
+
+            <!-- Pedestal Stage -->
+            <div class="cinema-pedestal-stage">
                 ${slots.map((team, index) => {
                     const color = team?.team_color || ['#38bdf8', '#f7c948', '#34d399', '#fb7185'][index];
                     const rgb = hexToRgb(color);
                     const rgbStr = `${rgb.r}, ${rgb.g}, ${rgb.b}`;
-                    const theme = getTeamTheme(color);
                     
                     const scoreVal = team ? Number(team.total_score || 0) : 0;
-                    const targetHeight = team ? Math.max(60, Math.round((scoreVal / maxScore) * 440)) : 60;
+                    const targetHeight = team ? Math.max(100, Math.round((scoreVal / maxScore) * 460)) : 100;
                     
-                    const rank = team ? `#${team.rank}` : `#${index + 1}`;
-                    const name = team ? (team.team_name || team.short_name || 'Team') : 'Awaiting Team';
+                    const rank = team ? team.rank : index + 1;
+                    const name = team ? (team.team_name || team.short_name || 'Team') : '—';
+                    const mascot = getTeamMascot(name);
 
                     return `
-                        <div class="team-slot-3d" style="--team-color: ${color}; --team-color-rgb: ${rgbStr};">
-                            <!-- Circular Neon Base Ring -->
-                            <div class="base-ring-3d">
-                                <div class="base-icon-3d">${theme.icon}</div>
+                        <div class="cinema-pedestal-slot" style="--team-color: ${color}; --team-rgb: ${rgbStr};">
+                            <!-- Volumetric Mascot Banner behind pedestal -->
+                            <div class="cinema-banner">
+                                <div class="banner-mascot">${mascot.svg}</div>
+                                <div class="banner-team-label">${escapeHtml(name)}</div>
                             </div>
-                            
-                            <!-- Spotlight Flare -->
-                            <div class="pillar-spotlight"></div>
-                            
-                            <!-- 3D Column (Pillar) -->
-                            <div class="pillar-3d" style="--pillar-height: ${targetHeight}px;">
-                                <div class="face front">
-                                    <div class="pillar-fx ${theme.key}"></div>
-                                    <div class="pillar-score-text" data-score="${scoreVal}">0</div>
+
+                            <!-- Spotlight beam from above -->
+                            <div class="cinema-spotlight-beam"></div>
+
+                            <!-- Score Badge floating above pedestal -->
+                            <div class="cinema-score-badge" data-score="${scoreVal}">
+                                <span class="badge-value">0</span>
+                            </div>
+
+                            <!-- Cylindrical Pedestal -->
+                            <div class="cinema-pedestal-wrapper" style="--pedestal-height: ${targetHeight}px;">
+                                <div class="cinema-pedestal">
+                                    <div class="pedestal-body"></div>
+                                    <div class="pedestal-top-disc"></div>
+                                    <div class="pedestal-glow"></div>
                                 </div>
-                                <div class="face back"><div class="pillar-fx ${theme.key}"></div></div>
-                                <div class="face left"><div class="pillar-fx ${theme.key}"></div></div>
-                                <div class="face right"><div class="pillar-fx ${theme.key}"></div></div>
-                                <div class="face top"></div>
                             </div>
-                            
-                            <!-- Team Name Tag -->
-                            <div class="pillar-name-tag">
-                                <span>${escapeHtml(name)}</span>
-                                <small>${escapeHtml(rank)}</small>
+
+                            <!-- Glowing Base Platform -->
+                            <div class="cinema-base-platform">
+                                <div class="base-ring-outer"></div>
+                                <div class="base-ring-inner"></div>
+                                <div class="base-glow-pool"></div>
+                            </div>
+
+                            <!-- Name Tag -->
+                            <div class="cinema-name-tag">
+                                <div class="name-tag-rank">#${rank}</div>
+                                <div class="name-tag-name">${escapeHtml(name)}</div>
                             </div>
                         </div>
                     `;
@@ -456,90 +561,156 @@
             </div>
         `;
 
-        // Animate the height of the pillars using GSAP (sequenced as in the video)
+        // ========== GSAP CINEMATIC ANIMATION SEQUENCE ==========
         setTimeout(() => {
-            const slots3d = container.querySelectorAll('.team-slot-3d');
-            const pillars = container.querySelectorAll('.pillar-3d');
-            const scores = container.querySelectorAll('.pillar-score-text');
-            
-            if (typeof gsap !== 'undefined') {
-                // Initialize scale to 0
-                gsap.set(pillars, { scaleY: 0 });
-                
-                // Animate score text counters
-                scores.forEach(scoreEl => {
-                    const target = Number(scoreEl.dataset.score);
-                    const scoreObj = { value: 0 };
-                    gsap.to(scoreObj, {
-                        value: target,
-                        duration: 3,
-                        ease: 'power2.out',
-                        delay: 0.5,
-                        onUpdate: () => {
-                            scoreEl.textContent = formatScore(scoreObj.value);
-                        }
-                    });
-                });
+            if (typeof gsap === 'undefined') return;
 
-                // Pillar 1 (Left / Water) rises first (after 0.5s delay)
-                if (pillars[0]) {
-                    gsap.to(pillars[0], {
+            const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
+
+            // Elements
+            const header = container.querySelector('.cinema-header');
+            const scoreTable = container.querySelector('.cinema-score-table');
+            const pedestalSlots = container.querySelectorAll('.cinema-pedestal-slot');
+            const pedestals = container.querySelectorAll('.cinema-pedestal-wrapper');
+            const pedestalInners = container.querySelectorAll('.cinema-pedestal');
+            const scoreBadges = container.querySelectorAll('.cinema-score-badge');
+            const nameTags = container.querySelectorAll('.cinema-name-tag');
+            const spotlights = container.querySelectorAll('.cinema-spotlight-beam');
+            const banners = container.querySelectorAll('.cinema-banner');
+            const tableRows = container.querySelectorAll('.score-table-row');
+            const tableScores = container.querySelectorAll('.score-table-val');
+            const badgeValues = container.querySelectorAll('.badge-value');
+            const haze = container.querySelector('.stage-haze');
+
+            // Initial states
+            gsap.set(header, { opacity: 0, y: -40 });
+            gsap.set(scoreTable, { opacity: 0, y: -30, scale: 0.95 });
+            gsap.set(pedestals, { scaleY: 0 });
+            gsap.set(scoreBadges, { opacity: 0, y: 20, scale: 0.5 });
+            gsap.set(nameTags, { opacity: 0, y: 20 });
+            gsap.set(spotlights, { opacity: 0 });
+            gsap.set(banners, { opacity: 0, y: -80, scaleY: 0, transformOrigin: 'top center' });
+            gsap.set(tableRows, { opacity: 0, x: -20 });
+            gsap.set(haze, { opacity: 0 });
+
+            // 1. Stage haze fades in
+            tl.to(haze, { opacity: 1, duration: 1.5 }, 0);
+
+            // 2. Header slides in
+            tl.to(header, { opacity: 1, y: 0, duration: 0.8 }, 0.3);
+
+            // 3. Score table fades in
+            tl.to(scoreTable, { opacity: 1, y: 0, scale: 1, duration: 0.7 }, 0.6);
+
+            // 4. Table rows stagger in
+            tl.to(tableRows, { opacity: 1, x: 0, duration: 0.5, stagger: 0.12 }, 0.9);
+
+            // 5. Banners drop down and unroll (staggered)
+            tl.to(banners, { opacity: 1, y: 0, scaleY: 1, duration: 1.4, ease: 'power2.out', stagger: 0.15 }, 1.0);
+
+            // 6. Spotlights turn on (staggered)
+            tl.to(spotlights, { opacity: 1, duration: 1.2, stagger: 0.15 }, 1.4);
+
+            // 7. Pedestals rise (staggered from center outward) with quake/shake & impact slam
+            const riseOrder = [1, 2, 0, 3]; // center pair first, then outer
+            riseOrder.forEach((idx, seqIdx) => {
+                if (pedestals[idx]) {
+                    tl.to(pedestals[idx], {
                         scaleY: 1,
-                        duration: 2.8,
+                        duration: 2.2,
                         ease: 'power2.out',
-                        delay: 0.5
-                    });
-                }
-                
-                // Pillars 2 & 3 (Lightning & Frost) rise together next
-                if (pillars[1] || pillars[2]) {
-                    gsap.to([pillars[1], pillars[2]].filter(Boolean), {
-                        scaleY: 1,
-                        duration: 2.4,
-                        ease: 'power2.out',
-                        stagger: 0.15,
-                        delay: 1.4
-                    });
-                }
-                
-                // Pillar 4 (Right / Fire) rises fastest last
-                if (pillars[3]) {
-                    gsap.to(pillars[3], {
-                        scaleY: 1,
-                        duration: 2.0,
-                        ease: 'power3.out',
-                        delay: 2.4,
-                        onComplete: () => {
-                            // Find the team with the highest score
-                            let winnerIdx = 0;
-                            let maxS = -1;
-                            slots.forEach((t, i) => {
-                                if (t && Number(t.total_score || 0) > maxS) {
-                                    maxS = Number(t.total_score || 0);
-                                    winnerIdx = i;
+                        onStart: () => {
+                            // Shake the pedestal intensely during the rise
+                            gsap.to(pedestalInners[idx], {
+                                x: "random(-8, 8)",
+                                y: "random(-3, 3)",
+                                rotation: "random(-1.5, 1.5)",
+                                yoyo: true,
+                                repeat: 27,
+                                duration: 0.08,
+                                onComplete: () => {
+                                    // Reset offsets
+                                    gsap.set(pedestalInners[idx], { x: 0, y: 0, rotation: 0 });
+                                    // Heavy impact slam effect on landing
+                                    gsap.fromTo(pedestalInners[idx], { y: 25 }, { y: 0, duration: 0.5, ease: 'bounce.out' });
+                                    // Screen/Stage quake slam shake!
+                                    const stage = container.querySelector('.cinema-pedestal-stage');
+                                    if (stage) {
+                                        gsap.fromTo(stage, { y: 8 }, { y: 0, duration: 0.3, ease: 'bounce.out' });
+                                    }
                                 }
                             });
-                            
-                            // Turn on the spotlight flare on the winner
-                            if (slots3d[winnerIdx]) {
-                                const spotlight = slots3d[winnerIdx].querySelector('.pillar-spotlight');
-                                if (spotlight) {
-                                    spotlight.classList.add('winner-spotlight');
-                                }
-                            }
-                            
-                            // Trigger the golden confetti rain
-                            if (maxS > 0) {
-                                triggerGoldenConfetti(container);
-                            }
+                        }
+                    }, 1.8 + seqIdx * 0.35);
+                }
+            });
+
+            // 8. Score badges pop in after their pedestal rises
+            riseOrder.forEach((idx, seqIdx) => {
+                if (scoreBadges[idx]) {
+                    tl.to(scoreBadges[idx], {
+                        opacity: 1,
+                        y: 0,
+                        scale: 1,
+                        duration: 0.6,
+                        ease: 'back.out(1.7)'
+                    }, 3.0 + seqIdx * 0.35);
+                }
+            });
+
+            // 8. Name tags fade in
+            tl.to(nameTags, { opacity: 1, y: 0, duration: 0.5, stagger: 0.1 }, 3.5);
+
+            // 9. Animate score counters (both table and badges)
+            slots.forEach((team, idx) => {
+                const target = team ? Number(team.total_score || 0) : 0;
+                
+                // Badge counter
+                if (badgeValues[idx]) {
+                    const bObj = { value: 0 };
+                    gsap.to(bObj, {
+                        value: target,
+                        duration: 2.5,
+                        delay: 2.0 + idx * 0.3,
+                        ease: 'power2.out',
+                        onUpdate: () => {
+                            badgeValues[idx].textContent = formatScore(bObj.value);
                         }
                     });
                 }
-            } else {
-                // Fallback if GSAP is missing
-                pillars.forEach(p => p.style.transform = 'scaleY(1)');
-                scores.forEach(s => s.textContent = s.dataset.score);
-            }
+
+                // Table counter
+                if (tableScores[idx]) {
+                    const tObj = { value: 0 };
+                    gsap.to(tObj, {
+                        value: target,
+                        duration: 2.0,
+                        delay: 1.2 + idx * 0.15,
+                        ease: 'power2.out',
+                        onUpdate: () => {
+                            tableScores[idx].textContent = formatScore(tObj.value);
+                        }
+                    });
+                }
+            });
+
+            // 10. Winner spotlight enhancement after all rise (confetti removed)
+            tl.call(() => {
+                let winnerIdx = 0;
+                let maxS = -1;
+                slots.forEach((t, i) => {
+                    if (t && Number(t.total_score || 0) > maxS) {
+                        maxS = Number(t.total_score || 0);
+                        winnerIdx = i;
+                    }
+                });
+
+                // Enhance winner spotlight
+                if (pedestalSlots[winnerIdx]) {
+                    pedestalSlots[winnerIdx].classList.add('is-winner');
+                }
+            }, null, null, 4.8);
+
         }, 100);
     }
 

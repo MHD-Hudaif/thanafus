@@ -44,3 +44,26 @@ if (session_status() === PHP_SESSION_NONE) {
 
     session_start();
 }
+
+// Automatically synchronize session active_event_id with the globally active event from DB
+if (isset($musabaqa_pdo)) {
+    try {
+        $stmt = $musabaqa_pdo->query("SELECT id FROM musabaqa_events WHERE status = 'active' LIMIT 1");
+        $dbActiveId = (int)($stmt->fetchColumn() ?: 0);
+        if ($dbActiveId > 0) {
+            $_SESSION['active_event_id'] = $dbActiveId;
+        } else {
+            // Fallback to the latest event if none is explicitly active
+            $stmt = $musabaqa_pdo->query("SELECT id FROM musabaqa_events ORDER BY id DESC LIMIT 1");
+            $latestId = (int)($stmt->fetchColumn() ?: 0);
+            if ($latestId > 0) {
+                $_SESSION['active_event_id'] = $latestId;
+            } else {
+                unset($_SESSION['active_event_id']);
+            }
+        }
+    } catch (Throwable $e) {
+        // Ignore errors during installation/setup
+    }
+}
+

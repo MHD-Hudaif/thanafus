@@ -442,7 +442,7 @@ function tv_program_datetime_columns(PDO $pdo): array
     return $columns = [$start, $end];
 }
 
-function tv_color(?string $value, string $fallback = '#16d49a'): string
+function tv_color(?string $value, string $fallback = '#00ff88'): string
 {
     $value = trim((string)$value);
 
@@ -452,10 +452,15 @@ function tv_color(?string $value, string $fallback = '#16d49a'): string
 
     $lowerValue = strtolower($value);
     $colorMap = [
-        'green' => '#16d49a',
-        'red' => '#ff6d87',
-        'blue' => '#3b82f6',
-        'yellow' => '#ffd000',
+        'green' => '#00ff88',
+        'red' => '#ff2255',
+        'blue' => '#00aaff',
+        'yellow' => '#ffee00',
+        'white' => '#e0f7ff',
+        'purple' => '#d000ff',
+        'orange' => '#ff8800',
+        'pink' => '#ff00bb',
+        'black' => '#18181e',
     ];
 
     if (isset($colorMap[$lowerValue])) {

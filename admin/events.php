@@ -74,6 +74,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             throw new RuntimeException('Another event already uses that slug.');
         }
 
+        $pdo->beginTransaction();
+
+        if ($status === 'active') {
+            if ($action === 'update' && $eventId > 0) {
+                $pdo->prepare("UPDATE musabaqa_events SET status = 'completed' WHERE status = 'active' AND id <> ?")->execute([$eventId]);
+            } else {
+                $pdo->exec("UPDATE musabaqa_events SET status = 'completed' WHERE status = 'active'");
+            }
+        }
+
         if ($action === 'update' && $eventId > 0) {
             $stmt = $pdo->prepare("
                 UPDATE musabaqa_events
@@ -93,7 +103,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute([$title, $slug, $description, $themeColors, $scoreboardMode, $introEnabled, $scoreboardEnabled, $status, $startDate, $endDate, (int)($_SESSION['user_id'] ?? 0)]);
             admin_flash('success', 'Event created successfully.');
         }
+
+        $pdo->commit();
     } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
         admin_flash('error', $e->getMessage() ?: 'Unable to save event.');
     }
 
@@ -139,12 +154,12 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
         foreach ($paginatedEvents as $event) {
             $colors = array_map('trim', explode(',', $event['theme_colors'] ?: '#14b8a6,#22c55e'));
             $color1 = $colors[0] ?? '#14b8a6';
-            $isActive = (int)($_SESSION['active_event_id'] ?? 0) === (int)$event['id'];
+            $isActive = $event['status'] === 'active';
             ?>
             <div class="event-card" style="border-top: 4px solid <?= e($color1) ?>;">
                 <div class="event-top">
                     <span class="badge badge-neutral"><?= e(strtoupper((string)$event['scoreboard_mode'])) ?></span>
-                    <span class="badge <?= $isActive ? 'badge-success' : 'badge-neutral' ?>"><?= $isActive ? 'ACTIVE CONTEXT' : e(strtoupper((string)$event['status'])) ?></span>
+                    <span class="badge <?= $isActive ? 'badge-success' : 'badge-neutral' ?>"><?= $isActive ? 'ACTIVE' : e(strtoupper((string)$event['status'])) ?></span>
                 </div>
                 <div class="event-title"><?= e($event['title']) ?></div>
                 <div class="event-description"><?= e($event['description'] ?: 'No description') ?></div>
@@ -234,12 +249,12 @@ require_once __DIR__ . '/../includes/sidebar.php';
                     $colors = array_map('trim', explode(',', $event['theme_colors'] ?: '#14b8a6,#22c55e'));
                     $color1 = $colors[0] ?? '#14b8a6';
                     $color2 = $colors[1] ?? '#22c55e';
-                    $isActive = (int)($_SESSION['active_event_id'] ?? 0) === (int)$event['id'];
+                    $isActive = $event['status'] === 'active';
                 ?>
                 <div class="event-card" style="border-top: 4px solid <?= e($color1) ?>;">
                     <div class="event-top">
                         <span class="badge badge-neutral"><?= e(strtoupper((string)$event['scoreboard_mode'])) ?></span>
-                        <span class="badge <?= $isActive ? 'badge-success' : 'badge-neutral' ?>"><?= $isActive ? 'ACTIVE CONTEXT' : e(strtoupper((string)$event['status'])) ?></span>
+                        <span class="badge <?= $isActive ? 'badge-success' : 'badge-neutral' ?>"><?= $isActive ? 'ACTIVE' : e(strtoupper((string)$event['status'])) ?></span>
                     </div>
                     <div class="event-title"><?= e($event['title']) ?></div>
                     <div class="event-description"><?= e($event['description'] ?: 'No description') ?></div>

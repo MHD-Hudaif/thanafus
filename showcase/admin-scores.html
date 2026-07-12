@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Program Scores - Kauzariyya Musabaqa</title>
+
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700;800;900&family=Cinzel:wght@400;700&family=Playfair+Display:wght@400;700&display=swap" rel="stylesheet">
+<!-- Icons -->
+<link rel="stylesheet" href="lib/font-awesome/css/all.min.css">
+<!-- CSS -->
+<link rel="stylesheet" href="assets/css/admin.css">
+
+<script src="lib/gsap.min.js"></script>
+<script>
+window.APP_CONFIG = {
+    baseUrl: "",
+    assetUrl: "assets"
+};
+</script>
+<script src="assets/js/admin.js" defer></script>
+</head>
+
+<body>
+
+<div class="admin-layout">
+
+    <!-- MOBILE SIDEBAR TOGGLE BAR -->
+    <div class="mobile-admin-bar">
+        <button type="button" class="mobile-sidebar-toggle" data-sidebar-toggle aria-controls="adminSidebar" aria-expanded="false" aria-label="Open sidebar menu">
+            <i class="fa-solid fa-bars"></i>
+        </button>
+        <div class="mobile-admin-brand">
+            <img src="assets/images/thanafus-logo.png" alt="Thanafus Logo">
+            <span>Admin Panel</span>
+        </div>
+    </div>
+
+    <div class="sidebar-overlay" data-sidebar-overlay></div>
+
+    <!-- SIDEBAR -->
+    <div class="sidebar" id="adminSidebar">
+        <div class="sidebar-top">
+            <div class="sidebar-logo-wrap">
+                <img src="assets/images/thanafus-logo.png" class="sidebar-logo" alt="Thanafus Logo">
+            </div>
+            <div class="sidebar-subtitle">DIGITAL MUSABAQA SYSTEM</div>
+            <div class="sidebar-menu">
+                <a href="admin-dashboard.html" class="sidebar-link">
+                    <i class="fa-solid fa-table-columns"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="admin-events.html" class="sidebar-link">
+                    <i class="fa-solid fa-calendar-days"></i>
+                    <span>Events</span>
+                </a>
+                <a href="admin-programs.html" class="sidebar-link">
+                    <i class="fa-solid fa-microphone-lines"></i>
+                    <span>Programs</span>
+                </a>
+                <a href="admin-scores.html" class="sidebar-link active">
+                    <i class="fa-solid fa-pen"></i>
+                    <span>Scores</span>
+                </a>
+                <a href="tv.html" class="sidebar-link">
+                    <i class="fa-solid fa-tv"></i>
+                    <span>TV Control</span>
+                </a>
+            </div>
+        </div>
+        
+        <div class="sidebar-bottom">
+            <div class="sidebar-user">
+                <div class="sidebar-user-image">
+                    <img src="https://ui-avatars.com/api/?name=Admin&background=0d1420&color=14b8a6&bold=true" alt="Profile">
+                </div>
+                <div class="sidebar-user-info">
+                    <div class="sidebar-user-name">Super Admin</div>
+                    <div class="sidebar-user-role">Administrator</div>
+                </div>
+            </div>
+            <a href="index.html" class="home-btn"><i class="fa-solid fa-arrow-left"></i> Back to Home</a>
+        </div>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div class="main-content">
+        <div class="topbar">
+            <div>
+                <div class="page-title">Program Scores: Elocution Arabic</div>
+                <div class="page-subtitle">Input results and assign points to performers.</div>
+            </div>
+            <a class="btn btn-secondary btn-md" href="admin-programs.html">
+                <i class="fa-solid fa-arrow-left"></i> Change Program
+            </a>
+        </div>
+
+        <div class="grid grid-auto gap-5 mb-6" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;">
+            <div class="stat-card"><div class="stat-icon"><i class="fa-solid fa-list-check"></i></div><div class="stat-value">2</div><div class="stat-label">Entries</div></div>
+            <div class="stat-card"><div class="stat-icon"><i class="fa-solid fa-clipboard-check"></i></div><div class="stat-value">2</div><div class="stat-label">Scored</div></div>
+            <div class="stat-card"><div class="stat-icon"><i class="fa-solid fa-sliders"></i></div><div class="stat-value">100.00</div><div class="stat-label">Category Total</div></div>
+        </div>
+
+        <!-- SEARCH -->
+        <div class="panel mb-6">
+            <form class="form-grid" id="search-form" onsubmit="event.preventDefault()">
+                <div class="input-group full-width">
+                    <label>Search Entries</label>
+                    <input type="text" placeholder="Entry number, entry name, team, status or score">
+                </div>
+                <div class="form-actions full-width">
+                    <button class="btn btn-secondary btn-md" type="submit"><i class="fa-solid fa-magnifying-glass"></i> Search</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- CATEGORIES -->
+        <div class="panel mb-6">
+            <div class="flex-between" style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <div class="dashboard-heading">Scoring Categories</div>
+                    <div class="page-subtitle">Categories are read-only for submitted or approved programs.</div>
+                </div>
+                <span class="badge badge-success">Total 100.00 / 100</span>
+            </div>
+
+            <form class="mt-4" onsubmit="event.preventDefault()">
+                <div class="table-wrapper">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Category Name</th>
+                                <th>Maximum Marks</th>
+                                <th>Sort Order</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="categoryRows">
+                            <tr class="category-row">
+                                <td><input type="text" value="Pronunciation & Fluency" readonly></td>
+                                <td><input type="number" value="40.00" readonly></td>
+                                <td><input type="number" value="1" readonly></td>
+                                <td><button class="btn btn-danger btn-sm" disabled><i class="fa-solid fa-trash"></i> Delete</button></td>
+                            </tr>
+                            <tr class="category-row">
+                                <td><input type="text" value="Content & Structure" readonly></td>
+                                <td><input type="number" value="30.00" readonly></td>
+                                <td><input type="number" value="2" readonly></td>
+                                <td><button class="btn btn-danger btn-sm" disabled><i class="fa-solid fa-trash"></i> Delete</button></td>
+                            </tr>
+                            <tr class="category-row">
+                                <td><input type="text" value="Delivery & Presentation" readonly></td>
+                                <td><input type="number" value="30.00" readonly></td>
+                                <td><input type="number" value="3" readonly></td>
+                                <td><button class="btn btn-danger btn-sm" disabled><i class="fa-solid fa-trash"></i> Delete</button></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </form>
+        </div>
+
+        <!-- ENTRIES TABLE -->
+        <div class="panel">
+            <div class="table-wrapper">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Entry Number</th>
+                            <th>Entry Name</th>
+                            <th>Team</th>
+                            <th>Status</th>
+                            <th>Final Score</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-body">
+                        <tr>
+                            <td><strong>#104</strong></td>
+                            <td>Muhammed Hudaif</td>
+                            <td><span class="team-color-pill" style="background: #3b82f622;">Blue Rays</span></td>
+                            <td><span class="badge badge-success">Completed</span></td>
+                            <td>91.50</td>
+                            <td>
+                                <button class="btn btn-secondary btn-sm" onclick="alert('Viewing score details for Muhammed Hudaif')">
+                                    <i class="fa-solid fa-pen-to-square"></i> View
+                                </button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>#209</strong></td>
+                            <td>Ahamed Safvan</td>
+                            <td><span class="team-color-pill" style="background: #ea433522;">Red Hawks</span></td>
+                            <td><span class="badge badge-success">Completed</span></td>
+                            <td>88.00</td>
+                            <td>
+                                <button class="btn btn-secondary btn-sm" onclick="alert('Viewing score details for Ahamed Safvan')">
+                                    <i class="fa-solid fa-pen-to-square"></i> View
+                                </button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+</body>
+</html>

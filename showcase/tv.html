@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thanafus 2026-27 | TV Broadcast</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400;1,700&family=Cairo:wght@500;600;700;800;900&family=Inter:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/tv.css">
+    <link rel="stylesheet" href="lib/font-awesome/css/all.min.css">
+    <script src="lib/gsap.min.js"></script>
+    <script src="lib/tsparticles.bundle.min.js" defer></script>
+    
+    <style>
+        /* Ambient Voice Wave Visualizer Widget & Page Element Styles */
+        .tv-now-brow {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 24px;
+        }
+        .tv-kicker {
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            color: var(--turquoise);
+            text-shadow: 0 0 10px rgba(0, 255, 216, 0.3);
+        }
+        .tv-stage-chip {
+            padding: 6px 14px;
+            border-radius: 99px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            background: rgba(31, 224, 138, 0.1);
+            color: var(--emerald);
+            border: 1px solid rgba(31, 224, 138, 0.2);
+            box-shadow: 0 0 15px rgba(31, 224, 138, 0.1);
+        }
+        .voice-wave-widget {
+            margin-top: 32px;
+            position: relative;
+            width: 100%;
+            height: 90px;
+            background: rgba(255, 255, 255, 0.01);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 18px;
+            overflow: hidden;
+            backdrop-filter: blur(12px);
+            box-shadow: inset 0 0 25px rgba(0, 0, 0, 0.3);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .voice-wave-widget:hover {
+            border-color: rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.02);
+        }
+        .wave-canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        .wave-overlay-msg {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            color: rgba(255, 255, 255, 0.55);
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            background: rgba(0, 0, 0, 0.45);
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+        }
+        .wave-overlay-msg.hidden {
+            opacity: 0;
+        }
+        .wave-overlay-msg i {
+            font-size: 15px;
+            color: var(--turquoise);
+            animation: mic-pulse 1.5s infinite;
+        }
+        @keyframes mic-pulse {
+            0% { opacity: 0.5; transform: scale(0.95); }
+            50% { opacity: 1; transform: scale(1.05); }
+            100% { opacity: 0.5; transform: scale(0.95); }
+        }
+        .tv-now-progress {
+            margin-top: 36px;
+        }
+        .tv-now-progress-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            font-size: 13px;
+        }
+        .tv-now-progress-head span {
+            color: var(--muted);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            opacity: 0.75;
+        }
+        .tv-now-progress-head strong {
+            color: var(--emerald);
+            font-weight: 700;
+        }
+        .tv-now-progress-track {
+            height: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 99px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.02);
+        }
+        .tv-now-progress-track span {
+            display: block;
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, var(--emerald), var(--turquoise));
+            border-radius: 99px;
+            box-shadow: 0 0 12px rgba(31, 224, 138, 0.4);
+            transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .tv-now-meta-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+            margin-top: 40px;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            padding-top: 30px;
+        }
+        .tv-now-meta-grid > div {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .tv-now-meta-grid span {
+            font-size: 11px;
+            text-transform: uppercase;
+            color: var(--muted);
+            opacity: 0.5;
+            letter-spacing: 0.1em;
+            font-weight: 600;
+        }
+        .tv-now-meta-grid strong {
+            font-size: clamp(20px, 2vw, 28px);
+            font-weight: 700;
+            color: var(--text);
+        }
+        /* Top Navigation showcase link */
+        .showcase-tv-nav {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+        }
+        .showcase-tv-nav a {
+            background: rgba(0,0,0,0.6);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-size: 12px;
+            font-weight: 600;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+    </style>
+</head>
+<body class="tv-body theme-emerald">
+
+<div class="showcase-tv-nav">
+    <a href="index.html"><i class="fa-solid fa-arrow-left"></i> Back to Showcase</a>
+</div>
+
+<div class="tv-app" id="tvApp">
+    <div class="tv-backdrop" aria-hidden="true">
+        <div id="particles-js" class="tv-particles"></div>
+        <div class="tv-geometric"></div>
+        <div class="tv-spotlight tv-spotlight-a"></div>
+        <div class="tv-spotlight tv-spotlight-b"></div>
+        <div class="tv-sweep"></div>
+    </div>
+    
+    <header class="tv-topbar">
+        <div class="tv-brand">
+            <img src="assets/images/thanafus-logo.png" alt="Thanafus">
+            <div class="tv-brand-copy">
+                <div class="tv-brand-kicker">Kauzariyya Digital Musabaqa</div>
+                <div class="tv-brand-title" data-event-title>Thanafus 2026-27</div>
+            </div>
+        </div>
+        <div class="tv-topbar-right">
+            <div class="tv-live-chip"><span></span> Live</div>
+            <div class="tv-clock" id="tvClock">--:--</div>
+        </div>
+    </header>
+
+    <main class="tv-stage" id="tvStage">
+        
+        <!-- INTRO SLIDE -->
+        <section class="tv-slide tv-slide--active" id="slide-intro" data-slide="intro">
+            <div class="tv-intro-overlay">
+                <img src="assets/images/kauzariyya-logo.png" alt="Kauzariyya" class="tv-intro-mark">
+                <div class="tv-intro-copy">
+                    <div class="tv-intro-eyebrow">Welcome to the arena</div>
+                    <h1 class="tv-intro-title" data-intro-title>Thanafus 2026-27</h1>
+                    <p class="tv-intro-subtitle" data-intro-subtitle>Live competition broadcast</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- LEADERBOARD SLIDE -->
+        <section class="tv-slide" id="slide-leaderboard" data-slide="leaderboard">
+            <div class="tv-floating-leaderboard" data-leaderboard></div>
+        </section>
+
+        <!-- SCHEDULE SLIDE -->
+        <section class="tv-slide" id="slide-schedule" data-slide="schedule">
+            <div class="tv-slide-head">
+                <div>
+                    <div class="tv-kicker">Timeline</div>
+                    <h1>Schedule & Results</h1>
+                </div>
+                <div class="tv-pill"><span>Live</span></div>
+            </div>
+            <div class="tv-schedule" data-schedule style="flex: 1; display: flex; flex-direction: column; min-height: 0;"></div>
+        </section>
+
+        <!-- CURRENT PROGRAM SLIDE -->
+        <section class="tv-slide" id="slide-current-program" data-slide="current-program">
+            <div class="tv-now">
+                <div class="tv-now-main">
+                    <div class="tv-now-brow">
+                        <div class="tv-kicker" data-current-stage>Main Stage</div>
+                        <span class="tv-stage-chip" data-current-status>Performing</span>
+                    </div>
+                    <h1 data-current-title>Elocution Arabic (Senior)</h1>
+                    <div class="tv-now-performer" data-current-performer>Muhammed Hudaif</div>
+                    <div class="tv-team-badge" data-current-team>Blue Rays</div>
+
+                    <!-- Ambient Voice Wave Visualizer Widget & Page Element Styles -->
+                    <div class="voice-wave-widget" id="voiceWaveWidget" title="Click to activate voice wave">
+                        <canvas id="waveCanvas" class="wave-canvas"></canvas>
+                        <div id="waveOverlayMsg" class="wave-overlay-msg">
+                            <i class="fas fa-microphone"></i> Click to activate voice visualizer
+                        </div>
+                    </div>
+
+                    <div class="tv-now-progress">
+                        <div class="tv-now-progress-head">
+                            <span>Entry Progress</span>
+                            <strong data-current-progress-label>7 of 12 completed</strong>
+                        </div>
+                        <div class="tv-now-progress-track"><span data-current-progress-fill style="width: 58%;"></span></div>
+                    </div>
+
+                    <div class="tv-now-meta-grid">
+                        <div>
+                            <span>Category</span>
+                            <strong data-current-category>Senior</strong>
+                        </div>
+                        <div>
+                            <span>Entries</span>
+                            <strong data-current-entry-count>12</strong>
+                        </div>
+                        <div>
+                            <span>Room</span>
+                            <strong data-current-room>Main Hall</strong>
+                        </div>
+                    </div>
+                </div>
+                <div class="tv-now-side">
+                    <div class="tv-card">
+                        <div class="tv-card-label">Next Performer</div>
+                        <div class="tv-card-value" data-next-performer style="margin-bottom: 8px;">Ahamed Safvan</div>
+                        <div class="tv-card-sub" data-next-team>Red Hawks</div>
+                    </div>
+                    <div class="tv-card">
+                        <div class="tv-card-label">Judges</div>
+                        <div class="tv-card-value" data-judges style="font-size: 20px; display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px;">
+                            <span class="tv-stage-chip" style="background: rgba(255,255,255,0.05); color: white; border: none;">Judge A</span>
+                            <span class="tv-stage-chip" style="background: rgba(255,255,255,0.05); color: white; border: none;">Judge B</span>
+                            <span class="tv-stage-chip" style="background: rgba(255,255,255,0.05); color: white; border: none;">Judge C</span>
+                        </div>
+                    </div>
+                    <div class="tv-card">
+                        <div class="tv-card-label">Next Program</div>
+                        <div class="tv-card-value" data-next-program style="font-size: 22px;">Arabic Song (Junior)</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <div class="tv-emergency" data-emergency hidden>
+        <strong>Emergency</strong>
+        <span data-emergency-message></span>
+    </div>
+
+    <div class="tv-celebration" data-celebration hidden>
+        <div class="tv-confetti" data-confetti></div>
+        <div class="tv-trophy" aria-hidden="true"><span></span></div>
+        <div class="tv-celebration-copy">
+            <div class="tv-kicker">Winner Reveal</div>
+            <h2 data-celebration-title>Champion</h2>
+            <div class="tv-celebration-team" data-celebration-team></div>
+            <div class="tv-celebration-score"><span data-celebration-score>0</span> pts</div>
+        </div>
+    </div>
+</div>
+
+<!-- Mock API and Initial state -->
+<script>
+window.TV_BOOT = {
+    api: {
+        bootstrap: "api/settings",
+        leaderboard: "api/leaderboard",
+        current: "api/current",
+        schedule: "api/schedule",
+        winners: "api/winners",
+        announcements: "api/announcements"
+    },
+    initial: {
+        event: {
+            id: 1,
+            title: "Thanafus 2026-27",
+            slug: "thanafus-2026-27",
+            description: "Al Jamiathul Kauzariyya Digital Arts Fest",
+            status: "active",
+            start_date: "2026-07-11",
+            end_date: "2026-07-13",
+            scoreboard_mode: "system"
+        },
+        settings: {
+            theme: "emerald",
+            mode: "auto",
+            active_slide: "intro",
+            is_playing: true,
+            refresh_interval: 8000,
+            slides: {
+                intro: { key: "intro", title: "Welcome Intro", duration: 8000, enabled: true, sort_order: 1 },
+                leaderboard: { key: "leaderboard", title: "Team Leaderboard", duration: 10000, enabled: true, sort_order: 2 },
+                schedule: { key: "schedule", title: "Upcoming Programs", duration: 10000, enabled: true, sort_order: 3 },
+                "current-program": { key: "current-program", title: "Main Stage", duration: 12000, enabled: true, sort_order: 4 }
+            },
+            announcement: { enabled: true, type: "ticker", message: "Welcome to Thanafus Digital Musabaqa 2026-27 live scores!" },
+            emergency: { enabled: false, message: "" }
+        },
+        stats: {
+            total_teams: 4,
+            total_programs: 42,
+            total_entries: 184,
+            total_score_sheets: 126
+        },
+        leaderboard: [
+            { team_id: 1, name: "Blue Rays", color: "#3b82f6", score: 248 },
+            { team_id: 2, name: "Red Hawks", color: "#ea4335", score: 215 },
+            { team_id: 3, name: "Gold Eagles", color: "#eab308", score: 198 },
+            { team_id: 4, name: "Purple Panthers", color: "#a855f7", score: 172 }
+        ],
+        latest_score_update: "2026-07-11T12:00:00Z",
+        current: {
+            id: 12,
+            stage: "Main Auditorium",
+            status: "performing",
+            title: "Elocution Arabic (Senior)",
+            performer: "Muhammed Hudaif",
+            team: "Blue Rays",
+            team_color: "#3b82f6",
+            chest_number: "104",
+            category: "Senior",
+            entry_count: 12,
+            room: "Main Hall",
+            progress_label: "7 of 12 completed",
+            progress_fill: 58,
+            next_performer: "Ahamed Safvan",
+            next_team: "Red Hawks",
+            next_chest_number: "209",
+            judges: ["Judge A", "Judge B", "Judge C"],
+            next_program: "Arabic Song (Junior)"
+        },
+        schedule: [
+            { time: "02:30 PM", title: "Arabic Song (Junior)", room: "Main Hall", status: "scheduled" },
+            { time: "03:15 PM", title: "Elocution English (Senior)", room: "Auditorium B", status: "scheduled" },
+            { time: "04:00 PM", title: "Islamic Quiz (Sub-Junior)", room: "Conference Room", status: "scheduled" }
+        ],
+        winners: [
+            { program: "Qur'an Hifz (Senior)", rank1: "Muhammed", team1: "Gold Eagles", rank2: "Ibrahim", team2: "Blue Rays" }
+        ],
+        announcements: [
+            { id: 1, message: "Welcome to Thanafus Digital Musabaqa 2026-27 live scores!" }
+        ],
+        sponsors: [],
+        break: { enabled: false, message: "" },
+        server_time: new Date().toISOString()
+    }
+};
+
+// Mock Fetch Interceptor for static JSON endpoints
+const originalFetch = window.fetch;
+window.fetch = async function(url, options) {
+    if (url.includes('api/settings') || url.includes('api/bootstrap')) {
+        return new Response(JSON.stringify(window.TV_BOOT.initial), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+        });
+    }
+    if (url.includes('api/leaderboard')) {
+        return new Response(JSON.stringify(window.TV_BOOT.initial.leaderboard), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+        });
+    }
+    if (url.includes('api/current')) {
+        return new Response(JSON.stringify(window.TV_BOOT.initial.current), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+        });
+    }
+    if (url.includes('api/schedule')) {
+        return new Response(JSON.stringify(window.TV_BOOT.initial.schedule), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+        });
+    }
+    if (url.includes('api/winners')) {
+        return new Response(JSON.stringify(window.TV_BOOT.initial.winners), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+        });
+    }
+    if (url.includes('api/announcements')) {
+        return new Response(JSON.stringify(window.TV_BOOT.initial.announcements), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+        });
+    }
+    return originalFetch(url, options);
+};
+</script>
+
+<script src="assets/js/tv.js" defer></script>
+
+<!-- Ambient Voice Wave Visualizer Logic -->
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const widget = document.getElementById('voiceWaveWidget');
+        const overlayMsg = document.getElementById('waveOverlayMsg');
+        const canvas = document.getElementById('waveCanvas');
+        const canvasCtx = canvas.getContext('2d');
+        
+        let audioCtx;
+        let analyser;
+        let source;
+        let stream;
+        let isInitialized = false;
+        let animationId;
+        let bufferLength = 0;
+        let dataArray;
+        let phase = 0;
+
+        function resizeCanvas() {
+            canvas.width = canvas.clientWidth * window.devicePixelRatio;
+            canvas.height = canvas.clientHeight * window.devicePixelRatio;
+        }
+        
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        function drawIdle() {
+            if (isInitialized) return;
+            animationId = requestAnimationFrame(drawIdle);
+            
+            canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
+            canvasCtx.fillStyle = 'rgba(20, 20, 20, 0.1)';
+            canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            phase += 0.04;
+            drawSiriWaves(0.04);
+        }
+        drawIdle();
+
+        async function initVisualizer() {
+            if (isInitialized) return;
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                analyser = audioCtx.createAnalyser();
+                analyser.fftSize = 256;
+                analyser.smoothingTimeConstant = 0.8;
+                
+                source = audioCtx.createMediaStreamSource(stream);
+                source.connect(analyser);
+                
+                bufferLength = analyser.frequencyBinCount;
+                dataArray = new Uint8Array(bufferLength);
+                
+                isInitialized = true;
+                overlayMsg.classList.add('hidden');
+                
+                cancelAnimationFrame(animationId);
+                drawLive();
+            } catch (err) {
+                console.error('Microphone access denied:', err);
+                overlayMsg.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Microphone permission denied';
+            }
+        }
+
+        widget.addEventListener('click', initVisualizer);
+        document.addEventListener('click', () => {
+            if (!isInitialized) initVisualizer();
+        }, { once: true });
+
+        function drawLive() {
+            animationId = requestAnimationFrame(drawLive);
+            
+            analyser.getByteFrequencyData(dataArray);
+            
+            let sum = 0;
+            for (let i = 0; i < bufferLength; i++) {
+                sum += dataArray[i];
+            }
+            const averageVolume = sum / bufferLength;
+            const volumeNorm = Math.min(1, averageVolume / 128.0);
+            
+            canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
+            canvasCtx.fillStyle = 'rgba(20, 20, 20, 0.15)';
+            canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // 1. Draw Sound Graph (Equalizer Bars)
+            drawEqualizerBars();
+
+            // 2. Draw Siri Waves
+            phase += 0.1 + (volumeNorm * 0.1);
+            drawSiriWaves(0.1 + (volumeNorm * 0.8));
+        }
+
+        function drawEqualizerBars() {
+            const style = getComputedStyle(document.documentElement);
+            const primaryColor = style.getPropertyValue('--turquoise').trim() || '#00ffd8';
+            const secondaryColor = style.getPropertyValue('--emerald').trim() || '#1fe08a';
+
+            const barCount = 32;
+            const barWidth = (canvas.width / barCount);
+            const spacing = 4;
+            const activeWidth = barWidth - spacing;
+
+            for (let i = 0; i < barCount; i++) {
+                const binIndex = Math.floor((i / barCount) * (bufferLength * 0.6));
+                const rawValue = dataArray[binIndex] || 0;
+                const valueNorm = rawValue / 255.0;
+                
+                const minHeight = 4 * window.devicePixelRatio;
+                const barHeight = Math.max(minHeight, valueNorm * canvas.height * 0.65);
+                
+                const x = (i * barWidth) + (spacing / 2);
+                const y = canvas.height - barHeight;
+
+                const gradient = canvasCtx.createLinearGradient(x, y, x, canvas.height);
+                gradient.addColorStop(0, primaryColor);
+                gradient.addColorStop(1, `color-mix(in srgb, ${secondaryColor} 20%, transparent)`);
+                
+                canvasCtx.fillStyle = gradient;
+                canvasCtx.beginPath();
+                canvasCtx.roundRect(x, y, activeWidth, barHeight, [4 * window.devicePixelRatio, 4 * window.devicePixelRatio, 0, 0]);
+                canvasCtx.fill();
+            }
+        }
+
+        function drawSiriWaves(ampScale) {
+            const waveCount = 4;
+            const style = getComputedStyle(document.documentElement);
+            const primaryColor = style.getPropertyValue('--turquoise').trim() || '#00ffd8';
+            const secondaryColor = style.getPropertyValue('--emerald').trim() || '#1fe08a';
+            
+            const colors = [
+                `color-mix(in srgb, ${primaryColor} 80%, transparent)`,
+                `color-mix(in srgb, ${secondaryColor} 50%, transparent)`,
+                `color-mix(in srgb, ${primaryColor} 25%, transparent)`,
+                `color-mix(in srgb, ${secondaryColor} 12%, transparent)`
+            ];
+            
+            for (let w = 0; w < waveCount; w++) {
+                canvasCtx.beginPath();
+                canvasCtx.lineWidth = w === 0 ? 3 : 1.5;
+                canvasCtx.strokeStyle = colors[w];
+                
+                const layerPhase = phase + (w * Math.PI / 4);
+                const frequency = 0.015 + (w * 0.005);
+                const amplitude = (canvas.height * 0.35) * ampScale * (1 - (w * 0.22));
+                
+                for (let x = 0; x < canvas.width; x++) {
+                    const taper = Math.sin((x / canvas.width) * Math.PI);
+                    const y = (canvas.height / 2) + Math.sin(x * frequency + layerPhase) * amplitude * taper;
+                    
+                    if (x === 0) {
+                        canvasCtx.moveTo(x, y);
+                    } else {
+                        canvasCtx.lineTo(x, y);
+                    }
+                }
+                canvasCtx.stroke();
+            }
+        }
+    });
+</script>
+</body>
+</html>
