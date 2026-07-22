@@ -321,6 +321,7 @@ CREATE TABLE `musabaqa_teams` (
   `number_prefix` int DEFAULT NULL,
   `total_score` decimal(10,2) DEFAULT '0.00',
   `teacher_incharge_id` int DEFAULT NULL,
+  `group_leader_student_id` int UNSIGNED DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 

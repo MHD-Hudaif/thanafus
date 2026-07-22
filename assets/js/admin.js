@@ -15,6 +15,11 @@
 
     const AJAX_HEADER = { 'X-Requested-With': 'XMLHttpRequest' };
 
+    let navigationController = null;
+    let navigationSequence = 0;
+    let pageScriptController = null;
+    let pageScriptScopeSequence = 0;
+
     function escapeHtml(value) {
         return String(value ?? '')
             .replaceAll('&', '&amp;')
@@ -332,11 +337,13 @@
                 const modal = document.querySelector(target);
                 if (!modal) return;
                 modal.classList.add('active');
-                gsap.fromTo(
-                    modal.querySelector('.modal-box'),
-                    { y: 50, opacity: 0, scale: 0.95 },
-                    { y: 0, opacity: 1, scale: 1, duration: 0.45, ease: 'power3.out' }
-                );
+                if (hasGsap()) {
+                    gsap.fromTo(
+                        modal.querySelector('.modal-box'),
+                        { y: 50, opacity: 0, scale: 0.95 },
+                        { y: 0, opacity: 1, scale: 1, duration: 0.45, ease: 'power3.out' }
+                    );
+                }
             });
         });
 
@@ -360,20 +367,81 @@
        INLINE SCRIPT EXECUTOR
        ===================================================== */
 
-    function executeInlineScripts(container) {
+    function listenerOptionsWithSignal(options, signal) {
+        if (options && typeof options === 'object') {
+            return options.signal ? options : { ...options, signal };
+        }
+
+        return { capture: Boolean(options), signal };
+    }
+
+    function createPageEventTarget(target, signal, replayDomReady = false) {
+        return new Proxy(target, {
+            get(object, property) {
+                if (property === 'addEventListener') {
+                    return (type, listener, options) => {
+                        if (replayDomReady && type === 'DOMContentLoaded' && document.readyState !== 'loading') {
+                            if (!signal.aborted) {
+                                if (typeof listener === 'function') {
+                                    listener.call(object, new Event('DOMContentLoaded'));
+                                } else {
+                                    listener?.handleEvent?.call(listener, new Event('DOMContentLoaded'));
+                                }
+                            }
+                            return;
+                        }
+
+                        object.addEventListener(
+                            type,
+                            listener,
+                            listenerOptionsWithSignal(options, signal)
+                        );
+                    };
+                }
+
+                const value = Reflect.get(object, property, object);
+                return typeof value === 'function' ? value.bind(object) : value;
+            },
+            set(object, property, value) {
+                return Reflect.set(object, property, value, object);
+            }
+        });
+    }
+
+    function executeInlineScripts(container, signal) {
+        const scopeKey = `__adminPageScriptScope${++pageScriptScopeSequence}`;
+        window[scopeKey] = {
+            document: createPageEventTarget(document, signal, true),
+            window: createPageEventTarget(window, signal)
+        };
+        signal.addEventListener('abort', () => delete window[scopeKey], { once: true });
+
         const scripts = container.querySelectorAll('script');
         scripts.forEach(oldScript => {
             const newScript = document.createElement('script');
             if (oldScript.src) {
                 newScript.src = oldScript.src;
             } else {
-                newScript.textContent = oldScript.textContent;
+                /*
+                 * AJAX pages are inserted more than once during a session.
+                 * Page scripts commonly declare top-level const/let variables;
+                 * running those declarations in the window scope a second time
+                 * throws a SyntaxError and prevents every handler below it from
+                 * being registered. Give each injected page its own scope while
+                 * keeping explicitly exported window.* helpers available.
+                 */
+                const source = oldScript.textContent || '';
+                const isModule = oldScript.type === 'module';
+                newScript.textContent = isModule
+                    ? source
+                    : `((document, window) => {\n${source}\n})(window[${JSON.stringify(scopeKey)}].document, window[${JSON.stringify(scopeKey)}].window);`;
             }
             for (const attr of oldScript.attributes) {
                 if (attr.name !== 'src') {
                     newScript.setAttribute(attr.name, attr.value);
                 }
             }
+
             oldScript.parentNode.replaceChild(newScript, oldScript);
         });
     }
@@ -416,19 +484,36 @@
         if (url.includes('/tv/')) return false;
         if (url.includes('/auth/')) return false;
         if (url.includes('/utilities/')) return false;
+        /* Event workspaces use a different shell and page-specific styles. */
+        if (url.includes('/admin/event/')) return false;
         if (!isAdminUrl(url)) return false;
 
         return true;
     }
 
     async function navigateTo(url, pushState = true) {
+        const navigationId = ++navigationSequence;
+        navigationController?.abort();
+        navigationController = new AbortController();
         showLoader();
 
         try {
             const resp = await fetch(url, {
                 headers: AJAX_HEADER,
-                credentials: 'same-origin'
+                credentials: 'same-origin',
+                signal: navigationController.signal
             });
+
+            if (navigationId !== navigationSequence) return;
+
+            if (resp.redirected && !isAdminUrl(resp.url)) {
+                location.href = resp.url;
+                return;
+            }
+
+            if (!resp.ok) {
+                throw new Error(`Request failed with status ${resp.status}`);
+            }
 
             const contentType = resp.headers.get('Content-Type') || '';
 
@@ -442,15 +527,18 @@
             }
 
             const html = await resp.text();
-            swapContent(html, url, pushState);
+            if (navigationId === navigationSequence) {
+                swapContent(html, url, pushState, navigationId);
+            }
 
         } catch (err) {
+            if (err.name === 'AbortError') return;
             console.error('[AJAX Router] Navigation failed:', err);
             location.href = url; /* Fallback to full reload */
         }
     }
 
-    function swapContent(html, url, pushState) {
+    function swapContent(html, url, pushState, navigationId = navigationSequence) {
         const mainContent = document.querySelector('.main-content');
         if (!mainContent) {
             location.href = url;
@@ -481,25 +569,50 @@
             return;
         }
 
-        /* Animate out old content */
-        gsap.to(mainContent, {
-            opacity: 0, y: -10,
-            duration: 0.18,
-            ease: 'power2.in',
-            onComplete: () => {
+        const completeSwap = () => {
+                if (navigationId !== navigationSequence) return;
+
+                pageScriptController?.abort();
+                pageScriptController = new AbortController();
+                window.adminAjaxPaginationFetch = null;
+
                 mainContent.innerHTML = newContent.innerHTML;
                 mainContent.className = newContent.className;
 
+                /*
+                 * Some PHP pages emit their initializer, pagination helper or
+                 * page style immediately after .main-content. DOM-only swaps
+                 * used to discard those nodes, leaving a page that looked
+                 * loaded but had no working controls until a full refresh.
+                 */
+                if (newContent !== doc.body) {
+                    Array.from(doc.body.children).forEach(sibling => {
+                        if (sibling !== newContent && !sibling.contains(newContent)) {
+                            mainContent.appendChild(sibling.cloneNode(true));
+                        }
+                    });
+                }
+
                 /* Execute inline scripts */
-                executeInlineScripts(mainContent);
+                executeInlineScripts(mainContent, pageScriptController.signal);
 
                 /* Re-init modals */
                 initModals();
                 initAlerts();
 
+                /* Let page features that need a fresh DOM re-initialize safely. */
+                window.dispatchEvent(new CustomEvent('admin:content-swapped', {
+                    detail: { url, container: mainContent }
+                }));
+
                 /* Animate in new content */
-                mainContent.style.opacity = '0';
-                runEntryAnimations();
+                if (hasGsap()) {
+                    mainContent.style.opacity = '0';
+                    runEntryAnimations();
+                } else {
+                    mainContent.style.opacity = '';
+                    mainContent.style.transform = '';
+                }
 
                 /* Update sidebar */
                 updateSidebarActive(url);
@@ -520,8 +633,21 @@
 
                 /* Scroll to top of main content */
                 mainContent.scrollTo({ top: 0, behavior: 'smooth' });
-            }
-        });
+        };
+
+        /* Keep navigation functional if the optional animation CDN is down. */
+        if (hasGsap()) {
+            gsap.killTweensOf(mainContent);
+            gsap.to(mainContent, {
+                opacity: 0,
+                y: -10,
+                duration: 0.18,
+                ease: 'power2.in',
+                onComplete: completeSwap
+            });
+        } else {
+            completeSwap();
+        }
     }
 
     /* =====================================================
@@ -593,6 +719,11 @@
 
         /* --- Form submissions (delegated to document) --- */
         document.addEventListener('submit', (e) => {
+            // A page-level AJAX widget (search, filter, etc.) may already have
+            // handled this submit. Do not replace its targeted update with a
+            // full main-content swap.
+            if (e.defaultPrevented) return;
+
             const form = e.target.closest('form');
             if (!form) return;
 
@@ -617,6 +748,43 @@
         history.replaceState({ ajaxUrl: location.href }, '', location.href);
     }
 
+    function initAjaxPaginationControls() {
+        document.addEventListener('click', (e) => {
+            const fetchResults = window.adminAjaxPaginationFetch;
+            if (typeof fetchResults !== 'function') return;
+
+            const pageBtn = e.target.closest('.ajax-page-btn');
+            if (pageBtn) {
+                e.preventDefault();
+                const limit = new URLSearchParams(window.location.search).get('limit') || '';
+                fetchResults(pageBtn.dataset.page, limit);
+                return;
+            }
+
+            const limitBtn = e.target.closest('.limit-btn');
+            if (limitBtn) {
+                e.preventDefault();
+                fetchResults(1, limitBtn.dataset.limit);
+                return;
+            }
+
+            const trigger = e.target.closest('.active-limit-trigger');
+            if (trigger) {
+                const popover = trigger.nextElementSibling;
+                if (popover?.classList.contains('limit-options-popover')) {
+                    popover.classList.toggle('active');
+                }
+                return;
+            }
+
+            if (!e.target.closest('.limit-popover-container')) {
+                document.querySelectorAll('.limit-options-popover.active').forEach(popover => {
+                    popover.classList.remove('active');
+                });
+            }
+        });
+    }
+
     /* =====================================================
        INITIALIZATION
        ===================================================== */
@@ -628,6 +796,7 @@
         initModals();
         initAlerts();
         initRouter();
+        initAjaxPaginationControls();
         initAdminChat();
     });
 

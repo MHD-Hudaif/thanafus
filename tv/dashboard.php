@@ -96,7 +96,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $sortOrder = (int)($slideData['sort_order'] ?? 0);
             
             $style = trim((string)($slideData['style'] ?? 'classic'));
-            if (!in_array($style, ['classic', 'orbit', 'podium', 'staggered'], true)) {
+            if (!in_array($style, ['classic', 'orbit', 'podium', 'staggered', 'style2'], true)) {
                 $style = 'classic';
             }
 
@@ -396,6 +396,7 @@ body.dark .tv-stat-card {
                                                     <option value="classic" <?= ($c['style'] ?? 'classic') === 'classic' ? 'selected' : '' ?>>Classic (Bars)</option>
                                                     <option value="orbit" <?= ($c['style'] ?? 'classic') === 'orbit' ? 'selected' : '' ?>>Orbit (Radial)</option>
                                                     <option value="podium" <?= ($c['style'] ?? 'classic') === 'podium' ? 'selected' : '' ?>>Podium (3D)</option>
+                                                    <option value="style2" <?= ($c['style'] ?? 'classic') === 'style2' ? 'selected' : '' ?>>Style 2 (Diamond 3D)</option>
                                                     <option value="staggered" <?= ($c['style'] ?? 'classic') === 'staggered' ? 'selected' : '' ?>>Staggered</option>
                                                 </select>
                                             <?php else: ?>

@@ -177,20 +177,22 @@ function admin_program_class_filter_sql(PDO $dashboardPdo, string $classFilter, 
 
 function admin_require_active_event(PDO $pdo): array
 {
-    $activeEventId = (int)($_SESSION['active_event_id'] ?? 0);
+    $selectedEventId = (int)($_SESSION['selected_event_id'] ?? $_SESSION['active_event_id'] ?? 0);
 
-    if ($activeEventId <= 0) {
-        admin_redirect('/admin/events.php');
+    if ($selectedEventId <= 0) {
+        admin_redirect('/admin/dashboard.php');
     }
 
     $stmt = $pdo->prepare('SELECT * FROM musabaqa_events WHERE id = ? LIMIT 1');
-    $stmt->execute([$activeEventId]);
+    $stmt->execute([$selectedEventId]);
     $event = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$event) {
-        unset($_SESSION['active_event_id']);
-        admin_redirect('/admin/events.php');
+        unset($_SESSION['selected_event_id']);
+        admin_redirect('/admin/dashboard.php');
     }
+
+    $_SESSION['selected_event_id'] = (int)$event['id'];
 
     return $event;
 }
@@ -337,8 +339,11 @@ function admin_recalculate_team_totals(PDO $pdo, int $eventId): void
             SELECT pe.team_id, COALESCE(SUM(ms.total_mark), 0) AS total_score
             FROM musabaqa_scores ms
             JOIN musabaqa_program_entries pe ON pe.id = ms.entry_id
+            JOIN musabaqa_programs p ON p.id = ms.program_id
             WHERE ms.event_id = ?
               AND ms.status = 'approved'
+              AND (p.redirect_to_team IS NULL OR p.redirect_to_team = 1)
+              AND (p.disable_scores IS NULL OR p.disable_scores = 0)
             GROUP BY pe.team_id
         ) totals ON totals.team_id = t.id
         SET t.total_score = COALESCE(totals.total_score, 0)
@@ -356,9 +361,11 @@ function admin_recalculate_participant_totals(PDO $pdo, int $eventId, int $progr
         SELECT em.team_member_id, ms.program_id, ms.entry_id, ms.total_mark
         FROM musabaqa_scores ms
         JOIN musabaqa_entry_members em ON em.entry_id = ms.entry_id
+        JOIN musabaqa_programs p ON p.id = ms.program_id
         WHERE ms.event_id = ?
           AND ms.program_id = ?
           AND ms.status = 'approved'
+          AND (p.disable_scores IS NULL OR p.disable_scores = 0)
     ");
     $stmt->execute([$eventId, $programId]);
 }
@@ -767,47 +774,9 @@ function admin_ajax_pagination_script(): string
             });
     }
 
-    // Handle pagination clicks and limits
-    if (!window._paginationInit) {
-        window._paginationInit = true;
-        document.addEventListener('click', (e) => {
-            // Page buttons
-            const pageBtn = e.target.closest('.ajax-page-btn');
-            if (pageBtn) {
-                e.preventDefault();
-                currentPage = pageBtn.dataset.page;
-                fetchResults(currentPage, currentLimit);
-                return;
-            }
-            
-            // Limit buttons
-            const limitBtn = e.target.closest('.limit-btn');
-            if (limitBtn) {
-                e.preventDefault();
-                currentLimit = limitBtn.dataset.limit;
-                currentPage = 1; // reset to page 1
-                fetchResults(currentPage, currentLimit);
-                return;
-            }
-            
-            // Toggle popover
-            const trigger = e.target.closest('.active-limit-trigger');
-            if (trigger) {
-                const popover = trigger.nextElementSibling;
-                if (popover && popover.classList.contains('limit-options-popover')) {
-                    popover.classList.toggle('active');
-                }
-                return;
-            } else {
-                // Close popover if clicked outside
-                document.querySelectorAll('.limit-options-popover.active').forEach(p => {
-                    if (!e.target.closest('.limit-popover-container')) {
-                        p.classList.remove('active');
-                    }
-                });
-            }
-        });
-    }
+    // The global router owns the delegated click listener and always calls the
+    // function belonging to the page that is currently displayed.
+    window.adminAjaxPaginationFetch = fetchResults;
 
     // Handle Search Form Submit (this re-binds per page load since the form element is new)
     if (searchForm) {
@@ -842,4 +811,115 @@ function admin_ajax_pagination_script(): string
 })();
 </script>
 HTML;
+}
+
+function admin_validate_member_program_limits(PDO $pdo, int $eventId, int $programId, int $teamMemberId, ?int $excludeEntryId = null): void
+{
+    // 1. Load settings
+    $stmt = $pdo->prepare("SELECT setting_value FROM musabaqa_settings WHERE setting_key = 'global_musabaqa_settings' LIMIT 1");
+    $stmt->execute();
+    $row = $stmt->fetch();
+    $settings = [
+        'section_limits' => []
+    ];
+    if ($row) {
+        $data = json_decode($row['setting_value'], true);
+        if (is_array($data)) {
+            $settings = array_merge($settings, $data);
+        }
+    }
+
+    // 2. Load program details
+    $stmt = $pdo->prepare("SELECT * FROM musabaqa_programs WHERE id = ? AND event_id = ? LIMIT 1");
+    $stmt->execute([$programId, $eventId]);
+    $program = $stmt->fetch();
+    if (!$program) {
+        throw new RuntimeException('Program not found.');
+    }
+
+    // 3. Load member details
+    $stmt = $pdo->prepare("
+        SELECT tm.id, c.class_type_id, s.display_name, s.full_name
+        FROM musabaqa_team_members tm
+        JOIN kauzariyya.students s ON s.id = tm.student_id
+        LEFT JOIN kauzariyya.classes c ON c.id = s.class_id
+        WHERE tm.id = ? AND tm.event_id = ? AND tm.status = 'active'
+        LIMIT 1
+    ");
+    $stmt->execute([$teamMemberId, $eventId]);
+    $member = $stmt->fetch();
+    if (!$member) {
+        throw new RuntimeException('Participant not found.');
+    }
+    
+    $memberName = $member['display_name'] ?: $member['full_name'];
+    $classTypeId = (int)$member['class_type_id'];
+
+    // 4. Validate allowed sections
+    $allowedSections = array_filter(array_map('trim', explode(',', $program['allowed_sections'] ?? '')));
+    if ($allowedSections && !in_array((string)$classTypeId, $allowedSections, true)) {
+        throw new RuntimeException("Participant $memberName's section is not allowed in this program.");
+    }
+
+    // 5. Validate program entry count limits
+    $stageTypeId = (int)$program['stage_type_id'];
+    $isOnStage = ($stageTypeId === 1); // 1 = Normal Stage (on-stage), 2 = Off Stage (off-stage)
+    $stageKey = $isOnStage ? 'on_stage' : 'off_stage';
+    
+    $limit = (int)($settings['section_limits'][$classTypeId][$stageKey] ?? ($isOnStage ? 2 : 3));
+    
+    // Count current active entries for this member in same stage type (excluding current entry if editing)
+    $excludeSql = $excludeEntryId ? "AND pe.id != :exclude_id" : "";
+    $countQuery = "
+        SELECT COUNT(DISTINCT pe.id)
+        FROM musabaqa_entry_members em
+        JOIN musabaqa_program_entries pe ON pe.id = em.entry_id
+        JOIN musabaqa_programs p ON p.id = pe.program_id
+        WHERE pe.event_id = :event_id
+          AND em.team_member_id = :member_id
+          AND p.stage_type_id = :stage_type_id
+          $excludeSql
+    ";
+    $countParams = [
+        'event_id' => $eventId,
+        'member_id' => $teamMemberId,
+        'stage_type_id' => $stageTypeId
+    ];
+    if ($excludeEntryId) {
+        $countParams['exclude_id'] = $excludeEntryId;
+    }
+    
+    $stmt = $pdo->prepare($countQuery);
+    $stmt->execute($countParams);
+    $currentCount = (int)$stmt->fetchColumn();
+    
+    if ($currentCount >= $limit) {
+        $stageLabel = $isOnStage ? 'on-stage' : 'off-stage';
+        throw new RuntimeException("Participant $memberName has reached the maximum limit of $limit $stageLabel program(s) for their section.");
+    }
+}
+
+function admin_validate_program_entry_limit(PDO $pdo, int $eventId, int $programId, ?int $excludeEntryId = null): void
+{
+    $stmt = $pdo->prepare("SELECT * FROM musabaqa_programs WHERE id = ? AND event_id = ? LIMIT 1");
+    $stmt->execute([$programId, $eventId]);
+    $program = $stmt->fetch();
+    if (!$program) {
+        throw new RuntimeException('Program not found.');
+    }
+
+    $excludeSql = $excludeEntryId ? "AND id != ?" : "";
+    $params = [$programId, $eventId];
+    if ($excludeEntryId) {
+        $params[] = $excludeEntryId;
+    }
+    
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM musabaqa_program_entries WHERE program_id = ? AND event_id = ? $excludeSql");
+    $stmt->execute($params);
+    $currentEntriesCount = (int)$stmt->fetchColumn();
+    
+    $limit = (int)($program['entries_limit'] ?? 10);
+    if ($currentEntriesCount >= $limit) {
+        throw new RuntimeException("This program has reached its maximum entry limit of $limit.");
+    }
 }

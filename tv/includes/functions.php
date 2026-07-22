@@ -27,13 +27,21 @@ function tv_dashboard_pdo(): PDO
 
 function tv_json(array $payload, int $status = 200): void
 {
+    $json = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    $etag = '"' . md5($json) . '"';
+
+    header('ETag: ' . $etag);
+    header('Cache-Control: private, must-revalidate, max-age=0');
+
+    $clientEtag = trim($_SERVER['HTTP_IF_NONE_MATCH'] ?? '');
+    if ($status === 200 && $clientEtag === $etag) {
+        http_response_code(304);
+        exit;
+    }
+
     http_response_code($status);
     header('Content-Type: application/json; charset=utf-8');
-    header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
-    header('Pragma: no-cache');
-    header('Expires: 0');
-
-    echo json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    echo $json;
     exit;
 }
 
@@ -273,7 +281,7 @@ function tv_normalize_settings(array $settings): array
         $cleanSlides[$key]['enabled'] = (bool)$cleanSlides[$key]['enabled'];
         $cleanSlides[$key]['sort_order'] = (int)$cleanSlides[$key]['sort_order'];
         if ($key === 'leaderboard') {
-            $cleanSlides[$key]['style'] = in_array($cleanSlides[$key]['style'] ?? 'classic', ['classic', 'orbit', 'podium', 'staggered'], true)
+            $cleanSlides[$key]['style'] = in_array($cleanSlides[$key]['style'] ?? 'classic', ['classic', 'orbit', 'podium', 'staggered', 'style2'], true)
                 ? $cleanSlides[$key]['style']
                 : 'classic';
         }
@@ -349,16 +357,6 @@ function tv_active_event(): ?array
 
     $loaded = true;
     $pdo = tv_pdo();
-    $sessionEventId = (int)($_SESSION['active_event_id'] ?? 0);
-
-    if ($sessionEventId > 0) {
-        $stmt = $pdo->prepare('SELECT * FROM musabaqa_events WHERE id = ? LIMIT 1');
-        $stmt->execute([$sessionEventId]);
-        $event = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
-        if ($event) {
-            return $event;
-        }
-    }
 
     $stmt = $pdo->query("
         SELECT *
@@ -369,7 +367,6 @@ function tv_active_event(): ?array
     ");
     $event = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     if ($event) {
-        $_SESSION['active_event_id'] = (int)$event['id'];
         return $event;
     }
 
@@ -380,9 +377,6 @@ function tv_active_event(): ?array
         LIMIT 1
     ");
     $event = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
-    if ($event) {
-        $_SESSION['active_event_id'] = (int)$event['id'];
-    }
 
     return $event;
 }
@@ -500,8 +494,11 @@ function tv_leaderboard(?int $eventId = null): array
             SELECT pe.team_id, SUM(ms.total_mark) AS total_score
             FROM musabaqa_scores ms
             JOIN musabaqa_program_entries pe ON pe.id = ms.entry_id
+            JOIN musabaqa_programs p ON p.id = ms.program_id
             WHERE ms.event_id = ?
               AND ms.status = 'approved'
+              AND (p.redirect_to_team IS NULL OR p.redirect_to_team = 1)
+              AND (p.disable_scores IS NULL OR p.disable_scores = 0)
             GROUP BY pe.team_id
         ) approved_scores ON approved_scores.team_id = t.id
         LEFT JOIN musabaqa_manual_scoreboard manual_scores
@@ -980,6 +977,7 @@ function tv_winners(?int $eventId = null, int $limit = 8): array
         LEFT JOIN kauzariyya.class_types ct ON ct.id = p.class_type_id
         WHERE p.event_id = ?
           AND (p.status = 'completed' OR p.approval_status = 'approved')
+          AND (p.disable_scores IS NULL OR p.disable_scores = 0)
         ORDER BY COALESCE(p.reviewed_at, p.end_time, p.created_at) DESC, p.id DESC
         LIMIT ?
     ");

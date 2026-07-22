@@ -8,6 +8,61 @@ $pdo = $GLOBALS['musabaqa_pdo'];
 $activeEvent = admin_require_active_event($pdo);
 $activeEventId = (int)$activeEvent['id'];
 
+if (isset($_GET['ajax_lookup']) && $_GET['ajax_lookup'] === '1') {
+    $lookupNumber = trim((string)($_GET['chest_number'] ?? ''));
+    $memberId = (int)($_GET['member_id'] ?? 0);
+
+    header('Content-Type: application/json; charset=utf-8');
+
+    if ($lookupNumber === '') {
+        echo json_encode(['exists' => false]);
+        exit;
+    }
+
+    $stmt = $pdo->prepare("
+        SELECT
+            mtm.id,
+            mtm.chest_number,
+            COALESCE(NULLIF(s.display_name, ''), s.full_name) AS display_name,
+            t.team_name,
+            t.team_color,
+            c.name AS section,
+            ct.name AS class_type_name,
+            c.class_type_id
+        FROM musabaqa_team_members mtm
+        JOIN musabaqa_teams t ON t.id = mtm.team_id
+        JOIN kauzariyya.students s ON s.id = mtm.student_id
+        LEFT JOIN kauzariyya.classes c ON c.id = s.class_id
+        LEFT JOIN kauzariyya.class_types ct ON ct.id = c.class_type_id
+        WHERE mtm.event_id = ?
+          AND mtm.chest_number = ?
+          AND mtm.id != ?
+          AND mtm.status = 'active'
+        LIMIT 1
+    ");
+    $stmt->execute([$activeEventId, $lookupNumber, $memberId]);
+    $match = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if ($match) {
+        $match['category'] = id_card_category_label($match['class_type_name'] ?? null, (int)($match['class_type_id'] ?? 0));
+        echo json_encode([
+            'exists' => true,
+            'member' => [
+                'id' => (int)$match['id'],
+                'display_name' => $match['display_name'],
+                'chest_number' => $match['chest_number'],
+                'team_name' => $match['team_name'],
+                'team_color' => $match['team_color'] ?: '#14b8a6',
+                'section' => $match['section'] ?: '-',
+                'category' => $match['category'] ?: '-'
+            ]
+        ]);
+    } else {
+        echo json_encode(['exists' => false]);
+    }
+    exit;
+}
+
 $search = trim((string)($_GET['search'] ?? ''));
 
 $stmt = $pdo->prepare("
@@ -30,6 +85,122 @@ $teams = $stmt->fetchAll(PDO::FETCH_ASSOC);
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
         admin_flash('error', 'Invalid security token.');
+        admin_redirect('/admin/chest-numbers.php');
+    }
+
+    if (isset($_POST['download_csv'])) {
+        try {
+            $idMembers = id_card_members($pdo, $activeEventId);
+            $filename = 'id-cards-event-' . $activeEventId . '.csv';
+
+            while (ob_get_level() > 0) {
+                ob_end_clean();
+            }
+
+            header('Content-Type: text/csv; charset=UTF-8');
+            header('Content-Disposition: attachment; filename="' . $filename . '"');
+            header('Pragma: no-cache');
+            header('Expires: 0');
+
+            $output = fopen('php://output', 'w');
+            fwrite($output, "\xEF\xBB\xBF");
+            fputcsv($output, ['chest_number', 'display_name', 'team_name', 'team_color', 'category']);
+
+            foreach ($idMembers as $m) {
+                $mCategory = id_card_category_label($m['class_type_name'] ?? null, (int)($m['class_type_id'] ?? 0));
+
+                fputcsv($output, [
+                    $m['chest_number'] ?? '',
+                    $m['display_name'] ?? '',
+                    $m['team_name'] ?? '',
+                    $m['team_color'] ?? '',
+                    $mCategory,
+                ]);
+            }
+
+            fclose($output);
+            exit;
+        } catch (Throwable $e) {
+            admin_flash('error', $e->getMessage() ?: 'Unable to generate CSV.');
+            admin_redirect('/admin/chest-numbers.php');
+        }
+    }
+
+    if (($_POST['action'] ?? '') === 'manual_update') {
+        $memberId = (int)($_POST['member_id'] ?? 0);
+        $newChestNumber = trim((string)($_POST['chest_number'] ?? ''));
+
+        if ($memberId <= 0) {
+            admin_flash('error', 'Select a valid participant.');
+            admin_redirect('/admin/chest-numbers.php');
+        }
+
+        try {
+            $stmt = $pdo->prepare("
+                SELECT mtm.id, mtm.chest_number, COALESCE(NULLIF(s.display_name, ''), s.full_name) AS display_name
+                FROM musabaqa_team_members mtm
+                JOIN kauzariyya.students s ON s.id = mtm.student_id
+                WHERE mtm.id = ? AND mtm.event_id = ?
+                LIMIT 1
+            ");
+            $stmt->execute([$memberId, $activeEventId]);
+            $currentMember = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$currentMember) {
+                throw new RuntimeException('Participant not found.');
+            }
+
+            $oldChestNumber = trim((string)($currentMember['chest_number'] ?? ''));
+
+            if ($newChestNumber === '') {
+                $updateStmt = $pdo->prepare('UPDATE musabaqa_team_members SET chest_number = NULL WHERE id = ? AND event_id = ?');
+                $updateStmt->execute([$memberId, $activeEventId]);
+                admin_flash('success', 'Cleared chest number for ' . $currentMember['display_name'] . '.');
+            } else {
+                $findConflict = $pdo->prepare("
+                    SELECT mtm.id, mtm.chest_number, COALESCE(NULLIF(s.display_name, ''), s.full_name) AS display_name
+                    FROM musabaqa_team_members mtm
+                    JOIN kauzariyya.students s ON s.id = mtm.student_id
+                    WHERE mtm.event_id = ? AND mtm.chest_number = ? AND mtm.id != ?
+                    LIMIT 1
+                ");
+                $findConflict->execute([$activeEventId, $newChestNumber, $memberId]);
+                $conflictingMember = $findConflict->fetch(PDO::FETCH_ASSOC);
+
+                $pdo->beginTransaction();
+
+                if ($conflictingMember) {
+                    $otherMemberId = (int)$conflictingMember['id'];
+                    $updateOther = $pdo->prepare('UPDATE musabaqa_team_members SET chest_number = ? WHERE id = ? AND event_id = ?');
+                    $updateOther->execute([$oldChestNumber !== '' ? $oldChestNumber : NULL, $otherMemberId, $activeEventId]);
+
+                    $updateCurrent = $pdo->prepare('UPDATE musabaqa_team_members SET chest_number = ? WHERE id = ? AND event_id = ?');
+                    $updateCurrent->execute([$newChestNumber, $memberId, $activeEventId]);
+
+                    $pdo->commit();
+
+                    $msg = 'Assigned chest number #' . $newChestNumber . ' to ' . $currentMember['display_name'] . '.';
+                    if ($oldChestNumber !== '') {
+                        $msg .= ' Swapped chest number #' . $oldChestNumber . ' with ' . $conflictingMember['display_name'] . '.';
+                    } else {
+                        $msg .= ' Removed chest number #' . $newChestNumber . ' from ' . $conflictingMember['display_name'] . '.';
+                    }
+                    admin_flash('success', $msg);
+                } else {
+                    $updateCurrent = $pdo->prepare('UPDATE musabaqa_team_members SET chest_number = ? WHERE id = ? AND event_id = ?');
+                    $updateCurrent->execute([$newChestNumber, $memberId, $activeEventId]);
+
+                    $pdo->commit();
+                    admin_flash('success', 'Assigned chest number #' . $newChestNumber . ' to ' . $currentMember['display_name'] . '.');
+                }
+            }
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            admin_flash('error', $e->getMessage() ?: 'Unable to update chest number.');
+        }
+
         admin_redirect('/admin/chest-numbers.php');
     }
 
@@ -76,35 +247,89 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $pdo->beginTransaction();
-        $memberStmt = $pdo->prepare("
+
+        // Reset all existing chest numbers for this event first to avoid duplicates or orphans
+        $clearStmt = $pdo->prepare('UPDATE musabaqa_team_members SET chest_number = NULL WHERE event_id = ?');
+        $clearStmt->execute([$activeEventId]);
+
+        $stmtSenior = $pdo->prepare("
             SELECT mtm.id
             FROM musabaqa_team_members mtm
             JOIN kauzariyya.students s ON s.id = mtm.student_id
             LEFT JOIN kauzariyya.classes c ON c.id = s.class_id
-            WHERE mtm.event_id = ?
-              AND mtm.team_id = ?
-              AND mtm.status = 'active'
-            ORDER BY
-              CASE
-                WHEN c.class_type_id = 1 THEN 1
-                WHEN c.class_type_id = 2 THEN 2
-                WHEN c.class_type_id = 3 THEN 3
-                ELSE 4
-              END ASC,
-              mtm.id ASC
+            LEFT JOIN kauzariyya.class_types ct ON ct.id = c.class_type_id
+            WHERE mtm.event_id = ? AND mtm.team_id = ? AND mtm.status = 'active'
+              AND (ct.name LIKE '%عالية%' OR ct.name LIKE '%العالية%' OR c.class_type_id = 1)
+            ORDER BY COALESCE(NULLIF(c.priority, 0), 999999) ASC, RAND()
         ");
+
+        $stmtJunior = $pdo->prepare("
+            SELECT mtm.id
+            FROM musabaqa_team_members mtm
+            JOIN kauzariyya.students s ON s.id = mtm.student_id
+            LEFT JOIN kauzariyya.classes c ON c.id = s.class_id
+            LEFT JOIN kauzariyya.class_types ct ON ct.id = c.class_type_id
+            WHERE mtm.event_id = ? AND mtm.team_id = ? AND mtm.status = 'active'
+              AND (ct.name LIKE '%ثانوية%' OR ct.name LIKE '%الثانوية%' OR c.class_type_id = 2)
+            ORDER BY COALESCE(NULLIF(c.priority, 0), 999999) ASC, RAND()
+        ");
+
+        $stmtSubJunior = $pdo->prepare("
+            SELECT mtm.id
+            FROM musabaqa_team_members mtm
+            JOIN kauzariyya.students s ON s.id = mtm.student_id
+            LEFT JOIN kauzariyya.classes c ON c.id = s.class_id
+            LEFT JOIN kauzariyya.class_types ct ON ct.id = c.class_type_id
+            WHERE mtm.event_id = ? AND mtm.team_id = ? AND mtm.status = 'active'
+              AND (
+                ct.name LIKE '%حفظ%' OR ct.name LIKE '%تحصص%' OR c.class_type_id = 3
+                OR (
+                    NOT (ct.name LIKE '%عالية%' OR ct.name LIKE '%العالية%' OR c.class_type_id = 1)
+                    AND NOT (ct.name LIKE '%ثانوية%' OR ct.name LIKE '%الثانوية%' OR c.class_type_id = 2)
+                )
+              )
+            ORDER BY COALESCE(NULLIF(c.priority, 0), 999999) ASC, RAND()
+        ");
+
         $updateStmt = $pdo->prepare('UPDATE musabaqa_team_members SET chest_number = ? WHERE id = ? AND event_id = ? AND team_id = ?');
         $assigned = 0;
 
         foreach ($teams as $team) {
             $teamId = (int)$team['id'];
             $range = $ranges[$teamId];
-            $memberStmt->execute([$activeEventId, $teamId]);
-            $next = $range['start'];
+            $teamStart = (int)$range['start'];
 
-            foreach ($memberStmt->fetchAll(PDO::FETCH_ASSOC) as $member) {
-                $updateStmt->execute([(string)$next, (int)$member['id'], $activeEventId, $teamId]);
-                $next++;
+            $seniorStart = $teamStart;          // e.g. 101 (01 to 25)
+            $juniorStart = $teamStart + 25;     // e.g. 126 (26 to 50)
+            $subJuniorStart = $teamStart + 50;  // e.g. 151 (51 onwards)
+
+            // 1. Assign Senior members (Fixed Block: prefix+01 to prefix+25)
+            $stmtSenior->execute([$activeEventId, $teamId]);
+            $seniorMembers = $stmtSenior->fetchAll(PDO::FETCH_COLUMN);
+            $currSenior = $seniorStart;
+            foreach ($seniorMembers as $memberId) {
+                $updateStmt->execute([(string)$currSenior, (int)$memberId, $activeEventId, $teamId]);
+                $currSenior++;
+                $assigned++;
+            }
+
+            // 2. Assign Junior members (Fixed Block: prefix+26 to prefix+50)
+            $stmtJunior->execute([$activeEventId, $teamId]);
+            $juniorMembers = $stmtJunior->fetchAll(PDO::FETCH_COLUMN);
+            $currJunior = $juniorStart;
+            foreach ($juniorMembers as $memberId) {
+                $updateStmt->execute([(string)$currJunior, (int)$memberId, $activeEventId, $teamId]);
+                $currJunior++;
+                $assigned++;
+            }
+
+            // 3. Assign Sub Junior members (Fixed Block: prefix+51 to end of range)
+            $stmtSubJunior->execute([$activeEventId, $teamId]);
+            $subJuniorMembers = $stmtSubJunior->fetchAll(PDO::FETCH_COLUMN);
+            $currSubJunior = $subJuniorStart;
+            foreach ($subJuniorMembers as $memberId) {
+                $updateStmt->execute([(string)$currSubJunior, (int)$memberId, $activeEventId, $teamId]);
+                $currSubJunior++;
                 $assigned++;
             }
         }
@@ -177,7 +402,7 @@ $paginatedMembers = array_slice($members, $offset, $perPage);
 if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
     ob_start();
     if (!$paginatedMembers) {
-        echo '<tr><td colspan="5" class="empty-state-row" style="text-align: center; padding: 30px; color: var(--muted);"><div class="empty-title">No Members Found</div></td></tr>';
+        echo '<tr><td colspan="6" class="empty-state-row" style="text-align: center; padding: 30px; color: var(--muted);"><div class="empty-title">No Members Found</div></td></tr>';
     } else {
         foreach ($paginatedMembers as $member) {
             ?>
@@ -187,6 +412,11 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
                 <td><span class="team-color-pill" style="background: <?= e($member['team_color'] ?: '#14b8a6') ?>22; color:#fff;"><span class="team-color-dot" style="width:12px;height:12px;background:<?= e($member['team_color'] ?: '#14b8a6') ?>;"></span><?= e($member['team_name'] ?? '') ?></span></td>
                 <td><?= e($member['section'] ?: '-') ?></td>
                 <td><span class="badge badge-info"><?= e($member['category'] ?: '-') ?></span></td>
+                <td style="text-align: right;">
+                    <button class="btn btn-secondary btn-sm" type="button" data-edit-member='<?= json_encode($member, JSON_HEX_APOS | JSON_HEX_QUOT) ?>' title="Edit Chest Number">
+                        <i class="fa-solid fa-pen"></i> Edit
+                    </button>
+                </td>
             </tr>
             <?php
         }
@@ -219,11 +449,18 @@ require_once __DIR__ . '/../includes/sidebar.php';
 <div class="main-content">
     <div class="topbar">
         <div>
-            <div class="page-title">Chest Numbers</div>
+            <div class="page-title">Chest Numbers &amp; ID Cards</div>
             <div class="page-subtitle"><?= e($activeEvent['title']) ?></div>
         </div>
         <div class="flex gap-2 flex-wrap">
-            <button class="btn btn-success btn-md" type="button" data-open-generate><i class="fa-solid fa-wand-magic-sparkles"></i> Generate</button>
+            <button class="btn btn-secondary btn-md" type="button" data-open-manual><i class="fa-solid fa-pen-to-square"></i> Assign / Edit Chest #</button>
+            <button class="btn btn-success btn-md" type="button" data-open-generate><i class="fa-solid fa-wand-magic-sparkles"></i> Auto Generate</button>
+            
+            <form method="POST" action="" style="display:inline-flex; gap:8px;">
+                <input type="hidden" name="csrf_token" value="<?= generate_csrf_token() ?>">
+                <button class="btn btn-info btn-md" type="submit" name="download_csv" value="1"><i class="fa-solid fa-file-csv"></i> Download CSV</button>
+            </form>
+            
             <a href="<?= app_url('/admin/teams.php') ?>" class="btn btn-secondary btn-md"><i class="fa-solid fa-people-group"></i> Teams</a>
         </div>
     </div>
@@ -259,7 +496,7 @@ require_once __DIR__ . '/../includes/sidebar.php';
         <div class="table-wrapper">
             <table class="table">
                 <thead>
-                    <tr><th>Chest #</th><th>Display Name</th><th>Team</th><th>Section</th><th>Category</th></tr>
+                    <tr><th>Chest #</th><th>Display Name</th><th>Team</th><th>Section</th><th>Category</th><th style="width: 90px; text-align: right;">Action</th></tr>
                 </thead>
                 <tbody id="table-body">
                     <?php foreach ($paginatedMembers as $member): ?>
@@ -269,6 +506,11 @@ require_once __DIR__ . '/../includes/sidebar.php';
                             <td><span class="team-color-pill" style="background: <?= e($member['team_color'] ?: '#14b8a6') ?>22; color:#fff;"><span class="team-color-dot" style="width:12px;height:12px;background:<?= e($member['team_color'] ?: '#14b8a6') ?>;"></span><?= e($member['team_name'] ?? '') ?></span></td>
                             <td><?= e($member['section'] ?: '-') ?></td>
                             <td><span class="badge badge-info"><?= e($member['category'] ?: '-') ?></span></td>
+                            <td style="text-align: right;">
+                                <button class="btn btn-secondary btn-sm" type="button" data-edit-member='<?= json_encode($member, JSON_HEX_APOS | JSON_HEX_QUOT) ?>' title="Edit Chest Number">
+                                    <i class="fa-solid fa-pen"></i> Edit
+                                </button>
+                            </td>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>
@@ -276,8 +518,67 @@ require_once __DIR__ . '/../includes/sidebar.php';
         </div>
         <div id="pagination-container">
             <?= admin_render_pagination_html($page, $perPage, $totalMembers) ?>
+        </div>
     <?php endif; ?>
+</div> <!-- Closes main-content -->
 
+<style>
+body.modal-open {
+    overflow: hidden !important;
+}
+.modal-overlay {
+    z-index: 10000 !important;
+    align-items: flex-start !important;
+    overflow-y: auto !important;
+    padding-top: 5vh !important;
+    padding-bottom: 5vh !important;
+}
+.modal-box {
+    margin: 0 auto !important;
+}
+</style>
+
+<div class="modal-overlay" id="manualEditModal">
+    <div class="modal-box modal-md">
+        <div class="modal-header">
+            <div>
+                <div class="modal-title" id="manualModalTitle">Assign / Edit Chest Number</div>
+                <div class="page-subtitle">Assign or swap chest number for a participant</div>
+            </div>
+            <button class="modal-close" type="button" data-close="manualEditModal"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+
+        <form method="POST" id="manualEditForm">
+            <?= admin_csrf_field() ?>
+            <input type="hidden" name="action" value="manual_update">
+            
+            <div class="input-group full-width mb-4">
+                <label>Participant</label>
+                <select name="member_id" id="manualMemberSelect" class="form-select" required style="width: 100%; padding: 10px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface-2); color: var(--text);">
+                    <option value="">-- Select Participant --</option>
+                    <?php foreach ($members as $m): ?>
+                        <option value="<?= (int)$m['id'] ?>" data-chest="<?= e($m['chest_number'] ?? '') ?>">
+                            <?= e($m['display_name']) ?> (<?= e($m['team_name']) ?>) <?= trim((string)($m['chest_number'] ?? '')) !== '' ? '[#' . e((string)$m['chest_number']) . ']' : '[No Chest #]' ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+
+            <div class="input-group full-width mb-4">
+                <label>Chest Number</label>
+                <input type="text" name="chest_number" id="manualChestNumber" placeholder="e.g. 105" autocomplete="off" style="width: 100%; padding: 10px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface-2); color: var(--text);">
+            </div>
+
+            <!-- Small Conflict / Info Box -->
+            <div id="chestConflictBox" class="mb-4" style="display: none;"></div>
+
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary btn-md" data-close="manualEditModal">Cancel</button>
+                <button type="submit" class="btn btn-success btn-md" id="manualSubmitBtn"><i class="fa-solid fa-check"></i> Save & Assign</button>
+            </div>
+        </form>
+    </div>
+</div>
 
 <div class="modal-overlay" id="generateModal">
     <div class="modal-box modal-lg">
@@ -339,14 +640,150 @@ require_once __DIR__ . '/../includes/sidebar.php';
 <script>
 (() => {
 
-document.querySelector('[data-open-generate]')?.addEventListener('click', () =>window.openModal('generateModal'));
-document.querySelectorAll('[data-close]').forEach(btn => btn.addEventListener('click', () =>window.closeModal(btn.dataset.close)));
-document.querySelectorAll('.modal-overlay').forEach(modal => modal.addEventListener('click', event => {
-    if (event.target === modal)window.closeModal(modal.id);
-}));
+    function escapeHtml(str) {
+        return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    let lookupDebounceTimer = null;
+
+    function checkChestConflict() {
+        const memberId = document.getElementById('manualMemberSelect')?.value || 0;
+        const chestNumber = document.getElementById('manualChestNumber')?.value.trim() || '';
+        const conflictBox = document.getElementById('chestConflictBox');
+
+        if (!conflictBox) return;
+
+        if (!chestNumber) {
+            conflictBox.style.display = 'none';
+            conflictBox.innerHTML = '';
+            return;
+        }
+
+        clearTimeout(lookupDebounceTimer);
+        lookupDebounceTimer = setTimeout(() => {
+            fetch(`chest-numbers.php?ajax_lookup=1&chest_number=${encodeURIComponent(chestNumber)}&member_id=${encodeURIComponent(memberId)}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.exists && data.member) {
+                        const m = data.member;
+                        conflictBox.style.display = 'block';
+                        conflictBox.innerHTML = `
+                            <div style="background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; padding: 12px; display: flex; gap: 12px; align-items: center;">
+                                <div style="font-size: 24px; color: #ef4444;"><i class="fa-solid fa-arrows-rotate"></i></div>
+                                <div style="flex: 1;">
+                                    <div style="font-weight: 700; font-size: 13px; color: #ef4444; margin-bottom: 2px;">
+                                        Chest #${escapeHtml(chestNumber)} is assigned to another participant
+                                    </div>
+                                    <div style="font-size: 13px; color: var(--text);">
+                                        <strong>${escapeHtml(m.display_name)}</strong>
+                                        <span class="team-color-pill" style="background: ${escapeHtml(m.team_color)}22; color:#fff; font-size:11px; padding:2px 8px; border-radius:12px; margin-left:6px;">
+                                            <span class="team-color-dot" style="width:8px;height:8px;background:${escapeHtml(m.team_color)};display:inline-block;border-radius:50%;margin-right:4px;"></span>
+                                            ${escapeHtml(m.team_name)}
+                                        </span>
+                                        <span class="badge badge-info" style="font-size:10px; margin-left:4px;">${escapeHtml(m.category)}</span>
+                                    </div>
+                                    <div style="font-size: 12px; color: var(--muted); margin-top: 4px;">
+                                        Saving will <strong>swap</strong> chest numbers between these two participants.
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        conflictBox.style.display = 'block';
+                        conflictBox.innerHTML = `
+                            <div style="background: rgba(34, 197, 94, 0.08); border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 8px; padding: 8px 12px; display: flex; gap: 8px; align-items: center;">
+                                <div style="color: #22c55e;"><i class="fa-solid fa-circle-check"></i></div>
+                                <div style="font-size: 13px; color: #22c55e; font-weight: 600;">
+                                    Chest #${escapeHtml(chestNumber)} is available.
+                                </div>
+                            </div>
+                        `;
+                    }
+                })
+                .catch(() => {
+                    conflictBox.style.display = 'none';
+                });
+        }, 200);
+    }
+
+    function bindManualEditButtons() {
+        document.querySelectorAll('[data-edit-member]').forEach(btn => {
+            btn.onclick = () => {
+                try {
+                    const member = JSON.parse(btn.dataset.editMember);
+                    const select = document.getElementById('manualMemberSelect');
+                    if (select) {
+                        select.value = member.id;
+                    }
+                    const input = document.getElementById('manualChestNumber');
+                    if (input) {
+                        input.value = member.chest_number || '';
+                    }
+                    checkChestConflict();
+                    window.openModal('manualEditModal');
+                    document.body.classList.add('modal-open');
+                } catch (e) {
+                    console.error(e);
+                }
+            };
+        });
+    }
+
+    document.querySelector('[data-open-manual]')?.addEventListener('click', () => {
+        document.getElementById('manualMemberSelect').value = '';
+        document.getElementById('manualChestNumber').value = '';
+        document.getElementById('chestConflictBox').style.display = 'none';
+        window.openModal('manualEditModal');
+        document.body.classList.add('modal-open');
+    });
+
+    document.querySelector('[data-open-generate]')?.addEventListener('click', () => {
+        window.openModal('generateModal');
+        document.body.classList.add('modal-open');
+    });
+
+    document.querySelectorAll('[data-close]').forEach(btn => btn.addEventListener('click', () => {
+        window.closeModal(btn.dataset.close);
+        document.body.classList.remove('modal-open');
+    }));
+
+    document.querySelectorAll('.modal-overlay').forEach(modal => modal.addEventListener('click', event => {
+        if (event.target === modal) {
+            window.closeModal(modal.id);
+            document.body.classList.remove('modal-open');
+        }
+    }));
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            window.closeModal('generateModal');
+            window.closeModal('manualEditModal');
+            document.body.classList.remove('modal-open');
+        }
+    });
+
+    document.getElementById('manualChestNumber')?.addEventListener('input', checkChestConflict);
+    document.getElementById('manualMemberSelect')?.addEventListener('change', () => {
+        const select = document.getElementById('manualMemberSelect');
+        const selectedOpt = select.options[select.selectedIndex];
+        if (selectedOpt && selectedOpt.dataset.chest !== undefined) {
+            document.getElementById('manualChestNumber').value = selectedOpt.dataset.chest;
+        }
+        checkChestConflict();
+    });
+
+    bindManualEditButtons();
+
+    // Hook into AJAX pagination re-rendering if active
+    const tableBody = document.getElementById('table-body');
+    if (tableBody) {
+        const observer = new MutationObserver(() => {
+            bindManualEditButtons();
+        });
+        observer.observe(tableBody, { childList: true });
+    }
 
 })();
 </script>
-</div>
 <?= admin_ajax_pagination_script() ?>
 <?php admin_close_page(); ?>

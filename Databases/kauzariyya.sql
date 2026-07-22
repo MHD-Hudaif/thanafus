@@ -199,38 +199,98 @@ CREATE TABLE `permissions` (
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `events`
+--
+
+CREATE TABLE `events` (
+  `id` int UNSIGNED NOT NULL AUTO_INCREMENT,
+  `name` varchar(100) NOT NULL UNIQUE,
+  `slug` varchar(100) NOT NULL UNIQUE,
+  `description` text,
+  `is_active` tinyint(1) NOT NULL DEFAULT '0',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `roles`
 --
 
 CREATE TABLE `roles` (
-  `id` int UNSIGNED NOT NULL,
+  `id` int UNSIGNED NOT NULL AUTO_INCREMENT,
   `name` varchar(100) NOT NULL,
   `slug` varchar(100) NOT NULL,
   `description` text,
+  `event_id` int UNSIGNED NOT NULL,
   `is_system` tinyint(1) NOT NULL DEFAULT '0',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `fk_roles_event_idx` (`event_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+--
+-- Dumping data for table `events`
+--
+
+INSERT INTO `events` (`id`, `name`, `slug`, `description`, `is_active`, `created_at`, `updated_at`) VALUES
+(1, 'Main', 'main', 'System-wide core pages and roles', 1, NOW(), NOW()),
+(2, 'Thanafus 2026-27', 'thanafus-2026-27', 'Special roles for the Thanafus 2026-27 competition space', 0, NOW(), NOW());
 
 --
 -- Dumping data for table `roles`
 --
 
-INSERT INTO `roles` (`id`, `name`, `slug`, `description`, `is_system`, `created_at`, `updated_at`) VALUES
-(1, 'admin', 'admin', 'All permission', 1, '2026-03-08 10:20:46', '2026-05-26 11:22:32'),
-(2, 'teacher', 'teacher', 'teacher permission', 0, '2026-03-09 06:08:14', '2026-05-26 11:22:43'),
-(3, 'student', 'student', 'Student role', 0, '2026-03-15 04:13:17', '2026-03-15 04:13:17');
+INSERT INTO `roles` (`id`, `name`, `slug`, `description`, `event_id`, `is_system`, `created_at`, `updated_at`) VALUES
+(1, 'admin', 'admin', 'All permission', 1, 1, '2026-03-08 10:20:46', '2026-05-26 11:22:32'),
+(2, 'teacher', 'teacher', 'teacher permission', 1, 0, '2026-03-09 06:08:14', '2026-05-26 11:22:43'),
+(3, 'student', 'student', 'Student role', 1, 0, '2026-03-15 04:13:17', '2026-03-15 04:13:17'),
+(5, 'Members Info Manager', 'members-info-manager', 'Controls access to ID cards, chest numbers, etc.', 2, 0, NOW(), NOW()),
+(6, 'Entries Assigner', 'entries-assigner', 'Assigns students to contest entries.', 2, 0, NOW(), NOW()),
+(7, 'Score Uploader', 'score-uploader', 'Uploads judge marks and score cards.', 2, 0, NOW(), NOW()),
+(8, 'TV Controller', 'tv-controller', 'Controls screen feeds and live TV display.', 2, 0, NOW(), NOW());
+
+--
+-- Dumping data for table `programs`
+--
+
+INSERT INTO `programs` (`id`, `name`, `slug`, `event_id`, `category`, `type`) VALUES
+(1, 'Qira\'at', 'qiraat', 2, 'Sub Junior', 'Individual'),
+(2, 'Elocution', 'elocution', 2, 'Junior', 'Individual'),
+(3, 'Essay Writing', 'essay-writing', 2, 'Senior', 'Individual'),
+(4, 'Islamic Quiz', 'islamic-quiz', 2, 'Senior', 'Group'),
+(5, 'Hifz', 'hifz', 2, 'Junior', 'Individual');
+
+--
+-- Dumping data for table `tv_settings`
+--
+
+INSERT INTO `tv_settings` (`id`, `active_program_id`, `display_type`) VALUES
+(1, NULL, 'scoreboard');
 
 -- --------------------------------------------------------
 
 --
--- Table structure for table `role_permissions`
+-- Table structure for table `user_permissions`
 --
 
-CREATE TABLE `role_permissions` (
-  `role_id` int UNSIGNED NOT NULL,
-  `permission_id` int UNSIGNED NOT NULL,
-  `allowed` tinyint(1) NOT NULL DEFAULT '1'
+CREATE TABLE `user_permissions` (
+  `user_id` int UNSIGNED NOT NULL,
+  `permission_id` int UNSIGNED NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `user_authorities`
+--
+
+CREATE TABLE `user_authorities` (
+  `user_id` int UNSIGNED NOT NULL,
+  `authority_id` int UNSIGNED NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- --------------------------------------------------------
@@ -525,6 +585,17 @@ INSERT INTO `user_roles` (`user_id`, `role_id`) VALUES
 (6, 2),
 (7, 3);
 
+--
+-- Dumping data for table `authorities`
+--
+
+INSERT INTO `authorities` (`id`, `name`, `slug`, `description`) VALUES
+(1, 'TV Controller', 'control-tv', 'Controls the TV scoreboard display and feeds'),
+(2, 'Score Uploader', 'upload-scores', 'Uploads and updates judge score cards'),
+(3, 'Entries Assigner', 'assign-entries', 'Assigns students to musabaqa/competition entries'),
+(4, 'Members Info Viewer', 'members-info', 'Access to member ID cards, chest numbers, and details')
+ON DUPLICATE KEY UPDATE name = VALUES(name), description = VALUES(description);
+
 -- --------------------------------------------------------
 
 --
@@ -536,6 +607,73 @@ CREATE TABLE `user_settings` (
   `key` varchar(100) NOT NULL,
   `value` text,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `programs`
+--
+
+CREATE TABLE `programs` (
+  `id` int UNSIGNED NOT NULL AUTO_INCREMENT,
+  `name` varchar(150) NOT NULL,
+  `slug` varchar(150) NOT NULL,
+  `event_id` int UNSIGNED NOT NULL,
+  `category` varchar(50) NOT NULL,
+  `type` varchar(50) NOT NULL DEFAULT 'Individual',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `programs_slug_unique` (`slug`),
+  KEY `fk_programs_event_idx` (`event_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `program_entries`
+--
+
+CREATE TABLE `program_entries` (
+  `id` int UNSIGNED NOT NULL AUTO_INCREMENT,
+  `program_id` int UNSIGNED NOT NULL,
+  `student_id` int UNSIGNED NOT NULL,
+  `chest_number` varchar(20) DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `unique_student_program` (`program_id`,`student_id`),
+  KEY `fk_pe_student_idx` (`student_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `scores`
+--
+
+CREATE TABLE `scores` (
+  `id` int UNSIGNED NOT NULL AUTO_INCREMENT,
+  `entry_id` int UNSIGNED NOT NULL,
+  `judge_number` int NOT NULL,
+  `marks` decimal(5,2) NOT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `unique_entry_judge` (`entry_id`,`judge_number`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `tv_settings`
+--
+
+CREATE TABLE `tv_settings` (
+  `id` int UNSIGNED NOT NULL AUTO_INCREMENT,
+  `active_program_id` int UNSIGNED DEFAULT NULL,
+  `display_type` varchar(50) NOT NULL DEFAULT 'scoreboard',
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `fk_tv_program_idx` (`active_program_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
@@ -592,11 +730,18 @@ ALTER TABLE `roles`
   ADD KEY `slug` (`slug`);
 
 --
--- Indexes for table `role_permissions`
+-- Indexes for table `user_permissions`
 --
-ALTER TABLE `role_permissions`
-  ADD PRIMARY KEY (`role_id`,`permission_id`),
-  ADD KEY `fk_rp_perm` (`permission_id`);
+ALTER TABLE `user_permissions`
+  ADD PRIMARY KEY (`user_id`,`permission_id`),
+  ADD KEY `fk_up_perm` (`permission_id`);
+
+--
+-- Indexes for table `user_authorities`
+--
+ALTER TABLE `user_authorities`
+  ADD PRIMARY KEY (`user_id`,`authority_id`),
+  ADD KEY `fk_ua_auth` (`authority_id`);
 
 --
 -- Indexes for table `settings`
@@ -790,11 +935,18 @@ ALTER TABLE `classes`
   ADD CONSTRAINT `fk_class_type` FOREIGN KEY (`class_type_id`) REFERENCES `class_types` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 --
--- Constraints for table `role_permissions`
+-- Constraints for table `user_permissions`
 --
-ALTER TABLE `role_permissions`
-  ADD CONSTRAINT `fk_rp_perm` FOREIGN KEY (`permission_id`) REFERENCES `permissions` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  ADD CONSTRAINT `fk_rp_role` FOREIGN KEY (`role_id`) REFERENCES `roles` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE `user_permissions`
+  ADD CONSTRAINT `fk_up_perm` FOREIGN KEY (`permission_id`) REFERENCES `permissions` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_up_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Constraints for table `user_authorities`
+--
+ALTER TABLE `user_authorities`
+  ADD CONSTRAINT `fk_ua_auth` FOREIGN KEY (`authority_id`) REFERENCES `authorities` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_ua_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
 -- Constraints for table `students`
@@ -822,6 +974,37 @@ ALTER TABLE `teacher_specialisations`
 ALTER TABLE `user_roles`
   ADD CONSTRAINT `fk_ur_role` FOREIGN KEY (`role_id`) REFERENCES `roles` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
   ADD CONSTRAINT `fk_ur_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Constraints for table `roles`
+--
+ALTER TABLE `roles`
+  ADD CONSTRAINT `fk_roles_event` FOREIGN KEY (`event_id`) REFERENCES `events` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+--
+-- Constraints for table `programs`
+--
+ALTER TABLE `programs`
+  ADD CONSTRAINT `fk_programs_event` FOREIGN KEY (`event_id`) REFERENCES `events` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Constraints for table `program_entries`
+--
+ALTER TABLE `program_entries`
+  ADD CONSTRAINT `fk_pe_program` FOREIGN KEY (`program_id`) REFERENCES `programs` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_pe_student` FOREIGN KEY (`student_id`) REFERENCES `students` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Constraints for table `scores`
+--
+ALTER TABLE `scores`
+  ADD CONSTRAINT `fk_scores_entry` FOREIGN KEY (`entry_id`) REFERENCES `program_entries` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Constraints for table `tv_settings`
+--
+ALTER TABLE `tv_settings`
+  ADD CONSTRAINT `fk_tv_program` FOREIGN KEY (`active_program_id`) REFERENCES `programs` (`id`) ON DELETE SET NULL ON UPDATE CASCADE;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

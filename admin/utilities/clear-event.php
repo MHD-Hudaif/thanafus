@@ -10,7 +10,7 @@ require_login();
 |--------------------------------------------------------------------------
 */
 
-unset($_SESSION['active_event_id']);
+unset($_SESSION['selected_event_id']);
 unset($_SESSION['active_team_id']);
 
 /*

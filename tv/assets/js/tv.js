@@ -11,7 +11,15 @@
         lastCelebrationId: null,
         isCelebrating: false,
         leaderboardData: null,
+        leaderboardSignature: '',
         slideOrder: ['intro', 'leaderboard', 'schedule', 'current-program'],
+        schedule: {
+            data: null,
+            pages: [],
+            currentPage: 0,
+            timer: null,
+            playing: false
+        },
         timers: {
             slide: null,
             clock: null,
@@ -170,6 +178,8 @@
     }
 
     function setActiveSlide(name) {
+        els.body.classList.toggle('tv-schedule-active', name === 'schedule');
+
         if (state.activeSlide === name && slideEls.some(s => s.classList.contains('tv-slide--active') && s.dataset.slide === name)) {
             return;
         }
@@ -179,6 +189,10 @@
             const isActive = slide.dataset.slide === name;
             slide.classList.toggle('tv-slide--active', isActive);
         });
+
+        if (name !== 'schedule') {
+            stopScheduleTimer();
+        }
 
         if (name === 'intro') {
             if (els.introVideo) {
@@ -191,6 +205,10 @@
         }
 
         animateEntrance(`#slide-${name}`);
+
+        if (name === 'schedule') {
+            startSchedulePlayback();
+        }
     }
 
     function animateEntrance(scope) {
@@ -198,6 +216,14 @@
         if (!root || typeof gsap === 'undefined') return;
 
         gsap.killTweensOf(root.querySelectorAll('*'));
+
+        // Custom animations for the Current Program slide
+        if (scope === '#slide-current-program') {
+            if (typeof window.triggerCurrentProgramAnimations === 'function') {
+                window.triggerCurrentProgramAnimations();
+            }
+            return;
+        }
 
         // Custom sliding animations for the Leaderboard slide
         if (scope === '#slide-leaderboard') {
@@ -305,21 +331,25 @@
         if (lower.includes('3') || lower.includes('anas')) {
             return {
                 name: 'Lion',
+                subName: 'THE LION KINGS',
                 svg: `<svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M50 10 L85 25 L80 65 L50 90 L20 65 L15 25 Z" /><path d="M38 45 L45 48 L42 52 Z" /><path d="M62 45 L55 48 L58 52 Z" /><path d="M48 55 L52 55 L50 62 Z" /><path d="M50 62 L45 68 L50 72 L55 68 Z" /><path d="M50 10 L50 25" /><path d="M35 20 L45 28" /><path d="M65 20 L55 28" /></svg>`
             };
         } else if (lower.includes('1') || lower.includes('noufal')) {
             return {
                 name: 'Falcon',
+                subName: 'THE PHOENIX',
                 svg: `<svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M50 10 L85 25 L80 65 L50 90 L20 65 L15 25 Z" /><path d="M25 35 L40 45 L50 35 L60 45 L75 35" /><path d="M22 45 L40 52 L50 45 L60 52 L78 45" /><path d="M50 45 L46 55 L50 65 L54 55 Z" /><circle cx="44" cy="48" r="1.5" fill="currentColor" /><circle cx="56" cy="48" r="1.5" fill="currentColor" /><path d="M42 68 L50 82 L58 68 Z" /></svg>`
             };
         } else if (lower.includes('2') || lower.includes('imran')) {
             return {
                 name: 'Wolf',
+                subName: 'THE WOLVES',
                 svg: `<svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M50 10 L85 25 L80 65 L50 90 L20 65 L15 25 Z" /><path d="M30 35 L38 22 L44 32" /><path d="M70 35 L62 22 L56 32" /><path d="M30 48 L42 48 L50 68 L58 48 L70 48" /><path d="M36 42 L44 45" /><path d="M64 42 L56 45" /><circle cx="50" cy="72" r="3" fill="currentColor" /></svg>`
             };
         } else {
             return {
                 name: 'Dragon',
+                subName: 'THE DRAGONS',
                 svg: `<svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M50 10 L85 25 L80 65 L50 90 L20 65 L15 25 Z" /><path d="M35 30 L22 18 L32 32" /><path d="M65 30 L78 18 L68 32" /><path d="M40 45 L50 35 L60 45 L55 68 L45 68 Z" /><path d="M38 52 L26 62 L42 58" /><path d="M62 52 L74 62 L58 58" /><path d="M42 42 L46 44" /><path d="M58 42 L54 44" /></svg>`
             };
         }
@@ -422,6 +452,7 @@
         draw();
     }
 
+
     function renderLeaderboard(rows, completionPercent = 0) {
         state.leaderboardData = rows;
         
@@ -452,16 +483,25 @@
         const container = document.querySelector('[data-leaderboard]');
         if (!container) return;
 
+        const signature = JSON.stringify((rows || []).slice(0, 4).map((team) => [
+            team?.id, team?.rank, team?.team_name, team?.total_score, team?.team_color
+        ]));
+        if (signature === state.leaderboardSignature && container.childElementCount > 0) return;
+        state.leaderboardSignature = signature;
+
         const slots = Array.from({ length: 4 }, (_, index) => rows[index] || null);
+        const podiumSlots = [slots[1], slots[0], slots[2], slots[3]];
         const maxScore = Math.max(...slots.map(t => t ? Number(t.total_score || 0) : 0), 10);
 
         // Get event title from the topbar
         const eventTitleEl = document.querySelector('[data-event-title]');
         const eventTitle = eventTitleEl ? eventTitleEl.textContent : 'SCORE REVEAL';
 
-        container.className = 'tv-floating-leaderboard cinema-stage';
+        const isStyle2 = state.slides['leaderboard']?.style === 'style2';
+        container.className = 'tv-floating-leaderboard cinema-stage' + (isStyle2 ? ' style-style2' : '');
         container.innerHTML = `
             <canvas class="confetti-canvas"></canvas>
+            <canvas class="three-stage-canvas" aria-hidden="true"></canvas>
 
             <!-- Stage Haze Overlay -->
             <div class="stage-haze"></div>
@@ -506,7 +546,7 @@
 
             <!-- Pedestal Stage -->
             <div class="cinema-pedestal-stage">
-                ${slots.map((team, index) => {
+                ${podiumSlots.map((team, index) => {
                     const color = team?.team_color || ['#38bdf8', '#f7c948', '#34d399', '#fb7185'][index];
                     const rgb = hexToRgb(color);
                     const rgbStr = `${rgb.r}, ${rgb.g}, ${rgb.b}`;
@@ -519,8 +559,8 @@
                     const mascot = getTeamMascot(name);
 
                     return `
-                        <div class="cinema-pedestal-slot" style="--team-color: ${color}; --team-rgb: ${rgbStr};">
-                            <!-- Volumetric Mascot Banner behind pedestal -->
+                        <div class="cinema-pedestal-slot" data-index="${index}" data-rank="${rank}" style="--team-color: ${color}; --team-rgb: ${rgbStr}; --podium-px: ${targetHeight}px;">
+                            <!-- Volumetric Mascot Banner behind pedestal/on walls -->
                             <div class="cinema-banner">
                                 <div class="banner-mascot">${mascot.svg}</div>
                                 <div class="banner-team-label">${escapeHtml(name)}</div>
@@ -529,6 +569,26 @@
                             <!-- Spotlight beam from above -->
                             <div class="cinema-spotlight-beam"></div>
 
+                            ${isStyle2 ? `
+                            <!-- Diamond Panel -->
+                            <div class="cinema-diamond-panel-wrapper">
+                                <div class="cinema-diamond-panel">
+                                    <div class="diamond-content">
+                                        <div class="diamond-mascot">${mascot.svg}</div>
+                                        <div class="diamond-team-name">${escapeHtml(name)}</div>
+                                        <div class="diamond-team-sub">${escapeHtml(mascot.subName || '')}</div>
+                                        <div class="diamond-score" data-score="${scoreVal}">
+                                            <span class="diamond-score-val">0</span>
+                                            <span class="diamond-score-lbl">POINTS</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- Rank Badge -->
+                                <div class="cinema-diamond-rank">
+                                    <span>${rank}</span>
+                                </div>
+                            </div>
+                            ` : `
                             <!-- Score Badge floating above pedestal -->
                             <div class="cinema-score-badge" data-score="${scoreVal}">
                                 <span class="badge-value">0</span>
@@ -543,17 +603,18 @@
                                 </div>
                             </div>
 
+                            <!-- Name Tag -->
+                            <div class="cinema-name-tag">
+                                <div class="name-tag-rank">#${rank}</div>
+                                <div class="name-tag-name">${escapeHtml(name)}</div>
+                            </div>
+                            `}
+
                             <!-- Glowing Base Platform -->
                             <div class="cinema-base-platform">
                                 <div class="base-ring-outer"></div>
                                 <div class="base-ring-inner"></div>
                                 <div class="base-glow-pool"></div>
-                            </div>
-
-                            <!-- Name Tag -->
-                            <div class="cinema-name-tag">
-                                <div class="name-tag-rank">#${rank}</div>
-                                <div class="name-tag-name">${escapeHtml(name)}</div>
                             </div>
                         </div>
                     `;
@@ -579,19 +640,50 @@
             const banners = container.querySelectorAll('.cinema-banner');
             const tableRows = container.querySelectorAll('.score-table-row');
             const tableScores = container.querySelectorAll('.score-table-val');
-            const badgeValues = container.querySelectorAll('.badge-value');
+            const badgeValues = container.querySelectorAll('.badge-value, .diamond-score-val');
             const haze = container.querySelector('.stage-haze');
+            const diamondPanels = container.querySelectorAll('.cinema-diamond-panel-wrapper');
+            const diamondInners = container.querySelectorAll('.cinema-diamond-panel');
+
+            if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+                gsap.set([header, scoreTable, haze, ...tableRows, ...spotlights, ...banners, ...pedestals,
+                    ...scoreBadges, ...nameTags, ...diamondPanels], {
+                    opacity: 1,
+                    x: 0,
+                    y: 0,
+                    scale: 1,
+                    scaleX: 1,
+                    scaleY: 1
+                });
+                podiumSlots.forEach((team, idx) => {
+                    if (badgeValues[idx]) badgeValues[idx].textContent = formatScore(team?.total_score || 0);
+                });
+                slots.forEach((team, idx) => {
+                    if (tableScores[idx]) tableScores[idx].textContent = formatScore(team?.total_score || 0);
+                });
+                return;
+            }
 
             // Initial states
             gsap.set(header, { opacity: 0, y: -40 });
             gsap.set(scoreTable, { opacity: 0, y: -30, scale: 0.95 });
-            gsap.set(pedestals, { scaleY: 0 });
-            gsap.set(scoreBadges, { opacity: 0, y: 20, scale: 0.5 });
-            gsap.set(nameTags, { opacity: 0, y: 20 });
             gsap.set(spotlights, { opacity: 0 });
-            gsap.set(banners, { opacity: 0, y: -80, scaleY: 0, transformOrigin: 'top center' });
             gsap.set(tableRows, { opacity: 0, x: -20 });
             gsap.set(haze, { opacity: 0 });
+
+            if (isStyle2) {
+                gsap.set(diamondPanels, { scale: 0, y: 150, opacity: 0, transformOrigin: 'center center' });
+                // Set initial x for banners: left banners slide left, right banners slide right
+                banners.forEach((banner, idx) => {
+                    const xOffset = idx < 2 ? -250 : 250;
+                    gsap.set(banner, { x: xOffset, opacity: 0 });
+                });
+            } else {
+                gsap.set(pedestals, { scaleY: 0 });
+                gsap.set(scoreBadges, { opacity: 0, y: 20, scale: 0.5 });
+                gsap.set(nameTags, { opacity: 0, y: 20 });
+                gsap.set(banners, { opacity: 0, y: -80, scaleY: 0, transformOrigin: 'top center' });
+            }
 
             // 1. Stage haze fades in
             tl.to(haze, { opacity: 1, duration: 1.5 }, 0);
@@ -599,73 +691,114 @@
             // 2. Header slides in
             tl.to(header, { opacity: 1, y: 0, duration: 0.8 }, 0.3);
 
-            // 3. Score table fades in
-            tl.to(scoreTable, { opacity: 1, y: 0, scale: 1, duration: 0.7 }, 0.6);
+            // 3. Score table fades in (only if not Style 2, since it is hidden in Style 2)
+            if (!isStyle2) {
+                tl.to(scoreTable, { opacity: 1, y: 0, scale: 1, duration: 0.7 }, 0.6);
+                // 4. Table rows stagger in
+                tl.to(tableRows, { opacity: 1, x: 0, duration: 0.5, stagger: 0.12 }, 0.9);
+            }
 
-            // 4. Table rows stagger in
-            tl.to(tableRows, { opacity: 1, x: 0, duration: 0.5, stagger: 0.12 }, 0.9);
-
-            // 5. Banners drop down and unroll (staggered)
-            tl.to(banners, { opacity: 1, y: 0, scaleY: 1, duration: 1.4, ease: 'power2.out', stagger: 0.15 }, 1.0);
+            // 5. Banners drop down/slide in (staggered)
+            if (isStyle2) {
+                tl.to(banners, { opacity: 1, x: 0, duration: 1.4, ease: 'back.out(1.2)', stagger: 0.15 }, 1.0);
+            } else {
+                tl.to(banners, { opacity: 1, y: 0, scaleY: 1, duration: 1.4, ease: 'power2.out', stagger: 0.15 }, 1.0);
+            }
 
             // 6. Spotlights turn on (staggered)
             tl.to(spotlights, { opacity: 1, duration: 1.2, stagger: 0.15 }, 1.4);
 
-            // 7. Pedestals rise (staggered from center outward) with quake/shake & impact slam
+            // 7. Pedestals/Diamonds rise
             const riseOrder = [1, 2, 0, 3]; // center pair first, then outer
-            riseOrder.forEach((idx, seqIdx) => {
-                if (pedestals[idx]) {
-                    tl.to(pedestals[idx], {
-                        scaleY: 1,
-                        duration: 2.2,
-                        ease: 'power2.out',
-                        onStart: () => {
-                            // Shake the pedestal intensely during the rise
-                            gsap.to(pedestalInners[idx], {
-                                x: "random(-8, 8)",
-                                y: "random(-3, 3)",
-                                rotation: "random(-1.5, 1.5)",
-                                yoyo: true,
-                                repeat: 27,
-                                duration: 0.08,
-                                onComplete: () => {
-                                    // Reset offsets
-                                    gsap.set(pedestalInners[idx], { x: 0, y: 0, rotation: 0 });
-                                    // Heavy impact slam effect on landing
-                                    gsap.fromTo(pedestalInners[idx], { y: 25 }, { y: 0, duration: 0.5, ease: 'bounce.out' });
-                                    // Screen/Stage quake slam shake!
-                                    const stage = container.querySelector('.cinema-pedestal-stage');
-                                    if (stage) {
-                                        gsap.fromTo(stage, { y: 8 }, { y: 0, duration: 0.3, ease: 'bounce.out' });
+            if (isStyle2) {
+                riseOrder.forEach((idx, seqIdx) => {
+                    if (diamondPanels[idx]) {
+                        tl.to(diamondPanels[idx], {
+                            scale: 1,
+                            y: 0,
+                            opacity: 1,
+                            duration: 1.8,
+                            ease: 'back.out(1.5)',
+                            onStart: () => {
+                                // Quake shake during rise
+                                gsap.to(diamondInners[idx], {
+                                    x: "random(-6, 6)",
+                                    y: "random(-3, 3)",
+                                    rotation: "random(-1.5, 1.5)",
+                                    yoyo: true,
+                                    repeat: 22,
+                                    duration: 0.08,
+                                    onComplete: () => {
+                                        // Reset offset and rotation (default is 0 rotation, but we rotate parent or child)
+                                        gsap.set(diamondInners[idx], { x: 0, y: 0, rotation: 0 });
+                                        // Screen/Stage quake slam shake!
+                                        const stage = container.querySelector('.cinema-pedestal-stage');
+                                        if (stage) {
+                                            gsap.fromTo(stage, { y: 6 }, { y: 0, duration: 0.25, ease: 'bounce.out' });
+                                        }
                                     }
-                                }
-                            });
-                        }
-                    }, 1.8 + seqIdx * 0.35);
-                }
-            });
+                                });
+                            }
+                        }, 1.8 + seqIdx * 0.35);
+                    }
+                });
+            } else {
+                riseOrder.forEach((idx, seqIdx) => {
+                    if (pedestals[idx]) {
+                        tl.to(pedestals[idx], {
+                            scaleY: 1,
+                            duration: 2.2,
+                            ease: 'power2.out',
+                            onStart: () => {
+                                // Shake the pedestal intensely during the rise
+                                gsap.to(pedestalInners[idx], {
+                                    x: "random(-8, 8)",
+                                    y: "random(-3, 3)",
+                                    rotation: "random(-1.5, 1.5)",
+                                    yoyo: true,
+                                    repeat: 27,
+                                    duration: 0.08,
+                                    onComplete: () => {
+                                        // Reset offsets
+                                        gsap.set(pedestalInners[idx], { x: 0, y: 0, rotation: 0 });
+                                        // Heavy impact slam effect on landing
+                                        gsap.fromTo(pedestalInners[idx], { y: 25 }, { y: 0, duration: 0.5, ease: 'bounce.out' });
+                                        // Screen/Stage quake slam shake!
+                                        const stage = container.querySelector('.cinema-pedestal-stage');
+                                        if (stage) {
+                                            gsap.fromTo(stage, { y: 8 }, { y: 0, duration: 0.3, ease: 'bounce.out' });
+                                        }
+                                    }
+                                });
+                            }
+                        }, 1.8 + seqIdx * 0.35);
+                    }
+                });
+            }
 
-            // 8. Score badges pop in after their pedestal rises
-            riseOrder.forEach((idx, seqIdx) => {
-                if (scoreBadges[idx]) {
-                    tl.to(scoreBadges[idx], {
-                        opacity: 1,
-                        y: 0,
-                        scale: 1,
-                        duration: 0.6,
-                        ease: 'back.out(1.7)'
-                    }, 3.0 + seqIdx * 0.35);
-                }
-            });
+            if (!isStyle2) {
+                // 8. Score badges pop in after their pedestal rises
+                riseOrder.forEach((idx, seqIdx) => {
+                    if (scoreBadges[idx]) {
+                        tl.to(scoreBadges[idx], {
+                            opacity: 1,
+                            y: 0,
+                            scale: 1,
+                            duration: 0.6,
+                            ease: 'back.out(1.7)'
+                        }, 3.0 + seqIdx * 0.35);
+                    }
+                });
 
-            // 8. Name tags fade in
-            tl.to(nameTags, { opacity: 1, y: 0, duration: 0.5, stagger: 0.1 }, 3.5);
+                // 9. Name tags fade in
+                tl.to(nameTags, { opacity: 1, y: 0, duration: 0.5, stagger: 0.1 }, 3.5);
+            }
 
-            // 9. Animate score counters (both table and badges)
-            slots.forEach((team, idx) => {
+            // 10. Animate score counters (both table and badges/diamonds)
+            podiumSlots.forEach((team, idx) => {
                 const target = team ? Number(team.total_score || 0) : 0;
                 
-                // Badge counter
+                // Badge/Diamond counter
                 if (badgeValues[idx]) {
                     const bObj = { value: 0 };
                     gsap.to(bObj, {
@@ -679,8 +812,11 @@
                     });
                 }
 
-                // Table counter
-                if (tableScores[idx]) {
+            });
+
+            slots.forEach((team, idx) => {
+                const target = team ? Number(team.total_score || 0) : 0;
+                if (tableScores[idx] && !isStyle2) {
                     const tObj = { value: 0 };
                     gsap.to(tObj, {
                         value: target,
@@ -718,69 +854,258 @@
         // Handled dynamically by renderLeaderboard
     }
 
-    function renderSchedule(scheduleData) {
-        if (!els.schedule) return;
+    function scheduleRowsPerPage() {
+        const height = window.innerHeight || 1080;
+        if (height < 760) return 5;
+        if (height < 920) return 6;
+        return 7;
+    }
 
-        const sections = scheduleData.sections || [];
-        if (sections.length === 0) {
-            els.schedule.innerHTML = `
-                <div class="tv-schedule-empty" style="text-align: center; padding: 60px; color: var(--muted); font-size: 20px;">
-                    No schedule items or sections available
+    function getScheduleStatus(item) {
+        const isBreak = item.type === 'break';
+        const isCompleted = item.status === 'completed' || item.approval_status === 'approved';
+        const isLive = item.status === 'scoring' || item.status === 'active-stage';
+
+        if (isBreak) return { className: 'break', label: 'Break' };
+        if (isCompleted) return { className: 'completed', label: 'Completed' };
+        if (isLive) return { className: 'inprogress', label: 'In Progress' };
+
+        return { className: 'upcoming', label: 'Upcoming' };
+    }
+
+    function flattenScheduleItems(scheduleData) {
+        const sections = Array.isArray(scheduleData?.sections) ? scheduleData.sections : [];
+        const rows = [];
+
+        sections.forEach((section) => {
+            (Array.isArray(section.items) ? section.items : []).forEach((item) => {
+                rows.push({
+                    ...item,
+                    section_name: section.name || 'Schedule',
+                    section_time_label: section.time_label || ''
+                });
+            });
+        });
+
+        if (!rows.length && Array.isArray(scheduleData?.timeline)) {
+            scheduleData.timeline.forEach((item) => {
+                rows.push({
+                    ...item,
+                    section_name: 'Full Schedule',
+                    section_time_label: ''
+                });
+            });
+        }
+
+        return rows;
+    }
+
+    function buildSchedulePages(scheduleData) {
+        const rows = flattenScheduleItems(scheduleData);
+        const pageSize = scheduleRowsPerPage();
+        const pages = [];
+
+        for (let i = 0; i < rows.length; i += pageSize) {
+            pages.push(rows.slice(i, i + pageSize));
+        }
+
+        return pages;
+    }
+
+    function scheduleSummary(scheduleData) {
+        const rows = flattenScheduleItems(scheduleData);
+        const completed = rows.filter((item) => {
+            return item.type !== 'break' && (item.status === 'completed' || item.approval_status === 'approved');
+        }).length;
+        const live = rows.filter((item) => item.status === 'scoring' || item.status === 'active-stage').length;
+        const breaks = rows.filter((item) => item.type === 'break').length;
+
+        return {
+            total: rows.length,
+            completed,
+            live,
+            breaks
+        };
+    }
+
+    function scheduleTeamPalette() {
+        const fallback = ['#ffe34a', '#ff42f5', '#25ff8a', '#2ee8ff'];
+        const teams = Array.isArray(state.leaderboardData) ? state.leaderboardData : [];
+        const colors = teams
+            .map((team) => String(team?.team_color || '').trim())
+            .filter((color) => /^#[0-9a-f]{6}$/i.test(color));
+
+        return colors.length ? colors : fallback;
+    }
+
+    function renderScheduleFrame(scheduleData) {
+        const eventTitleEl = document.querySelector('[data-event-title]');
+        const eventTitle = eventTitleEl ? eventTitleEl.textContent : 'Kauzariyya Musabaqa';
+        const summary = scheduleSummary(scheduleData);
+        const event = TV_BOOT.initial?.event || {};
+        const now = new Date();
+        const start = event.start_date ? new Date(event.start_date) : null;
+        const dayNumber = start && !Number.isNaN(start.getTime())
+            ? Math.max(1, Math.floor((now.setHours(0, 0, 0, 0) - start.setHours(0, 0, 0, 0)) / 86400000) + 1)
+            : 1;
+        const dateLabel = new Date().toLocaleDateString([], {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric'
+        }).toUpperCase();
+        const palette = scheduleTeamPalette();
+        const scheduleVars = Array.from({ length: 4 }, (_, index) => {
+            return `--schedule-team-${index + 1}:${palette[index % palette.length]}`;
+        }).join(';');
+
+        els.schedule.innerHTML = `
+            <div class="tv-schedule-cinema" style="${scheduleVars}">
+                <div class="tv-schedule-light tv-schedule-light--gold"></div>
+                <div class="tv-schedule-light tv-schedule-light--cyan"></div>
+                <div class="tv-schedule-side tv-schedule-side--left">
+                    <span></span>
+                    <strong>AL</strong>
+                </div>
+                <div class="tv-schedule-side tv-schedule-side--right">
+                    <span></span>
+                    <strong>TH</strong>
+                </div>
+                <div class="tv-schedule-brand-card">
+                    <img src="${escapeHtml(document.querySelector('.tv-brand img')?.src || '')}" alt="">
+                    <div>
+                        <strong>${escapeHtml(eventTitle)}</strong>
+                        <span>Musabaqa 2026</span>
+                    </div>
+                </div>
+                <div class="tv-schedule-live-card">
+                    <div>
+                        <strong><span></span> Live</strong>
+                        <small>Day ${escapeHtml(dayNumber)} | ${escapeHtml(dateLabel)}</small>
+                    </div>
+                    <em data-schedule-clock>--:--:--</em>
+                </div>
+                <div class="tv-schedule-title-block">
+                    <h2>AL THANAFUS</h2>
+                    <div>Schedule</div>
+                </div>
+                <div class="tv-schedule-board">
+                    <div class="tv-schedule-board-head">
+                        <span>Time</span>
+                        <span>Program</span>
+                        <span>Category</span>
+                        <span>Status</span>
+                    </div>
+                    <div class="tv-schedule-page" data-schedule-page></div>
+                </div>
+                <div class="tv-schedule-stats">
+                    <div><span>Total Programs</span><strong>${summary.total}</strong></div>
+                    <div><span>Completed</span><strong>${summary.completed}</strong></div>
+                    <div><span>Live Now</span><strong>${summary.live}</strong></div>
+                    <div><span>Breaks</span><strong>${summary.breaks}</strong></div>
+                    <div><span>Page</span><strong data-schedule-page-count>1 / 1</strong></div>
+                </div>
+            </div>
+        `;
+
+        const threeCanvas = container.querySelector('.three-stage-canvas');
+        if (threeCanvas && window.TVLeaderboard3D) {
+            const mounted = window.TVLeaderboard3D.mount(threeCanvas, podiumSlots.map((team, index) => ({
+                rank: Number(team?.rank || index + 1),
+                name: String(team?.team_name || team?.short_name || 'Team'),
+                score: Number(team?.total_score || 0),
+                color: String(team?.team_color || ['#38bdf8', '#f7c948', '#34d399', '#fb7185'][index])
+            })));
+            if (mounted) container.classList.add('three-stage-ready');
+        }
+    }
+
+    function updateScheduleClock() {
+        const clock = els.schedule?.querySelector('[data-schedule-clock]');
+        if (!clock) return;
+        const now = new Date();
+        clock.textContent = now.toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false
+        });
+    }
+
+    function renderSchedulePage(index) {
+        const pageEl = els.schedule?.querySelector('[data-schedule-page]');
+        if (!pageEl) return;
+
+        const pages = state.schedule.pages;
+        const page = pages[index] || [];
+        const total = Math.max(1, pages.length);
+        const countEl = els.schedule.querySelector('[data-schedule-page-count]');
+        if (countEl) countEl.textContent = `${Math.min(index + 1, total)} / ${total}`;
+
+        if (!page.length) {
+            pageEl.innerHTML = `
+                <div class="tv-schedule-empty">
+                    <strong>No schedule items found</strong>
+                    <span>Programs will appear here when they are added.</span>
                 </div>
             `;
             return;
         }
 
-        let html = '<div class="tv-schedule-grid">';
-        sections.forEach((sec) => {
-            html += `
-                <div class="tv-panel">
-                    <div class="tv-panel-head">
-                        <h2>${escapeHtml(sec.name)}</h2>
-                        ${sec.time_label ? `<span>${escapeHtml(sec.time_label)}</span>` : ''}
+        pageEl.innerHTML = page.map((item, rowIndex) => {
+            const status = getScheduleStatus(item);
+            const time = item.start_label || item.start_time || '--';
+            const category = item.category || item.section_name || 'All';
+            const rowNumber = String((index * scheduleRowsPerPage()) + rowIndex + 1).padStart(2, '0');
+            const rowClass = status.className === 'inprogress' ? ' is-live' : '';
+            const palette = scheduleTeamPalette();
+            const absoluteIndex = (index * scheduleRowsPerPage()) + rowIndex;
+            const teamColor = palette[absoluteIndex % palette.length];
+
+            return `
+                <article class="tv-schedule-row${rowClass}" style="--row-neon:${escapeHtml(teamColor)}">
+                    <div class="tv-schedule-row-num">${rowNumber}</div>
+                    <div class="tv-schedule-row-time">${escapeHtml(time)}</div>
+                    <div class="tv-schedule-row-program">
+                        <strong>${escapeHtml(item.title || 'Program')}</strong>
+                        <span>${escapeHtml(item.stage || item.section_time_label || 'Main Stage')}</span>
                     </div>
-                    <div class="tv-list">
+                    <div class="tv-schedule-row-category">${escapeHtml(category)}</div>
+                    <div><span class="tv-status ${status.className}">${escapeHtml(status.label)}</span></div>
+                </article>
             `;
+        }).join('');
 
-            (sec.items || []).forEach((item) => {
-                const isBreak = item.type === 'break';
-                const isCompleted = item.status === 'completed' || item.approval_status === 'approved';
-                const isLive = item.status === 'scoring' || item.status === 'active-stage';
-                
-                let statusClass = 'upcoming';
-                let statusLabel = 'Pending';
-                if (isBreak) {
-                    statusClass = 'upcoming';
-                    statusLabel = 'Break';
-                } else if (isCompleted) {
-                    statusClass = 'completed';
-                    statusLabel = 'Completed';
-                } else if (isLive) {
-                    statusClass = 'inprogress';
-                    statusLabel = 'Live';
-                }
-
-                const timeLabel = item.start_label || item.start_time || '';
-
-                html += `
-                    <article class="tv-item">
-                        <div class="tv-item-head">
-                            <span style="font-size: 13px; color: var(--muted); font-weight: 600;">${escapeHtml(timeLabel)}</span>
-                            <span class="tv-status ${statusClass}">${escapeHtml(statusLabel)}</span>
-                        </div>
-                        <div class="tv-item-title" style="margin-top: 8px;">${escapeHtml(item.title)}</div>
-                    </article>
-                `;
+        if (typeof gsap !== 'undefined') {
+            const rows = pageEl.querySelectorAll('.tv-schedule-row');
+            gsap.fromTo(rows, {
+                opacity: 0,
+                x: -18,
+                filter: 'blur(10px)'
+            }, {
+                opacity: 1,
+                x: 0,
+                filter: 'blur(0px)',
+                duration: 0.55,
+                stagger: 0.055,
+                ease: 'power3.out'
             });
+        }
+    }
 
-            html += `
-                    </div>
-                </div>
-            `;
-        });
-        html += '</div>';
+    function renderSchedule(scheduleData) {
+        if (!els.schedule) return;
 
-        els.schedule.innerHTML = html;
+        stopScheduleTimer();
+        state.schedule.data = scheduleData || { sections: [] };
+        state.schedule.pages = buildSchedulePages(state.schedule.data);
+        state.schedule.currentPage = 0;
+        renderScheduleFrame(state.schedule.data);
+        updateScheduleClock();
+        renderSchedulePage(0);
+
+        if (state.activeSlide === 'schedule') {
+            startSchedulePlayback();
+        }
     }
 
     function renderCurrent(currentData) {
@@ -808,15 +1133,19 @@
         const next = currentData.next_performer || {};
         const nextProg = currentData.next_program || {};
         const judges = currentData.judges || [];
+        const currentChest = document.querySelector('[data-current-chest]');
+        const nextChest = document.querySelector('[data-next-chest]');
 
         els.currentStage.textContent = program.stage || 'Main Stage';
         els.currentTitle.textContent = program.title || 'Current Act';
         
         if (performer.name) {
             els.currentPerformer.textContent = performer.name;
+            if (currentChest) currentChest.textContent = performer.number || 'â€”';
             els.currentTeam.innerHTML = `${performer.team_color ? `<span class="tv-team-dot" style="background:${escapeHtml(performer.team_color)}"></span>` : ''}${escapeHtml(performer.team || '—')}`;
         } else {
             els.currentPerformer.textContent = 'No active performer';
+            if (currentChest) currentChest.textContent = 'â€”';
             els.currentTeam.textContent = '—';
         }
 
@@ -829,6 +1158,16 @@
         }
         if (els.nextTeam) {
             els.nextTeam.innerHTML = next.team ? `${next.team_color ? `<span class="tv-team-dot" style="background:${escapeHtml(next.team_color)}"></span>` : ''}${escapeHtml(next.team)}` : '—';
+        }
+
+        if (els.nextPerformer) {
+            els.nextPerformer.textContent = next.number || 'â€”';
+        }
+        if (els.nextTeam) {
+            els.nextTeam.textContent = '';
+        }
+        if (nextChest) {
+            nextChest.textContent = next.number || 'â€”';
         }
 
         if (els.judges) {
@@ -992,6 +1331,78 @@
         }
     }
 
+    function stopScheduleTimer() {
+        if (state.schedule.timer) {
+            clearTimeout(state.schedule.timer);
+            state.schedule.timer = null;
+        }
+        state.schedule.playing = false;
+    }
+
+    function advanceFromSchedule() {
+        stopScheduleTimer();
+        if (!state.is_playing || state.mode === 'manual' || state.isCelebrating || state.activeSlide !== 'schedule') {
+            return;
+        }
+
+        const next = getNextEnabledSlide();
+        setActiveSlide(next);
+
+        if (next !== 'schedule') {
+            scheduleNextSlide(state.slides[next]?.duration || 12000);
+        }
+    }
+
+    function startSchedulePlayback() {
+        stopSlideTimer();
+        stopScheduleTimer();
+
+        if (!els.schedule || !state.is_playing || state.isCelebrating) {
+            return;
+        }
+
+        if (!state.schedule.data) {
+            state.schedule.data = { sections: [] };
+            state.schedule.pages = buildSchedulePages(state.schedule.data);
+        }
+
+        state.schedule.playing = true;
+        state.schedule.currentPage = 0;
+        updateScheduleClock();
+        renderSchedulePage(0);
+
+        const totalPages = Math.max(1, state.schedule.pages.length);
+        const configuredDuration = state.slides.schedule?.duration || 18000;
+        const pageDuration = Math.max(4200, Math.min(9000, Math.round(configuredDuration / Math.max(totalPages, 1))));
+
+        const tick = () => {
+            updateScheduleClock();
+
+            if (state.activeSlide !== 'schedule' || state.isCelebrating) {
+                stopScheduleTimer();
+                return;
+            }
+
+            if (state.schedule.currentPage >= totalPages - 1) {
+                if (state.mode === 'manual') {
+                    state.schedule.currentPage = 0;
+                    renderSchedulePage(0);
+                    state.schedule.timer = setTimeout(tick, pageDuration);
+                    return;
+                }
+
+                advanceFromSchedule();
+                return;
+            }
+
+            state.schedule.currentPage += 1;
+            renderSchedulePage(state.schedule.currentPage);
+            state.schedule.timer = setTimeout(tick, pageDuration);
+        };
+
+        state.schedule.timer = setTimeout(tick, pageDuration);
+    }
+
     function getNextEnabledSlide() {
         const enabledKeys = state.slideOrder.filter(key => {
             const slideConf = state.slides[key];
@@ -1019,8 +1430,10 @@
             const next = getNextEnabledSlide();
             setActiveSlide(next);
 
-            const duration = state.slides[next]?.duration || 12000;
-            scheduleNextSlide(duration);
+            if (next !== 'schedule') {
+                const duration = state.slides[next]?.duration || 12000;
+                scheduleNextSlide(duration);
+            }
         }, delay);
     }
 
@@ -1033,7 +1446,9 @@
                 if (state.mode === 'auto' && !state.isCelebrating) {
                     const next = getNextEnabledSlide();
                     setActiveSlide(next);
-                    scheduleNextSlide(state.slides[next]?.duration || 12000);
+                    if (next !== 'schedule') {
+                        scheduleNextSlide(state.slides[next]?.duration || 12000);
+                    }
                 }
             };
 
@@ -1043,7 +1458,7 @@
             els.introVideo.play().catch(() => {
                 introDone();
             });
-        } else {
+        } else if (first !== 'schedule') {
             scheduleNextSlide(state.slides[first]?.duration || 12000);
         }
     }
@@ -1062,10 +1477,15 @@
         document.addEventListener('visibilitychange', () => {
             if (document.hidden) {
                 stopSlideTimer();
+                stopScheduleTimer();
             } else {
                 syncSettings().then(() => {
                     if (state.mode === 'auto' && !state.isCelebrating) {
-                        scheduleNextSlide(1000);
+                        if (state.activeSlide === 'schedule') {
+                            startSchedulePlayback();
+                        } else {
+                            scheduleNextSlide(1000);
+                        }
                     }
                 });
             }

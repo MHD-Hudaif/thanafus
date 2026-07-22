@@ -12,7 +12,7 @@ $id =
     (int)($_GET['id'] ?? 0);
 
 $activeEventId =
-    $_SESSION['active_event_id']
+    $_SESSION['selected_event_id']
     ?? null;
 
 /*

@@ -6,7 +6,7 @@ require_login();
 
 $pdo = $GLOBALS['musabaqa_pdo'];
 
-$activeEventId = (int)($_SESSION['active_event_id'] ?? 0);
+$activeEventId = (int)($_SESSION['selected_event_id'] ?? 0);
 
 $where = [];
 $params = [];

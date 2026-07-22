@@ -26,11 +26,12 @@ $options = [
 ];
 
 $context = stream_context_create($options);
-$response = file_get_contents($url, false, $context);
+$response = @file_get_contents($url, false, $context);
 
 if ($response === false) {
-    http_response_code(500);
-    exit('Failed to connect to Google verification service');
+    $_SESSION['oauth_error'] = 'Failed to connect to Google verification service. Please check your internet connection.';
+    header("Location: " . app_url('/auth/login'));
+    exit;
 }
 
 $payload = json_decode($response, true);
@@ -78,7 +79,11 @@ if ($user) {
     
     login_user_session($user['id']);
     
-    header("Location: " . app_url('/admin/dashboard'));
+    if (is_admin()) {
+        header("Location: " . app_url('/admin/dashboard'));
+    } else {
+        header("Location: " . app_url('/'));
+    }
     exit;
 }
 
@@ -104,7 +109,11 @@ if ($email !== '') {
         
         login_user_session($user['id']);
         
-        header("Location: " . app_url('/admin/dashboard'));
+        if (is_admin()) {
+            header("Location: " . app_url('/admin/dashboard'));
+        } else {
+            header("Location: " . app_url('/'));
+        }
         exit;
     }
 }

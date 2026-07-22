@@ -28,24 +28,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'delete') {
         try {
             $pdo->beginTransaction();
-            $stmt = $pdo->prepare('SELECT COUNT(*) FROM musabaqa_program_entries WHERE event_id = ?');
-            $stmt->execute([$eventId]);
-            if ((int)$stmt->fetchColumn() > 0) {
-                throw new RuntimeException('This event has entries and cannot be deleted.');
-            }
 
-            foreach (['musabaqa_team_members', 'musabaqa_programs', 'musabaqa_teams'] as $table) {
-                $stmt = $pdo->prepare("DELETE FROM {$table} WHERE event_id = ?");
-                $stmt->execute([$eventId]);
+            $tablesToDelete = [
+                'musabaqa_member_scores',
+                'musabaqa_category_scores',
+                'musabaqa_score_sheets',
+                'musabaqa_scores',
+                'musabaqa_entry_members',
+                'musabaqa_program_entries',
+                'musabaqa_program_categories',
+                'musabaqa_programs',
+                'musabaqa_team_members',
+                'musabaqa_teams',
+                'musabaqa_breaks',
+                'musabaqa_schedule_sections',
+                'musabaqa_manual_scoreboard'
+            ];
+
+            foreach ($tablesToDelete as $table) {
+                try {
+                    if ($table === 'musabaqa_member_scores' || $table === 'musabaqa_program_categories') {
+                        $pdo->prepare("DELETE FROM {$table} WHERE program_id IN (SELECT id FROM musabaqa_programs WHERE event_id = ?)")->execute([$eventId]);
+                    } elseif ($table === 'musabaqa_category_scores' || $table === 'musabaqa_score_sheets') {
+                        $pdo->prepare("DELETE FROM {$table} WHERE program_id IN (SELECT id FROM musabaqa_programs WHERE event_id = ?)")->execute([$eventId]);
+                    } elseif ($table === 'musabaqa_entry_members') {
+                        $pdo->prepare("DELETE FROM {$table} WHERE entry_id IN (SELECT id FROM musabaqa_program_entries WHERE event_id = ?)")->execute([$eventId]);
+                    } else {
+                        $pdo->prepare("DELETE FROM {$table} WHERE event_id = ?")->execute([$eventId]);
+                    }
+                } catch (Throwable $e) {
+                    // Ignore if table does not exist in database schema
+                }
             }
 
             $stmt = $pdo->prepare('DELETE FROM musabaqa_events WHERE id = ?');
             $stmt->execute([$eventId]);
-            if ((int)($_SESSION['active_event_id'] ?? 0) === $eventId) {
-                unset($_SESSION['active_event_id'], $_SESSION['active_team_id']);
+
+            if ((int)($_SESSION['selected_event_id'] ?? 0) === $eventId) {
+                unset($_SESSION['selected_event_id'], $_SESSION['active_team_id']);
             }
+
+            admin_log_activity($pdo, (int)$user['id'], null, 'delete_event', 'musabaqa_events', $eventId, 'Deleted event and all associated programs, entries, teams and scores.');
+
             $pdo->commit();
-            admin_flash('success', 'Event deleted successfully.');
+            admin_flash('success', 'Event and all connected programs, entries, and scores were deleted successfully.');
         } catch (Throwable $e) {
             if ($pdo->inTransaction()) {
                 $pdo->rollBack();
@@ -168,7 +194,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
                     <div class="event-meta-item"><span>End</span><strong><?= e($event['end_date'] ?: '-') ?></strong></div>
                 </div>
                 <div class="event-actions">
-                    <a class="btn btn-success btn-sm" href="<?= app_url('/admin/utilities/set-active-event.php') ?>?id=<?= (int)$event['id'] ?>">
+                    <a class="btn btn-success btn-sm" href="<?= app_url('/admin/utilities/set-selected-event.php') ?>?id=<?= (int)$event['id'] ?>">
                         <i class="fa-solid fa-door-open"></i> Open
                     </a>
                     <button class="btn btn-secondary btn-sm" data-edit-event='<?= e(json_encode($event, JSON_HEX_APOS | JSON_HEX_QUOT)) ?>'>
@@ -263,7 +289,7 @@ require_once __DIR__ . '/../includes/sidebar.php';
                         <div class="event-meta-item"><span>End</span><strong><?= e($event['end_date'] ?: '-') ?></strong></div>
                     </div>
                     <div class="event-actions">
-                        <a class="btn btn-success btn-sm" href="<?= app_url('/admin/utilities/set-active-event.php') ?>?id=<?= (int)$event['id'] ?>">
+                        <a class="btn btn-success btn-sm" href="<?= app_url('/admin/utilities/set-selected-event.php') ?>?id=<?= (int)$event['id'] ?>">
                             <i class="fa-solid fa-door-open"></i> Open
                         </a>
                         <button class="btn btn-secondary btn-sm" data-edit-event='<?= e(json_encode($event, JSON_HEX_APOS | JSON_HEX_QUOT)) ?>'>
@@ -353,14 +379,22 @@ require_once __DIR__ . '/../includes/sidebar.php';
             <div class="modal-title">Delete Event</div>
             <button class="modal-close" type="button" data-modal-close><i class="fa-solid fa-xmark"></i></button>
         </div>
-        <div class="panel">Delete <strong id="deleteName"></strong>? Events with entries are protected from deletion.</div>
+        <div class="panel">
+            <p style="font-size: 15px; margin-bottom: 12px;">Are you sure you want to delete <strong id="deleteName"></strong>?</p>
+            <div class="alert alert-warning" style="margin: 0; font-size: 13px; display: flex; gap: 8px; align-items: flex-start;">
+                <i class="fa-solid fa-triangle-exclamation" style="margin-top: 2px;"></i>
+                <div>
+                    <strong>Warning:</strong> Deleting this event will permanently delete all associated teams, team members, programs, participant entries, judge scores, and leaderboard results.
+                </div>
+            </div>
+        </div>
         <form method="POST">
             <?= admin_csrf_field() ?>
             <input type="hidden" name="action" value="delete">
             <input type="hidden" name="event_id" id="deleteId">
             <div class="form-actions">
                 <button type="button" class="btn btn-secondary btn-md" data-modal-close>Cancel</button>
-                <button type="submit" class="btn btn-danger btn-md">Delete</button>
+                <button type="submit" class="btn btn-danger btn-md"><i class="fa-solid fa-trash"></i> Delete Event & All Data</button>
             </div>
         </form>
     </div>

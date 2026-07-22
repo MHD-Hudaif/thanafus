@@ -286,13 +286,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             throw new RuntimeException('Entry not found for this program.');
         }
 
-        $judgeTotals = [1 => 0.0, 2 => 0.0];
+        $judgesCount = (int)($program['judges_count'] ?? 2);
+        $judgeTotals = [];
+        for ($j = 1; $j <= $judgesCount; $j++) {
+            $judgeTotals[$j] = 0.0;
+        }
+
         $categoryMap = [];
         foreach ($categories as $category) {
             $categoryMap[(int)$category['id']] = $category;
         }
 
-        foreach ([1, 2] as $judgeNo) {
+        for ($judgeNo = 1; $judgeNo <= $judgesCount; $judgeNo++) {
             foreach ($categoryMap as $categoryId => $category) {
                 $rawScore = $postedScores[$judgeNo][$categoryId] ?? null;
                 if ($rawScore === null || $rawScore === '' || !is_numeric($rawScore)) {
@@ -312,7 +317,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-        $finalTotal = round($judgeTotals[1] + $judgeTotals[2], 2);
+        $finalTotal = round(array_sum($judgeTotals), 2);
 
         $pdo->beginTransaction();
 
@@ -324,6 +329,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             throw new RuntimeException('This score sheet is locked.');
         }
 
+        $judge1Total = $judgeTotals[1] ?? 0.0;
+        $judge2Total = $judgeTotals[2] ?? 0.0;
+
         if ($existingSheet) {
             $stmt = $pdo->prepare("
                 UPDATE musabaqa_score_sheets
@@ -334,7 +342,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     status = 'completed'
                 WHERE id = ?
             ");
-            $stmt->execute([$programId, $judgeTotals[1], $judgeTotals[2], $finalTotal, (int)$existingSheet['id']]);
+            $stmt->execute([$programId, $judge1Total, $judge2Total, $finalTotal, (int)$existingSheet['id']]);
             $scoreSheetId = (int)$existingSheet['id'];
             $logType = 'score_update';
             $logText = 'Program score sheet updated.';
@@ -344,7 +352,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     (entry_id, program_id, judge1_total, judge2_total, final_total, status, created_by)
                 VALUES (?, ?, ?, ?, ?, 'completed', ?)
             ");
-            $stmt->execute([$entryId, $programId, $judgeTotals[1], $judgeTotals[2], $finalTotal, $currentUserId]);
+            $stmt->execute([$entryId, $programId, $judge1Total, $judge2Total, $finalTotal, $currentUserId]);
             $scoreSheetId = (int)$pdo->lastInsertId();
             $logType = 'score_creation';
             $logText = 'Program score sheet created.';
@@ -355,7 +363,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             INSERT INTO musabaqa_category_scores (score_sheet_id, judge_no, category_id, score)
             VALUES (?, ?, ?, ?)
         ");
-        foreach ([1, 2] as $judgeNo) {
+        for ($judgeNo = 1; $judgeNo <= $judgesCount; $judgeNo++) {
             foreach ($categoryMap as $categoryId => $category) {
                 $insert->execute([$scoreSheetId, $judgeNo, $categoryId, (float)$postedScores[$judgeNo][$categoryId]]);
             }
@@ -734,15 +742,16 @@ bindCategoryControls();
 refreshCategoryTotal();
 
 function calculateTotals() {
-    const totals = {1: 0, 2: 0};
+    const totals = {};
     document.querySelectorAll('[data-judge-score]').forEach(input => {
         const judge = input.dataset.judgeScore;
-        totals[judge] += Number(input.value || 0);
+        totals[judge] = (totals[judge] || 0) + Number(input.value || 0);
     });
     document.querySelectorAll('[data-judge-total]').forEach(el => {
         el.textContent = formatNumber(totals[el.dataset.judgeTotal] || 0);
     });
-    document.getElementById('finalTotal').textContent = formatNumber((totals[1] || 0) + (totals[2] || 0));
+    const sum = Object.values(totals).reduce((a, b) => a + b, 0);
+    document.getElementById('finalTotal').textContent = formatNumber(sum);
 }
 
 function renderJudgeBlock(judgeNo, categories, scores, locked) {
@@ -784,9 +793,14 @@ async function openScoreModal(entryId) {
         document.getElementById('panelEntryName').value = data.entry.entry_name || 'Unnamed Entry';
         document.getElementById('panelTeamName').value = data.entry.team_name || '';
         document.getElementById('panelEntryNumber').value = data.entry.entry_number ? `#${String(data.entry.entry_number).padStart(3, '0')}` : '';
-        document.getElementById('judgeScoreBlocks').innerHTML =
-            renderJudgeBlock(1, data.categories || [], data.scores || {}, data.locked) +
-            renderJudgeBlock(2, data.categories || [], data.scores || {}, data.locked);
+        
+        const judgesCount = Number(data.program.judges_count || 2);
+        let blocksHtml = '';
+        for (let j = 1; j <= judgesCount; j++) {
+            blocksHtml += renderJudgeBlock(j, data.categories || [], data.scores || {}, data.locked);
+        }
+        document.getElementById('judgeScoreBlocks').innerHTML = blocksHtml;
+        
         document.getElementById('saveScoreButton').style.display = data.locked ? 'none' : '';
         document.getElementById('saveScoreButton').disabled = !!data.locked;
         document.querySelectorAll('[data-judge-score]').forEach(input => input.addEventListener('input', calculateTotals));

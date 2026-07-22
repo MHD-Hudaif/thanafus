@@ -26,8 +26,8 @@ if (session_status() === PHP_SESSION_NONE) {
     }
 
     session_set_cookie_params([
-        'lifetime' => 0, // Session cookie (expires on browser close)
-        'path' => app_cookie_path(),
+        'lifetime' => 31536000, // 1 year lifetime
+        'path' => '/',          // Shared across whole domain
         'secure' => $secure,
         'httponly' => true,
         'samesite' => $sameSite,
@@ -42,6 +42,7 @@ if (session_status() === PHP_SESSION_NONE) {
         ini_set('session.cookie_secure', '1');
     }
 
+    session_name('KAUZARIYYA_SESSID');
     session_start();
 }
 
@@ -65,5 +66,27 @@ if (isset($musabaqa_pdo)) {
     } catch (Throwable $e) {
         // Ignore errors during installation/setup
     }
+
+    // Self-healing schema initialization for musabaqa_reviews
+    try {
+        $musabaqa_pdo->exec("
+            CREATE TABLE IF NOT EXISTS musabaqa_reviews (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                event_id INT NULL,
+                rating TINYINT NOT NULL DEFAULT 5,
+                comment TEXT NOT NULL,
+                name VARCHAR(150) NULL,
+                ip_address VARCHAR(45) NULL,
+                user_agent VARCHAR(255) NULL,
+                status ENUM('pending', 'approved', 'archived') NOT NULL DEFAULT 'approved',
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_event_status (event_id, status),
+                INDEX idx_created (created_at)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        ");
+    } catch (Throwable $e) {
+        // Ignore errors if table exists or during setup
+    }
 }
+
 

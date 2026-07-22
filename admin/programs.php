@@ -9,6 +9,30 @@ $dashboardPdo = $GLOBALS['dashboard_pdo'];
 $activeEvent = admin_require_active_event($pdo);
 $activeEventId = (int)$activeEvent['id'];
 
+function get_musabaqa_settings($pdo) {
+    $stmt = $pdo->prepare("SELECT setting_value FROM musabaqa_settings WHERE setting_key = 'global_musabaqa_settings' LIMIT 1");
+    $stmt->execute();
+    $row = $stmt->fetch();
+    
+    $defaults = [
+        'default_judges_count' => 2,
+        'default_total_marks' => 100,
+        'default_entries_limit' => 10,
+        'section_limits' => []
+    ];
+    
+    if ($row) {
+        $data = json_decode($row['setting_value'], true);
+        if (is_array($data)) {
+            return array_merge($defaults, $data);
+        }
+    }
+    
+    return $defaults;
+}
+
+$settings = get_musabaqa_settings($pdo);
+
 function programs_redirect(): void
 {
     admin_redirect('/admin/programs.php');
@@ -74,15 +98,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     try {
         if ($action === 'delete') {
-            $stmt = $pdo->prepare('SELECT COUNT(*) FROM musabaqa_program_entries WHERE program_id = ? AND event_id = ?');
-            $stmt->execute([$programId, $activeEventId]);
-            if ((int)$stmt->fetchColumn() > 0) {
-                throw new RuntimeException('Programs with entries cannot be deleted.');
+            $pdo->beginTransaction();
+
+            // 1. Get entries associated with this program
+            $entryStmt = $pdo->prepare('SELECT id FROM musabaqa_program_entries WHERE program_id = ? AND event_id = ?');
+            $entryStmt->execute([$programId, $activeEventId]);
+            $entryIds = $entryStmt->fetchAll(PDO::FETCH_COLUMN);
+
+            // 2. Delete member scores linked to program
+            $pdo->prepare('DELETE FROM musabaqa_member_scores WHERE program_id = ?')->execute([$programId]);
+
+            // 3. Delete program scores linked to program
+            $pdo->prepare('DELETE FROM musabaqa_scores WHERE program_id = ? AND event_id = ?')->execute([$programId, $activeEventId]);
+
+            // 4. Delete score sheets & category scores for entries under this program
+            if ($entryIds) {
+                $placeholders = implode(',', array_fill(0, count($entryIds), '?'));
+                $sheetStmt = $pdo->prepare("SELECT id FROM musabaqa_score_sheets WHERE entry_id IN ($placeholders)");
+                $sheetStmt->execute($entryIds);
+                $sheetIds = $sheetStmt->fetchAll(PDO::FETCH_COLUMN);
+
+                if ($sheetIds) {
+                    $sheetPlaceholders = implode(',', array_fill(0, count($sheetIds), '?'));
+                    $pdo->prepare("DELETE FROM musabaqa_category_scores WHERE score_sheet_id IN ($sheetPlaceholders)")->execute($sheetIds);
+                }
+
+                $pdo->prepare("DELETE FROM musabaqa_score_sheets WHERE entry_id IN ($placeholders)")->execute($entryIds);
+                $pdo->prepare("DELETE FROM musabaqa_entry_members WHERE entry_id IN ($placeholders)")->execute($entryIds);
             }
 
-            $stmt = $pdo->prepare('DELETE FROM musabaqa_programs WHERE id = ? AND event_id = ?');
-            $stmt->execute([$programId, $activeEventId]);
-            admin_flash('success', 'Program deleted successfully.');
+            // 5. Delete scoring categories for this program
+            $pdo->prepare('DELETE FROM musabaqa_program_categories WHERE program_id = ?')->execute([$programId]);
+
+            // 6. Delete program entries
+            $pdo->prepare('DELETE FROM musabaqa_program_entries WHERE program_id = ? AND event_id = ?')->execute([$programId, $activeEventId]);
+
+            // 7. Delete the program itself
+            $pdo->prepare('DELETE FROM musabaqa_programs WHERE id = ? AND event_id = ?')->execute([$programId, $activeEventId]);
+
+            // 8. Recalculate event team totals to undo any team marks contributed by this program
+            admin_recalculate_team_totals($pdo, $activeEventId);
+
+            admin_log_activity($pdo, (int)$user['id'], $activeEventId, 'delete_program', 'musabaqa_programs', $programId, 'Deleted program and reset all associated entries, marks, and leaderboard totals.');
+
+            $pdo->commit();
+
+            admin_flash('success', 'Program deleted successfully. All associated entries, scores, and team marks have been undone.');
             programs_redirect();
         }
 
@@ -173,10 +234,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $title = trim((string)($_POST['title'] ?? ''));
         $programType = trim((string)($_POST['program_type'] ?? ''));
-        $classTypeId = (int)($_POST['class_type_id'] ?? 0) ?: null;
         $stageTypeId = (int)($_POST['stage_type_id'] ?? 0);
         $location = trim((string)($_POST['location'] ?? ''));
         $durationMinutes = (int)($_POST['duration_minutes'] ?? 0);
+
+        $allowedSectionsArr = (array)($_POST['allowed_sections'] ?? []);
+        if (!$allowedSectionsArr) {
+            throw new RuntimeException('Select at least one allowed section.');
+        }
+        $allowedSectionsStr = implode(',', array_map('intval', $allowedSectionsArr));
+        // Keep class_type_id backward compatible
+        $classTypeId = count($allowedSectionsArr) === 1 ? (int)$allowedSectionsArr[0] : null;
+
+        $isSpecial = isset($_POST['is_special']) && $_POST['is_special'] === '1' ? 1 : 0;
+        if ($isSpecial) {
+            $judgesCount = max(1, min(10, (int)($_POST['judges_count'] ?? 2)));
+            $totalMarks = max(1, min(1000, (int)($_POST['total_marks'] ?? 100)));
+            $entriesLimit = max(1, min(1000, (int)($_POST['entries_limit'] ?? 10)));
+            $redirectToTeam = isset($_POST['redirect_to_team']) ? 1 : 0;
+            $disableScores = isset($_POST['disable_scores']) ? 1 : 0;
+        } else {
+            $judgesCount = (int)$settings['default_judges_count'];
+            $totalMarks = (int)$settings['default_total_marks'];
+            $entriesLimit = (int)$settings['default_entries_limit'];
+            $redirectToTeam = 1;
+            $disableScores = 0;
+        }
 
         $startDt = parse_admin_datetime_local($_POST['start_time'] ?? null);
         $endDt = parse_admin_datetime_local($_POST['end_time'] ?? null);
@@ -229,7 +312,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt = $pdo->prepare("
                 UPDATE musabaqa_programs
                 SET title = ?, program_type = ?, class_type_id = ?, stage_type_id = ?, location = ?,
-                    start_time = ?, end_time = ?
+                    start_time = ?, end_time = ?, is_special = ?, judges_count = ?, total_marks = ?,
+                    entries_limit = ?, redirect_to_team = ?, disable_scores = ?, allowed_sections = ?
                 WHERE id = ? AND event_id = ?
             ");
             $stmt->execute([
@@ -240,6 +324,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $location ?: null,
                 $startTime,
                 $endTime,
+                $isSpecial,
+                $judgesCount,
+                $totalMarks,
+                $entriesLimit,
+                $redirectToTeam,
+                $disableScores,
+                $allowedSectionsStr,
                 $programId,
                 $activeEventId
             ]);
@@ -248,8 +339,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             $stmt = $pdo->prepare("
                 INSERT INTO musabaqa_programs
-                    (event_id, title, program_type, class_type_id, stage_type_id, location, start_time, end_time, status)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active')
+                    (event_id, title, program_type, class_type_id, stage_type_id, location, start_time, end_time, status,
+                     is_special, judges_count, total_marks, entries_limit, redirect_to_team, disable_scores, allowed_sections)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, ?, ?, ?, ?)
             ");
             $stmt->execute([
                 $activeEventId,
@@ -259,7 +351,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stageTypeId,
                 $location ?: null,
                 $startTime,
-                $endTime
+                $endTime,
+                $isSpecial,
+                $judgesCount,
+                $totalMarks,
+                $entriesLimit,
+                $redirectToTeam,
+                $disableScores,
+                $allowedSectionsStr
             ]);
             $programId = (int)$pdo->lastInsertId();
 
@@ -516,14 +615,19 @@ require_once __DIR__ . '/../includes/sidebar.php';
                         <option value="group">Group</option>
                     </select>
                 </div>
-                <div class="input-group">
-                    <label>Class Type</label>
-                    <select name="class_type_id" id="classTypeId">
-                        <option value="">All Class Types</option>
+                <div class="input-group full-width" style="grid-column: span 2;">
+                    <label style="font-weight: 600; margin-bottom: 8px; display: block; color: var(--muted);">Allowed Sections (Class Types) <span class="required">*</span></label>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 5px;">
                         <?php foreach ($classTypes as $type): ?>
-                            <option value="<?= (int)$type['id'] ?>"><?= e(admin_class_type_display($type['name'] ?? null, (int)$type['id'])) ?></option>
+                            <label class="section-toggle-card">
+                                <input type="checkbox" name="allowed_sections[]" value="<?= (int)$type['id'] ?>" class="allowed-section-chk">
+                                <div class="card-inner">
+                                    <i class="fa-solid fa-circle-check check-icon"></i>
+                                    <span><?= e(admin_class_type_display($type['name'] ?? null, (int)$type['id'])) ?></span>
+                                </div>
+                            </label>
                         <?php endforeach; ?>
-                    </select>
+                    </div>
                 </div>
                 <div class="input-group">
                     <label>Stage <span class="required">*</span></label>
@@ -549,6 +653,54 @@ require_once __DIR__ . '/../includes/sidebar.php';
                 <div class="input-group">
                     <label>End Time</label>
                     <input type="datetime-local" name="end_time" id="endTime">
+                </div>
+                <div class="input-group">
+                    <label>Program Mode</label>
+                    <select name="is_special" id="isSpecial">
+                        <option value="0">Default Mode (Use global defaults)</option>
+                        <option value="1">Special Mode (Custom limits &amp; redirection)</option>
+                    </select>
+                </div>
+                
+                <div id="specialFields" style="display: none; border-top: 1px solid var(--border); padding-top: 15px; margin-top: 15px; grid-column: span 2; width: 100%;">
+                    <h4 style="font-size: 14px; font-weight: 700; margin-bottom: 12px; color: var(--accent, #14b8a6);"><i class="fa-solid fa-gear"></i> Special Mode Settings</h4>
+                    <div class="form-grid-3" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                        <div class="input-group">
+                            <label>Judges Count</label>
+                            <input type="number" name="judges_count" id="judgesCount" min="1" max="10" value="2">
+                        </div>
+                        <div class="input-group">
+                            <label>Total Marks (per Judge)</label>
+                            <input type="number" name="total_marks" id="totalMarks" min="1" max="1000" value="100">
+                        </div>
+                        <div class="input-group">
+                            <label>Entries Limit</label>
+                            <input type="number" name="entries_limit" id="entriesLimit" min="1" max="1000" value="10">
+                        </div>
+                    </div>
+                    <div style="display: grid; gap: 12px; margin-top: 15px;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.04); padding: 10px 14px; border-radius: 10px;">
+                            <div>
+                                <strong style="font-size: 13.5px; display: block; color: var(--text);">Redirect to Team Total</strong>
+                                <span style="font-size: 11.5px; color: var(--muted);">Redirect participants' scores to team total points</span>
+                            </div>
+                            <label class="toggle-switch" style="position: relative; display: inline-block;">
+                                <input type="checkbox" name="redirect_to_team" id="redirectToTeam" value="1" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        
+                        <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.04); padding: 10px 14px; border-radius: 10px;">
+                            <div>
+                                <strong style="font-size: 13.5px; display: block; color: var(--text);">Disable Scores</strong>
+                                <span style="font-size: 11.5px; color: var(--muted);">Disable/hide scores (useful for semi-finales/hiding)</span>
+                            </div>
+                            <label class="toggle-switch" style="position: relative; display: inline-block;">
+                                <input type="checkbox" name="disable_scores" id="disableScores" value="1">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="field-help mt-4">Set a duration to auto-calculate the end time.</div>
@@ -589,14 +741,22 @@ require_once __DIR__ . '/../includes/sidebar.php';
             <div class="modal-title">Delete Program</div>
             <button class="modal-close" type="button" data-close="deleteModal"><i class="fa-solid fa-xmark"></i></button>
         </div>
-        <div class="panel">Delete <strong id="deleteName"></strong>? Programs with entries are protected.</div>
+        <div class="panel">
+            <p style="font-size: 15px; margin-bottom: 12px;">Are you sure you want to delete <strong id="deleteName"></strong>?</p>
+            <div class="alert alert-warning" style="margin: 0; font-size: 13px; display: flex; gap: 8px; align-items: flex-start;">
+                <i class="fa-solid fa-triangle-exclamation" style="margin-top: 2px;"></i>
+                <div>
+                    <strong>Warning:</strong> Deleting this program will permanently remove all associated student entries, judge scores, and undo any team or student marks earned from this program.
+                </div>
+            </div>
+        </div>
         <form method="POST">
             <?= admin_csrf_field() ?>
             <input type="hidden" name="action" value="delete">
             <input type="hidden" name="program_id" id="deleteId">
             <div class="form-actions">
                 <button type="button" class="btn btn-secondary btn-md" data-close="deleteModal">Cancel</button>
-                <button class="btn btn-danger btn-md" type="submit">Delete</button>
+                <button class="btn btn-danger btn-md" type="submit"><i class="fa-solid fa-trash"></i> Delete & Undo Marks</button>
             </div>
         </form>
     </div>
@@ -634,6 +794,12 @@ function updateEndTimeFromDuration() {
     document.getElementById('endTime').value = formatLocalDatetime(startDate);
 }
 
+function toggleModeFields() {
+    const isSp = document.getElementById('isSpecial').value === '1';
+    document.getElementById('specialFields').style.display = isSp ? 'block' : 'none';
+}
+document.getElementById('isSpecial')?.addEventListener('change', toggleModeFields);
+
 const latestProgramData = <?= json_encode($latestProgramData) ?>;
 
 document.querySelector('[data-open-program]')?.addEventListener('click', () => {
@@ -641,6 +807,10 @@ document.querySelector('[data-open-program]')?.addEventListener('click', () => {
     document.getElementById('programModalTitle').textContent = 'Add Program';
     document.getElementById('programAction').value = 'create';
     document.getElementById('programId').value = '';
+    
+    document.querySelectorAll('.allowed-section-chk').forEach(chk => chk.checked = false);
+    document.getElementById('isSpecial').value = '0';
+    toggleModeFields();
     
     // Auto-fill with latest program data if available
     if (latestProgramData && latestProgramData.end_time) {
@@ -666,11 +836,26 @@ document.querySelectorAll('[data-edit-program]').forEach(btn => btn.addEventList
     document.getElementById('programId').value = p.id || '';
     document.getElementById('programTitle').value = p.title || '';
     document.getElementById('programType').value = p.program_type || '';
-    document.getElementById('classTypeId').value = p.class_type_id || '';
     document.getElementById('stageTypeId').value = p.stage_type_id || '';
     document.getElementById('programLocation').value = p.location || '';
     document.getElementById('startTime').value = toLocalDatetime(p.start_time);
     document.getElementById('endTime').value = toLocalDatetime(p.end_time);
+
+    // Populate checkboxes for allowed sections
+    const allowed = (p.allowed_sections || '').split(',').map(s => s.trim());
+    document.querySelectorAll('.allowed-section-chk').forEach(chk => {
+        chk.checked = allowed.includes(chk.value) || (p.class_type_id && String(p.class_type_id) === String(chk.value));
+    });
+
+    // Populate special mode values
+    document.getElementById('isSpecial').value = String(p.is_special || '0');
+    document.getElementById('judgesCount').value = String(p.judges_count || '2');
+    document.getElementById('totalMarks').value = String(p.total_marks || '100');
+    document.getElementById('entriesLimit').value = String(p.entries_limit || '10');
+    document.getElementById('redirectToTeam').checked = p.redirect_to_team !== 0 && p.redirect_to_team !== '0';
+    document.getElementById('disableScores').checked = p.disable_scores === 1 || p.disable_scores === '1';
+    
+    toggleModeFields();
 
     if (p.start_time && p.end_time) {
         const start = new Date(toLocalDatetime(p.start_time));

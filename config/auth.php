@@ -197,14 +197,12 @@ function validate_session(): void
         return;
     }
 
-    $lifetime = defined('SESSION_LIFETIME') ? SESSION_LIFETIME : 7200; // 2 hours default
-    $lastActivity = $_SESSION['last_activity'] ?? 0;
-
-    if (time() - $lastActivity > $lifetime) {
+    // 2-hour idle timeout check (7200 seconds)
+    $maxIdle = 7200;
+    if (isset($_SESSION['last_activity']) && (time() - (int)$_SESSION['last_activity']) > $maxIdle) {
         logout_user();
         return;
     }
-
     $_SESSION['last_activity'] = time();
 
     // Reload user to get fresh roles/status
@@ -231,6 +229,20 @@ function require_login(): void
     if (empty($_SESSION['user_id'])) {
         header('Location: ' . app_url('/auth/login'));
         exit;
+    }
+
+    $scriptPath = str_replace('\\', '/', $_SERVER['SCRIPT_FILENAME'] ?? '');
+    if (str_contains($scriptPath, '/admin/')) {
+        if (!is_admin()) {
+            $eventAuthority = defined('EVENT_AUTHORITY_SCOPE')
+                ? trim((string)EVENT_AUTHORITY_SCOPE)
+                : '';
+
+            if ($eventAuthority === '' || !current_user_has_authority($eventAuthority)) {
+                http_response_code(403);
+                exit('Access denied. Admin access or the required event authority is needed.');
+            }
+        }
     }
 }
 
@@ -299,12 +311,31 @@ function current_user_has_permission(string $permission): bool
     $stmt = $pdo->prepare("
         SELECT COUNT(*)
         FROM permissions p
-        JOIN role_permissions rp ON rp.permission_id = p.id
-        JOIN user_roles ur ON ur.role_id = rp.role_id
-        WHERE ur.user_id = ? AND p.slug = ?
+        JOIN user_permissions up ON up.permission_id = p.id
+        WHERE up.user_id = ? AND p.slug = ?
     ");
 
-    $stmt->execute([$_SESSION['user']['id'], $permission]);
+    $stmt->execute([$_SESSION['user']['id'] ?? 0, $permission]);
+
+    return $stmt->fetchColumn() > 0;
+}
+
+function current_user_has_authority(string $authority): bool
+{
+    if (current_user_has_role('admin')) {
+        return true;
+    }
+
+    $pdo = $GLOBALS['dashboard_pdo'];
+
+    $stmt = $pdo->prepare("
+        SELECT COUNT(*)
+        FROM authorities a
+        JOIN user_authorities ua ON ua.authority_id = a.id
+        WHERE ua.user_id = ? AND a.slug = ?
+    ");
+
+    $stmt->execute([$_SESSION['user']['id'] ?? 0, $authority]);
 
     return $stmt->fetchColumn() > 0;
 }

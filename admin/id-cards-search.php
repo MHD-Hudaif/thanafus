@@ -61,30 +61,11 @@ $allMatching = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 $totalMembers = count($allMatching);
 $missingChest = 0;
-$existingQr = 0;
-
-$existingQrFiles = [];
-$dir = public_path('assets/qr/id-cards/event-' . $activeEventId);
-if (is_dir($dir)) {
-    $files = scandir($dir);
-    if ($files !== false) {
-        foreach ($files as $file) {
-            if (str_ends_with($file, '.png')) {
-                $chestNum = substr($file, 0, -4);
-                $existingQrFiles[$chestNum] = true;
-            }
-        }
-    }
-}
 
 foreach ($allMatching as $member) {
     $chest = trim((string)($member['chest_number'] ?? ''));
     if ($chest === '') {
         $missingChest++;
-        continue;
-    }
-    if (isset($existingQrFiles[$chest])) {
-        $existingQr++;
     }
 }
 
@@ -124,7 +105,7 @@ $stmt = $pdo->prepare("
     WHERE mtm.event_id = ?
       AND mtm.status = 'active'
       {$searchQuery}
-    ORDER BY mtm.chest_number IS NULL ASC, CAST(mtm.chest_number AS UNSIGNED) ASC, t.team_name ASC, display_name ASC
+    ORDER BY NULLIF(mtm.chest_number, '') IS NULL ASC, CAST(mtm.chest_number AS UNSIGNED) ASC, t.team_name ASC, display_name ASC
     LIMIT " . (int)$limit . " OFFSET " . (int)$offset . "
 ");
 $stmt->execute($queryParams);
@@ -133,8 +114,6 @@ $paginatedRaw = $stmt->fetchAll(PDO::FETCH_ASSOC);
 $paginatedMembers = [];
 foreach ($paginatedRaw as $member) {
     $member['category'] = id_card_category_label($member['class_type_name'] ?? null, (int)($member['class_type_id'] ?? 0));
-    $member['qr_url'] = id_card_absolute_url('/member-details.php?id=' . (int)$member['member_id']);
-    $member['qr_paths'] = id_card_qr_paths($activeEventId, $member['chest_number'] ?? null);
     $paginatedMembers[] = $member;
 }
 
@@ -144,23 +123,13 @@ if (empty($paginatedMembers)) {
     $html .= '<tr><td colspan="6" class="empty-state-row" style="text-align: center; padding: 30px; color: var(--muted);"><div class="empty-title">No Members Found</div></td></tr>';
 } else {
     foreach ($paginatedMembers as $member) {
-        $chest = trim((string)($member['chest_number'] ?? ''));
-        $hasQr = $chest !== '' && isset($existingQrFiles[$chest]);
         $chestLabel = trim((string)($member['chest_number'] ?? '')) !== '' ? '#' . htmlspecialchars((string)$member['chest_number'], ENT_QUOTES, 'UTF-8') : '-';
         $displayName = htmlspecialchars($member['display_name'] ?? '', ENT_QUOTES, 'UTF-8');
         $teamColor = htmlspecialchars($member['team_color'] ?: '#14b8a6', ENT_QUOTES, 'UTF-8');
         $teamName = htmlspecialchars($member['team_name'] ?? '', ENT_QUOTES, 'UTF-8');
         $section = htmlspecialchars($member['section'] ?: '-', ENT_QUOTES, 'UTF-8');
         $category = htmlspecialchars($member['category'] ?: '-', ENT_QUOTES, 'UTF-8');
-        $qrAction = '';
-        if ($hasQr) {
-            $qrAction = '<a class="btn btn-secondary btn-sm" href="' . htmlspecialchars((string)$member['qr_paths']['web'], ENT_QUOTES, 'UTF-8') . '" target="_blank"><i class="fa-solid fa-eye"></i> View QR</a>';
-        } else {
-            $badgeClass = empty($member['chest_number']) ? 'badge-warning' : 'badge-neutral';
-            $badgeText = empty($member['chest_number']) ? 'Needs chest #' : 'Not generated';
-            $qrAction = '<span class="badge ' . $badgeClass . '">' . $badgeText . '</span>';
-        }
-        $detailsUrl = app_url('/member-details.php') . '?id=' . (int)$member['member_id'];
+        $memberJson = htmlspecialchars(json_encode($member, JSON_HEX_APOS | JSON_HEX_QUOT), ENT_QUOTES, 'UTF-8');
 
         $html .= '<tr>';
         $html .= '<td><strong>' . $chestLabel . '</strong></td>';
@@ -168,9 +137,8 @@ if (empty($paginatedMembers)) {
         $html .= '<td><span class="team-color-pill" style="background: ' . $teamColor . '22; color:#fff;"><span class="team-color-dot" style="width:12px;height:12px;background:' . $teamColor . ';"></span>' . $teamName . '</span></td>';
         $html .= '<td>' . $section . '</td>';
         $html .= '<td><span class="badge badge-info">' . $category . '</span></td>';
-        $html .= '<td>';
-        $html .= $qrAction . ' ';
-        $html .= '<a class="btn btn-secondary btn-sm" href="' . $detailsUrl . '" target="_blank"><i class="fa-solid fa-address-card"></i> Details</a>';
+        $html .= '<td style="text-align: right;">';
+        $html .= '<button class="btn btn-secondary btn-sm" type="button" data-edit-member=\'' . $memberJson . '\' title="Edit Chest Number"><i class="fa-solid fa-pen"></i> Edit</button>';
         $html .= '</td>';
         $html .= '</tr>';
     }
@@ -181,18 +149,10 @@ $paginationHtml = '';
 if ($totalMembers > 0) {
     $showingStart = $offset + 1;
     $showingEnd = min($offset + $limit, $totalMembers);
-    $paginationHtml .= '<div class="flex-between pagination-bar mt-4" style="margin-top: 20px; display: flex; justify-content: space-between; align-items: center; width: 100%;">';
     
-    // Left side: Showing entries text with inline limit trigger
+    $paginationHtml .= '<div class="flex-between pagination-bar mt-4" style="margin-top: 20px; display: flex; justify-content: space-between; align-items: center; width: 100%; flex-wrap: wrap; gap: 10px;">';
     $paginationHtml .= '<div class="text-muted text-sm" style="display: flex; align-items: center; gap: 8px;">';
     $paginationHtml .= 'Showing ' . $showingStart . ' to ' . $showingEnd . ' of ' . $totalMembers . ' entries';
-    $paginationHtml .= '<span style="margin-left: 8px; color: var(--muted); font-size: 13px;">Limit:</span>';
-    
-    $paginationHtml .= '<div class="limit-popover-container" style="position: relative; display: inline-block;">';
-    $paginationHtml .= '<button type="button" id="active-limit-trigger" class="btn btn-secondary btn-sm" style="padding: 2px 6px; font-size: 12px; height: 24px; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.05); color: #fff; min-width: 28px;">';
-    $paginationHtml .= '<span>' . ($limit === 5000 ? 'All' : $limit) . '</span>';
-    $paginationHtml .= '</button>';
-    $paginationHtml .= '<div id="limit-options-popover" class="limit-options-popover">';
     foreach ([10, 15, 30, 5000] as $lOpt) {
         $btnClass = $limit === $lOpt ? 'btn-primary' : 'btn-secondary';
         $label = $lOpt === 5000 ? 'All' : $lOpt;
@@ -233,7 +193,6 @@ echo json_encode([
     'stats' => [
         'total' => $totalMembers,
         'missing' => $missingChest,
-        'existing' => $existingQr
     ]
 ]);
 exit;

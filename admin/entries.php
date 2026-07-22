@@ -143,9 +143,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     if (!$member) {
                         throw new RuntimeException('Participant not found in selected team.');
                     }
-                    if (!empty($program['class_type_id']) && (int)$member['class_type_id'] !== (int)$program['class_type_id']) {
-                        throw new RuntimeException('Participant does not match this program class type.');
-                    }
+                    
+                    admin_validate_member_program_limits($pdo, $activeEventId, $programId, $teamMemberId);
+                    admin_validate_program_entry_limit($pdo, $activeEventId, $programId);
 
                     $dup = $pdo->prepare("
                         SELECT em.id
@@ -223,6 +223,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     throw new RuntimeException('Scored entries cannot be moved to another program.');
                 }
 
+                if ($oldProgramId !== $programId) {
+                    admin_validate_program_entry_limit($pdo, $activeEventId, $programId);
+                    
+                    // Validate limits and sections for all members currently in this entry
+                    $memberStmt = $pdo->prepare('SELECT team_member_id FROM musabaqa_entry_members WHERE entry_id = ?');
+                    $memberStmt->execute([$entryId]);
+                    $entryMembers = $memberStmt->fetchAll(PDO::FETCH_COLUMN);
+                    foreach ($entryMembers as $tmId) {
+                        admin_validate_member_program_limits($pdo, $activeEventId, $programId, (int)$tmId, $entryId);
+                    }
+                }
+
                 $newEntryNumber = $oldProgramId === $programId
                     ? (int)$entry['entry_number']
                     : entries_next_number($pdo, $activeEventId, $programId);
@@ -275,9 +287,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!$member) {
                 throw new RuntimeException('Selected member is invalid for this team.');
             }
-            if (!empty($entry['class_type_id']) && (int)$member['class_type_id'] !== (int)$entry['class_type_id']) {
-                throw new RuntimeException('Member does not match this program class type.');
-            }
+            
+            admin_validate_member_program_limits($pdo, $activeEventId, (int)$entry['program_id'], $teamMemberId);
 
             $dup = $pdo->prepare('SELECT id FROM musabaqa_entry_members WHERE entry_id = ? AND team_member_id = ? LIMIT 1');
             $dup->execute([$entryId, $teamMemberId]);
@@ -299,15 +310,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute([$entryMemberId, $activeEventId]);
             admin_flash('success', 'Member removed from entry.');
         } elseif ($action === 'delete_entry') {
-            $stmt = $pdo->prepare('SELECT id FROM musabaqa_score_sheets WHERE entry_id = ? LIMIT 1');
-            $stmt->execute([$entryId]);
-            if ($stmt->fetchColumn()) {
-                throw new RuntimeException('Scored entries cannot be deleted.');
-            }
+            // Get program_id for this entry
+            $stmt = $pdo->prepare('SELECT program_id FROM musabaqa_program_entries WHERE id = ? AND event_id = ? LIMIT 1');
+            $stmt->execute([$entryId, $activeEventId]);
+            $entryProgramId = (int)$stmt->fetchColumn();
 
+            // Delete member scores & scores
+            $pdo->prepare('DELETE FROM musabaqa_member_scores WHERE entry_id = ?')->execute([$entryId]);
+            $pdo->prepare('DELETE FROM musabaqa_scores WHERE entry_id = ? AND event_id = ?')->execute([$entryId, $activeEventId]);
+
+            // Delete category scores & score sheets
+            $sheetStmt = $pdo->prepare('SELECT id FROM musabaqa_score_sheets WHERE entry_id = ?');
+            $sheetStmt->execute([$entryId]);
+            $sheetIds = $sheetStmt->fetchAll(PDO::FETCH_COLUMN);
+            if ($sheetIds) {
+                $sheetPlaceholders = implode(',', array_fill(0, count($sheetIds), '?'));
+                $pdo->prepare("DELETE FROM musabaqa_category_scores WHERE score_sheet_id IN ($sheetPlaceholders)")->execute($sheetIds);
+            }
+            $pdo->prepare('DELETE FROM musabaqa_score_sheets WHERE entry_id = ?')->execute([$entryId]);
+
+            // Delete entry members & program entry
             $pdo->prepare('DELETE FROM musabaqa_entry_members WHERE entry_id = ?')->execute([$entryId]);
             $pdo->prepare('DELETE FROM musabaqa_program_entries WHERE id = ? AND event_id = ?')->execute([$entryId, $activeEventId]);
-            admin_flash('success', 'Entry deleted successfully.');
+
+            // Recalculate participant, program, and team totals to undo any marks
+            if ($entryProgramId > 0) {
+                admin_recalculate_participant_totals($pdo, $activeEventId, $entryProgramId);
+                admin_recalculate_program_results($pdo, $activeEventId, $entryProgramId);
+            }
+            admin_recalculate_team_totals($pdo, $activeEventId);
+
+            admin_flash('success', 'Entry deleted successfully. Any associated scores and team marks have been undone.');
         } else {
             throw new RuntimeException('Invalid entry action.');
         }
@@ -380,7 +413,7 @@ if (isset($_GET['action'])) {
                 $params[] = $entryId;
             }
 
-            $sql .= ' ORDER BY tm.chest_number IS NULL ASC, CAST(tm.chest_number AS UNSIGNED), full_name ASC';
+            $sql .= " ORDER BY NULLIF(tm.chest_number, '') IS NULL ASC, CAST(tm.chest_number AS UNSIGNED) ASC, full_name ASC, tm.id ASC";
             $stmt = $pdo->prepare($sql);
             $stmt->execute($params);
             echo json_encode(['success' => true, 'members' => $stmt->fetchAll(PDO::FETCH_ASSOC)], JSON_UNESCAPED_UNICODE);
@@ -413,7 +446,7 @@ if (isset($_GET['action'])) {
                 JOIN kauzariyya.students s ON s.id = tm.student_id
                 LEFT JOIN kauzariyya.classes c ON c.id = s.class_id
                 WHERE em.entry_id = ?
-                ORDER BY tm.chest_number IS NULL ASC, CAST(tm.chest_number AS UNSIGNED), full_name ASC
+                ORDER BY NULLIF(tm.chest_number, '') IS NULL ASC, CAST(tm.chest_number AS UNSIGNED) ASC, full_name ASC, tm.id ASC
             ");
             $stmt->execute([$entryId]);
 
@@ -746,6 +779,14 @@ const RETURN_FIELDS = `
 `;
 
 function escapeHtml(value){return String(value ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;')}
+function groupedMemberOptionsHtml(members, placeholder) {
+    if (!members.length) return '<option value="">No available members</option>';
+    let html = `<option value="">${escapeHtml(placeholder)}</option>`;
+    members.forEach(member => {
+        html += `<option value="${escapeHtml(member.id)}">#${escapeHtml(member.chest_number || '-')} · ${escapeHtml(member.full_name)} · ${escapeHtml(member.class_name || 'Unassigned')}</option>`;
+    });
+    return html;
+}
 function selectedProgram(){return PROGRAMS.find(program => Number(program.id) === Number(document.getElementById('entryProgramId').value));}
 function selectedTeam(){return TEAMS.find(team => Number(team.id) === Number(document.getElementById('entryTeamId').value));}
 
@@ -823,17 +864,11 @@ async function loadMembers() {
     select.innerHTML = '<option value="">Loading...</option>';
     const response = await fetch(`${ADMIN_ENTRIES_URL}?action=team_members&program_id=${encodeURIComponent(programId)}&team_id=${encodeURIComponent(teamId)}`);
     const data = await response.json();
-    select.innerHTML = '<option value="">Select Participant</option>';
     if (!data.success || !Array.isArray(data.members) || data.members.length === 0) {
         select.innerHTML = '<option value="">No available members</option>';
         return;
     }
-    data.members.forEach(member => {
-        const option = document.createElement('option');
-        option.value = member.id;
-        option.textContent = `${member.full_name} (#${member.chest_number || '-'})`;
-        select.appendChild(option);
-    });
+    select.innerHTML = groupedMemberOptionsHtml(data.members, 'Select Participant');
 }
 
 document.getElementById('entryProgramId').addEventListener('change', () => { syncEntryFields(false); loadMembers(); });
@@ -878,8 +913,7 @@ async function openMembers(entryId, manage = false) {
     const available = await availableResponse.json();
     const members = available.success ? available.members : [];
     let add = `<div class="panel"><div class="page-subtitle">Add Member</div><form method="POST" class="form-grid mt-4"><input type="hidden" name="csrf_token" value="${CSRF}"><input type="hidden" name="action" value="add_member"><input type="hidden" name="entry_id" value="${entryId}">${RETURN_FIELDS}<div class="input-group"><label>Member</label><select name="team_member_id" required>`;
-    add += members.length ? '<option value="">Select Member</option>' : '<option value="">No available members</option>';
-    members.forEach(member => add += `<option value="${escapeHtml(member.id)}">${escapeHtml(member.full_name)} (#${escapeHtml(member.chest_number || '-')})</option>`);
+    add += groupedMemberOptionsHtml(members, 'Select Member');
     add += '</select></div><div class="input-group"><label>Role</label><input name="role_name" value="Member"></div><div class="form-actions full-width"><button class="btn btn-success btn-md" type="submit">Add Member</button></div></form></div>';
     document.getElementById('membersBody').innerHTML = current + add;
    window.openModal('membersModal');

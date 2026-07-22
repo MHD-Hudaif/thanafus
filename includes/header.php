@@ -84,5 +84,5 @@ window.APP_CONFIG = {
 
 <body>
 
-<div class="admin-layout">
+<div class="admin-layout<?= !empty($useTopNavigation) ? ' admin-layout-topnav' : '' ?>">
 <?php endif; ?>

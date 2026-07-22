@@ -5,6 +5,7 @@ if (!defined('TV_STAGE')) {
     require_once dirname(__DIR__) . '/router.php';
     $event = tv_active_event();
     $settings = tv_get_settings((int)($event['id'] ?? 0));
+    $tvBodyClass = trim(($tvBodyClass ?? '') . ' tv-schedule-active');
     $settings['mode'] = 'manual';
     $settings['active_slide'] = 'schedule';
     $settings['slides']['schedule']['enabled'] = true;
@@ -13,14 +14,13 @@ if (!defined('TV_STAGE')) {
     echo '<section class="tv-slide tv-slide--active" id="slide-schedule" data-slide="schedule" style="opacity: 1; visibility: visible; transform: scale(1);">';
 }
 ?>
-<div class="tv-slide-head">
-    <div>
-        <div class="tv-kicker">Timeline</div>
-        <h1>Schedule & Results</h1>
-    </div>
-    <div class="tv-pill"><span>Live</span></div>
-</div>
-<div class="tv-schedule" data-schedule style="flex: 1; display: flex; flex-direction: column; min-height: 0;"></div>
+<?php if (!defined('TV_STAGE')): ?>
+<script>
+document.body.classList.add('tv-schedule-active');
+document.querySelector('.tv-topbar')?.setAttribute('hidden', '');
+</script>
+<?php endif; ?>
+<div class="tv-schedule" data-schedule></div>
 <?php
 if (!defined('TV_STAGE')) {
     echo '</section>';

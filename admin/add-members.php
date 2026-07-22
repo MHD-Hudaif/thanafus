@@ -363,6 +363,73 @@ require_once __DIR__ . '/../includes/sidebar.php';
             border: 1px dashed var(--border-strong);
             border-radius: var(--radius);
         }
+        .assigned-toggle-container {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 6px 14px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-soft);
+            border-radius: 999px;
+            cursor: pointer;
+            user-select: none;
+            transition: all 0.2s ease;
+        }
+        .assigned-toggle-container:hover {
+            border-color: rgba(20, 184, 166, 0.45);
+            background: rgba(20, 184, 166, 0.1);
+        }
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 38px;
+            height: 22px;
+            flex-shrink: 0;
+        }
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(148, 163, 184, 0.3);
+            transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 14px;
+            width: 14px;
+            left: 3px;
+            bottom: 3px;
+            background-color: #ffffff;
+            transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        .toggle-switch input:checked + .toggle-slider {
+            background-color: #14b8a6;
+            border-color: #0d9488;
+        }
+        .toggle-switch input:checked + .toggle-slider:before {
+            transform: translateX(16px);
+        }
+        .toggle-label {
+            font-size: 12px;
+            font-weight: 800;
+            color: var(--text);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .hide-assigned-members .student-card.assigned {
+            display: none !important;
+        }
         @media (max-width: 980px) {
             .member-command { grid-template-columns: 1fr; }
             .search-row { grid-template-columns: 1fr; }
@@ -399,6 +466,13 @@ require_once __DIR__ . '/../includes/sidebar.php';
             <div class="panel search-panel">
                 <div class="search-panel-heading">
                     <div class="panel-kicker"><i class="fa-solid fa-user-graduate"></i> Student pool</div>
+                    <label class="assigned-toggle-container">
+                        <span class="toggle-switch">
+                            <input type="checkbox" id="toggleAssignedMembers" checked>
+                            <span class="toggle-slider"></span>
+                        </span>
+                        <span class="toggle-label"><i class="fa-solid fa-user-check"></i> Show assigned members</span>
+                    </label>
                 </div>
                 <form method="GET" class="search-row">
                     <input type="hidden" name="team" value="<?= $activeTeamId ?>">
@@ -412,7 +486,7 @@ require_once __DIR__ . '/../includes/sidebar.php';
             </div>
 
             <div class="member-stats">
-                <div class="member-stat"><div class="member-stat-icon"><i class="fa-solid fa-users"></i></div><div><strong><?= count($students) ?></strong><span>Students shown</span></div></div>
+                <div class="member-stat"><div class="member-stat-icon"><i class="fa-solid fa-users"></i></div><div><strong id="statStudentsShown"><?= count($students) ?></strong><span>Students shown</span></div></div>
                 <div class="member-stat"><div class="member-stat-icon"><i class="fa-solid fa-user-plus"></i></div><div><strong><?= $availableCount ?></strong><span>Available</span></div></div>
                 <div class="member-stat"><div class="member-stat-icon"><i class="fa-solid fa-user-check"></i></div><div><strong><?= $assignedCount ?></strong><span>Already assigned</span></div></div>
             </div>
@@ -568,6 +642,53 @@ addMembersForm?.addEventListener('submit', event => {
         alert('Please select at least one student.');
     }
 });
+
+const toggleAssignedInput = document.getElementById('toggleAssignedMembers');
+const addMembersShell = document.querySelector('.add-members-shell');
+
+function applyAssignedVisibility() {
+    const showAssigned = toggleAssignedInput ? toggleAssignedInput.checked : true;
+    localStorage.setItem('musabaqa_show_assigned_members', showAssigned ? '1' : '0');
+    
+    if (addMembersShell) {
+        addMembersShell.classList.toggle('hide-assigned-members', !showAssigned);
+    }
+    
+    document.querySelectorAll('.class-block').forEach(block => {
+        const assignedCards = block.querySelectorAll('.student-card.assigned');
+        const availableCards = block.querySelectorAll('.student-card:not(.assigned)');
+        const emptyNote = block.querySelector('.empty-class-note');
+        const countEl = block.querySelector('.class-count');
+        
+        const visibleCards = showAssigned ? (assignedCards.length + availableCards.length) : availableCards.length;
+        
+        if (countEl) {
+            countEl.textContent = `${visibleCards} student(s) shown · ${availableCards.length} available`;
+        }
+        
+        if (emptyNote) {
+            emptyNote.style.display = (!showAssigned && availableCards.length === 0) ? 'block' : (assignedCards.length > 0 && availableCards.length === 0 ? 'block' : 'none');
+        }
+    });
+
+    const shownStatEl = document.getElementById('statStudentsShown');
+    if (shownStatEl) {
+        const totalCards = document.querySelectorAll('.student-card');
+        const assignedCards = document.querySelectorAll('.student-card.assigned');
+        const count = showAssigned ? totalCards.length : (totalCards.length - assignedCards.length);
+        shownStatEl.textContent = count;
+    }
+}
+
+if (toggleAssignedInput) {
+    const savedPref = localStorage.getItem('musabaqa_show_assigned_members');
+    if (savedPref !== null) {
+        toggleAssignedInput.checked = savedPref === '1';
+    }
+    
+    toggleAssignedInput.addEventListener('change', applyAssignedVisibility);
+    applyAssignedVisibility();
+}
 
 updateSelectionCount();
 

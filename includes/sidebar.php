@@ -1,12 +1,15 @@
 <?php
 
+require_once __DIR__ . '/admin-helpers.php';
+$user = $user ?? current_user();
+
 /*
 |--------------------------------------------------------------------------
 | ACTIVE CONTEXT
 |--------------------------------------------------------------------------
 */
 
-$activeEventId = $_SESSION['active_event_id'] ?? null;
+$activeEventId = $_SESSION['selected_event_id'] ?? null;
 $activeTeamId  = $_SESSION['active_team_id'] ?? null;
 
 /*
@@ -99,14 +102,8 @@ if (!empty($isAjaxRequest)) return;
 
                 <a href="<?= app_url('/admin/chest-numbers') ?>"
                    class="sidebar-link <?= admin_sidebar_is_active('/admin/chest-numbers') ?>">
-                    <i class="fa-solid fa-hashtag"></i>
-                    <span>Chest Numbers</span>
-                </a>
-
-                <a href="<?= app_url('/admin/id-cards') ?>"
-                   class="sidebar-link <?= admin_sidebar_is_active('/admin/id-cards') ?>">
                     <i class="fa-solid fa-id-card"></i>
-                    <span>ID Cards</span>
+                    <span>Chest Numbers &amp; ID Cards</span>
                 </a>
 
                 <!-- PROGRAMS -->
@@ -155,12 +152,30 @@ if (!empty($isAjaxRequest)) return;
                     <i class="fa-solid fa-clock-rotate-left"></i>
                     <span>Activity Logs</span>
                 </a>
+                <a href="<?= app_url('/admin/reviews') ?>"
+                   class="sidebar-link <?= admin_sidebar_is_active('/admin/reviews') ?>">
+                    <i class="fa-solid fa-comment-dots"></i>
+                    <span>Feedback &amp; Reviews</span>
+                </a>
+                <a href="<?= app_url('/admin/settings.php') ?>"
+                   class="sidebar-link <?= admin_sidebar_is_active('/admin/settings') ?>">
+                    <i class="fa-solid fa-gear"></i>
+                    <span>Settings</span>
+                </a>
                 <a href="#" id="sidebarChatBtn" class="sidebar-link" data-ajax-ignore>
                     <i class="fa-solid fa-comments"></i>
                     <span>Admin Chat</span>
                     <span id="chatUnreadCount" class="chat-unread-badge" style="display: none;">0</span>
                 </a>
 
+            <?php endif; ?>
+
+            <?php if (is_admin()): ?>
+                <a href="<?= app_url('/admin/database.php') ?>"
+                   class="sidebar-link <?= admin_sidebar_is_active('/admin/database') ?>">
+                    <i class="fa-solid fa-database"></i>
+                    <span>Database Studio</span>
+                </a>
             <?php endif; ?>
 
         </div>

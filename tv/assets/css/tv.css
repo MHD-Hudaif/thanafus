@@ -670,6 +670,730 @@ img, video {
     background: rgba(31, 224, 138, .12);
 }
 
+
+#slide-schedule {
+    padding: 0 !important;
+    overflow: hidden;
+}
+
+body.tv-schedule-active .tv-topbar,
+body:has(#slide-schedule.tv-slide--active) .tv-topbar {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+.tv-topbar[hidden] {
+    display: none !important;
+}
+
+.tv-schedule {
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+}
+
+.tv-schedule-cinema {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    padding: 22px 62px 18px;
+    background:
+        radial-gradient(circle at 14% 24%, color-mix(in srgb, var(--schedule-team-1, #ffe34a) 24%, transparent), transparent 28%),
+        radial-gradient(circle at 86% 22%, color-mix(in srgb, var(--schedule-team-4, #2ee8ff) 25%, transparent), transparent 28%),
+        radial-gradient(circle at 50% 92%, color-mix(in srgb, var(--schedule-team-3, #25ff8a) 22%, transparent), transparent 30%),
+        linear-gradient(115deg, transparent 0 38%, color-mix(in srgb, var(--schedule-team-2, #ff42f5) 13%, transparent) 48%, transparent 60%),
+        linear-gradient(180deg, #03070d 0%, #010306 100%);
+    background-size: 130% 130%, 140% 140%, 125% 125%, 220% 220%, auto;
+    animation: schedule-neon-drift 18s ease-in-out infinite;
+    isolation: isolate;
+}
+
+.tv-schedule-cinema::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -2;
+    background-image:
+        linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.028) 1px, transparent 1px);
+    background-size: 72px 72px;
+    transform: perspective(700px) rotateX(60deg) translateY(18%);
+    transform-origin: 50% 100%;
+    opacity: .42;
+    animation: schedule-grid-crawl 12s linear infinite;
+}
+
+.tv-schedule-cinema::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background:
+        linear-gradient(90deg, rgba(0,0,0,.68), transparent 22%, transparent 78%, rgba(0,0,0,.68)),
+        linear-gradient(105deg, transparent 0 44%, color-mix(in srgb, var(--schedule-team-4, #2ee8ff) 18%, transparent) 48%, transparent 54%),
+        radial-gradient(ellipse at 50% 50%, transparent 36%, rgba(0,0,0,.54) 100%);
+    background-size: auto, 260% 100%, auto;
+    animation: schedule-energy-sweep 7s ease-in-out infinite;
+    pointer-events: none;
+}
+
+.tv-schedule-light {
+    position: absolute;
+    width: 285px;
+    height: 492px;
+    top: 118px;
+    border-radius: 42% 42% 8% 8%;
+    opacity: .56;
+    filter: drop-shadow(0 0 34px currentColor);
+    clip-path: polygon(50% 0, 100% 14%, 90% 82%, 50% 100%, 10% 82%, 0 14%);
+    animation: schedule-banner-pulse 4.8s ease-in-out infinite;
+}
+
+.tv-schedule-light--gold {
+    left: 30px;
+    color: var(--schedule-team-1, #ffd229);
+    border: 3px solid color-mix(in srgb, var(--schedule-team-1, #ffd229) 92%, transparent);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--schedule-team-1, #ffd229) 16%, transparent), color-mix(in srgb, var(--schedule-team-1, #ffd229) 3%, transparent));
+}
+
+.tv-schedule-light--cyan {
+    right: 30px;
+    color: var(--schedule-team-4, #2aa8ff);
+    border: 3px solid color-mix(in srgb, var(--schedule-team-4, #2aa8ff) 92%, transparent);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--schedule-team-4, #2aa8ff) 16%, transparent), color-mix(in srgb, var(--schedule-team-4, #2aa8ff) 3%, transparent));
+    animation-delay: -2.4s;
+}
+
+.tv-schedule-side {
+    position: absolute;
+    bottom: 92px;
+    width: 118px;
+    height: 168px;
+    display: grid;
+    place-items: center;
+    color: rgba(255,255,255,.9);
+    font-weight: 900;
+    letter-spacing: .18em;
+    text-shadow: 0 0 18px currentColor;
+}
+
+.tv-schedule-side--left {
+    left: 108px;
+    color: var(--schedule-team-1, #ffd229);
+}
+
+.tv-schedule-side--right {
+    right: 108px;
+    color: var(--schedule-team-4, #2aa8ff);
+}
+
+.tv-schedule-side span {
+    position: absolute;
+    inset: 0;
+    border: 1px solid currentColor;
+    clip-path: polygon(50% 0, 100% 16%, 92% 76%, 50% 100%, 8% 76%, 0 16%);
+    opacity: .42;
+    animation: schedule-side-ring 3.6s ease-in-out infinite;
+}
+
+.tv-schedule-brand-card,
+.tv-schedule-live-card {
+    position: absolute;
+    top: 26px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 20px;
+    background: rgba(2, 8, 15, .82);
+    border: 1px solid rgba(255,255,255,.12);
+    box-shadow: 0 18px 44px rgba(0,0,0,.45);
+    backdrop-filter: blur(14px);
+}
+
+.tv-schedule-brand-card {
+    left: 28px;
+    min-width: 360px;
+    border-color: rgba(255,210,41,.22);
+}
+
+.tv-schedule-brand-card img {
+    width: 58px;
+    height: 58px;
+    object-fit: contain;
+}
+
+.tv-schedule-brand-card strong,
+.tv-schedule-brand-card span {
+    display: block;
+    text-transform: uppercase;
+}
+
+.tv-schedule-brand-card strong {
+    max-width: 310px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 22px;
+    letter-spacing: .04em;
+}
+
+.tv-schedule-brand-card span {
+    margin-top: 3px;
+    color: #ffd229;
+    font-weight: 900;
+    letter-spacing: .18em;
+}
+
+.tv-schedule-live-card {
+    right: 28px;
+    min-width: 330px;
+    justify-content: space-between;
+    border-color: rgba(42,168,255,.24);
+}
+
+.tv-schedule-live-card > div {
+    display: grid;
+    gap: 7px;
+}
+
+.tv-schedule-live-card strong {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    color: #fff;
+    text-transform: uppercase;
+    font-size: 21px;
+}
+
+.tv-schedule-live-card strong span {
+    width: 14px;
+    height: 14px;
+    border-radius: 999px;
+    background: #ff3939;
+    box-shadow: 0 0 18px #ff3939;
+    animation: live-pulse 1.2s ease-in-out infinite;
+}
+
+.tv-schedule-live-card small {
+    color: #ffd229;
+    font-size: 13px;
+    font-weight: 900;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+}
+
+.tv-schedule-live-card em {
+    color: rgba(255,255,255,.92);
+    font-style: normal;
+    font-size: 24px;
+    font-weight: 900;
+    font-variant-numeric: tabular-nums;
+}
+
+.tv-schedule-title-block {
+    position: relative;
+    z-index: 2;
+    text-align: center;
+    margin-top: 0;
+    text-transform: uppercase;
+}
+
+.tv-schedule-title-block h2 {
+    margin: 0;
+    font-size: clamp(54px, 5.2vw, 88px);
+    line-height: .86;
+    letter-spacing: .08em;
+    color: #f7f8fb;
+    text-shadow: 0 0 24px rgba(255,255,255,.34), 0 8px 0 rgba(0,0,0,.34);
+}
+
+.tv-schedule-title-block div {
+    margin-top: 6px;
+    color: #ffd229;
+    font-size: clamp(24px, 2.2vw, 38px);
+    font-weight: 900;
+    letter-spacing: .46em;
+    text-shadow: 0 0 16px rgba(255,210,41,.48);
+}
+
+.tv-schedule-board {
+    position: relative;
+    z-index: 2;
+    width: min(1380px, calc(100vw - 320px));
+    height: min(740px, calc(100vh - 326px));
+    margin: 14px auto 0;
+    border: 2px solid var(--schedule-team-4, #2ee8ff);
+    background:
+        radial-gradient(circle at 50% 0%, rgba(255, 210, 41, .08), transparent 34%),
+        linear-gradient(180deg, rgba(2, 12, 18, .94), rgba(0, 7, 12, .92));
+    box-shadow:
+        0 0 0 2px color-mix(in srgb, var(--schedule-team-1, #ffe34a) 44%, transparent),
+        0 0 30px color-mix(in srgb, var(--schedule-team-4, #2ee8ff) 62%, transparent),
+        0 0 64px color-mix(in srgb, var(--schedule-team-3, #25ff8a) 25%, transparent),
+        0 0 64px color-mix(in srgb, var(--schedule-team-1, #ffe34a) 18%, transparent) inset,
+        0 28px 80px rgba(0,0,0,.62);
+    clip-path: polygon(22px 0, calc(100% - 22px) 0, 100% 22px, 100% calc(100% - 22px), calc(100% - 22px) 100%, 22px 100%, 0 calc(100% - 22px), 0 22px);
+    padding: 0 26px 18px;
+    overflow: hidden;
+}
+
+.tv-schedule-board::before,
+.tv-schedule-board::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+.tv-schedule-board::before {
+    z-index: 0;
+    background:
+        linear-gradient(90deg, transparent 0%, color-mix(in srgb, var(--schedule-team-2, #ff42f5) 18%, transparent) 48%, transparent 72%),
+        linear-gradient(180deg, color-mix(in srgb, var(--schedule-team-4, #2ee8ff) 8%, transparent), transparent 42%);
+    transform: translateX(-72%) skewX(-18deg);
+    animation: schedule-board-sweep 6.8s ease-in-out infinite;
+}
+
+.tv-schedule-board::after {
+    z-index: 0;
+    border: 1px solid color-mix(in srgb, var(--schedule-team-3, #25ff8a) 36%, transparent);
+    box-shadow:
+        0 0 20px color-mix(in srgb, var(--schedule-team-4, #2ee8ff) 28%, transparent) inset,
+        0 0 34px color-mix(in srgb, var(--schedule-team-2, #ff42f5) 20%, transparent);
+    opacity: .66;
+    animation: schedule-board-breathe 3.8s ease-in-out infinite;
+}
+
+.tv-schedule-board > * {
+    position: relative;
+    z-index: 1;
+}
+
+.tv-schedule-board-head,
+.tv-schedule-row {
+    display: grid;
+    grid-template-columns: 72px 188px minmax(0, 1fr) 210px 192px;
+    align-items: center;
+    gap: 18px;
+}
+
+.tv-schedule-board-head {
+    height: 66px;
+    padding-left: 90px;
+    grid-template-columns: 188px minmax(0, 1fr) 210px 192px;
+    color: #ffe34a;
+    font-weight: 900;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    border-bottom: 1px solid rgba(0, 208, 255, .32);
+    text-shadow: 0 0 12px rgba(255, 210, 41, .55);
+}
+
+.tv-schedule-page {
+    display: grid;
+    gap: 0;
+}
+
+.tv-schedule-row {
+    min-height: 92px;
+    border-bottom: 1px solid color-mix(in srgb, var(--row-neon) 36%, transparent);
+    border-left: 3px solid color-mix(in srgb, var(--row-neon) 82%, transparent);
+    background: linear-gradient(90deg, color-mix(in srgb, var(--row-neon) 13%, transparent), transparent 48%, color-mix(in srgb, var(--row-neon) 5%, transparent));
+    box-shadow: 10px 0 26px color-mix(in srgb, var(--row-neon) 7%, transparent) inset;
+}
+
+.tv-schedule-row.is-live {
+    background: linear-gradient(90deg, color-mix(in srgb, var(--row-neon) 30%, transparent), color-mix(in srgb, var(--row-neon) 10%, transparent), transparent);
+    box-shadow: 0 0 38px color-mix(in srgb, var(--row-neon) 28%, transparent) inset, 0 0 24px color-mix(in srgb, var(--row-neon) 24%, transparent);
+    animation: schedule-live-row-glow 1.8s ease-in-out infinite;
+}
+
+.tv-schedule-row-num {
+    width: 48px;
+    height: 48px;
+    display: grid;
+    place-items: center;
+    color: var(--row-neon);
+    border: 1px solid var(--row-neon);
+    text-shadow: 0 0 14px var(--row-neon);
+    box-shadow: 0 0 18px color-mix(in srgb, var(--row-neon) 46%, transparent), inset 0 0 12px color-mix(in srgb, var(--row-neon) 20%, transparent);
+    font-weight: 900;
+    clip-path: polygon(50% 0, 100% 20%, 100% 80%, 50% 100%, 0 80%, 0 20%);
+}
+
+.tv-schedule-row-time {
+    color: #fff;
+    font-size: 30px;
+    font-weight: 900;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    text-shadow: 0 0 16px rgba(255,255,255,.2);
+}
+
+.tv-schedule-row-program {
+    min-width: 0;
+}
+
+.tv-schedule-row-program strong {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: #f7f8fb;
+    font-size: 32px;
+    line-height: 1;
+    letter-spacing: .02em;
+    text-transform: uppercase;
+}
+
+.tv-schedule-row-program span {
+    display: block;
+    margin-top: 7px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: rgba(244,247,246,.58);
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+}
+
+.tv-schedule-row-category {
+    color: var(--row-neon);
+    font-size: 18px;
+    font-weight: 900;
+    text-transform: uppercase;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-shadow: 0 0 12px var(--row-neon);
+}
+
+.tv-status.upcoming {
+    color: #2ee8ff;
+    background: rgba(46,232,255,.11);
+    border: 1px solid rgba(46,232,255,.34);
+    box-shadow: 0 0 16px rgba(46,232,255,.12);
+}
+
+.tv-status.inprogress {
+    color: #ffe34a;
+    background: rgba(255,227,74,.14);
+    border: 1px solid rgba(255,227,74,.5);
+    box-shadow: 0 0 18px rgba(255,227,74,.18);
+}
+
+.tv-status.completed {
+    color: #25ff8a;
+    background: rgba(37,255,138,.14);
+    border: 1px solid rgba(37,255,138,.55);
+    box-shadow: 0 0 18px rgba(37,255,138,.18);
+}
+
+.tv-status.break {
+    color: #ff4df3;
+    background: rgba(255,77,243,.13);
+    border: 1px solid rgba(255,77,243,.42);
+    box-shadow: 0 0 18px rgba(255,77,243,.16);
+}
+
+.tv-schedule-stats {
+    position: relative;
+    z-index: 2;
+    width: min(1500px, calc(100vw - 52px));
+    height: 92px;
+    margin: 14px auto 0;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    background: rgba(1, 8, 14, .9);
+    border: 1px solid rgba(0, 208, 255, .24);
+    box-shadow: 0 0 26px rgba(0,208,255,.16), 0 20px 60px rgba(0,0,0,.5);
+}
+
+.tv-schedule-stats div {
+    display: grid;
+    place-items: center;
+    align-content: center;
+    gap: 6px;
+    border-right: 1px solid rgba(255,255,255,.12);
+}
+
+.tv-schedule-stats div:last-child {
+    border-right: 0;
+}
+
+.tv-schedule-stats span {
+    color: rgba(244,247,246,.72);
+    font-size: 13px;
+    font-weight: 900;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+}
+
+.tv-schedule-stats strong {
+    color: #ffe34a;
+    font-size: 34px;
+    line-height: 1;
+    font-weight: 900;
+    letter-spacing: .08em;
+    font-variant-numeric: tabular-nums;
+}
+
+@keyframes schedule-neon-drift {
+    0%, 100% {
+        background-position: 0% 0%, 100% 0%, 50% 100%, 0% 50%, 0 0;
+        filter: saturate(1.08);
+    }
+    50% {
+        background-position: 10% 8%, 88% 12%, 48% 86%, 100% 50%, 0 0;
+        filter: saturate(1.24);
+    }
+}
+
+@keyframes schedule-grid-crawl {
+    0% {
+        background-position: 0 0, 0 0;
+        transform: perspective(700px) rotateX(60deg) translateY(18%);
+    }
+    100% {
+        background-position: 0 72px, 72px 0;
+        transform: perspective(700px) rotateX(60deg) translateY(18%);
+    }
+}
+
+@keyframes schedule-energy-sweep {
+    0%, 16% {
+        background-position: 0 0, -130% 0, 0 0;
+        opacity: 1;
+    }
+    52% {
+        background-position: 0 0, 130% 0, 0 0;
+        opacity: .82;
+    }
+    100% {
+        background-position: 0 0, 130% 0, 0 0;
+        opacity: 1;
+    }
+}
+
+@keyframes schedule-banner-pulse {
+    0%, 100% {
+        opacity: .42;
+        filter: drop-shadow(0 0 24px currentColor);
+        transform: translateY(0) scale(1);
+    }
+    50% {
+        opacity: .72;
+        filter: drop-shadow(0 0 48px currentColor);
+        transform: translateY(-8px) scale(1.025);
+    }
+}
+
+@keyframes schedule-side-ring {
+    0%, 100% {
+        opacity: .22;
+        transform: scale(.94);
+    }
+    50% {
+        opacity: .58;
+        transform: scale(1.06);
+    }
+}
+
+@keyframes schedule-board-sweep {
+    0%, 24% {
+        transform: translateX(-78%) skewX(-18deg);
+        opacity: 0;
+    }
+    42%, 58% {
+        opacity: .72;
+    }
+    82%, 100% {
+        transform: translateX(78%) skewX(-18deg);
+        opacity: 0;
+    }
+}
+
+@keyframes schedule-board-breathe {
+    0%, 100% {
+        opacity: .48;
+    }
+    50% {
+        opacity: .84;
+    }
+}
+
+@keyframes schedule-live-row-glow {
+    0%, 100% {
+        filter: brightness(1);
+    }
+    50% {
+        filter: brightness(1.22);
+    }
+}
+
+.tv-schedule-empty {
+    height: calc(100vh - 360px);
+    display: grid;
+    place-items: center;
+    align-content: center;
+    text-align: center;
+    gap: 12px;
+}
+
+.tv-schedule-empty strong {
+    font-size: 42px;
+    color: #fff;
+}
+
+.tv-schedule-empty span {
+    color: var(--muted);
+    font-size: 18px;
+}
+
+@media (max-width: 1400px) {
+    .tv-schedule-cinema {
+        padding: 16px 24px 18px;
+    }
+
+    .tv-schedule-light,
+    .tv-schedule-side {
+        opacity: .18;
+        transform: scale(.82);
+        transform-origin: center;
+    }
+
+    .tv-schedule-light--gold {
+        left: -92px;
+    }
+
+    .tv-schedule-light--cyan {
+        right: -92px;
+    }
+
+    .tv-schedule-brand-card,
+    .tv-schedule-live-card {
+        top: 14px;
+        padding: 9px 12px;
+        min-width: 0;
+    }
+
+    .tv-schedule-brand-card {
+        left: 14px;
+        max-width: 260px;
+    }
+
+    .tv-schedule-brand-card img {
+        width: 40px;
+        height: 40px;
+    }
+
+    .tv-schedule-brand-card strong {
+        max-width: 185px;
+        font-size: 14px;
+    }
+
+    .tv-schedule-brand-card span,
+    .tv-schedule-live-card small {
+        font-size: 10px;
+    }
+
+    .tv-schedule-live-card {
+        right: 14px;
+        width: 250px;
+    }
+
+    .tv-schedule-live-card strong {
+        font-size: 15px;
+    }
+
+    .tv-schedule-live-card em {
+        font-size: 17px;
+    }
+
+    .tv-schedule-title-block {
+        margin-top: 2px;
+    }
+
+    .tv-schedule-title-block h2 {
+        font-size: 48px;
+    }
+
+    .tv-schedule-title-block div {
+        font-size: 22px;
+        letter-spacing: .34em;
+    }
+
+    .tv-schedule-board {
+        width: calc(100vw - 48px);
+        height: min(690px, calc(100vh - 250px));
+        margin-top: 12px;
+        padding-inline: 14px;
+    }
+
+    .tv-schedule-board-head,
+    .tv-schedule-row {
+        grid-template-columns: 48px 132px minmax(0, 1fr) 120px 126px;
+        gap: 10px;
+    }
+
+    .tv-schedule-board-head {
+        grid-template-columns: 132px minmax(0, 1fr) 120px 126px;
+        padding-left: 58px;
+        height: 58px;
+        font-size: 13px;
+    }
+
+    .tv-schedule-row {
+        min-height: 86px;
+    }
+
+    .tv-schedule-row-num {
+        width: 36px;
+        height: 36px;
+        font-size: 13px;
+    }
+
+    .tv-schedule-row-time {
+        font-size: 23px;
+    }
+
+    .tv-schedule-row-program strong {
+        font-size: 23px;
+    }
+
+    .tv-schedule-row-program span {
+        font-size: 11px;
+    }
+
+    .tv-schedule-row-category {
+        font-size: 13px;
+    }
+
+    .tv-status {
+        padding: 7px 10px;
+        font-size: 10px;
+        letter-spacing: .1em;
+    }
+
+    .tv-schedule-stats {
+        width: calc(100vw - 48px);
+        height: 78px;
+        margin-top: 12px;
+    }
+
+    .tv-schedule-stats span {
+        font-size: 10px;
+    }
+
+    .tv-schedule-stats strong {
+        font-size: 27px;
+    }
+}
+
 .tv-result-row {
     display: grid;
     grid-template-columns: 92px 1fr;
@@ -1187,11 +1911,6 @@ img, video {
 body.tv-leaderboard-only .tv-topbar,
 body.tv-leaderboard-only .tv-lower-third {
     display: none;
-}
-
-.tv-status.completed {
-    color: rgba(244, 247, 246, .72);
-    background: rgba(255,255,255,.06);
 }
 
 body.tv-leaderboard-only {
@@ -2427,6 +3146,77 @@ body.tv-leaderboard-only #tvApp {
     z-index: 25;
 }
 
+.three-stage-canvas {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity .8s ease;
+}
+
+.three-stage-ready .three-stage-canvas {
+    opacity: 1;
+}
+
+.three-stage-ready .cinema-pedestal-stage {
+    z-index: 9;
+    pointer-events: none;
+}
+
+.three-stage-ready .cinema-banner,
+.three-stage-ready .cinema-spotlight-beam,
+.three-stage-ready .cinema-pedestal-wrapper,
+.three-stage-ready .cinema-base-platform {
+    visibility: hidden;
+}
+
+.three-stage-ready .cinema-pedestal-slot {
+    height: 100%;
+    justify-content: flex-end;
+}
+
+.three-stage-ready .cinema-score-badge {
+    position: absolute;
+    bottom: calc(clamp(126px, 16vh, 168px) + min(var(--podium-px), 36vh));
+}
+
+.three-stage-ready .cinema-name-tag {
+    position: absolute;
+    bottom: clamp(36px, 6vh, 76px);
+}
+
+@media (max-width: 980px), (max-height: 660px) {
+    .three-stage-ready .three-stage-canvas {
+        display: none;
+    }
+
+    .three-stage-ready .cinema-banner,
+    .three-stage-ready .cinema-spotlight-beam,
+    .three-stage-ready .cinema-pedestal-wrapper,
+    .three-stage-ready .cinema-base-platform {
+        visibility: visible;
+    }
+
+    .three-stage-ready .cinema-pedestal-slot {
+        height: auto;
+    }
+
+    .three-stage-ready .cinema-score-badge,
+    .three-stage-ready .cinema-name-tag {
+        position: relative;
+        bottom: auto;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .three-stage-canvas {
+        display: none;
+    }
+}
+
 /* ===== CINEMA STAGE OVERRIDES ===== */
 .cinema-stage {
     position: relative;
@@ -2534,4 +3324,783 @@ body.tv-leaderboard-only #tvApp {
     filter: drop-shadow(0 0 14px var(--team-color)) drop-shadow(0 0 30px var(--team-color));
 }
 
+/* ==========================================================================
+   STYLE 2: DIAMOND 3D LEADERBOARD LAYOUT
+   ========================================================================== */
+
+/* Hide the score table and name tags in Style 2 */
+.style-style2 .cinema-score-table {
+    display: none !important;
+}
+.style-style2 .cinema-name-tag {
+    display: none !important;
+}
+
+/* Base Stage Configuration */
+.style-style2 .cinema-pedestal-stage {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: block; /* Override default flex row layout */
+}
+
+/* Absolute positioning of each slot in a 3D perspective cross/diamond shape */
+.style-style2 .cinema-pedestal-slot {
+    position: absolute;
+    width: 280px;
+    height: 320px;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    margin: 0;
+    padding: 0;
+    gap: 0;
+}
+
+/* Rank 1 (Gold) - Center Top */
+.style-style2 .cinema-pedestal-slot[data-index="0"] {
+    left: 50%;
+    top: 40%;
+    z-index: 10;
+}
+
+/* Rank 2 (Purple) - Left Center */
+.style-style2 .cinema-pedestal-slot[data-index="1"] {
+    left: 23%;
+    top: 57%;
+    z-index: 12;
+}
+
+/* Rank 3 (Green) - Right Center */
+.style-style2 .cinema-pedestal-slot[data-index="2"] {
+    left: 77%;
+    top: 57%;
+    z-index: 12;
+}
+
+/* Rank 4 (Blue) - Center Bottom */
+.style-style2 .cinema-pedestal-slot[data-index="3"] {
+    left: 50%;
+    top: 74%;
+    z-index: 15;
+}
+
+/* Banners aligned to the left/right walls of the stage like tapestries */
+.style-style2 .cinema-pedestal-slot .cinema-banner {
+    position: fixed;
+    width: 130px;
+    height: 380px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: linear-gradient(
+        180deg,
+        rgba(var(--team-rgb), 0.12) 0%,
+        rgba(var(--team-rgb), 0.03) 70%,
+        transparent 100%
+    );
+    box-shadow: 
+        0 15px 35px rgba(0, 0, 0, 0.5),
+        inset 0 0 15px rgba(var(--team-rgb), 0.05);
+    backdrop-filter: blur(8px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 20px 10px;
+    z-index: 2;
+    transform-origin: center center;
+}
+
+.style-style2 .cinema-pedestal-slot[data-index="0"] .cinema-banner { /* Rank 1 - Left inner banner */
+    left: 140px;
+    top: 48%;
+    transform: translateY(-50%) scale(0.9);
+    opacity: 0.75;
+}
+.style-style2 .cinema-pedestal-slot[data-index="1"] .cinema-banner { /* Rank 2 - Left outer banner */
+    left: 30px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+.style-style2 .cinema-pedestal-slot[data-index="2"] .cinema-banner { /* Rank 3 - Right outer banner */
+    right: 30px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+.style-style2 .cinema-pedestal-slot[data-index="3"] .cinema-banner { /* Rank 4 - Right inner banner */
+    right: 140px;
+    top: 48%;
+    transform: translateY(-50%) scale(0.9);
+    opacity: 0.75;
+}
+
+.style-style2 .cinema-pedestal-slot .cinema-banner .banner-mascot {
+    width: 65px;
+    height: 65px;
+    margin-bottom: 12px;
+    opacity: 0.7;
+    filter: drop-shadow(0 0 8px var(--team-color));
+}
+
+.style-style2 .cinema-pedestal-slot .cinema-banner .banner-team-label {
+    font-size: 14px;
+    font-weight: 800;
+    color: var(--team-color);
+    letter-spacing: 0.1em;
+}
+
+/* Diamond Panel Wrapper */
+.style-style2 .cinema-diamond-panel-wrapper {
+    position: absolute;
+    bottom: 50px;
+    z-index: 20;
+    transform-origin: center center;
+}
+
+/* Glassmorphic Diamond Panel (square rotated 45 degrees) */
+.style-style2 .cinema-diamond-panel {
+    width: 210px;
+    height: 210px;
+    transform: rotate(45deg);
+    border: 3px solid var(--team-color);
+    background: linear-gradient(
+        135deg,
+        rgba(15, 15, 25, 0.75) 0%,
+        rgba(25, 25, 40, 0.85) 100%
+    );
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    box-shadow: 
+        0 20px 45px rgba(0, 0, 0, 0.6),
+        0 0 25px rgba(var(--team-rgb), 0.25),
+        inset 0 0 20px rgba(var(--team-rgb), 0.2);
+    border-radius: 14px;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+/* Shine/Glass Reflection effect on Diamond */
+.style-style2 .cinema-diamond-panel::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(
+        45deg,
+        transparent 45%,
+        rgba(255, 255, 255, 0.12) 50%,
+        transparent 55%
+    );
+    transform: rotate(-45deg);
+    pointer-events: none;
+    animation: shine-sweep 6s infinite ease-in-out;
+}
+
+@keyframes shine-sweep {
+    0% { transform: translate(-30%, -30%) rotate(-45deg); }
+    50% { transform: translate(30%, 30%) rotate(-45deg); }
+    100% { transform: translate(-30%, -30%) rotate(-45deg); }
+}
+
+/* Content inside diamond, rotated back to be upright */
+.style-style2 .diamond-content {
+    transform: rotate(-45deg);
+    width: 141.4%; /* scale up to fill bounds of rotated parent */
+    height: 141.4%;
+    position: absolute;
+    top: -20.7%;
+    left: -20.7%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    color: #fff;
+    padding: 12px;
+}
+
+/* Diamond Mascot SVG */
+.style-style2 .diamond-mascot {
+    width: 64px;
+    height: 64px;
+    margin-bottom: 4px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+.style-style2 .diamond-mascot svg {
+    width: 100%;
+    height: 100%;
+    color: var(--team-color);
+    filter: drop-shadow(0 0 10px var(--team-color));
+}
+
+/* Team name / subtitle inside diamond */
+.style-style2 .diamond-team-name {
+    font-family: 'Cairo', 'Inter', sans-serif;
+    font-weight: 900;
+    font-size: 18px;
+    color: #ffffff;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    line-height: 1.1;
+    margin-bottom: 2px;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.style-style2 .diamond-team-sub {
+    font-family: 'Cairo', 'Inter', sans-serif;
+    font-weight: 700;
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.55);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+}
+
+/* Score display inside diamond */
+.style-style2 .diamond-score {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+.style-style2 .diamond-score-val {
+    font-family: 'Cairo', 'Inter', sans-serif;
+    font-weight: 900;
+    font-size: 34px;
+    color: #ffffff;
+    text-shadow: 
+        0 0 12px var(--team-color),
+        0 0 25px rgba(var(--team-rgb), 0.6);
+}
+
+.style-style2 .diamond-score-lbl {
+    font-family: 'Inter', sans-serif;
+    font-size: 8px;
+    font-weight: 800;
+    color: rgba(255, 255, 255, 0.45);
+    letter-spacing: 1.5px;
+    margin-top: 1px;
+}
+
+/* Rank Badge at top apex of the diamond */
+.style-style2 .cinema-diamond-rank {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(45deg);
+    width: 36px;
+    height: 36px;
+    background: #0f0f15;
+    border: 2px solid var(--team-color);
+    box-shadow: 
+        0 0 12px var(--team-color),
+        0 5px 10px rgba(0, 0, 0, 0.4);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 25;
+    border-radius: 6px;
+}
+
+.style-style2 .cinema-diamond-rank span {
+    transform: rotate(-45deg);
+    font-family: 'Cairo', 'Inter', sans-serif;
+    font-weight: 900;
+    font-size: 16px;
+    color: #ffffff;
+    text-shadow: 0 0 5px var(--team-color);
+}
+
+/* Flat Glowing Base Platform under each diamond */
+.style-style2 .cinema-base-platform {
+    position: absolute;
+    bottom: 0;
+    width: 250px;
+    height: 50px;
+    z-index: 5;
+    transform: scale(0.9);
+}
+
+.style-style2 .cinema-base-platform .base-ring-outer {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotateX(72deg);
+    width: 220px;
+    height: 220px;
+    border-radius: 50%;
+    border: 3px solid var(--team-color);
+    box-shadow: 
+        0 0 15px var(--team-color),
+        inset 0 0 15px var(--team-color);
+    opacity: 0.85;
+}
+
+.style-style2 .cinema-base-platform .base-ring-inner {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotateX(72deg);
+    width: 170px;
+    height: 170px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.7);
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+    opacity: 0.9;
+}
+
+.style-style2 .cinema-base-platform .base-glow-pool {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotateX(72deg);
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(var(--team-rgb), 0.6) 0%, transparent 70%);
+    filter: blur(12px);
+    opacity: 0.9;
+}
+
+/* Spotlight Beam */
+.style-style2 .cinema-spotlight-beam {
+    position: absolute;
+    top: -500px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 140px;
+    height: 700px;
+    background: linear-gradient(
+        180deg,
+        rgba(var(--team-rgb), 0.18) 0%,
+        rgba(var(--team-rgb), 0.05) 50%,
+        transparent 100%
+    );
+    clip-path: polygon(40% 0, 60% 0, 100% 100%, 0 100%);
+    pointer-events: none;
+    z-index: 1;
+    opacity: 0;
+}
+
+/* =====================================================
+   LEADERBOARD RESPONSIVE SAFETY
+   Keeps all leaderboard variants inside TV, laptop, tablet, and phone frames.
+   ===================================================== */
+#slide-leaderboard,
+#slide-leaderboard.tv-slide--active {
+    overflow: hidden;
+}
+
+.tv-floating-leaderboard.cinema-stage {
+    --leader-pad: clamp(14px, 4vw, 84px);
+    --leader-gap: clamp(14px, 4vw, 80px);
+    padding: var(--leader-pad);
+    min-width: 0;
+}
+
+.cinema-header {
+    top: clamp(10px, 1.7vh, 18px);
+    padding-inline: clamp(12px, 3vw, 40px);
+}
+
+.cinema-header-inner {
+    max-width: min(100%, 960px);
+    padding: clamp(8px, 1vw, 12px) clamp(12px, 2vw, 28px);
+    gap: clamp(10px, 1.4vw, 16px);
+}
+
+.cinema-event-title {
+    max-width: min(64vw, 720px);
+    font-size: clamp(15px, 1.7vw, 28px);
+    line-height: 1.05;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.cinema-logo-mark {
+    width: clamp(30px, 3.2vw, 44px);
+    height: clamp(30px, 3.2vw, 44px);
+}
+
+.cinema-score-table {
+    top: clamp(68px, 9vh, 96px);
+    right: clamp(14px, 3vw, 40px);
+    width: min(380px, 36vw);
+}
+
+.score-table-header,
+.score-table-row {
+    grid-template-columns: clamp(44px, 4vw, 60px) minmax(0, 1fr) clamp(86px, 8vw, 120px);
+    gap: 8px;
+    padding: clamp(8px, 1vw, 10px) clamp(10px, 1.4vw, 18px);
+}
+
+.score-table-row .st-team {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.score-table-row .st-score {
+    font-size: clamp(16px, 1.8vw, 24px);
+}
+
+.cinema-pedestal-stage {
+    gap: var(--leader-gap);
+    padding: clamp(100px, 13vh, 150px) clamp(12px, 2vw, 40px) clamp(52px, 8vh, 100px);
+}
+
+.cinema-pedestal-slot {
+    width: clamp(150px, 17vw, 260px);
+    min-width: 0;
+}
+
+.cinema-banner {
+    width: clamp(96px, 11vw, 180px);
+    height: min(42vh, 480px);
+    bottom: clamp(110px, 17vh, 150px);
+}
+
+.banner-mascot {
+    width: clamp(64px, 8vw, 120px);
+    height: clamp(64px, 8vw, 120px);
+}
+
+.banner-team-label,
+.cinema-name-tag .name-tag-name {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.cinema-pedestal-wrapper {
+    width: clamp(112px, 12vw, 180px);
+    height: min(var(--pedestal-height, 200px), 42vh);
+}
+
+.pedestal-top-disc {
+    width: 100%;
+}
+
+.cinema-base-platform {
+    width: clamp(150px, 17vw, 260px);
+}
+
+.base-ring-outer {
+    width: min(92%, 240px);
+}
+
+.base-ring-inner {
+    width: min(76%, 195px);
+}
+
+.base-glow-pool {
+    width: min(112%, 290px);
+}
+
+.cinema-score-badge .badge-value {
+    min-width: clamp(64px, 7vw, 90px);
+    height: clamp(42px, 5vw, 56px);
+    padding-inline: clamp(12px, 1.6vw, 20px);
+    font-size: clamp(24px, 3vw, 38px);
+}
+
+.cinema-name-tag {
+    min-width: min(200px, 100%);
+    width: min(100%, 220px);
+    padding: clamp(8px, 1vw, 12px) clamp(12px, 1.5vw, 24px);
+}
+
+.name-tag-name {
+    font-size: clamp(15px, 1.7vw, 22px);
+}
+
+.name-tag-rank {
+    font-size: clamp(11px, 1.1vw, 14px);
+}
+
+.style-style2 .cinema-pedestal-slot {
+    width: clamp(170px, 18vw, 280px);
+    height: clamp(220px, 30vh, 320px);
+}
+
+.style-style2 .cinema-diamond-panel {
+    width: clamp(138px, 16vw, 210px);
+    height: clamp(138px, 16vw, 210px);
+}
+
+.style-style2 .diamond-team-name {
+    max-width: 132px;
+    font-size: clamp(12px, 1.3vw, 18px);
+    overflow-wrap: anywhere;
+}
+
+.style-style2 .diamond-score-val {
+    font-size: clamp(22px, 3vw, 34px);
+}
+
+.style-style2 .cinema-base-platform {
+    width: clamp(150px, 17vw, 250px);
+}
+
+@media (max-width: 1400px), (max-height: 820px) {
+    .tv-floating-leaderboard.cinema-stage {
+        --leader-pad: clamp(10px, 2.2vw, 36px);
+        --leader-gap: clamp(18px, 3vw, 48px);
+    }
+
+    .cinema-score-table {
+        width: min(340px, 34vw);
+    }
+
+    .cinema-pedestal-stage {
+        padding-top: 112px;
+        padding-bottom: 48px;
+    }
+
+    .cinema-banner {
+        opacity: .68;
+    }
+}
+
+@media (max-width: 980px), (max-height: 660px) {
+    .tv-floating-leaderboard.cinema-stage {
+        display: block;
+        overflow: auto;
+        overscroll-behavior: contain;
+        padding: 14px;
+    }
+
+    .cinema-header {
+        position: relative;
+        top: auto;
+        left: auto;
+        transform: none;
+        padding: 0;
+        margin-bottom: 12px;
+    }
+
+    .cinema-header-inner {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .cinema-event-title {
+        max-width: 54vw;
+    }
+
+    .cinema-score-table {
+        position: relative;
+        top: auto;
+        right: auto;
+        width: 100%;
+        margin-bottom: 14px;
+    }
+
+    .cinema-pedestal-stage {
+        min-height: 0;
+        height: auto;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+        padding: 0 0 14px;
+        perspective: none;
+    }
+
+    .cinema-pedestal-slot {
+        width: 100%;
+        min-height: 154px;
+        justify-content: flex-end;
+        padding: 10px;
+        border: 1px solid rgba(var(--team-rgb), .32);
+        border-radius: 14px;
+        background: linear-gradient(135deg, rgba(var(--team-rgb), .14), rgba(0,0,0,.34));
+    }
+
+    .cinema-banner,
+    .cinema-spotlight-beam {
+        display: none;
+    }
+
+    .cinema-pedestal-wrapper {
+        height: min(var(--pedestal-height, 120px), 16vh);
+    }
+
+    .cinema-base-platform {
+        height: 24px;
+        margin-top: -5px;
+    }
+
+    .cinema-name-tag {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .style-style2 .cinema-pedestal-stage {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        height: auto;
+    }
+
+    .style-style2 .cinema-pedestal-slot {
+        position: relative;
+        inset: auto !important;
+        transform: none;
+        width: 100%;
+        height: 178px;
+    }
+
+    .style-style2 .cinema-pedestal-slot .cinema-banner {
+        display: none;
+    }
+
+    .style-style2 .cinema-diamond-panel-wrapper {
+        bottom: 30px;
+    }
+}
+
+@media (max-width: 620px) {
+    .tv-floating-leaderboard.cinema-stage {
+        padding: 10px;
+    }
+
+    .cinema-header-inner {
+        align-items: flex-start;
+        border-radius: 10px;
+    }
+
+    .cinema-title-block {
+        min-width: 0;
+    }
+
+    .cinema-event-title {
+        max-width: 100%;
+        white-space: normal;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+    }
+
+    .cinema-live-badge {
+        margin-left: 0;
+        padding: 5px 9px;
+        font-size: 10px;
+    }
+
+    .score-table-header,
+    .score-table-row {
+        grid-template-columns: 42px minmax(0, 1fr) 74px;
+        padding-inline: 10px;
+    }
+
+    .score-table-header {
+        font-size: 9px;
+    }
+
+    .score-table-row .st-rank strong {
+        width: 28px;
+        height: 28px;
+        font-size: 12px;
+    }
+
+    .score-table-row .st-team {
+        font-size: 13px;
+    }
+
+    .score-table-row .st-score {
+        font-size: 17px;
+    }
+
+    .cinema-pedestal-stage,
+    .style-style2 .cinema-pedestal-stage {
+        grid-template-columns: 1fr;
+    }
+
+    .cinema-pedestal-slot {
+        min-height: 92px;
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .cinema-score-badge {
+        grid-column: 3;
+        grid-row: 1;
+        margin: 0;
+    }
+
+    .cinema-pedestal-wrapper,
+    .cinema-base-platform {
+        display: none;
+    }
+
+    .cinema-name-tag {
+        grid-column: 1 / 3;
+        grid-row: 1;
+        margin: 0;
+        text-align: left;
+        background: transparent;
+        border: 0;
+        box-shadow: none;
+        padding: 0;
+    }
+
+    .name-tag-name {
+        font-size: clamp(16px, 4.8vw, 21px);
+    }
+
+    .name-tag-rank {
+        margin-bottom: 2px;
+    }
+
+    .cinema-pedestal-wrapper {
+        height: min(var(--pedestal-height, 140px), 170px);
+    }
+
+    .style-style2 .cinema-pedestal-slot {
+        height: 112px;
+        display: flex;
+        justify-content: center;
+    }
+
+    .style-style2 .cinema-diamond-panel {
+        width: 86px;
+        height: 86px;
+    }
+
+    .style-style2 .cinema-diamond-panel-wrapper {
+        position: relative;
+        bottom: auto;
+        transform: none !important;
+    }
+
+    .style-style2 .diamond-mascot,
+    .style-style2 .diamond-team-sub,
+    .style-style2 .cinema-base-platform {
+        display: none;
+    }
+
+    .style-style2 .diamond-team-name {
+        max-width: 82px;
+        font-size: 10px;
+        line-height: 1;
+    }
+
+    .style-style2 .diamond-score-val {
+        font-size: 20px;
+    }
+}
 

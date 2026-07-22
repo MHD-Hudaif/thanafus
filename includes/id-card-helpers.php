@@ -32,34 +32,6 @@ function id_card_absolute_url(string $path): string
     return app_absolute_url($path);
 }
 
-function id_card_qr_filename(?string $chestNumber): ?string
-{
-    $chestNumber = trim((string)$chestNumber);
-    if ($chestNumber === '') {
-        return null;
-    }
-
-    return preg_replace('/[^A-Za-z0-9_-]+/', '-', $chestNumber) . '.png';
-}
-
-function id_card_qr_paths(int $eventId, ?string $chestNumber): array
-{
-    $filename = id_card_qr_filename($chestNumber);
-    if ($filename === null) {
-        return ['file' => '', 'web' => '', 'local' => ''];
-    }
-
-    $relativeDir = '/assets/qr/id-cards/event-' . $eventId;
-    $file = public_path(ltrim($relativeDir, '/') . '/' . $filename);
-    $web = app_url($relativeDir . '/' . rawurlencode($filename));
-
-    return [
-        'file' => $file,
-        'web' => $web,
-        'local' => realpath($file) ?: $file,
-    ];
-}
-
 function id_card_members(PDO $pdo, int $eventId): array
 {
     $stmt = $pdo->prepare("
@@ -87,15 +59,14 @@ function id_card_members(PDO $pdo, int $eventId): array
         LEFT JOIN kauzariyya.class_types ct ON ct.id = c.class_type_id
         WHERE mtm.event_id = ?
           AND mtm.status = 'active'
-        ORDER BY mtm.chest_number IS NULL ASC, CAST(mtm.chest_number AS UNSIGNED) ASC, t.team_name ASC, display_name ASC
+        ORDER BY NULLIF(mtm.chest_number, '') IS NULL ASC,
+                 CAST(mtm.chest_number AS UNSIGNED) ASC, t.team_name ASC, display_name ASC
     ");
     $stmt->execute([$eventId]);
 
     $members = [];
     foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $member) {
         $member['category'] = id_card_category_label($member['class_type_name'] ?? null, (int)($member['class_type_id'] ?? 0));
-        $member['qr_url'] = id_card_absolute_url('/member-details.php?id=' . (int)$member['member_id']);
-        $member['qr_paths'] = id_card_qr_paths($eventId, $member['chest_number'] ?? null);
         $members[] = $member;
     }
 
@@ -140,31 +111,6 @@ function id_card_member(PDO $pdo, int $memberId): ?array
     }
 
     $member['category'] = id_card_category_label($member['class_type_name'] ?? null, (int)($member['class_type_id'] ?? 0));
-    $member['qr_url'] = id_card_absolute_url('/member-details.php?id=' . (int)$member['member_id']);
-    $member['qr_paths'] = id_card_qr_paths((int)$member['event_id'], $member['chest_number'] ?? null);
 
     return $member;
-}
-
-function id_card_generate_qrs(array $members): array
-{
-    require_once __DIR__ . '/qr-code.php';
-
-    $generated = 0;
-    $skipped = 0;
-    $logoPath = asset_path('images/thanafus-logo.png');
-
-    foreach ($members as $member) {
-        $paths = $member['qr_paths'] ?? [];
-        if (empty($member['chest_number']) || empty($paths['file'])) {
-            $skipped++;
-            continue;
-        }
-
-        $teamColor = $member['team_color'] ?? null;
-        qr_write_png((string)$member['qr_url'], (string)$paths['file'], 10, 4, $teamColor, $logoPath);
-        $generated++;
-    }
-
-    return ['generated' => $generated, 'skipped' => $skipped];
 }
