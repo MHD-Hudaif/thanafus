@@ -156,14 +156,14 @@ $dateLabel = $event ? date('d F Y', strtotime($event['start_date'] ?? '2026-07-1
 </head>
 <body class="page-<?= e($page) ?>">
 <header class="site-header">
-  <a class="site-logo" href="index.php" aria-label="Kauzariyya home">
+  <a class="site-logo" href="<?= app_url('/') ?>" aria-label="Kauzariyya home">
     <img src="<?= asset_url('kauzariyya-brand-icon.png') ?>" alt="Kauzariyya">
     <span><b>Al Jamiathul Kauzariyya</b><small><?= $page === 'home' ? 'Thanafus &middot; Musabaqa 2026' : 'Festival Management Platform' ?></small></span>
   </a>
   
   <nav class="site-nav" aria-label="Main navigation">
     <?php foreach ($nav as $key => $label): ?>
-      <?php $href = $key === 'home' ? 'index.php' : $key.'.php'; ?>
+      <?php $href = $key === 'home' ? app_url('/') : app_url('/' . $key); ?>
       <a class="<?= $page === $key ? 'active' : '' ?>" href="<?= e($href) ?>"><?= e($label) ?></a>
     <?php endforeach; ?>
     

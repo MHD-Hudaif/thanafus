@@ -5,11 +5,8 @@ $page = 'schedule';
 $title = 'Program Schedule · Kauzariyya';
 
 $items = schedule_items();
-$sessions = [
-    'morning' => 'Morning',
-    'afternoon' => 'Afternoon',
-    'evening' => 'Evening'
-];
+$sessions = schedule_sections();
+$firstKey = !empty($sessions) ? array_key_first($sessions) : '';
 
 require __DIR__ . '/includes/public-header.php';
 ?>
@@ -24,7 +21,7 @@ require __DIR__ . '/includes/public-header.php';
 
 <div class="schedule-tabs" role="tablist">
   <?php foreach ($sessions as $key => $label): ?>
-    <button type="button" class="<?= $key === 'morning' ? 'active' : '' ?>" data-session="<?= e($key) ?>"><?= e($label) ?></button>
+    <button type="button" class="<?= $key === $firstKey ? 'active' : '' ?>" data-session="<?= e($key) ?>"><?= e($label) ?></button>
   <?php endforeach; ?>
 </div>
 
@@ -41,7 +38,7 @@ require __DIR__ . '/includes/public-header.php';
         $timeRange = $firstTime . ' - ' . $lastTime;
     }
   ?>
-    <article class="schedule-column reveal <?= $key === 'morning' ? 'mobile-active' : '' ?>" data-session-column="<?= e($key) ?>">
+    <article class="schedule-column reveal <?= $key === $firstKey ? 'mobile-active' : '' ?>" data-session-column="<?= e($key) ?>">
       <header>
         <span>0<?= e($groupIndex) ?></span>
         <h2><?= e($label) ?></h2>

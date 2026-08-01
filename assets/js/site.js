@@ -140,7 +140,8 @@
     columns.forEach(column => column.classList.toggle('mobile-active', column.dataset.sessionColumn === session));
   };
   tabs.forEach(tab => tab.addEventListener('click', () => choose(tab.dataset.session)));
-  if (tabs.length) choose('morning');
+  const initialActive = tabs.find(t => t.classList.contains('active')) || tabs[0];
+  if (initialActive) choose(initialActive.dataset.session);
 
   // Background Live Scoreboard Auto-Polling
   const scoreboardEl = document.querySelector('[data-refresh="scoreboard"]');

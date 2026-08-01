@@ -37,6 +37,8 @@ if (session_status() === PHP_SESSION_NONE) {
     ini_set('session.use_strict_mode', '1');
     ini_set('session.use_only_cookies', '1');
     ini_set('session.cookie_httponly', '1');
+    // Match GC lifetime to cookie lifetime (1 year) so sessions aren't pruned
+    ini_set('session.gc_maxlifetime', '31536000');
 
     if ($secure) {
         ini_set('session.cookie_secure', '1');

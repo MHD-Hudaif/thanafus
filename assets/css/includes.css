@@ -5,17 +5,17 @@ ROOT
 
 :root{
 
-    --bg:#020817;
+    --bg:#0b0f17;
 
-    --bg-2:#06101d;
+    --bg-2:#0f172a;
 
-    --panel:#07111f;
+    --panel:rgba(10,15,23,0.78);
 
-    --panel-2:#0f172a;
+    --panel-2:rgba(15,22,34,0.65);
 
     --border:rgba(255,255,255,0.08);
 
-    --border-light:rgba(255,255,255,0.12);
+    --border-light:rgba(255,255,255,0.14);
 
     --text:#ffffff;
 
@@ -23,7 +23,7 @@ ROOT
 
     --muted-2:rgba(255,255,255,0.4);
 
-    --green:#10b981;
+    --green:#facc15;
 
     --yellow:#facc15;
 
@@ -60,23 +60,6 @@ body{
 
     min-height:100vh;
 
-    background:
-    radial-gradient(
-        circle at top,
-        rgba(16,185,129,0.08),
-        transparent 30%
-    ),
-    radial-gradient(
-        circle at bottom right,
-        rgba(250,204,21,0.06),
-        transparent 30%
-    ),
-    linear-gradient(
-        180deg,
-        var(--bg),
-        var(--bg-2)
-    );
-
     color:var(--text);
 
     font-family:'Cairo',sans-serif;
@@ -96,23 +79,11 @@ body{
 
         opacity:0;
 
-        transform:
-        scale(1.01);
-
-        filter:
-        blur(8px);
-
     }
 
     to{
 
         opacity:1;
-
-        transform:
-        scale(1);
-
-        filter:
-        blur(0);
 
     }
 
@@ -283,7 +254,7 @@ object-fit:contain;
     background:
     linear-gradient(
         135deg,
-        rgba(16,185,129,0.22),
+        rgba(250,204,21,0.22),
         rgba(250,204,21,0.12)
     );
 
@@ -396,9 +367,9 @@ MAIN CONTENT
 
     flex:1;
 
-    margin-left:320px;
+    margin-left:0;
 
-    padding:40px;
+    padding:96px 36px 36px 36px;
 
     min-height:100vh;
 

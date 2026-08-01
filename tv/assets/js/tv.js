@@ -8,8 +8,6 @@
         mode: 'auto',
         theme: 'emerald',
         slides: {},
-        lastCelebrationId: null,
-        isCelebrating: false,
         leaderboardData: null,
         leaderboardSignature: '',
         slideOrder: ['intro', 'leaderboard', 'schedule', 'current-program'],
@@ -32,12 +30,6 @@
         clock: document.getElementById('tvClock'),
         tvApp: document.getElementById('tvApp'),
         tvStage: document.getElementById('tvStage'),
-        emergency: document.querySelector('[data-emergency]'),
-        emergencyMsg: document.querySelector('[data-emergency-message]'),
-        celebration: document.querySelector('[data-celebration]'),
-        celebrationTitle: document.querySelector('[data-celebration-title]'),
-        celebrationTeam: document.querySelector('[data-celebration-team]'),
-        celebrationScore: document.querySelector('[data-celebration-score]'),
 
         // Intro Slide Elements
         introVideo: document.querySelector('[data-intro-video]'),
@@ -1006,17 +998,6 @@
                 </div>
             </div>
         `;
-
-        const threeCanvas = container.querySelector('.three-stage-canvas');
-        if (threeCanvas && window.TVLeaderboard3D) {
-            const mounted = window.TVLeaderboard3D.mount(threeCanvas, podiumSlots.map((team, index) => ({
-                rank: Number(team?.rank || index + 1),
-                name: String(team?.team_name || team?.short_name || 'Team'),
-                score: Number(team?.total_score || 0),
-                color: String(team?.team_color || ['#38bdf8', '#f7c948', '#34d399', '#fb7185'][index])
-            })));
-            if (mounted) container.classList.add('three-stage-ready');
-        }
     }
 
     function updateScheduleClock() {
@@ -1141,11 +1122,11 @@
         
         if (performer.name) {
             els.currentPerformer.textContent = performer.name;
-            if (currentChest) currentChest.textContent = performer.number || 'â€”';
+            if (currentChest) currentChest.textContent = performer.number || '—';
             els.currentTeam.innerHTML = `${performer.team_color ? `<span class="tv-team-dot" style="background:${escapeHtml(performer.team_color)}"></span>` : ''}${escapeHtml(performer.team || '—')}`;
         } else {
             els.currentPerformer.textContent = 'No active performer';
-            if (currentChest) currentChest.textContent = 'â€”';
+            if (currentChest) currentChest.textContent = '—';
             els.currentTeam.textContent = '—';
         }
 
@@ -1161,13 +1142,13 @@
         }
 
         if (els.nextPerformer) {
-            els.nextPerformer.textContent = next.number || 'â€”';
+            els.nextPerformer.textContent = next.number || '—';
         }
         if (els.nextTeam) {
             els.nextTeam.textContent = '';
         }
         if (nextChest) {
-            nextChest.textContent = next.number || 'â€”';
+            nextChest.textContent = next.number || '—';
         }
 
         if (els.judges) {
@@ -1178,125 +1159,6 @@
 
         if (els.nextProgram) {
             els.nextProgram.textContent = nextProg.title ? `${nextProg.title} (${nextProg.start_label || ''})` : '—';
-        }
-    }
-
-    function triggerCelebration(celebration) {
-        if (!els.celebration || !celebration || !celebration.id) return;
-        
-        state.isCelebrating = true;
-        stopSlideTimer();
-
-        if (els.celebrationTitle) els.celebrationTitle.textContent = celebration.title || 'Winner!';
-        if (els.celebrationTeam) {
-            const color = celebration.team_color || '#d6b25e';
-            els.celebrationTeam.innerHTML = `<span class="tv-team-dot" style="background:${color}"></span>${escapeHtml(celebration.winner || 'Champion')} - ${escapeHtml(celebration.team || 'Winning Team')}`;
-        }
-        if (els.celebrationScore) {
-            els.celebrationScore.textContent = formatScore(celebration.score);
-        }
-
-        els.celebration.removeAttribute('hidden');
-        els.celebration.style.display = 'flex';
-
-        if (typeof gsap !== 'undefined') {
-            gsap.fromTo(els.celebration.querySelector('.tv-celebration-copy'), {
-                scale: 0.5,
-                opacity: 0,
-                y: 100
-            }, {
-                scale: 1,
-                opacity: 1,
-                y: 0,
-                duration: 0.8,
-                ease: 'back.out(1.7)'
-            });
-        }
-
-        // Auto dismiss after 15 seconds
-        setTimeout(() => {
-            dismissCelebration();
-        }, 15000);
-    }
-
-    function dismissCelebration() {
-        if (!els.celebration || !state.isCelebrating) return;
-
-        if (typeof gsap !== 'undefined') {
-            gsap.to(els.celebration.querySelector('.tv-celebration-copy'), {
-                scale: 0.7,
-                opacity: 0,
-                y: -50,
-                duration: 0.5,
-                ease: 'power2.in',
-                onComplete: () => {
-                    els.celebration.setAttribute('hidden', '');
-                    els.celebration.style.display = 'none';
-                    state.isCelebrating = false;
-                    scheduleNextSlide(1000);
-                }
-            });
-        } else {
-            els.celebration.setAttribute('hidden', '');
-            els.celebration.style.display = 'none';
-            state.isCelebrating = false;
-            scheduleNextSlide(1000);
-        }
-    }
-
-    function applyBootstrap(data) {
-        if (!data) return;
-
-        // Apply theme color schema class on body
-        const theme = data.settings?.theme || 'emerald';
-        if (state.theme !== theme) {
-            els.body.classList.remove(`theme-${state.theme}`);
-            els.body.classList.add(`theme-${theme}`);
-            state.theme = theme;
-        }
-
-        state.is_playing = data.settings?.is_playing ?? true;
-        state.mode = data.settings?.mode ?? 'auto';
-        state.slides = data.settings?.slides || {};
-
-        // Compute leaderboard program completion percent first
-        const stats = data.stats || {};
-        const teamsCount = stats.teams || 4;
-        const totalProgs = stats.programs || 10;
-        const compProgs = stats.completed_programs || 0;
-        const completionPercent = totalProgs > 0 ? Math.round((compProgs / totalProgs) * 100) : 0;
-
-        renderLeaderboard(data.leaderboard || [], completionPercent);
-        renderSchedule(data.schedule || { sections: [] });
-        renderCurrent(data.current || {});
-
-        const countEl = document.querySelector('[data-leaderboard-count]');
-        if (countEl) countEl.textContent = teamsCount;
-
-        // Handle Emergency broadcast updates
-        const emergency = data.settings?.emergency || {};
-        if (els.emergency && els.emergencyMsg) {
-            if (emergency.enabled && emergency.message) {
-                els.emergencyMsg.textContent = emergency.message;
-                els.emergency.removeAttribute('hidden');
-                els.emergency.style.display = 'flex';
-            } else {
-                els.emergency.setAttribute('hidden', '');
-                els.emergency.style.display = 'none';
-            }
-        }
-
-        // Handle Celebration modal overlay triggers
-        const celebration = data.settings?.celebration || {};
-        if (celebration.id && celebration.id !== state.lastCelebrationId) {
-            state.lastCelebrationId = celebration.id;
-            triggerCelebration(celebration);
-        }
-
-        // Sync local slide map configs if in manual mode
-        if (state.mode === 'manual' && !state.isCelebrating) {
-            const manualSlide = data.settings?.active_slide || 'intro';
-            setActiveSlide(manualSlide);
         }
     }
 

@@ -6,28 +6,31 @@
   --font-heading: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-body: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
 
-  --bg-dark: #090d16;
-  --bg-card: rgba(18, 24, 38, 0.75);
-  --bg-card-hover: rgba(28, 36, 56, 0.9);
+  --bg-dark: #000000;
+  --bg-card: linear-gradient(135deg, rgba(255, 255, 255, 0.03), rgba(0, 0, 0, 0.55));
+  --bg-card-hover: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(0, 0, 0, 0.65));
   --border-card: rgba(255, 255, 255, 0.08);
 
-  --accent-active: #10b981;
+  --accent-active: #34d399;
   --accent-scheduled: #f97316;
   --accent-draft: #eab308;
   --accent-unactive: #ef4444;
   --accent-completed: #6b7280;
 
-  --glow-active: rgba(16, 185, 129, 0.35);
+  --glow-active: rgba(52, 211, 153, 0.35);
   --glow-scheduled: rgba(249, 115, 22, 0.35);
   --glow-draft: rgba(234, 179, 8, 0.35);
   --glow-unactive: rgba(239, 68, 68, 0.35);
 
-  --text-main: #f3f4f6;
-  --text-muted: #9ca3af;
+  --text-main: #ffffff;
+  --text-muted: #d1fae5;
 }
 
 body.musabaqa-hub-body {
-  background-color: var(--bg-dark);
+  background-image: linear-gradient(rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0.78)), url("../images/kauzariyya4.png");
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
   font-family: var(--font-body);
   color: var(--text-main);
   margin: 0;
@@ -37,14 +40,15 @@ body.musabaqa-hub-body {
   overflow-x: hidden;
 }
 
-/* Animated Canvas Background Container */
+/* Animated Canvas Background Container (Disabled) */
 #musabaqaCanvasBg {
+  display: none !important;
   position: fixed;
   top: 0;
   left: 0;
   width: 100vw;
   height: 100vh;
-  z-index: 0;
+  z-index: -1;
   pointer-events: none;
 }
 
@@ -63,13 +67,13 @@ body.musabaqa-hub-body {
   align-items: center;
   margin-bottom: 2.5rem;
   padding-bottom: 1.5rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(13, 18, 30, 0.4);
+  border-bottom: 1px solid rgba(52, 211, 153, 0.3);
+  background: rgba(0, 0, 0, 0.55);
   backdrop-filter: blur(12px);
   padding: 1.5rem 2rem;
   border-radius: 18px;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
 }
 
 .musabaqa-hub-header h1 {
@@ -156,9 +160,9 @@ body.musabaqa-hub-body {
   text-align: center;
   padding: 3rem;
   border-radius: 28px;
-  background: linear-gradient(135deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.95));
+  background: linear-gradient(135deg, rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.95));
   border: 1px solid rgba(255, 255, 255, 0.15);
-  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6), 0 0 80px rgba(99, 102, 241, 0.2);
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6);
   max-width: 580px;
   width: 90%;
   animation: zoomSplash 0.7s cubic-bezier(0.175, 0.885, 0.32, 1.275);
@@ -236,7 +240,7 @@ body.musabaqa-hub-body {
 
 /* Status-Specific Card Borders & Glows */
 .musabaqa-card.status-active {
-  border-color: rgba(16, 185, 129, 0.5);
+  border-color: rgba(250, 204, 21, 0.5);
   box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4), 0 0 25px var(--glow-active);
 }
 .musabaqa-card.status-active:hover {
@@ -271,7 +275,7 @@ body.musabaqa-hub-body {
   width: 100%;
   height: 200px;
   overflow: hidden;
-  background: #0f172a;
+  background: #000000;
 }
 
 .musabaqa-card-img {
@@ -308,8 +312,8 @@ body.musabaqa-hub-body {
 }
 
 .pill-active {
-  background: rgba(16, 185, 129, 0.25);
-  border: 1px solid #10b981;
+  background: rgba(250, 204, 21, 0.25);
+  border: 1px solid #facc15;
   color: #6ee7b7;
 }
 
@@ -373,7 +377,7 @@ body.musabaqa-hub-body {
 }
 
 .role-action-btn {
-  background: rgba(30, 41, 59, 0.7);
+  background: rgba(0, 0, 0, 0.7);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 16px;
   padding: 1.25rem 1.5rem;

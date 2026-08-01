@@ -79,15 +79,17 @@ function admin_class_type_tier_from_name(?string $name): ?string
         return null;
     }
 
-    if (str_contains($name, 'حفظ')) {
+    $lowerName = strtolower($name);
+
+    if (str_contains($name, 'حفظ') || str_contains($lowerName, 'hifz') || str_contains($lowerName, 'subjunior') || str_contains($lowerName, 'sub-junior') || str_contains($lowerName, 'sub junior')) {
         return 'subjunior';
     }
 
-    if (str_contains($name, 'ثانوية') || str_contains($name, 'الثانوية')) {
+    if (str_contains($name, 'ثانوية') || str_contains($name, 'الثانوية') || str_contains($lowerName, 'sanaviyya') || str_contains($lowerName, 'thanawiya') || str_contains($lowerName, 'junior')) {
         return 'junior';
     }
 
-    if (str_contains($name, 'عالية') || str_contains($name, 'العالية')) {
+    if (str_contains($name, 'عالية') || str_contains($name, 'العالية') || str_contains($lowerName, 'aliya') || str_contains($lowerName, 'aliyaa') || str_contains($lowerName, 'senior')) {
         return 'senior';
     }
 
@@ -177,6 +179,17 @@ function admin_program_class_filter_sql(PDO $dashboardPdo, string $classFilter, 
 
 function admin_require_active_event(PDO $pdo): array
 {
+    // Auto-migrate stage_type_id to be nullable for unscheduled programs
+    static $migrated = false;
+    if (!$migrated) {
+        try {
+            $pdo->exec("ALTER TABLE musabaqa_programs MODIFY stage_type_id INT DEFAULT NULL");
+            $pdo->exec("ALTER TABLE musabaqa_programs ADD COLUMN responsible_teacher_id INT UNSIGNED DEFAULT NULL");
+            $pdo->exec("ALTER TABLE musabaqa_programs ADD COLUMN responsible_teacher_ids VARCHAR(255) DEFAULT NULL");
+            $migrated = true;
+        } catch (Throwable $e) {}
+    }
+
     $selectedEventId = (int)($_SESSION['selected_event_id'] ?? $_SESSION['active_event_id'] ?? 0);
 
     if ($selectedEventId <= 0) {
@@ -286,6 +299,8 @@ function admin_recalculate_program_results(PDO $pdo, int $eventId, int $programI
         SELECT
             mpe.id,
             p.approval_status,
+            p.team_points_config,
+            p.only_team_marks,
             ms.total_mark
         FROM musabaqa_program_entries mpe
         JOIN musabaqa_programs p ON p.id = mpe.program_id
@@ -305,16 +320,39 @@ function admin_recalculate_program_results(PDO $pdo, int $eventId, int $programI
     $previousScore = null;
     $position = 0;
 
+    $settings = admin_get_settings($pdo);
+    $firstPoints = (int)($settings['first_place_points'] ?? 10);
+    $secondPoints = (int)($settings['second_place_points'] ?? 7);
+    $thirdPoints = (int)($settings['third_place_points'] ?? 5);
+
+    $teamPoints = [];
+    $onlyTeamMarks = 0;
+    if ($entries) {
+        $firstEntry = $entries[0];
+        $onlyTeamMarks = (int)($firstEntry['only_team_marks'] ?? 0);
+        if (!empty($firstEntry['team_points_config'])) {
+            $teamPoints = json_decode($firstEntry['team_points_config'], true) ?: [];
+        }
+    }
+
+    $pointConfig = [];
+    $pointConfig[1] = isset($teamPoints[1]) ? (int)$teamPoints[1] : $firstPoints;
+    $pointConfig[2] = isset($teamPoints[2]) ? (int)$teamPoints[2] : $secondPoints;
+    $pointConfig[3] = isset($teamPoints[3]) ? (int)$teamPoints[3] : $thirdPoints;
+    foreach ($teamPoints as $r => $pts) {
+        $pointConfig[(int)$r] = (int)$pts;
+    }
+
     $update = $pdo->prepare("
         UPDATE musabaqa_program_entries
-        SET final_score = ?, final_rank = ?, status = ?
+        SET final_score = ?, final_rank = ?, team_score = ?, status = ?
         WHERE id = ? AND event_id = ? AND program_id = ?
     ");
 
     foreach ($entries as $entry) {
         if (($entry['approval_status'] ?? '') !== 'approved' || $entry['total_mark'] === null) {
             $status = empty($entry['total_mark']) ? 'approved' : 'scoring';
-            $update->execute([0, null, $status, (int)$entry['id'], $eventId, $programId]);
+            $update->execute([0, null, 0, $status, (int)$entry['id'], $eventId, $programId]);
             continue;
         }
 
@@ -325,7 +363,10 @@ function admin_recalculate_program_results(PDO $pdo, int $eventId, int $programI
         }
         $previousScore = $score;
 
-        $update->execute([$score, $rank, 'completed', (int)$entry['id'], $eventId, $programId]);
+        $teamScore = isset($pointConfig[$rank]) ? $pointConfig[$rank] : 0;
+        $finalScore = $onlyTeamMarks ? 0 : $score;
+
+        $update->execute([$finalScore, $rank, $teamScore, 'completed', (int)$entry['id'], $eventId, $programId]);
     }
 
     admin_recalculate_program_status($pdo, $programId);
@@ -336,12 +377,11 @@ function admin_recalculate_team_totals(PDO $pdo, int $eventId): void
     $stmt = $pdo->prepare("
         UPDATE musabaqa_teams t
         LEFT JOIN (
-            SELECT pe.team_id, COALESCE(SUM(ms.total_mark), 0) AS total_score
-            FROM musabaqa_scores ms
-            JOIN musabaqa_program_entries pe ON pe.id = ms.entry_id
-            JOIN musabaqa_programs p ON p.id = ms.program_id
-            WHERE ms.event_id = ?
-              AND ms.status = 'approved'
+            SELECT pe.team_id, COALESCE(SUM(pe.team_score), 0) AS total_score
+            FROM musabaqa_program_entries pe
+            JOIN musabaqa_programs p ON p.id = pe.program_id
+            WHERE pe.event_id = ?
+              AND p.approval_status = 'approved'
               AND (p.redirect_to_team IS NULL OR p.redirect_to_team = 1)
               AND (p.disable_scores IS NULL OR p.disable_scores = 0)
             GROUP BY pe.team_id
@@ -366,6 +406,7 @@ function admin_recalculate_participant_totals(PDO $pdo, int $eventId, int $progr
           AND ms.program_id = ?
           AND ms.status = 'approved'
           AND (p.disable_scores IS NULL OR p.disable_scores = 0)
+          AND (p.only_team_marks IS NULL OR p.only_team_marks = 0)
     ");
     $stmt->execute([$eventId, $programId]);
 }
@@ -813,21 +854,37 @@ function admin_ajax_pagination_script(): string
 HTML;
 }
 
-function admin_validate_member_program_limits(PDO $pdo, int $eventId, int $programId, int $teamMemberId, ?int $excludeEntryId = null): void
+function admin_get_settings(PDO $pdo): array
 {
-    // 1. Load settings
     $stmt = $pdo->prepare("SELECT setting_value FROM musabaqa_settings WHERE setting_key = 'global_musabaqa_settings' LIMIT 1");
     $stmt->execute();
     $row = $stmt->fetch();
-    $settings = [
+    
+    $defaults = [
+        'default_judges_count' => 2,
+        'default_total_marks' => 100,
+        'default_entries_limit' => 10,
+        'first_place_points' => 10,
+        'second_place_points' => 7,
+        'third_place_points' => 5,
+        'active_sections' => [],
         'section_limits' => []
     ];
+    
     if ($row) {
         $data = json_decode($row['setting_value'], true);
         if (is_array($data)) {
-            $settings = array_merge($settings, $data);
+            return array_merge($defaults, $data);
         }
     }
+    
+    return $defaults;
+}
+
+function admin_validate_member_program_limits(PDO $pdo, int $eventId, int $programId, int $teamMemberId, ?int $excludeEntryId = null): void
+{
+    // 1. Load settings
+    $settings = admin_get_settings($pdo);
 
     // 2. Load program details
     $stmt = $pdo->prepare("SELECT * FROM musabaqa_programs WHERE id = ? AND event_id = ? LIMIT 1");
@@ -899,7 +956,7 @@ function admin_validate_member_program_limits(PDO $pdo, int $eventId, int $progr
     }
 }
 
-function admin_validate_program_entry_limit(PDO $pdo, int $eventId, int $programId, ?int $excludeEntryId = null): void
+function admin_validate_program_entry_limit(PDO $pdo, int $eventId, int $programId, int $teamId, ?int $excludeEntryId = null): void
 {
     $stmt = $pdo->prepare("SELECT * FROM musabaqa_programs WHERE id = ? AND event_id = ? LIMIT 1");
     $stmt->execute([$programId, $eventId]);
@@ -909,17 +966,139 @@ function admin_validate_program_entry_limit(PDO $pdo, int $eventId, int $program
     }
 
     $excludeSql = $excludeEntryId ? "AND id != ?" : "";
-    $params = [$programId, $eventId];
+    $params = [$programId, $teamId, $eventId];
     if ($excludeEntryId) {
         $params[] = $excludeEntryId;
     }
     
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM musabaqa_program_entries WHERE program_id = ? AND event_id = ? $excludeSql");
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM musabaqa_program_entries WHERE program_id = ? AND team_id = ? AND event_id = ? $excludeSql");
     $stmt->execute($params);
     $currentEntriesCount = (int)$stmt->fetchColumn();
     
     $limit = (int)($program['entries_limit'] ?? 10);
     if ($currentEntriesCount >= $limit) {
-        throw new RuntimeException("This program has reached its maximum entry limit of $limit.");
+        throw new RuntimeException("This program has reached its maximum entry limit of $limit per team.");
     }
 }
+
+if (!function_exists('can_access_category')) {
+    function can_access_category(string $categorySlug): bool {
+        if (is_admin()) return true;
+        $categoryRoles = [
+            'event-manager' => ['event-manager', 'event_manager'],
+            'team-manager' => ['team-manager', 'team_manager', 'members-info-manager'],
+            'printer' => ['printer', 'members-info-manager'],
+            'registrar' => ['registrar', 'entries-assigner'],
+            'live-display' => ['live-display-manager', 'live_display', 'tv-controller'],
+            'score-entry' => ['score-entry-agent', 'score_entry', 'score-uploader'],
+            'score-update' => ['score-update-agent', 'score_update']
+        ];
+        $allowedRoles = $categoryRoles[$categorySlug] ?? [$categorySlug];
+        foreach ($allowedRoles as $r) {
+            if (current_user_has_role($r)) return true;
+        }
+        return false;
+    }
+}
+
+if (!function_exists('get_user_default_category_url')) {
+    function get_user_default_category_url(?array $user = null): string {
+        $user ??= current_user();
+
+        if (!$user) {
+            return '/auth/login.php';
+        }
+
+        if (is_admin()) {
+            return '/admin/event-manager/';
+        }
+
+        $categories = [
+            'event-manager' => '/admin/event-manager/',
+            'team-manager'  => '/admin/event-manager/',
+            'printer'       => '/admin/printer/',
+            'registrar'     => '/admin/registrar/',
+            'live-display'  => '/admin/live-display/',
+            'score-entry'   => '/admin/score-entry/',
+            'score-update'  => '/admin/score-update/',
+        ];
+
+        foreach ($categories as $categorySlug => $path) {
+            if (can_access_category($categorySlug)) {
+                return $path;
+            }
+        }
+
+        if (current_user_has_authority('members-info')) {
+            return '/admin/event/id-cards.php';
+        }
+        if (current_user_has_authority('assign-entries')) {
+            return '/admin/event/program-entries.php';
+        }
+        if (current_user_has_authority('upload-scores')) {
+            return '/admin/event/upload-scores.php';
+        }
+        if (current_user_has_authority('control-tv')) {
+            return '/admin/event/control-tv.php';
+        }
+
+        return '/';
+    }
+}
+
+function admin_auto_assign_programs_to_sections(PDO $pdo, int $eventId): int
+{
+    // 1. Fetch all schedule sections for the event
+    $stmt = $pdo->prepare("SELECT * FROM musabaqa_schedule_sections WHERE event_id = ? ORDER BY sort_order ASC, start_time ASC");
+    $stmt->execute([$eventId]);
+    $sections = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    if (!$sections) {
+        return 0;
+    }
+    
+    // 2. Fetch all scheduled programs for the event
+    $stmt = $pdo->prepare("SELECT id, start_time FROM musabaqa_programs WHERE event_id = ? AND start_time IS NOT NULL");
+    $stmt->execute([$eventId]);
+    $programs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    $updateStmt = $pdo->prepare("UPDATE musabaqa_programs SET section_id = ? WHERE id = ?");
+    $count = 0;
+    
+    $tvTimeInRange = static function(string $timeStr, string $start, string $end): bool {
+        $time = date('H:i:s', strtotime($timeStr));
+        if ($start <= $end) {
+            return $time >= $start && $time <= $end;
+        } else {
+            return $time >= $start || $time <= $end;
+        }
+    };
+    
+    foreach ($programs as $prog) {
+        $progDateTime = $prog['start_time'];
+        $progDate = date('Y-m-d', strtotime($progDateTime));
+        $matchedSectionId = null;
+        
+        foreach ($sections as $sec) {
+            // If section has a date, it must match the program's date
+            if (!empty($sec['section_date']) && $sec['section_date'] !== $progDate) {
+                continue;
+            }
+            if ($tvTimeInRange($progDateTime, $sec['start_time'], $sec['end_time'])) {
+                $matchedSectionId = (int)$sec['id'];
+                break; // Stop at first match
+            }
+        }
+        
+        if ($matchedSectionId !== null) {
+            $updateStmt->execute([$matchedSectionId, $prog['id']]);
+            $count++;
+        } else {
+            // Clear section assignment if it doesn't match any section
+            $updateStmt->execute([null, $prog['id']]);
+        }
+    }
+    
+    return $count;
+}
+

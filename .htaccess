@@ -2,7 +2,21 @@ RewriteEngine On
 DirectoryIndex index.php
 
 # =====================================================
-# REMOVE TRAILING SLASH
+# REMOVE INDEX.PHP FROM URLS
+# Redirect /path/index.php -> /path/
+# =====================================================
+RewriteCond %{THE_REQUEST} ^[A-Z]{3,9}\s(.*)/index\.php([^\s]*)\sHTTP [NC]
+RewriteRule ^(.*)index\.php$ %1 [R=301,L]
+
+# =====================================================
+# REDIRECT DIRECT .PHP REQUESTS TO CLEAN EXTENSIONLESS URLS
+# Redirect /path/page.php -> /path/page
+# =====================================================
+RewriteCond %{THE_REQUEST} ^[A-Z]{3,9}\s([^\s?]+)\.php([^\s]*)\sHTTP [NC]
+RewriteRule ^(.*)\.php$ %1 [R=301,L]
+
+# =====================================================
+# REMOVE TRAILING SLASH FOR NON-DIRECTORIES
 # =====================================================
 
 RewriteCond %{REQUEST_FILENAME} !-d

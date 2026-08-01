@@ -161,25 +161,6 @@ function tv_default_settings(): array
         'theme' => 'emerald',
         'refresh_interval' => 5000,
         'slides' => tv_default_slides(),
-        'announcement' => [
-            'enabled' => true,
-            'type' => 'static',
-            'message' => 'وَفِي ذَٰلِكَ فَلْيَتَنَافَسِ الْمُتَنَافِسُونَ',
-        ],
-        'emergency' => [
-            'enabled' => false,
-            'message' => '',
-        ],
-        'celebration' => [
-            'id' => '',
-            'program_id' => null,
-            'title' => '',
-            'winner' => '',
-            'team' => '',
-            'team_color' => '#d6b25e',
-            'score' => null,
-            'triggered_at' => '',
-        ],
         'sponsors' => [],
         'quotes' => [
             'Indeed, with hardship comes ease.',
@@ -491,12 +472,11 @@ function tv_leaderboard(?int $eventId = null): array
             {$scoreExpr} AS total_score
         FROM musabaqa_teams t
         LEFT JOIN (
-            SELECT pe.team_id, SUM(ms.total_mark) AS total_score
-            FROM musabaqa_scores ms
-            JOIN musabaqa_program_entries pe ON pe.id = ms.entry_id
-            JOIN musabaqa_programs p ON p.id = ms.program_id
-            WHERE ms.event_id = ?
-              AND ms.status = 'approved'
+            SELECT pe.team_id, SUM(pe.team_score) AS total_score
+            FROM musabaqa_program_entries pe
+            JOIN musabaqa_programs p ON p.id = pe.program_id
+            WHERE pe.event_id = ?
+              AND p.approval_status = 'approved'
               AND (p.redirect_to_team IS NULL OR p.redirect_to_team = 1)
               AND (p.disable_scores IS NULL OR p.disable_scores = 0)
             GROUP BY pe.team_id
@@ -604,7 +584,7 @@ function tv_program_rows(int $eventId): array
         LEFT JOIN kauzariyya.class_types ct ON ct.id = p.class_type_id
         LEFT JOIN musabaqa_program_entries pe ON pe.program_id = p.id AND pe.event_id = p.event_id
         WHERE p.event_id = ?
-        GROUP BY p.id
+        GROUP BY p.id, st.id, ct.id
         ORDER BY
             CASE WHEN p.{$startColumn} IS NULL THEN 1 ELSE 0 END ASC,
             p.{$startColumn} ASC,
@@ -924,7 +904,11 @@ function tv_schedule(?int $eventId = null, int $limit = 9): array
             // Find by time range
             $itemTime = $item['start_time'] ?? null;
             if ($itemTime) {
+                $itemDate = date('Y-m-d', strtotime($itemTime));
                 foreach ($sections as $sec) {
+                    if (!empty($sec['section_date']) && $sec['section_date'] !== $itemDate) {
+                        continue;
+                    }
                     if ($tvTimeInRange($itemTime, $sec['start_time'], $sec['end_time'])) {
                         $assignedSecId = (int)$sec['id'];
                         break;
@@ -992,6 +976,7 @@ function tv_winners(?int $eventId = null, int $limit = 8): array
             pe.entry_name,
             pe.entry_number,
             pe.final_rank,
+            COALESCE(pe.team_score, 0) AS team_score,
             COALESCE(NULLIF(pe.final_score, 0), MAX(CASE WHEN ms.status = 'approved' THEN ms.total_mark END), 0) AS score,
             t.team_name,
             t.short_name,
@@ -1000,7 +985,7 @@ function tv_winners(?int $eventId = null, int $limit = 8): array
         JOIN musabaqa_teams t ON t.id = pe.team_id
         LEFT JOIN musabaqa_scores ms ON ms.entry_id = pe.id AND ms.program_id = pe.program_id
         WHERE pe.program_id = ?
-        GROUP BY pe.id
+        GROUP BY pe.id, t.id
         HAVING score > 0 OR pe.final_rank IS NOT NULL
         ORDER BY
             CASE WHEN pe.final_rank IS NULL THEN 999 ELSE pe.final_rank END ASC,
@@ -1024,6 +1009,7 @@ function tv_winners(?int $eventId = null, int $limit = 8): array
                 'team_short' => $winner['short_name'] ?: $winner['team_name'],
                 'team_color' => tv_color($winner['team_color'] ?? null, '#d6b25e'),
                 'score' => round((float)$winner['score'], 2),
+                'team_score' => (int)$winner['team_score'],
             ];
             $place++;
         }
@@ -1050,22 +1036,6 @@ function tv_announcements(?int $eventId = null, ?array $settings = null): array
     $eventId = $eventId ?? tv_active_event_id();
     $settings = $settings ?? tv_get_settings($eventId);
     $items = [];
-
-    if (!empty($settings['emergency']['enabled']) && trim((string)$settings['emergency']['message']) !== '') {
-        $items[] = [
-            'type' => 'emergency',
-            'message' => trim((string)$settings['emergency']['message']),
-            'priority' => 100,
-        ];
-    }
-
-    if (!empty($settings['announcement']['enabled']) && trim((string)$settings['announcement']['message']) !== '') {
-        $items[] = [
-            'type' => (string)($settings['announcement']['type'] ?? 'static'),
-            'message' => trim((string)$settings['announcement']['message']),
-            'priority' => 50,
-        ];
-    }
 
     $activeBreak = tv_active_break($eventId);
     if ($activeBreak) {
@@ -1236,16 +1206,6 @@ function tv_sanitize_dashboard_settings(array $post, array $current): array
         $settings['slides'][$key]['enabled'] = isset($slide['enabled']);
     }
 
-    $settings['announcement'] = [
-        'enabled' => isset($post['announcement_enabled']),
-        'type' => (string)($post['announcement_type'] ?? 'static'),
-        'message' => trim((string)($post['announcement_message'] ?? '')),
-    ];
-    $settings['emergency'] = [
-        'enabled' => isset($post['emergency_enabled']),
-        'message' => trim((string)($post['emergency_message'] ?? '')),
-    ];
-
     $names = (array)($post['sponsor_name'] ?? []);
     $logos = (array)($post['sponsor_logo_url'] ?? []);
     $messages = (array)($post['sponsor_message'] ?? []);
@@ -1273,27 +1233,4 @@ function tv_sanitize_dashboard_settings(array $post, array $current): array
     }
 
     return tv_normalize_settings($settings);
-}
-
-function tv_dashboard_winner_options(int $eventId): array
-{
-    $options = [];
-    foreach (tv_winners($eventId, 20) as $program) {
-        $winner = $program['winners'][0] ?? null;
-        if (!$winner) {
-            continue;
-        }
-
-        $options[] = [
-            'program_id' => $program['id'],
-            'label' => $program['title'] . ' - ' . $winner['team'],
-            'title' => $program['title'],
-            'winner' => $winner['name'],
-            'team' => $winner['team'],
-            'team_color' => $winner['team_color'],
-            'score' => $winner['score'],
-        ];
-    }
-
-    return $options;
 }

@@ -13,42 +13,7 @@ function tv_settings_require_admin(): void
     }
 }
 
-function tv_settings_trigger_celebration(int $eventId, array $settings): array
-{
-    $programId = (int)($_POST['program_id'] ?? 0);
-    $winner = null;
 
-    foreach (tv_dashboard_winner_options($eventId) as $option) {
-        if ((int)$option['program_id'] === $programId) {
-            $winner = $option;
-            break;
-        }
-    }
-
-    if (!$winner) {
-        $winner = [
-            'program_id' => null,
-            'title' => trim((string)($_POST['title'] ?? 'Winner Celebration')),
-            'winner' => trim((string)($_POST['winner'] ?? 'Champion')),
-            'team' => trim((string)($_POST['team'] ?? 'Winning Team')),
-            'team_color' => tv_color($_POST['team_color'] ?? null, '#d6b25e'),
-            'score' => is_numeric($_POST['score'] ?? null) ? (float)$_POST['score'] : null,
-        ];
-    }
-
-    $settings['celebration'] = [
-        'id' => bin2hex(random_bytes(8)),
-        'program_id' => $winner['program_id'],
-        'title' => $winner['title'],
-        'winner' => $winner['winner'],
-        'team' => $winner['team'],
-        'team_color' => tv_color($winner['team_color'] ?? null, '#d6b25e'),
-        'score' => $winner['score'],
-        'triggered_at' => date(DATE_ATOM),
-    ];
-
-    return $settings;
-}
 
 try {
     $event = tv_active_event();
@@ -71,21 +36,6 @@ try {
             $settings['active_slide'] = str_replace('_', '-', (string)($_POST['slide'] ?? 'intro'));
         } elseif ($action === 'theme') {
             $settings['theme'] = (string)($_POST['theme'] ?? 'emerald');
-        } elseif ($action === 'announcement') {
-            $settings['announcement'] = [
-                'enabled' => isset($_POST['enabled']),
-                'type' => (string)($_POST['type'] ?? 'static'),
-                'message' => trim((string)($_POST['message'] ?? '')),
-            ];
-        } elseif ($action === 'emergency') {
-            $settings['emergency'] = [
-                'enabled' => isset($_POST['enabled']),
-                'message' => trim((string)($_POST['message'] ?? '')),
-            ];
-        } elseif ($action === 'clear_emergency') {
-            $settings['emergency'] = ['enabled' => false, 'message' => ''];
-        } elseif ($action === 'celebration') {
-            $settings = tv_settings_trigger_celebration($eventId, $settings);
         } else {
             tv_json_error('Unknown TV control action.', 422);
         }

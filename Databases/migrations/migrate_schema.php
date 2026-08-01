@@ -56,6 +56,75 @@ try {
         }
     }
 
+    // 3. Add team_score column to musabaqa_program_entries if it doesn't exist
+    $pe_cols = $musabaqa_pdo->query("SHOW COLUMNS FROM musabaqa_program_entries")->fetchAll(PDO::FETCH_COLUMN);
+    if (!in_array('team_score', $pe_cols, true)) {
+        $musabaqa_pdo->exec("ALTER TABLE musabaqa_program_entries ADD COLUMN team_score INT NOT NULL DEFAULT 0 AFTER final_rank");
+        echo "Added team_score column to musabaqa_program_entries.\n";
+    } else {
+        echo "team_score column already exists.\n";
+    }
+
+    // 4. Backfill existing rankings
+    $backfillCount = $musabaqa_pdo->exec("
+        UPDATE musabaqa_program_entries
+        SET team_score = CASE 
+            WHEN final_rank = 1 THEN 10 
+            WHEN final_rank = 2 THEN 7 
+            WHEN final_rank = 3 THEN 5 
+            ELSE 0 
+        END
+        WHERE final_rank IS NOT NULL
+    ");
+    echo "Backfilled $backfillCount entries with placement points.\n";
+
+    // 5. Recalculate team totals for all events
+    $eventIds = $musabaqa_pdo->query("SELECT id FROM musabaqa_events")->fetchAll(PDO::FETCH_COLUMN);
+    $recalcQuery = $musabaqa_pdo->prepare("
+        UPDATE musabaqa_teams t
+        LEFT JOIN (
+            SELECT pe.team_id, COALESCE(SUM(pe.team_score), 0) AS total_score
+            FROM musabaqa_program_entries pe
+            JOIN musabaqa_programs p ON p.id = pe.program_id
+            WHERE pe.event_id = ?
+              AND p.approval_status = 'approved'
+              AND (p.redirect_to_team IS NULL OR p.redirect_to_team = 1)
+              AND (p.disable_scores IS NULL OR p.disable_scores = 0)
+            GROUP BY pe.team_id
+        ) totals ON totals.team_id = t.id
+        SET t.total_score = COALESCE(totals.total_score, 0)
+        WHERE t.event_id = ?
+    ");
+    foreach ($eventIds as $eventId) {
+        $recalcQuery->execute([$eventId, $eventId]);
+        echo "Recalculated team totals for event #$eventId.\n";
+    }
+
+    // 6. Add section_date column to musabaqa_schedule_sections
+    $ss_cols = $musabaqa_pdo->query("SHOW COLUMNS FROM musabaqa_schedule_sections")->fetchAll(PDO::FETCH_COLUMN);
+    if (!in_array('section_date', $ss_cols, true)) {
+        $musabaqa_pdo->exec("ALTER TABLE musabaqa_schedule_sections ADD COLUMN section_date DATE NULL AFTER end_time");
+        echo "Added section_date column to musabaqa_schedule_sections.\n";
+    } else {
+        echo "section_date column already exists.\n";
+    }
+
+    // 7. Add team_points_config and only_team_marks columns to musabaqa_programs
+    $prog_cols = $musabaqa_pdo->query("SHOW COLUMNS FROM musabaqa_programs")->fetchAll(PDO::FETCH_COLUMN);
+    if (!in_array('team_points_config', $prog_cols, true)) {
+        $musabaqa_pdo->exec("ALTER TABLE musabaqa_programs ADD COLUMN team_points_config TEXT NULL AFTER is_special");
+        echo "Added team_points_config column to musabaqa_programs.\n";
+    } else {
+        echo "team_points_config column already exists.\n";
+    }
+
+    if (!in_array('only_team_marks', $prog_cols, true)) {
+        $musabaqa_pdo->exec("ALTER TABLE musabaqa_programs ADD COLUMN only_team_marks TINYINT NOT NULL DEFAULT 0 AFTER team_points_config");
+        echo "Added only_team_marks column to musabaqa_programs.\n";
+    } else {
+        echo "only_team_marks column already exists.\n";
+    }
+
     echo "Migration completed successfully!\n";
 } catch (Throwable $e) {
     echo "Migration error: " . $e->getMessage() . "\n";

@@ -42,6 +42,19 @@ if (!function_exists('app_url')) {
             return $path;
         }
 
+        // Clean index.php from path
+        if ($path !== '') {
+            $path = preg_replace('#/index\.php(?=[\?\#]|$)#i', '/', $path);
+            if ($path === 'index.php') {
+                $path = '';
+            }
+        }
+
+        // Clean .php extensions from internal routes (excluding static assets/uploads)
+        if ($path !== '' && !str_contains($path, '/assets/') && !str_contains($path, '/uploads/')) {
+            $path = preg_replace('#\.php(?=[\?\#]|$)#i', '', $path);
+        }
+
         $base = defined('APP_BASE_URL') ? APP_BASE_URL : (defined('APP_URL') ? APP_URL : '');
         $base = rtrim((string)$base, '/');
 

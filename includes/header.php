@@ -59,11 +59,31 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"
 >
 
 <!-- =====================================================
-CSS
+CSS Categorized Architecture
 ===================================================== -->
 <link
     rel="stylesheet"
+    href="<?= asset_url('css/main.css') ?>?v=<?= filemtime(__DIR__ . '/../assets/css/main.css') ?>"
+>
+<link
+    rel="stylesheet"
+    href="<?= asset_url('css/cards.css') ?>?v=<?= filemtime(__DIR__ . '/../assets/css/cards.css') ?>"
+>
+<link
+    rel="stylesheet"
+    href="<?= asset_url('css/tables.css') ?>?v=<?= filemtime(__DIR__ . '/../assets/css/tables.css') ?>"
+>
+<link
+    rel="stylesheet"
     href="<?= asset_url('css/admin.css') ?>?v=<?= filemtime(__DIR__ . '/../assets/css/admin.css') ?>"
+>
+<link
+    rel="stylesheet"
+    href="<?= asset_url('css/includes.css') ?>?v=<?= filemtime(__DIR__ . '/../assets/css/includes.css') ?>"
+>
+<link
+    rel="stylesheet"
+    href="<?= asset_url('css/musabaqa-categories.css') ?>?v=<?= filemtime(__DIR__ . '/../assets/css/musabaqa-categories.css') ?>"
 >
 
 
@@ -82,7 +102,7 @@ window.APP_CONFIG = {
 
 </head>
 
-<body>
+<body class="layout-sidebar-enabled">
 
 <div class="admin-layout<?= !empty($useTopNavigation) ? ' admin-layout-topnav' : '' ?>">
 <?php endif; ?>

@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../../config/auth.php';
+require_once __DIR__ . '/../../includes/admin-helpers.php';
 
 require_login();
 
@@ -7,8 +8,7 @@ $musabaqa_pdo = $GLOBALS['musabaqa_pdo'];
 $id = (int)($_GET['id'] ?? 0);
 
 if ($id <= 0) {
-    header('Location: ' . app_url('/admin/dashboard.php'));
-    exit;
+    admin_redirect('/admin/dashboard.php');
 }
 
 $stmt = $musabaqa_pdo->prepare("SELECT id FROM musabaqa_events WHERE id = ? LIMIT 1");
@@ -20,5 +20,6 @@ if ($event) {
     unset($_SESSION['active_team_id']);
 }
 
-header('Location: ' . app_url('/admin/dashboard.php'));
+admin_redirect(get_user_default_category_url());
 exit;
+

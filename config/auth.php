@@ -197,12 +197,7 @@ function validate_session(): void
         return;
     }
 
-    // 2-hour idle timeout check (7200 seconds)
-    $maxIdle = 7200;
-    if (isset($_SESSION['last_activity']) && (time() - (int)$_SESSION['last_activity']) > $maxIdle) {
-        logout_user();
-        return;
-    }
+    // Keep session alive indefinitely (cookie lifetime = 1 year in bootstrap.php)
     $_SESSION['last_activity'] = time();
 
     // Reload user to get fresh roles/status

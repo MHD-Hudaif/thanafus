@@ -11,10 +11,10 @@
   --card-border: #2c283d;
   --input-bg: #242133;
   --input-border: #35304a;
-  --input-focus: #14b8a6;
-  --primary-accent: #14b8a6;
-  --primary-accent-hover: #0d9488;
-  --primary-gradient: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%);
+  --input-focus: #facc15;
+  --primary-accent: #facc15;
+  --primary-accent-hover: #eab308;
+  --primary-gradient: linear-gradient(135deg, #facc15 0%, #15803d 100%);
   --purple-gradient: linear-gradient(135deg, #6c5ce7 0%, #5b4bc4 100%);
   --text-main: #f8fafc;
   --text-muted: #948fa6;
@@ -22,8 +22,8 @@
   --error-bg: rgba(239, 68, 68, 0.12);
   --error-border: rgba(239, 68, 68, 0.25);
   --error-text: #fca5a5;
-  --success-bg: rgba(34, 197, 94, 0.12);
-  --success-border: rgba(34, 197, 94, 0.25);
+  --success-bg: rgba(250, 204, 21, 0.12);
+  --success-border: rgba(250, 204, 21, 0.25);
   --success-text: #86efac;
   --radius-card: 24px;
   --radius-inner: 18px;
@@ -54,7 +54,7 @@ html, body {
   justify-content: center;
   padding: 24px 16px;
   position: relative;
-  background: radial-gradient(circle at 15% 20%, rgba(20, 184, 166, 0.08) 0%, transparent 45%),
+  background: radial-gradient(circle at 15% 20%, rgba(250, 204, 21, 0.08) 0%, transparent 45%),
               radial-gradient(circle at 85% 80%, rgba(108, 92, 231, 0.08) 0%, transparent 45%),
               var(--auth-bg);
 }
@@ -390,7 +390,7 @@ html, body {
 .input-box input:focus {
   background: rgba(36, 33, 51, 0.9);
   border-color: var(--input-focus);
-  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.2);
+  box-shadow: 0 0 0 3px rgba(250, 204, 21, 0.2);
 }
 
 .input-box:focus-within i.field-icon {
@@ -429,8 +429,8 @@ html, body {
   height: 50px;
   padding: 0 16px;
   border-radius: var(--radius-input);
-  background: rgba(20, 184, 166, 0.15);
-  border: 1px solid rgba(20, 184, 166, 0.35);
+  background: rgba(250, 204, 21, 0.15);
+  border: 1px solid rgba(250, 204, 21, 0.35);
   color: var(--primary-accent);
   font-size: 13px;
   font-weight: 700;
@@ -445,7 +445,7 @@ html, body {
 .btn-phone-verify:hover {
   background: var(--primary-accent);
   color: #ffffff;
-  box-shadow: 0 4px 14px rgba(20, 184, 166, 0.35);
+  box-shadow: 0 4px 14px rgba(250, 204, 21, 0.35);
 }
 
 .btn-phone-verify:disabled {
@@ -551,13 +551,13 @@ html, body {
   justify-content: center;
   gap: 10px;
   transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
-  box-shadow: 0 8px 24px rgba(20, 184, 166, 0.35);
+  box-shadow: 0 8px 24px rgba(250, 204, 21, 0.35);
   margin-top: 4px;
 }
 
 .btn-submit:hover {
   transform: translateY(-2px);
-  box-shadow: 0 12px 32px rgba(20, 184, 166, 0.45);
+  box-shadow: 0 12px 32px rgba(250, 204, 21, 0.45);
   background: linear-gradient(135deg, #16cca7 0%, #0f9f92 100%);
 }
 

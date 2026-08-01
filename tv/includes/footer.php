@@ -10,21 +10,7 @@ $enabledSlides = array_values(array_filter(
     </main>
 
 
-    <div class="tv-emergency" data-emergency hidden>
-        <strong>Emergency</strong>
-        <span data-emergency-message></span>
-    </div>
 
-    <div class="tv-celebration" data-celebration hidden>
-        <div class="tv-confetti" data-confetti></div>
-        <div class="tv-trophy" aria-hidden="true"><span></span></div>
-        <div class="tv-celebration-copy">
-            <div class="tv-kicker">Winner Reveal</div>
-            <h2 data-celebration-title>Champion</h2>
-            <div class="tv-celebration-team" data-celebration-team></div>
-            <div class="tv-celebration-score"><span data-celebration-score>0</span> pts</div>
-        </div>
-    </div>
 </div>
 
 <script>

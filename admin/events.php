@@ -226,8 +226,8 @@ require_once __DIR__ . '/../includes/sidebar.php';
 <div class="main-content">
     <div class="topbar">
         <div>
-            <div class="page-title">Events</div>
-            <div class="page-subtitle">Manage musabaqa events, themes and live systems</div>
+            <div class="page-title"><i class="fa-solid fa-calendar-days mr-2" style="color:var(--accent);"></i> Musabaqa Selection</div>
+            <div class="page-subtitle">Select active Musabaqa event, manage themes, settings, and live systems</div>
         </div>
         <button class="btn btn-success btn-md" data-open-modal="eventModal">
             <i class="fa-solid fa-plus"></i> Create Event

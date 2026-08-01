@@ -25,6 +25,46 @@ function teams(): array
     return $items;
 }
 
+function schedule_sections(): array
+{
+    $eventId = tv_active_event_id();
+    if ($eventId <= 0) {
+        return [
+            'morning' => 'Morning',
+            'afternoon' => 'Afternoon',
+            'evening' => 'Evening'
+        ];
+    }
+
+    $pdo = $GLOBALS['musabaqa_pdo'];
+    try {
+        $stmt = $pdo->prepare("
+            SELECT id, name
+            FROM musabaqa_schedule_sections
+            WHERE event_id = ?
+            ORDER BY sort_order ASC, section_date ASC, start_time ASC, id ASC
+        ");
+        $stmt->execute([$eventId]);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        if (!empty($rows)) {
+            $sections = [];
+            foreach ($rows as $r) {
+                $sections['section_' . $r['id']] = $r['name'];
+            }
+            return $sections;
+        }
+    } catch (Throwable $e) {
+        error_log('schedule_sections query failed: ' . $e->getMessage());
+    }
+
+    return [
+        'morning' => 'Morning',
+        'afternoon' => 'Afternoon',
+        'evening' => 'Evening'
+    ];
+}
+
 function schedule_items(): array
 {
     $eventId = tv_active_event_id();
@@ -42,12 +82,13 @@ function schedule_items(): array
                 p.end_time,
                 p.status,
                 p.location,
+                p.section_id,
                 st.name AS stage_name,
                 ct.name AS class_name
             FROM musabaqa_programs p
             LEFT JOIN musabaqa_stage_types st ON st.id = p.stage_type_id
             LEFT JOIN kauzariyya.class_types ct ON ct.id = p.class_type_id
-            WHERE p.event_id = ?
+            WHERE p.event_id = ? AND p.start_time IS NOT NULL AND p.stage_type_id IS NOT NULL
             ORDER BY p.start_time ASC, p.id ASC
         ");
         $stmt->execute([$eventId]);
@@ -68,7 +109,9 @@ function schedule_items(): array
             }
             
             $session = 'morning';
-            if ($row['start_time']) {
+            if ($row['section_id']) {
+                $session = 'section_' . $row['section_id'];
+            } elseif ($row['start_time']) {
                 $hour = (int)date('H', strtotime($row['start_time']));
                 if ($hour >= 12 && $hour < 16) {
                     $session = 'afternoon';
@@ -174,6 +217,7 @@ function result_items(): array
                 t.team_name,
                 t.short_name AS team_slug,
                 COALESCE(pe.final_score, 0) AS final_score,
+                COALESCE(pe.team_score, 0) AS team_score,
                 pe.final_rank
             FROM musabaqa_program_entries pe
             JOIN musabaqa_programs p ON p.id = pe.program_id
@@ -186,7 +230,7 @@ function result_items(): array
               AND (p.status = 'completed' OR p.approval_status = 'approved')
               AND (p.disable_scores IS NULL OR p.disable_scores = 0)
               AND (pe.final_rank IS NOT NULL OR pe.final_score > 0)
-            GROUP BY pe.id, p.title, ct.name, t.team_name, t.short_name, pe.final_score, pe.final_rank, p.reviewed_at, p.end_time, p.created_at
+            GROUP BY pe.id, p.title, ct.name, t.team_name, t.short_name, pe.final_score, pe.team_score, pe.final_rank, p.reviewed_at, p.end_time, p.created_at
             ORDER BY COALESCE(p.reviewed_at, p.end_time, p.created_at) DESC, pe.final_rank ASC, pe.final_score DESC";
             
     try {
@@ -205,6 +249,7 @@ function result_items(): array
                 'team_name' => $row['team_name'],
                 'team_slug' => $row['team_slug'] ?: 'default',
                 'score' => (float)$row['final_score'],
+                'team_score' => (int)$row['team_score'],
                 'position' => (int)($row['final_rank'] ?: 1),
             ];
         }

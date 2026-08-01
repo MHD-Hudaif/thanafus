@@ -8,8 +8,6 @@
         mode: 'auto',
         theme: 'emerald',
         slides: {},
-        lastCelebrationId: null,
-        isCelebrating: false,
         leaderboardData: null,
         slideOrder: ['intro', 'leaderboard', 'schedule', 'current-program'],
         timers: {
@@ -24,12 +22,6 @@
         clock: document.getElementById('tvClock'),
         tvApp: document.getElementById('tvApp'),
         tvStage: document.getElementById('tvStage'),
-        emergency: document.querySelector('[data-emergency]'),
-        emergencyMsg: document.querySelector('[data-emergency-message]'),
-        celebration: document.querySelector('[data-celebration]'),
-        celebrationTitle: document.querySelector('[data-celebration-title]'),
-        celebrationTeam: document.querySelector('[data-celebration-team]'),
-        celebrationScore: document.querySelector('[data-celebration-score]'),
 
         // Intro Slide Elements
         introVideo: document.querySelector('[data-intro-video]'),
@@ -692,69 +684,6 @@
         }
     }
 
-    function triggerCelebration(celebration) {
-        if (!els.celebration || !celebration || !celebration.id) return;
-        
-        state.isCelebrating = true;
-        stopSlideTimer();
-
-        if (els.celebrationTitle) els.celebrationTitle.textContent = celebration.title || 'Winner!';
-        if (els.celebrationTeam) {
-            const color = celebration.team_color || '#d6b25e';
-            els.celebrationTeam.innerHTML = `<span class="tv-team-dot" style="background:${color}"></span>${escapeHtml(celebration.winner || 'Champion')} - ${escapeHtml(celebration.team || 'Winning Team')}`;
-        }
-        if (els.celebrationScore) {
-            els.celebrationScore.textContent = formatScore(celebration.score);
-        }
-
-        els.celebration.removeAttribute('hidden');
-        els.celebration.style.display = 'flex';
-
-        if (typeof gsap !== 'undefined') {
-            gsap.fromTo(els.celebration.querySelector('.tv-celebration-copy'), {
-                scale: 0.5,
-                opacity: 0,
-                y: 100
-            }, {
-                scale: 1,
-                opacity: 1,
-                y: 0,
-                duration: 0.8,
-                ease: 'back.out(1.7)'
-            });
-        }
-
-        // Auto dismiss after 15 seconds
-        setTimeout(() => {
-            dismissCelebration();
-        }, 15000);
-    }
-
-    function dismissCelebration() {
-        if (!els.celebration || !state.isCelebrating) return;
-
-        if (typeof gsap !== 'undefined') {
-            gsap.to(els.celebration.querySelector('.tv-celebration-copy'), {
-                scale: 0.7,
-                opacity: 0,
-                y: -50,
-                duration: 0.5,
-                ease: 'power2.in',
-                onComplete: () => {
-                    els.celebration.setAttribute('hidden', '');
-                    els.celebration.style.display = 'none';
-                    state.isCelebrating = false;
-                    scheduleNextSlide(1000);
-                }
-            });
-        } else {
-            els.celebration.setAttribute('hidden', '');
-            els.celebration.style.display = 'none';
-            state.isCelebrating = false;
-            scheduleNextSlide(1000);
-        }
-    }
-
     function applyBootstrap(data) {
         if (!data) return;
 
@@ -784,28 +713,8 @@
         const countEl = document.querySelector('[data-leaderboard-count]');
         if (countEl) countEl.textContent = teamsCount;
 
-        // Handle Emergency broadcast updates
-        const emergency = data.settings?.emergency || {};
-        if (els.emergency && els.emergencyMsg) {
-            if (emergency.enabled && emergency.message) {
-                els.emergencyMsg.textContent = emergency.message;
-                els.emergency.removeAttribute('hidden');
-                els.emergency.style.display = 'flex';
-            } else {
-                els.emergency.setAttribute('hidden', '');
-                els.emergency.style.display = 'none';
-            }
-        }
-
-        // Handle Celebration modal overlay triggers
-        const celebration = data.settings?.celebration || {};
-        if (celebration.id && celebration.id !== state.lastCelebrationId) {
-            state.lastCelebrationId = celebration.id;
-            triggerCelebration(celebration);
-        }
-
         // Sync local slide map configs if in manual mode
-        if (state.mode === 'manual' && !state.isCelebrating) {
+        if (state.mode === 'manual') {
             const manualSlide = data.settings?.active_slide || 'intro';
             setActiveSlide(manualSlide);
         }
