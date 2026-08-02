@@ -27,9 +27,13 @@ function program_scores_badge(?string $status): string
 function program_scores_load_program(PDO $pdo, int $eventId, int $programId): ?array
 {
     $stmt = $pdo->prepare("
-        SELECT p.*, ct.name AS class_type_name
+        SELECT p.*, ct.name AS class_type_name,
+               mss.id AS schedule_section_id, mss.name AS schedule_section_name,
+               mss.start_time AS schedule_section_start, mss.end_time AS schedule_section_end,
+               mss.section_date AS schedule_section_date, mss.sort_order AS schedule_section_sort
         FROM musabaqa_programs p
         LEFT JOIN kauzariyya.class_types ct ON ct.id = p.class_type_id
+        LEFT JOIN musabaqa_schedule_sections mss ON mss.id = p.section_id
         WHERE p.id = ? AND p.event_id = ?
         LIMIT 1
     ");
@@ -75,11 +79,21 @@ if ($programId <= 0) {
     // Render Program Selector dashboard for score sheets / score entry selection
     $stmt = $pdo->prepare("
         SELECT p.*, ct.name AS class_type_name,
+               mss.id AS schedule_section_id, mss.name AS schedule_section_name,
+               mss.start_time AS schedule_section_start, mss.end_time AS schedule_section_end,
+               mss.section_date AS schedule_section_date, mss.sort_order AS schedule_section_sort,
                (SELECT COUNT(*) FROM musabaqa_program_entries WHERE program_id = p.id) AS entry_count
         FROM musabaqa_programs p
         LEFT JOIN kauzariyya.class_types ct ON ct.id = p.class_type_id
+        LEFT JOIN musabaqa_schedule_sections mss ON mss.id = p.section_id
         WHERE p.event_id = ?
-        ORDER BY p.title ASC
+        ORDER BY 
+            COALESCE(mss.section_date, '9999-12-31') ASC,
+            COALESCE(mss.sort_order, 999) ASC,
+            COALESCE(mss.start_time, '23:59:59') ASC,
+            (p.start_time IS NULL) ASC,
+            p.start_time ASC,
+            p.title ASC
     ");
     $stmt->execute([$activeEventId]);
     $programs = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -90,8 +104,8 @@ if ($programId <= 0) {
     <div class="main-content">
         <div class="topbar">
             <div>
-                <div class="page-title">Print Score Sheets</div>
-                <div class="page-subtitle">Select a program to print blank judging score sheets or record scores</div>
+                <div class="page-title"><i class="fa-solid fa-file-lines mr-2" style="color:var(--accent);"></i> Program Score Sheets</div>
+                <div class="page-subtitle">Select a program to print blank judging score sheets or record score sheets, ordered by time</div>
             </div>
         </div>
 
@@ -101,34 +115,54 @@ if ($programId <= 0) {
                 <table class="table">
                     <thead>
                         <tr>
-                            <th>Program Title</th>
-                            <th>Class / Category</th>
+                            <th>Program Title & Time</th>
+                            <th>Schedule Session</th>
+                            <th>Class / Division</th>
                             <th>Participants</th>
-                            <th>Actions</th>
+                            <th style="text-align: right;">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php if (empty($programs)): ?>
                             <tr>
-                                <td colspan="4" class="empty-state-row" style="text-align: center; padding: 30px; color: var(--muted);">No programs found for this event.</td>
+                                <td colspan="5" class="empty-state-row" style="text-align: center; padding: 30px; color: var(--muted);">No programs found for this event.</td>
                             </tr>
                         <?php else: ?>
                             <?php foreach ($programs as $prog): ?>
                                 <tr>
-                                    <td><strong><?= e($prog['title']) ?></strong></td>
+                                    <td>
+                                        <strong style="color: #fff; font-size: 14px;"><?= e($prog['title']) ?></strong>
+                                        <?php if (!empty($prog['start_time'])): ?>
+                                            <div style="font-size: 11.5px; color: #34d399; font-weight: 700; margin-top: 2px;">
+                                                <i class="fa-solid fa-clock mr-1"></i><?= date('h:i A', strtotime($prog['start_time'])) ?>
+                                                <?php if (!empty($prog['end_time'])): ?>
+                                                    - <?= date('h:i A', strtotime($prog['end_time'])) ?>
+                                                <?php endif; ?>
+                                            </div>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td>
+                                        <?php if (!empty($prog['schedule_section_name'])): ?>
+                                            <span class="badge badge-info" style="font-size: 11px;">
+                                                <i class="fa-solid fa-clock mr-1"></i> <?= e($prog['schedule_section_name']) ?>
+                                            </span>
+                                        <?php else: ?>
+                                            <span style="color: var(--muted); font-size: 12px;">Unassigned</span>
+                                        <?php endif; ?>
+                                    </td>
                                     <td>
                                         <span class="badge badge-info">
                                             <?= e(admin_class_type_display($prog['class_type_name'] ?? null, (int)($prog['class_type_id'] ?? 0))) ?>
                                         </span>
                                     </td>
                                     <td><?= (int)$prog['entry_count'] ?> Entries</td>
-                                    <td>
-                                        <div class="flex gap-2">
+                                    <td style="text-align: right;">
+                                        <div class="flex gap-2" style="justify-content: flex-end;">
                                             <a class="btn btn-primary btn-sm" href="<?= app_url('/admin/score-entry/program-scores.php?program_id=' . (int)$prog['id'] . '&mode=print') ?>" target="_blank">
-                                                <i class="fa-solid fa-print"></i> Print Blank Sheet
+                                                <i class="fa-solid fa-print mr-1"></i> Print Blank Sheet
                                             </a>
                                             <a class="btn btn-success btn-sm" href="<?= app_url('/admin/score-entry/program-scores.php?program_id=' . (int)$prog['id']) ?>">
-                                                <i class="fa-solid fa-pen-to-square"></i> Score Entry
+                                                <i class="fa-solid fa-pen-to-square mr-1"></i> Score Entry
                                             </a>
                                         </div>
                                     </td>
@@ -151,20 +185,259 @@ if (!$program) {
     admin_redirect('/admin/score-entry/score-entry.php');
 }
 
+// Enforce sequential scoring lock rule (unless printing blank score sheets)
+if (!isset($_GET['mode']) || $_GET['mode'] !== 'print') {
+    $blockingProg = admin_check_program_scoring_locked($pdo, $activeEventId, $programId);
+    if ($blockingProg) {
+        admin_flash('error', 'Scoring is locked for "' . $program['title'] . '". Please complete scoring for the previous program ("' . $blockingProg['title'] . '") first.');
+        admin_redirect('/admin/score-entry/score-entry.php');
+    }
+}
+
 $categories = program_scores_load_categories($pdo, $programId);
 $categoryTotal = program_scores_categories_total($categories);
 $categoriesValid = $categories && abs($categoryTotal - 100.0) <= 0.01;
 
-// Load entries for printing/scoring
 $stmt = $pdo->prepare("
-    SELECT pe.*, t.team_name, t.team_color
+    SELECT pe.*, t.team_name, t.team_color,
+           (SELECT GROUP_CONCAT(tm.chest_number SEPARATOR ', ')
+            FROM musabaqa_entry_members em
+            JOIN musabaqa_team_members tm ON tm.id = em.team_member_id
+            WHERE em.entry_id = pe.id AND tm.chest_number IS NOT NULL AND tm.chest_number <> '') AS chest_number
     FROM musabaqa_program_entries pe
     JOIN musabaqa_teams t ON t.id = pe.team_id
     WHERE pe.event_id = ? AND pe.program_id = ?
-    ORDER BY pe.entry_number ASC, pe.id ASC
+    ORDER BY pe.performance_order ASC, pe.id ASC
 ");
 $stmt->execute([$activeEventId, $programId]);
 $entriesForPrint = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+if (isset($_GET['mode']) && $_GET['mode'] === 'emcee') {
+    $tier = admin_class_type_tier_from_name($program['class_type_name'] ?? '');
+    $sectionLabel = $tier ? admin_class_type_tier_label($tier) : '';
+
+    if (!$sectionLabel && !empty($program['allowed_sections'])) {
+        $secParts = array_filter(array_map('trim', explode(',', $program['allowed_sections'])));
+        if (count($secParts) === 1) {
+            $sectionLabel = reset($secParts);
+        }
+    }
+
+    if ($sectionLabel && !in_array(strtolower($sectionLabel), ['general', 'all classes', 'general / multi-section'], true)) {
+        $programHeading = $program['title'] . ' - ' . $sectionLabel;
+    } else {
+        $programHeading = $program['title'];
+    }
+    ?>
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>Emcee Sheet - <?= e($program['title']) ?></title>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+        <style>
+            @page {
+                size: A4 portrait;
+                margin: 10mm 12mm;
+            }
+            * {
+                box-sizing: border-box;
+            }
+            body {
+                font-family: 'Inter', system-ui, -apple-system, sans-serif;
+                color: #000;
+                background: #fff;
+                margin: 0;
+                padding: 12px;
+                line-height: 1.4;
+            }
+            .emcee-card {
+                border: 2px solid #0f172a;
+                padding: 18px 20px;
+                border-radius: 10px;
+                background: #fff;
+            }
+            .print-header {
+                border-bottom: 2px solid #0f172a;
+                padding-bottom: 10px;
+                margin-bottom: 14px;
+            }
+            .program-title-banner {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+            .program-title {
+                font-size: 19px;
+                font-weight: 800;
+                color: #0f172a;
+            }
+            .emcee-badge {
+                background: #0f172a;
+                color: #fff;
+                font-size: 12px;
+                font-weight: 800;
+                padding: 4px 12px;
+                border-radius: 6px;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+            }
+            .meta-bar {
+                display: flex;
+                gap: 24px;
+                font-size: 12px;
+                color: #334155;
+                margin-top: 8px;
+                font-weight: 600;
+            }
+            .emcee-table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-top: 10px;
+            }
+            .emcee-table th, .emcee-table td {
+                border: 1.5px solid #1e293b;
+                padding: 9px 12px;
+                font-size: 13px;
+                vertical-align: middle;
+            }
+            .emcee-table th {
+                background: #f1f5f9;
+                font-weight: 800;
+                text-transform: uppercase;
+                font-size: 11px;
+                letter-spacing: 0.03em;
+            }
+            .order-col {
+                width: 50px;
+                text-align: center;
+                font-weight: 800;
+            }
+            .chest-col {
+                width: 110px;
+                text-align: center;
+                font-size: 16px;
+                font-weight: 900;
+                color: #000;
+            }
+            .name-col {
+                font-weight: 700;
+                color: #0f172a;
+            }
+            .team-col {
+                width: 160px;
+                font-weight: 600;
+            }
+            .check-col {
+                width: 85px;
+                text-align: center;
+            }
+            .check-box-square {
+                display: inline-block;
+                width: 18px;
+                height: 18px;
+                border: 2px solid #334155;
+                border-radius: 3px;
+            }
+            .no-print-btn {
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: #0284c7;
+                color: #fff;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 8px;
+                font-weight: 600;
+                cursor: pointer;
+                box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                z-index: 9999;
+            }
+            .no-print-btn:hover {
+                background: #0369a1;
+            }
+            @media print {
+                .no-print-btn {
+                    display: none !important;
+                }
+                body {
+                    padding: 0;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <button onclick="window.print()" class="no-print-btn">
+            <i class="fa-solid fa-print"></i> Print Emcee Sheet
+        </button>
+
+        <div class="emcee-card">
+            <div class="print-header">
+                <div class="program-title-banner">
+                    <span class="program-title"><?= e($programHeading) ?></span>
+                    <span class="emcee-badge"><i class="fa-solid fa-microphone mr-1"></i> EMCEE STAGE SHEET</span>
+                </div>
+                <div class="meta-bar">
+                    <?php if (!empty($program['schedule_section_name'])): ?>
+                        <div><i class="fa-solid fa-clock"></i> Session: <?= e($program['schedule_section_name']) ?></div>
+                    <?php endif; ?>
+                    <?php if (!empty($program['start_time'])): ?>
+                        <div><i class="fa-solid fa-hourglass-start"></i> Time: <?= date('h:i A', strtotime($program['start_time'])) ?></div>
+                    <?php endif; ?>
+                    <div><i class="fa-solid fa-users"></i> Total Entries: <?= count($entriesForPrint) ?></div>
+                </div>
+            </div>
+
+            <table class="emcee-table">
+                <thead>
+                    <tr>
+                        <th class="order-col">#</th>
+                        <th class="chest-col">Chest #</th>
+                        <th class="name-col">Participant Name</th>
+                        <th class="team-col">Team</th>
+                        <th class="check-col">Announced</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php if (empty($entriesForPrint)): ?>
+                        <tr>
+                            <td colspan="5" style="text-align: center; padding: 25px; color: #64748b;">No entries registered for this program.</td>
+                        </tr>
+                    <?php else: ?>
+                        <?php $orderIndex = 1; ?>
+                        <?php foreach ($entriesForPrint as $entry): ?>
+                            <?php
+                                $chestNo = !empty($entry['chest_number']) ? $entry['chest_number'] : $entry['entry_number'];
+                                $formattedChest = is_numeric($chestNo) ? str_pad((string)$chestNo, 3, '0', STR_PAD_LEFT) : (string)$chestNo;
+                            ?>
+                            <tr>
+                                <td class="order-col"><?= $orderIndex++ ?></td>
+                                <td class="chest-col">#<?= e($formattedChest) ?></td>
+                                <td class="name-col"><?= e($entry['entry_name'] ?: 'Unnamed Entry') ?></td>
+                                <td class="team-col"><?= e($entry['team_name']) ?></td>
+                                <td class="check-col"><span class="check-box-square"></span></td>
+                            </tr>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
+
+        <script>
+            window.addEventListener('DOMContentLoaded', () => {
+                setTimeout(() => {
+                    window.print();
+                }, 500);
+            });
+        </script>
+    </body>
+    </html>
+    <?php
+    exit;
+}
 
 if (isset($_GET['mode']) && $_GET['mode'] === 'print') {
     ?>
@@ -174,111 +447,114 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'print') {
         <meta charset="UTF-8">
         <title>Score Sheet - <?= e($program['title']) ?></title>
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+        <?php
+            $entryCount = count($entriesForPrint);
+            $useSeparatePages = $entryCount > 10;
+            $pageSize = $useSeparatePages ? 'A4 landscape' : 'A4 portrait';
+            $rowHeight = $useSeparatePages ? 30 : ($entryCount <= 5 ? 36 : 26);
+
+            $tier = admin_class_type_tier_from_name($program['class_type_name'] ?? '');
+            $sectionLabel = $tier ? admin_class_type_tier_label($tier) : '';
+
+            if (!$sectionLabel && !empty($program['allowed_sections'])) {
+                $secParts = array_filter(array_map('trim', explode(',', $program['allowed_sections'])));
+                if (count($secParts) === 1) {
+                    $sectionLabel = reset($secParts);
+                }
+            }
+
+            if ($sectionLabel && !in_array(strtolower($sectionLabel), ['general', 'all classes', 'general / multi-section'], true)) {
+                $programHeading = $program['title'] . ' - ' . $sectionLabel;
+            } else {
+                $programHeading = $program['title'];
+            }
+        ?>
         <style>
+            @page {
+                size: <?= $pageSize ?>;
+                margin: 6mm 8mm;
+            }
+            * {
+                box-sizing: border-box;
+            }
             body {
                 font-family: 'Inter', system-ui, -apple-system, sans-serif;
                 color: #000;
                 background: #fff;
                 margin: 0;
-                padding: 20px;
-                line-height: 1.4;
+                padding: 8px;
+                line-height: 1.3;
+            }
+            .judge-full-sheet {
+                border: 1px solid #cbd5e1;
+                padding: 16px 20px;
+                border-radius: 8px;
+                background: #fff;
+                width: 100%;
+            }
+            .judge-half-sheet {
+                border: 1px dashed #94a3b8;
+                padding: 10px 12px;
+                border-radius: 8px;
+                background: #fff;
+                box-sizing: border-box;
+            }
+            .page-break {
+                page-break-before: always !important;
+                break-before: page !important;
             }
             .print-header {
-                text-align: center;
-                border-bottom: 2px solid #000;
-                padding-bottom: 12px;
-                margin-bottom: 20px;
+                border-bottom: 1.5px solid #000;
+                padding-bottom: 5px;
+                margin-bottom: 6px;
             }
-            .event-title {
-                font-size: 24px;
+            .program-title-banner {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+            .program-title {
+                font-size: 15px;
                 font-weight: 800;
+                color: #000;
+            }
+            .judge-badge {
+                background: #0f172a;
+                color: #fff;
+                font-size: 11px;
+                font-weight: 800;
+                padding: 3px 8px;
+                border-radius: 4px;
                 text-transform: uppercase;
                 letter-spacing: 0.05em;
             }
-            .program-title {
-                font-size: 18px;
-                font-weight: 700;
-                margin-top: 5px;
-                color: #333;
-            }
-            .meta-grid {
-                display: grid;
-                grid-template-columns: repeat(3, 1fr);
-                gap: 10px;
-                margin-bottom: 20px;
-                font-size: 13px;
-                border: 1px solid #ddd;
-                padding: 10px;
-                border-radius: 6px;
-            }
-            .meta-item strong {
-                display: block;
-                color: #555;
-                text-transform: uppercase;
-                font-size: 11px;
-                margin-bottom: 2px;
-            }
-            .criteria-box {
-                margin-bottom: 25px;
-                border: 1px solid #000;
-                border-radius: 6px;
-                padding: 12px;
-            }
-            .criteria-title {
-                font-size: 14px;
-                font-weight: 700;
-                margin-bottom: 8px;
-                text-transform: uppercase;
-                border-bottom: 1px solid #000;
-                padding-bottom: 4px;
-            }
-            .criteria-list {
-                display: flex;
-                flex-wrap: wrap;
-                gap: 15px;
-                font-size: 13px;
-            }
-            .criteria-item {
-                background: #f3f4f6;
-                padding: 4px 10px;
-                border-radius: 4px;
-                border: 1px solid #e5e7eb;
-            }
             .sheet-table {
                 width: 100%;
+                table-layout: fixed;
                 border-collapse: collapse;
-                margin-bottom: 30px;
+                margin-bottom: 4px;
             }
             .sheet-table th, .sheet-table td {
-                border: 1px solid #000;
-                padding: 8px 10px;
+                border: 1.5px solid #000;
+                padding: 5px 6px;
                 text-align: center;
                 font-size: 12px;
+                vertical-align: middle;
             }
             .sheet-table th {
-                background: #f3f4f6;
+                background: #f1f5f9;
                 font-weight: 700;
                 text-transform: uppercase;
+                font-size: 10.5px;
+                padding: 6px 4px;
             }
-            .text-left {
-                text-align: left !important;
+            .chest-col {
+                width: 75px;
+                font-size: 14px;
+                font-weight: 800;
             }
             .score-col {
-                width: 80px;
-            }
-            .signature-section {
-                margin-top: 50px;
-                display: grid;
-                grid-template-columns: repeat(3, 1fr);
-                gap: 40px;
-                text-align: center;
-                font-size: 13px;
-            }
-            .sig-line {
-                border-top: 1px solid #000;
-                padding-top: 8px;
-                margin-top: 40px;
-                font-weight: 600;
+                /* Expanded evenly via table-layout: fixed */
             }
             .no-print-btn {
                 position: fixed;
@@ -295,6 +571,7 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'print') {
                 display: inline-flex;
                 align-items: center;
                 gap: 8px;
+                z-index: 9999;
             }
             .no-print-btn:hover {
                 background: #7c3aed;
@@ -306,94 +583,116 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'print') {
                 body {
                     padding: 0;
                 }
+                .judge-half-sheet {
+                    border-color: #cbd5e1;
+                }
             }
         </style>
     </head>
     <body>
         <button onclick="window.print()" class="no-print-btn">
-            <i class="fa-solid fa-print"></i> Print Score Sheet
+            <i class="fa-solid fa-print"></i> Print Score Sheets (<?= $entryCount ?> Entries - <?= $useSeparatePages ? '2-Page Landscape' : '1-Page Portrait' ?>)
         </button>
 
-        <div class="print-header">
-            <div class="event-title"><?= e($activeEvent['title']) ?></div>
-            <div class="program-title">JUDGING SCORE SHEET</div>
-        </div>
-
-        <div class="meta-grid">
-            <div class="meta-item">
-                <strong>Program Title</strong>
-                <?= e($program['title']) ?>
-            </div>
-            <div class="meta-item">
-                <strong>Class / Tier</strong>
-                <?= e(admin_class_type_display($program['class_type_name'] ?? null, (int)($program['class_type_id'] ?? 0))) ?>
-            </div>
-            <div class="meta-item">
-                <strong>Judges Count</strong>
-                <?= (int)($program['judges_count'] ?? 2) ?> Judges
-            </div>
-        </div>
-
-        <div class="criteria-box">
-            <div class="criteria-title">Scoring Criteria & Max Marks</div>
-            <div class="criteria-list">
-                <?php foreach ($categories as $cat): ?>
-                    <div class="criteria-item">
-                        <strong><?= e($cat['name']) ?>:</strong> <?= number_format((float)$cat['max_marks'], 1) ?> Marks
+        <?php if ($useSeparatePages): ?>
+            <?php for ($j = 1; $j <= 2; $j++): ?>
+                <div class="judge-full-sheet <?= ($j > 1) ? 'page-break' : '' ?>">
+                    <div class="print-header">
+                        <div class="program-title-banner">
+                            <span class="program-title"><?= e($programHeading) ?></span>
+                            <span class="judge-badge">JUDGE <?= $j ?> SCORE SHEET</span>
+                        </div>
                     </div>
-                <?php endforeach; ?>
-                <div class="criteria-item" style="background: #e0f2fe; border-color: #bae6fd;">
-                    <strong>TOTAL MAX MARKS:</strong> <?= number_format((float)$categoryTotal, 1) ?> Marks
+
+                    <table class="sheet-table">
+                        <thead>
+                            <tr>
+                                <th class="chest-col">Chest #</th>
+                                <?php foreach ($categories as $cat): ?>
+                                    <th class="score-col">
+                                        <?= e($cat['name']) ?><br>
+                                        <small style="font-weight:600; font-size:9.5px;">(Max <?= number_format($cat['max_marks'], 0) ?>)</small>
+                                    </th>
+                                <?php endforeach; ?>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if (empty($entriesForPrint)): ?>
+                                <tr>
+                                    <td colspan="<?= 1 + count($categories) ?>" style="padding: 20px; color: #666;">No entries registered for this program.</td>
+                                </tr>
+                            <?php else: ?>
+                                <?php foreach ($entriesForPrint as $entry): ?>
+                                    <?php
+                                        $chestNo = !empty($entry['chest_number']) ? $entry['chest_number'] : $entry['entry_number'];
+                                        $formattedChest = is_numeric($chestNo) ? str_pad((string)$chestNo, 3, '0', STR_PAD_LEFT) : (string)$chestNo;
+                                    ?>
+                                    <tr>
+                                        <td class="chest-col" style="font-weight: 800; font-size: 13.5px; height: <?= $rowHeight ?>px;">
+                                            #<?= e($formattedChest) ?>
+                                        </td>
+                                        <?php foreach ($categories as $cat): ?>
+                                            <td style="height: <?= $rowHeight ?>px;"></td>
+                                        <?php endforeach; ?>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
                 </div>
-            </div>
-        </div>
-
-        <table class="sheet-table">
-            <thead>
-                <tr>
-                    <th style="width: 60px;">Chest #</th>
-                    <th class="text-left">Participant Name</th>
-                    <th>Team</th>
-                    <?php foreach ($categories as $cat): ?>
-                        <th class="score-col"><?= e($cat['name']) ?><br><small>(Max <?= number_format($cat['max_marks'], 0) ?>)</small></th>
-                    <?php endforeach; ?>
-                    <th class="score-col">Total<br><small>(Max 100)</small></th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php if (empty($entriesForPrint)): ?>
-                    <tr>
-                        <td colspan="<?= 4 + count($categories) ?>" style="padding: 30px; color: #555;">No entries registered for this program.</td>
-                    </tr>
-                <?php else: ?>
-                    <?php foreach ($entriesForPrint as $entry): ?>
-                        <tr>
-                            <td><strong>#<?= e(str_pad((string)$entry['entry_number'], 3, '0', STR_PAD_LEFT)) ?></strong></td>
-                            <td class="text-left"><?= e($entry['entry_name'] ?: 'Unnamed Entry') ?></td>
-                            <td><?= e($entry['team_name']) ?></td>
-                            <?php foreach ($categories as $cat): ?>
-                                <td></td>
-                            <?php endforeach; ?>
-                            <td></td>
-                        </tr>
-                    <?php endforeach; ?>
+            <?php endfor; ?>
+        <?php else: ?>
+            <?php for ($j = 1; $j <= 2; $j++): ?>
+                <?php if ($j === 2): ?>
+                    <div style="margin: 12px 0; border-top: 1px dashed #cbd5e1;"></div>
                 <?php endif; ?>
-            </tbody>
-        </table>
 
-        <div class="signature-section">
-            <div>
-                <div class="sig-line">Judge 1 Signature</div>
-            </div>
-            <div>
-                <?php if ((int)($program['judges_count'] ?? 2) > 1): ?>
-                    <div class="sig-line">Judge 2 Signature</div>
-                <?php endif; ?>
-            </div>
-            <div>
-                <div class="sig-line">Chief Judge Signature</div>
-            </div>
-        </div>
+                <div class="judge-half-sheet">
+                    <div class="print-header">
+                        <div class="program-title-banner">
+                            <span class="program-title"><?= e($programHeading) ?></span>
+                            <span class="judge-badge">JUDGE <?= $j ?> SCORE SHEET</span>
+                        </div>
+                    </div>
+
+                    <table class="sheet-table">
+                        <thead>
+                            <tr>
+                                <th class="chest-col">Chest #</th>
+                                <?php foreach ($categories as $cat): ?>
+                                    <th class="score-col">
+                                        <?= e($cat['name']) ?><br>
+                                        <small style="font-weight:600; font-size:9.5px;">(Max <?= number_format($cat['max_marks'], 0) ?>)</small>
+                                    </th>
+                                <?php endforeach; ?>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if (empty($entriesForPrint)): ?>
+                                <tr>
+                                    <td colspan="<?= 1 + count($categories) ?>" style="padding: 20px; color: #666;">No entries registered for this program.</td>
+                                </tr>
+                            <?php else: ?>
+                                <?php foreach ($entriesForPrint as $entry): ?>
+                                    <?php
+                                        $chestNo = !empty($entry['chest_number']) ? $entry['chest_number'] : $entry['entry_number'];
+                                        $formattedChest = is_numeric($chestNo) ? str_pad((string)$chestNo, 3, '0', STR_PAD_LEFT) : (string)$chestNo;
+                                    ?>
+                                    <tr>
+                                        <td class="chest-col" style="font-weight: 800; font-size: 13.5px; height: <?= $rowHeight ?>px;">
+                                            #<?= e($formattedChest) ?>
+                                        </td>
+                                        <?php foreach ($categories as $cat): ?>
+                                            <td style="height: <?= $rowHeight ?>px;"></td>
+                                        <?php endforeach; ?>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+            <?php endfor; ?>
+        <?php endif; ?>
 
         <script>
             window.addEventListener('DOMContentLoaded', () => {
@@ -729,7 +1028,7 @@ $stmt = $pdo->prepare("
     LEFT JOIN musabaqa_score_sheets ss ON ss.entry_id = pe.id
     WHERE pe.event_id = ?
       AND pe.program_id = ?
-    ORDER BY pe.entry_number ASC, pe.id ASC
+    ORDER BY pe.performance_order ASC, pe.id ASC
 ");
 $stmt->execute([$activeEventId, $programId]);
 $rawEntries = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -770,12 +1069,14 @@ $canSubmit = $readyForSubmission && !$scoresLocked && $categoriesValid;
 if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
     ob_start();
     if (!$paginatedEntries) {
-        echo '<tr><td colspan="6" class="empty-state-row" style="text-align: center; padding: 30px; color: var(--muted);"><div class="empty-title">No Entries Found</div></td></tr>';
+        echo '<tr><td colspan="7" class="empty-state-row" style="text-align: center; padding: 30px; color: var(--muted);"><div class="empty-title">No Entries Found</div></td></tr>';
     } else {
+        $orderIndex = $offset + 1;
         foreach ($paginatedEntries as $entry) {
             $hasSheet = !empty($entry['score_sheet_id']);
             ?>
             <tr>
+                <td><strong><?= $orderIndex++ ?></strong></td>
                 <td><strong>#<?= e(str_pad((string)$entry['entry_number'], 3, '0', STR_PAD_LEFT)) ?></strong></td>
                 <td><?= e($entry['entry_name'] ?: 'Unnamed Entry') ?></td>
                 <td><span class="team-color-pill" style="background: <?= e($entry['team_color'] ?? '#64748b') ?>22;"><?= e($entry['team_name']) ?></span></td>
@@ -815,6 +1116,17 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                 <span><?= e(ucfirst((string)$program['program_type'])) ?></span>
                 <span>·</span>
                 <span><?= e(admin_class_type_display($program['class_type_name'] ?? null, (int)($program['class_type_id'] ?? 0))) ?></span>
+                <?php if (!empty($program['schedule_section_name'])): ?>
+                    <span>·</span>
+                    <span class="badge badge-info" style="font-size: 11px;">
+                        <i class="fa-solid fa-clock mr-1"></i> <?= e($program['schedule_section_name']) ?>
+                    </span>
+                <?php endif; ?>
+                <?php if (!empty($program['start_time'])): ?>
+                    <span style="color: #34d399; font-weight: 700; font-size: 12px;">
+                        <i class="fa-solid fa-clock mr-1"></i><?= date('h:i A', strtotime($program['start_time'])) ?>
+                    </span>
+                <?php endif; ?>
                 <?php if (!empty($program['only_team_marks'])): ?>
                     <span class="badge badge-info" style="font-size: 11px; background: rgba(14, 165, 233, 0.15); color: #0ea5e9; border: 1px solid rgba(14, 165, 233, 0.3); padding: 2px 8px; border-radius: 9999px;">
                         <i class="fa-solid fa-people-group"></i> Only Team Marks (No Indiv. Marks)
@@ -972,6 +1284,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
             <table class="table">
                 <thead>
                     <tr>
+                        <th style="width: 80px;">Order</th>
                         <th>Entry Number</th>
                         <th>Entry Name</th>
                         <th>Team</th>
@@ -981,9 +1294,11 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                     </tr>
                 </thead>
                 <tbody id="table-body">
+                    <?php $orderIndex = $offset + 1; ?>
                     <?php foreach ($paginatedEntries as $entry): ?>
                         <?php $hasSheet = !empty($entry['score_sheet_id']); ?>
                         <tr>
+                            <td><strong><?= $orderIndex++ ?></strong></td>
                             <td><strong>#<?= e(str_pad((string)$entry['entry_number'], 3, '0', STR_PAD_LEFT)) ?></strong></td>
                             <td><?= e($entry['entry_name'] ?: 'Unnamed Entry') ?></td>
                             <td><span class="team-color-pill" style="background: <?= e($entry['team_color'] ?? '#64748b') ?>22;"><?= e($entry['team_name']) ?></span></td>

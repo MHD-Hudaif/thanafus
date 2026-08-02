@@ -108,8 +108,8 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                 <i class="fa-solid fa-calculator"></i>
                             </div>
                             <div class="sidebar-action-info">
-                                <div class="sidebar-action-title">Judge Score Entry Form</div>
-                                <div class="sidebar-action-subtitle">Enter judge marks & send</div>
+                                <div class="sidebar-action-title">Judge Score Entry Workspace</div>
+                                <div class="sidebar-action-subtitle">Enter judge marks by session</div>
                             </div>
                         </a>
 
@@ -119,7 +119,17 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                             </div>
                             <div class="sidebar-action-info">
                                 <div class="sidebar-action-title">Program Score Sheets</div>
-                                <div class="sidebar-action-subtitle">Review entered score sheets</div>
+                                <div class="sidebar-action-subtitle">Review & print score sheets</div>
+                            </div>
+                        </a>
+
+                        <a href="<?= app_url('/admin/event-manager/sections.php') ?>" class="sidebar-action-btn">
+                            <div class="sidebar-action-icon" style="background: rgba(52, 211, 153, 0.15); color: #34d399;">
+                                <i class="fa-solid fa-clock"></i>
+                            </div>
+                            <div class="sidebar-action-info">
+                                <div class="sidebar-action-title">Schedule Sessions</div>
+                                <div class="sidebar-action-subtitle">Manage session timetables</div>
                             </div>
                         </a>
                     </div>

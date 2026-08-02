@@ -1009,10 +1009,7 @@ if (!function_exists('get_user_default_category_url')) {
             return '/auth/login.php';
         }
 
-        if (is_admin()) {
-            return '/admin/event-manager/';
-        }
-
+        $activeSpace = $_SESSION['active_workspace'] ?? '';
         $categories = [
             'event-manager' => '/admin/event-manager/',
             'team-manager'  => '/admin/event-manager/',
@@ -1022,6 +1019,17 @@ if (!function_exists('get_user_default_category_url')) {
             'score-entry'   => '/admin/score-entry/',
             'score-update'  => '/admin/score-update/',
         ];
+
+        if ($activeSpace !== '' && isset($categories[$activeSpace])) {
+            $categorySlug = ($activeSpace === 'team-manager') ? 'event-manager' : $activeSpace;
+            if (can_access_category($categorySlug)) {
+                return $categories[$activeSpace];
+            }
+        }
+
+        if (is_admin()) {
+            return '/admin/event-manager/';
+        }
 
         foreach ($categories as $categorySlug => $path) {
             if (can_access_category($categorySlug)) {
@@ -1100,5 +1108,60 @@ function admin_auto_assign_programs_to_sections(PDO $pdo, int $eventId): int
     }
     
     return $count;
+}
+
+/**
+ * Checks if a target program is locked for scoring because a preceding program in chronological schedule sequence is not yet scored.
+ * Returns null if unlocked, or the preceding blocking program array if locked.
+ */
+function admin_check_program_scoring_locked(PDO $pdo, int $eventId, int $targetProgramId): ?array
+{
+    if ($targetProgramId <= 0 || $eventId <= 0) {
+        return null;
+    }
+
+    $stmt = $pdo->prepare("
+        SELECT
+            p.id, p.title, p.status, p.approval_status, p.start_time,
+            COUNT(DISTINCT pe.id) AS entry_count,
+            COUNT(DISTINCT CASE WHEN ss.status IN ('completed','submitted','approved','rejected') THEN pe.id END) AS scored_count
+        FROM musabaqa_programs p
+        LEFT JOIN musabaqa_schedule_sections mss ON mss.id = p.section_id
+        LEFT JOIN musabaqa_program_entries pe ON pe.program_id = p.id
+        LEFT JOIN musabaqa_score_sheets ss ON ss.entry_id = pe.id
+        WHERE p.event_id = ?
+        GROUP BY p.id, mss.id
+        ORDER BY 
+            COALESCE(mss.section_date, '9999-12-31') ASC,
+            COALESCE(mss.sort_order, 999) ASC,
+            COALESCE(mss.start_time, '23:59:59') ASC,
+            (p.start_time IS NULL) ASC,
+            p.start_time ASC,
+            p.id ASC
+    ");
+    $stmt->execute([$eventId]);
+    $allProgs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    $unscoredPrev = null;
+    foreach ($allProgs as $prog) {
+        $pId = (int)$prog['id'];
+        if ($pId === $targetProgramId) {
+            return $unscoredPrev;
+        }
+
+        $entryCount = (int)$prog['entry_count'];
+        $scoredCount = (int)$prog['scored_count'];
+        $isCompleted = ($prog['status'] === 'completed') || 
+                       in_array($prog['approval_status'], ['submitted', 'approved'], true) ||
+                       ($entryCount > 0 && $scoredCount >= $entryCount);
+
+        if ($entryCount > 0 && !$isCompleted) {
+            if ($unscoredPrev === null) {
+                $unscoredPrev = $prog;
+            }
+        }
+    }
+
+    return null;
 }
 

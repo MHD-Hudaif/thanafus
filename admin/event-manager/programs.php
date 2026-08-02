@@ -743,18 +743,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                         </div>
                     </div>
                     <div style="display: grid; gap: 12px; margin-top: 15px;">
-                        <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.04); padding: 10px 14px; border-radius: 10px;">
-                            <div>
-                                <strong style="font-size: 13.5px; display: block; color: var(--text);">Redirect to Team Total</strong>
-                                <span style="font-size: 11.5px; color: var(--muted);">Redirect participants' scores to team total points</span>
-                            </div>
-                            <label class="toggle-switch" style="position: relative; display: inline-block;">
-                                <input type="checkbox" name="redirect_to_team" id="redirectToTeam" value="1" checked>
-                                <span class="toggle-slider"></span>
-                            </label>
-                        </div>
-                        
-                        <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.04); padding: 10px 14px; border-radius: 10px;">
+                        <div id="rowDisableScores" style="display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.04); padding: 10px 14px; border-radius: 10px;">
                             <div>
                                 <strong style="font-size: 13.5px; display: block; color: var(--text);">Disable Scores</strong>
                                 <span style="font-size: 11.5px; color: var(--muted);">Disable/hide scores (useful for semi-finales/hiding)</span>
@@ -765,7 +754,18 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                             </label>
                         </div>
 
-                        <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.04); padding: 10px 14px; border-radius: 10px;">
+                        <div id="rowRedirectToTeam" style="display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.04); padding: 10px 14px; border-radius: 10px;">
+                            <div>
+                                <strong style="font-size: 13.5px; display: block; color: var(--text);">Redirect to Team Total</strong>
+                                <span style="font-size: 11.5px; color: var(--muted);">Redirect participants' scores to team total points</span>
+                            </div>
+                            <label class="toggle-switch" style="position: relative; display: inline-block;">
+                                <input type="checkbox" name="redirect_to_team" id="redirectToTeam" value="1" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+
+                        <div id="rowOnlyTeamMarks" style="display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.04); padding: 10px 14px; border-radius: 10px;">
                             <div>
                                 <strong style="font-size: 13.5px; display: block; color: var(--text);">Only Team Marks (No Individual Marks)</strong>
                                 <span style="font-size: 11.5px; color: var(--muted);">Award team placement points only, skip student individual score calculation</span>
@@ -1031,6 +1031,7 @@ document.addEventListener('click', (e) => {
         if (dScores) dScores.checked = false;
         const oTeam = document.getElementById('onlyTeamMarks');
         if (oTeam) oTeam.checked = false;
+        syncDisableScoresState();
         
         renderRanks(window.GLOBAL_DEFAULT_POINTS);
         
@@ -1085,6 +1086,7 @@ document.addEventListener('click', (e) => {
             if (dScores) dScores.checked = p.disable_scores === 1 || p.disable_scores === '1';
             const oTeam = document.getElementById('onlyTeamMarks');
             if (oTeam) oTeam.checked = p.only_team_marks === 1 || p.only_team_marks === '1';
+            syncDisableScoresState();
             
             let config = {};
             if (p.team_points_config) {
@@ -1189,5 +1191,42 @@ document.getElementById('programForm')?.addEventListener('submit', () => {
     const configEl = document.getElementById('teamPointsConfigInput');
     if (configEl) configEl.value = JSON.stringify(config);
 });
+
+function syncDisableScoresState() {
+    const dScores = document.getElementById('disableScores');
+    const rTeam = document.getElementById('redirectToTeam');
+    const oTeam = document.getElementById('onlyTeamMarks');
+    if (dScores && rTeam && oTeam) {
+        const rRow = document.getElementById('rowRedirectToTeam');
+        const oRow = document.getElementById('rowOnlyTeamMarks');
+        if (dScores.checked) {
+            rTeam.disabled = true;
+            oTeam.disabled = true;
+            rTeam.checked = false;
+            oTeam.checked = false;
+            if (rRow) {
+                rRow.style.opacity = '0.5';
+                rRow.style.pointerEvents = 'none';
+            }
+            if (oRow) {
+                oRow.style.opacity = '0.5';
+                oRow.style.pointerEvents = 'none';
+            }
+        } else {
+            rTeam.disabled = false;
+            oTeam.disabled = false;
+            if (rRow) {
+                rRow.style.opacity = '1';
+                rRow.style.pointerEvents = 'auto';
+            }
+            if (oRow) {
+                oRow.style.opacity = '1';
+                oRow.style.pointerEvents = 'auto';
+            }
+        }
+    }
+}
+
+document.getElementById('disableScores')?.addEventListener('change', syncDisableScoresState);
 </script>
 <?php admin_close_page(); ?>

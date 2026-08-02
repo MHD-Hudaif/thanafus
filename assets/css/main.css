@@ -1,92 +1,12 @@
 /* =====================================================
-   MAIN.CSS - Core Design Tokens, Layout, Modals & Command Bars
+   MAIN.CSS - Admin Panel Component Architecture Entrypoint
    ===================================================== */
 
-/* Selection & Command Bars */
-.selection-sticky-bar,
-.selection-bar {
-    position: sticky;
-    top: 14px;
-    z-index: 30;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 14px;
-    padding: 14px 20px;
-    border: 1px solid rgba(99, 102, 241, 0.4);
-    border-radius: 14px;
-    background: rgba(15, 23, 42, 0.92);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-    margin-bottom: 20px;
-}
-
-.selection-count {
-    font-size: 14px;
-    color: var(--muted);
-    font-weight: 800;
-}
-.selection-count strong {
-    color: #ffffff;
-    font-size: 20px;
-}
-
-/* Glassmorphism Modals */
-.modal-overlay {
-    display: none;
-    position: fixed;
-    top: 0; left: 0;
-    width: 100vw; height: 100vh;
-    background: rgba(0, 0, 0, 0.8);
-    z-index: 9999;
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    align-items: center;
-    justify-content: center;
-}
-
-.modal-content-glass {
-    background: #0f172a;
-    border: 1px solid rgba(99, 102, 241, 0.3);
-    border-radius: 16px;
-    width: 92%;
-    max-width: 680px;
-    max-height: 85vh;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
-}
-
-.modal-header-glass {
-    padding: 18px 22px;
-    background: rgba(255, 255, 255, 0.03);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.modal-footer-glass {
-    padding: 16px 22px;
-    background: rgba(255, 255, 255, 0.03);
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-}
-
-/* Button & Control FX */
-.btn-glow-success {
-    background: linear-gradient(135deg, #10b981, #059669) !important;
-    border: none !important;
-    color: #ffffff !important;
-    box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);
-    transition: all 0.25s ease !important;
-}
-.btn-glow-success:hover {
-    background: linear-gradient(135deg, #059669, #047857) !important;
-    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.5);
-    transform: translateY(-1px);
-}
+@import url('components/variables.css');
+@import url('components/buttons.css');
+@import url('components/forms.css');
+@import url('cards.css');
+@import url('tables.css');
+@import url('components/modals.css');
+@import url('components/badges.css');
+@import url('components/navigation.css');

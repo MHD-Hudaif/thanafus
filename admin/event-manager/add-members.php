@@ -456,7 +456,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                 </span>
             </div>
         </div>
-        <a href="<?= app_url('/admin/members.php') ?>?team=<?= $activeTeamId ?>" class="btn btn-secondary btn-md"><i class="fa-solid fa-arrow-left"></i> Back to Members</a>
+        <a href="<?= app_url('/admin/event-manager/members.php') ?>?team=<?= $activeTeamId ?>" class="btn btn-secondary btn-md"><i class="fa-solid fa-arrow-left"></i> Back to Members</a>
     </div>
 
     <?php if ($flash): ?><div class="alert <?= $flash['type'] === 'success' ? 'alert-success' : 'alert-error' ?>"><?= e($flash['message']) ?></div><?php endif; ?>
@@ -481,7 +481,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                         <input type="text" name="search" value="<?= e($search) ?>" placeholder="Name or admission number">
                     </div>
                     <button class="btn btn-secondary btn-md" type="submit"><i class="fa-solid fa-magnifying-glass"></i> Search</button>
-                    <?php if ($search !== ''): ?><a href="<?= app_url('/admin/add-members.php') ?>?team=<?= $activeTeamId ?>" class="btn btn-secondary btn-md">Clear</a><?php endif; ?>
+                    <?php if ($search !== ''): ?><a href="<?= app_url('/admin/event-manager/add-members.php') ?>?team=<?= $activeTeamId ?>" class="btn btn-secondary btn-md">Clear</a><?php endif; ?>
                 </form>
             </div>
 

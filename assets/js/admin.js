@@ -471,11 +471,71 @@
        ===================================================== */
 
     function updateSidebarActive(url) {
-        const normalize = (u) => new URL(u, location.origin).pathname.replace(/\.php$/i, '').replace(/\/$/, '').replace(/\/index$/, '');
-        const path = normalize(url);
-        document.querySelectorAll('.sidebar-link, .nav-item-link, .role-item-link, .sidebar-vertical-link').forEach(link => {
-            const linkPath = normalize(link.href);
-            if (path === linkPath || path.startsWith(linkPath + '/')) {
+        let currentUrl;
+        try {
+            currentUrl = new URL(url, location.origin);
+        } catch {
+            return;
+        }
+
+        const normPath = (pathname) => {
+            let p = pathname.replace(/\.php$/i, '');
+            if (p.length > 1 && p.endsWith('/')) p = p.slice(0, -1);
+            return p;
+        };
+
+        const currentPath = normPath(currentUrl.pathname);
+        const currentQuery = currentUrl.searchParams;
+
+        const links = Array.from(document.querySelectorAll('.sidebar-link, .nav-item-link, .role-item-link, .sidebar-vertical-link'));
+
+        let bestLink = null;
+        let bestScore = -1;
+
+        links.forEach(link => {
+            if (!link.href) return;
+            let linkUrl;
+            try {
+                linkUrl = new URL(link.href, location.origin);
+            } catch {
+                return;
+            }
+
+            const linkPath = normPath(linkUrl.pathname);
+            const linkQuery = linkUrl.searchParams;
+
+            let score = -1;
+
+            if (currentPath === linkPath) {
+                score = 10;
+                let queryMatchCount = 0;
+                let queryMismatch = false;
+
+                linkQuery.forEach((val, key) => {
+                    if (currentQuery.get(key) === val) {
+                        queryMatchCount++;
+                    } else {
+                        queryMismatch = true;
+                    }
+                });
+
+                if (queryMismatch) {
+                    score = 0;
+                } else {
+                    score += queryMatchCount * 10;
+                }
+            } else if (linkPath.endsWith('/index') && currentPath === normPath(linkPath.replace(/\/index$/, ''))) {
+                score = 8;
+            }
+
+            if (score > bestScore) {
+                bestScore = score;
+                bestLink = link;
+            }
+        });
+
+        links.forEach(link => {
+            if (bestLink && link === bestLink && bestScore > 0) {
                 link.classList.add('active');
             } else {
                 link.classList.remove('active');
@@ -1230,6 +1290,7 @@
                 sidebars[i].remove();
             }
         }
+        updateSidebarActive(location.href);
     });
 
 })();

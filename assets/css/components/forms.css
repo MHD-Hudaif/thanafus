@@ -1,0 +1,85 @@
+/* =====================================================
+   FORMS.CSS - Input Controls, Checkboxes & Form Groups
+   ===================================================== */
+
+.input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 16px;
+}
+
+.input-group label {
+    font-size: 13px;
+    font-weight: 700;
+    color: #cbd5e1;
+}
+.input-group label .required {
+    color: #ef4444;
+}
+
+.form-input,
+.form-select,
+textarea.form-input {
+    width: 100%;
+    padding: 10px 14px;
+    font-size: 13.5px;
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    outline: none;
+    transition: all 0.25s ease;
+}
+
+.form-input:focus,
+.form-select:focus,
+textarea.form-input:focus {
+    border-color: #818cf8;
+    background: rgba(255, 255, 255, 0.07);
+    box-shadow: 0 0 12px rgba(99, 102, 241, 0.3);
+}
+
+.form-select option {
+    background-color: #0f172a;
+    color: #ffffff;
+    padding: 10px;
+}
+
+/* Custom Checkbox Component */
+.custom-checkbox-input {
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    width: 20px !important;
+    height: 20px !important;
+    min-width: 20px !important;
+    border-radius: 6px !important;
+    border: 1.5px solid rgba(255, 255, 255, 0.2) !important;
+    background: rgba(15, 23, 42, 0.6) !important;
+    cursor: pointer !important;
+    position: relative !important;
+    transition: all 0.2s ease !important;
+    margin: 0 !important;
+    flex-shrink: 0;
+}
+
+.custom-checkbox-input:checked {
+    background: #6366f1 !important;
+    border-color: #818cf8 !important;
+    box-shadow: 0 0 10px rgba(99, 102, 241, 0.5) !important;
+}
+
+.custom-checkbox-input:checked::after {
+    content: '✓';
+    font-weight: 900;
+    font-size: 13px;
+    color: #ffffff;
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.custom-checkbox-input:disabled {
+    opacity: 0.4;
+    cursor: not-allowed !important;
+}

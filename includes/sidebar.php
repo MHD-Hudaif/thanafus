@@ -22,11 +22,15 @@ $activeTeamId  = $_SESSION['active_team_id'] ?? null;
 |--------------------------------------------------------------------------
 */
 
-$currentPath = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+$currentPath = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH);
+$requestUri  = $_SERVER['REQUEST_URI'] ?? '';
 
 if (!function_exists('admin_sidebar_is_active')) {
 function admin_sidebar_is_active($path) {
-    global $currentPath;
+    global $currentPath, $requestUri;
+    if (str_contains($path, '?') || str_contains($path, '=')) {
+        return str_contains($requestUri, $path) ? 'active' : '';
+    }
     return str_contains($currentPath, $path) ? 'active' : '';
 }
 }
@@ -111,13 +115,13 @@ $_SESSION['active_workspace'] = $activeSpace;
             <a href="<?= app_url('/admin/printer/id-cards-search.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('id-cards-search') ?>">
                 <i class="fa-solid fa-address-card"></i> <span>ID Cards</span>
             </a>
-            <a href="<?= app_url('/admin/event-manager/chest-numbers.php') ?>?mode=print" class="sidebar-vertical-link <?= str_contains($currentPath, 'chest-numbers') ? 'active' : '' ?>">
+            <a href="<?= app_url('/admin/printer/chest-numbers.php') ?>" class="sidebar-vertical-link <?= str_contains($currentPath, 'chest-numbers') ? 'active' : '' ?>">
                 <i class="fa-solid fa-id-badge"></i> <span>Chest Numbers</span>
             </a>
-            <a href="<?= app_url('/admin/event-manager/members.php') ?>?mode=export" class="sidebar-vertical-link <?= str_contains($currentPath, 'members') ? 'active' : '' ?>">
+            <a href="<?= app_url('/admin/printer/members-export.php') ?>" class="sidebar-vertical-link <?= str_contains($currentPath, 'members-export') ? 'active' : '' ?>">
                 <i class="fa-solid fa-file-csv"></i> <span>CSV Export</span>
             </a>
-            <a href="<?= app_url('/admin/score-entry/program-scores.php') ?>?mode=print" class="sidebar-vertical-link <?= str_contains($currentPath, 'program-scores') ? 'active' : '' ?>">
+            <a href="<?= app_url('/admin/printer/score-sheets.php') ?>" class="sidebar-vertical-link <?= str_contains($currentPath, 'score-sheets') ? 'active' : '' ?>">
                 <i class="fa-solid fa-file-pdf"></i> <span>Score Sheets</span>
             </a>
 
@@ -132,7 +136,7 @@ $_SESSION['active_workspace'] = $activeSpace;
             <a href="<?= app_url('/admin/registrar/entries.php?view=programs') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('view=programs') ?>">
                 <i class="fa-solid fa-list-check"></i> <span>All Programs</span>
             </a>
-            <a href="<?= app_url('/admin/registrar/entries.php?program_id=' . $activeProgramId) ?>" class="sidebar-vertical-link program-entries-link <?= str_contains($currentPath, 'entries.php') && $hasActiveProgram ? 'active' : '' ?> <?= !$hasActiveProgram ? 'hidden-link' : 'slide-in-link' ?>" id="sidebarProgramEntriesLink">
+            <a href="<?= app_url('/admin/registrar/entries.php?program_id=' . $activeProgramId) ?>" class="sidebar-vertical-link program-entries-link <?= (str_contains($requestUri, 'program_id=') || (str_contains($currentPath, 'entries.php') && !str_contains($requestUri, 'view=programs'))) && $hasActiveProgram ? 'active' : '' ?> <?= !$hasActiveProgram ? 'hidden-link' : 'slide-in-link' ?>" id="sidebarProgramEntriesLink">
                 <i class="fa-solid fa-rectangle-list"></i> <span>Program Entries</span>
             </a>
             <a href="<?= app_url('/admin/registrar/add-entry.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('add-entry.php') ?>">
@@ -167,6 +171,25 @@ $_SESSION['active_workspace'] = $activeSpace;
                 <i class="fa-solid fa-file-lines"></i> <span>Score Sheets</span>
             </a>
 
+        <?php elseif ($activeSpace === 'printer'): ?>
+            <a href="<?= app_url('/admin/printer/index.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('/admin/printer/index.php') ?>">
+                <i class="fa-solid fa-circle-info"></i> <span>Overview</span>
+            </a>
+            <a href="<?= app_url('/admin/printer/id-cards-search.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('id-cards-search') ?>">
+                <i class="fa-solid fa-address-card"></i> <span>ID Cards</span>
+            </a>
+            <a href="<?= app_url('/admin/printer/chest-numbers.php') ?>" class="sidebar-vertical-link <?= str_contains($currentPath, 'chest-numbers') ? 'active' : '' ?>">
+                <i class="fa-solid fa-id-badge"></i> <span>Chest Numbers</span>
+            </a>
+            <a href="<?= app_url('/admin/printer/members-export.php') ?>" class="sidebar-vertical-link <?= str_contains($currentPath, 'members-export') ? 'active' : '' ?>">
+                <i class="fa-solid fa-file-csv"></i> <span>CSV Export</span>
+            </a>
+            <a href="<?= app_url('/admin/printer/score-sheets.php') ?>" class="sidebar-vertical-link <?= str_contains($currentPath, 'score-sheets') ? 'active' : '' ?>">
+                <i class="fa-solid fa-file-pdf"></i> <span>Score Sheets</span>
+            </a>
+            <a href="<?= app_url('/admin/printer/mc-sheets.php') ?>" class="sidebar-vertical-link <?= str_contains($currentPath, 'mc-sheets') ? 'active' : '' ?>">
+                <i class="fa-solid fa-microphone"></i> <span>MC Sheets</span>
+            </a>
         <?php elseif ($activeSpace === 'score-update'): ?>
             <a href="<?= app_url('/admin/score-update/index.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('/admin/score-update/index.php') ?>">
                 <i class="fa-solid fa-circle-info"></i> <span>Overview</span>
@@ -253,14 +276,17 @@ $_SESSION['active_workspace'] = $activeSpace;
                 <a href="<?= app_url('/admin/printer/id-cards-search.php') ?>" class="nav-item-link <?= admin_sidebar_is_active('id-cards-search') ?>">
                     <i class="fa-solid fa-address-card"></i> <span>ID Cards</span>
                 </a>
-                <a href="<?= app_url('/admin/event-manager/chest-numbers.php') ?>?mode=print" class="nav-item-link <?= str_contains($currentPath, 'chest-numbers') ? 'active' : '' ?>">
+                <a href="<?= app_url('/admin/printer/chest-numbers.php') ?>" class="nav-item-link <?= str_contains($currentPath, 'chest-numbers') ? 'active' : '' ?>">
                     <i class="fa-solid fa-id-badge"></i> <span>Chest Numbers</span>
                 </a>
-                <a href="<?= app_url('/admin/event-manager/members.php') ?>?mode=export" class="nav-item-link <?= str_contains($currentPath, 'members') ? 'active' : '' ?>">
+                <a href="<?= app_url('/admin/printer/members-export.php') ?>" class="nav-item-link <?= str_contains($currentPath, 'members-export') ? 'active' : '' ?>">
                     <i class="fa-solid fa-file-csv"></i> <span>CSV Export</span>
                 </a>
-                <a href="<?= app_url('/admin/score-entry/program-scores.php') ?>?mode=print" class="nav-item-link <?= str_contains($currentPath, 'program-scores') ? 'active' : '' ?>">
+                <a href="<?= app_url('/admin/printer/score-sheets.php') ?>" class="nav-item-link <?= str_contains($currentPath, 'score-sheets') ? 'active' : '' ?>">
                     <i class="fa-solid fa-file-pdf"></i> <span>Score Sheets</span>
+                </a>
+                <a href="<?= app_url('/admin/printer/mc-sheets.php') ?>" class="nav-item-link <?= str_contains($currentPath, 'mc-sheets') ? 'active' : '' ?>">
+                    <i class="fa-solid fa-microphone"></i> <span>MC Sheets</span>
                 </a>
 
             <?php elseif ($activeSpace === 'registrar'): ?>

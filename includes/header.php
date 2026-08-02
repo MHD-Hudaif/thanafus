@@ -59,7 +59,7 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"
 >
 
 <!-- =====================================================
-CSS Categorized Architecture
+CSS Component Architecture
 ===================================================== -->
 <link
     rel="stylesheet"

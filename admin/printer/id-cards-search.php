@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__ . '/../includes/id-card-helpers.php';
+require_once __DIR__ . '/../../includes/id-card-helpers.php';
 require_login();
 
 if (isset($_GET['limit'])) {
@@ -58,13 +58,9 @@ if ($search !== '') {
             OR s.display_name LIKE ?
             OR s.full_name LIKE ?
             OR t.team_name LIKE ?
-            OR c.name LIKE ?
-            OR ct.name LIKE ?
         )
     ";
     $like = '%' . $search . '%';
-    $queryParams[] = $like;
-    $queryParams[] = $like;
     $queryParams[] = $like;
     $queryParams[] = $like;
     $queryParams[] = $like;
@@ -79,8 +75,6 @@ $stmt = $pdo->prepare("
     JOIN musabaqa_teams t ON t.id = mtm.team_id
     JOIN musabaqa_events ev ON ev.id = mtm.event_id
     JOIN kauzariyya.students s ON s.id = mtm.student_id
-    LEFT JOIN kauzariyya.classes c ON c.id = s.class_id
-    LEFT JOIN kauzariyya.class_types ct ON ct.id = c.class_type_id
     WHERE mtm.event_id = ?
       AND mtm.status = 'active'
       {$searchQuery}
@@ -119,18 +113,11 @@ $stmt = $pdo->prepare("
         ev.title AS event_title,
         COALESCE(NULLIF(s.display_name, ''), s.full_name) AS display_name,
         s.full_name,
-        s.name_arabic,
-        s.place,
-        s.admission_no,
-        c.class_type_id,
-        c.name AS section,
-        ct.name AS class_type_name
+        s.name_arabic
     FROM musabaqa_team_members mtm
     JOIN musabaqa_teams t ON t.id = mtm.team_id
     JOIN musabaqa_events ev ON ev.id = mtm.event_id
     JOIN kauzariyya.students s ON s.id = mtm.student_id
-    LEFT JOIN kauzariyya.classes c ON c.id = s.class_id
-    LEFT JOIN kauzariyya.class_types ct ON ct.id = c.class_type_id
     WHERE mtm.event_id = ?
       AND mtm.status = 'active'
       {$searchQuery}
@@ -138,34 +125,24 @@ $stmt = $pdo->prepare("
     LIMIT " . (int)$limit . " OFFSET " . (int)$offset . "
 ");
 $stmt->execute($queryParams);
-$paginatedRaw = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-$paginatedMembers = [];
-foreach ($paginatedRaw as $member) {
-    $member['category'] = id_card_category_label($member['class_type_name'] ?? null, (int)($member['class_type_id'] ?? 0));
-    $paginatedMembers[] = $member;
-}
+$paginatedMembers = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Generate HTML for Table Rows
 $html = '';
 if (empty($paginatedMembers)) {
-    $html .= '<tr><td colspan="6" class="empty-state-row" style="text-align: center; padding: 30px; color: var(--muted);"><div class="empty-title">No Members Found</div></td></tr>';
+    $html .= '<tr><td colspan="4" class="empty-state-row" style="text-align: center; padding: 30px; color: var(--muted);"><div class="empty-title">No Members Found</div></td></tr>';
 } else {
     foreach ($paginatedMembers as $member) {
         $chestLabel = trim((string)($member['chest_number'] ?? '')) !== '' ? '#' . htmlspecialchars((string)$member['chest_number'], ENT_QUOTES, 'UTF-8') : '-';
         $displayName = htmlspecialchars($member['display_name'] ?? '', ENT_QUOTES, 'UTF-8');
         $teamColor = htmlspecialchars($member['team_color'] ?: '#14b8a6', ENT_QUOTES, 'UTF-8');
         $teamName = htmlspecialchars($member['team_name'] ?? '', ENT_QUOTES, 'UTF-8');
-        $section = htmlspecialchars($member['section'] ?: '-', ENT_QUOTES, 'UTF-8');
-        $category = htmlspecialchars($member['category'] ?: '-', ENT_QUOTES, 'UTF-8');
         $memberJson = htmlspecialchars(json_encode($member, JSON_HEX_APOS | JSON_HEX_QUOT), ENT_QUOTES, 'UTF-8');
 
         $html .= '<tr>';
         $html .= '<td><strong>' . $chestLabel . '</strong></td>';
         $html .= '<td>' . $displayName . '</td>';
         $html .= '<td><span class="team-color-pill" style="background: ' . $teamColor . '22; color:#fff;"><span class="team-color-dot" style="width:12px;height:12px;background:' . $teamColor . ';"></span>' . $teamName . '</span></td>';
-        $html .= '<td>' . $section . '</td>';
-        $html .= '<td><span class="badge badge-info">' . $category . '</span></td>';
         $html .= '<td style="text-align: right;">';
         $html .= '<button class="btn btn-secondary btn-sm" type="button" data-edit-member=\'' . $memberJson . '\' title="Edit Chest Number"><i class="fa-solid fa-pen"></i> Edit</button>';
         $html .= '</td>';
@@ -241,6 +218,7 @@ $flash = admin_take_flash();
         </div>
         <div class="flex gap-2 flex-wrap">
             <a href="<?= app_url('/admin/printer/index.php') ?>" class="btn btn-secondary btn-md"><i class="fa-solid fa-arrow-left"></i> Back to Hub</a>
+            <a href="<?= app_url('/admin/printer/id-card-designer.php') ?>" class="btn btn-primary btn-md"><i class="fa-solid fa-wand-magic-sparkles"></i> Customize ID Cards Layout</a>
             <a href="<?= app_url('/admin/printer/id-cards.php') ?>" target="_blank" class="btn btn-success btn-md"><i class="fa-solid fa-print"></i> Print All ID Cards</a>
         </div>
     </div>
@@ -291,8 +269,6 @@ $flash = admin_take_flash();
                         <th>Chest #</th>
                         <th>Display Name</th>
                         <th>Team</th>
-                        <th>Section</th>
-                        <th>Category</th>
                         <th style="text-align: right;">Actions</th>
                     </tr>
                 </thead>

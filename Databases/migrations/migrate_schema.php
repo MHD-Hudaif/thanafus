@@ -65,6 +65,15 @@ try {
         echo "team_score column already exists.\n";
     }
 
+    // Add performance_order column to musabaqa_program_entries if it doesn't exist
+    if (!in_array('performance_order', $pe_cols, true)) {
+        $musabaqa_pdo->exec("ALTER TABLE musabaqa_program_entries ADD COLUMN performance_order INT NOT NULL DEFAULT 0 AFTER team_score");
+        $musabaqa_pdo->exec("UPDATE musabaqa_program_entries SET performance_order = FLOOR(1 + RAND() * 1000000)");
+        echo "Added and populated performance_order column in musabaqa_program_entries.\n";
+    } else {
+        echo "performance_order column already exists.\n";
+    }
+
     // 4. Backfill existing rankings
     $backfillCount = $musabaqa_pdo->exec("
         UPDATE musabaqa_program_entries
@@ -124,6 +133,27 @@ try {
     } else {
         echo "only_team_marks column already exists.\n";
     }
+
+    // 8. Create musabaqa_id_card_templates table if missing
+    $musabaqa_pdo->exec("
+        CREATE TABLE IF NOT EXISTS `musabaqa_id_card_templates` (
+          `id` INT NOT NULL AUTO_INCREMENT,
+          `event_id` INT NOT NULL,
+          `team_id` INT NULL DEFAULT NULL,
+          `background_image` VARCHAR(255) NULL DEFAULT NULL,
+          `orientation` VARCHAR(20) NOT NULL DEFAULT 'portrait',
+          `card_width` INT NOT NULL DEFAULT 600,
+          `card_height` INT NOT NULL DEFAULT 950,
+          `layout_config` LONGTEXT NULL,
+          `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+          `updated_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          PRIMARY KEY (`id`),
+          UNIQUE KEY `uk_event_team` (`event_id`, `team_id`),
+          KEY `idx_event_id` (`event_id`),
+          KEY `idx_team_id` (`team_id`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    ");
+    echo "Ensured musabaqa_id_card_templates table exists.\n";
 
     echo "Migration completed successfully!\n";
 } catch (Throwable $e) {

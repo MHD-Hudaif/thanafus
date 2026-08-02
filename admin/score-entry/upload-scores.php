@@ -345,7 +345,7 @@ if ($program) {
         LEFT JOIN musabaqa_score_sheets ss ON ss.entry_id = pe.id
         WHERE pe.event_id = ?
           AND pe.program_id = ?
-        ORDER BY pe.entry_number ASC, pe.id ASC
+        ORDER BY pe.performance_order ASC, pe.id ASC
     ");
     $stmt->execute([$activeEventId, $programId]);
     $entries = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -479,6 +479,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                         <table class="table">
                             <thead>
                                 <tr>
+                                    <th style="width: 50px;">Order</th>
                                     <th>Chest</th>
                                     <th>Name</th>
                                     <th>Team</th>
@@ -487,9 +488,11 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                 </tr>
                             </thead>
                             <tbody>
+                                <?php $orderIndex = 1; ?>
                                 <?php foreach ($entries as $entry): ?>
                                     <?php $hasSheet = !empty($entry['score_sheet_id']); ?>
                                     <tr>
+                                        <td><strong><?= $orderIndex++ ?></strong></td>
                                         <td><strong>#<?= e(str_pad((string)$entry['entry_number'], 3, '0', STR_PAD_LEFT)) ?></strong></td>
                                         <td><?= e($entry['entry_name'] ?: 'Unnamed Entry') ?></td>
                                         <td>

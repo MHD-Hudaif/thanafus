@@ -302,13 +302,13 @@ function render_admin_team_card(array $team): string
             <h3 class="team-title" style="color: #ffffff;"><?= $name ?></h3>
 
             <div class="team-meta-roles">
-                <div class="meta-role-item <?= $leaderName ? 'has-leader' : 'no-leader' ?>" style="<?= $leaderName ? "background: {$color}22; color: {$color}; font-weight:700;" : '' ?>">
-                    <i class="fa-solid fa-user-graduate"></i>
-                    <span><?= $leaderName ? $leaderName : 'No Leader Assigned' ?></span>
-                </div>
                 <div class="meta-role-item <?= $teacherName ? 'has-teacher' : 'no-teacher' ?>">
                     <i class="fa-solid fa-chalkboard-user"></i>
-                    <span><?= $teacherName ? $teacherName : 'No In-Charge Teacher' ?></span>
+                    <span><strong>Teacher:</strong> <?= $teacherName ? $teacherName : 'No In-Charge Teacher' ?></span>
+                </div>
+                <div class="meta-role-item <?= $leaderName ? 'has-leader' : 'no-leader' ?>" style="<?= $leaderName ? "background: {$color}22; color: {$color}; font-weight:700;" : '' ?>">
+                    <i class="fa-solid fa-user-graduate"></i>
+                    <span><strong>Leader:</strong> <?= $leaderName ? $leaderName : 'No Leader Assigned' ?></span>
                 </div>
             </div>
 

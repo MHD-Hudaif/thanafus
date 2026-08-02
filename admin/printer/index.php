@@ -99,6 +99,46 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                 <div class="panel">
                     <h3 class="mb-4"><i class="fa-solid fa-compass mr-2" style="color: var(--accent);"></i> Quick Navigation</h3>
                     <div class="dashboard-list">
+                        <a href="<?= app_url('/admin/printer/judge-sheet.php') ?>" class="sidebar-action-btn">
+                            <div class="sidebar-action-icon" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">
+                                <i class="fa-solid fa-clipboard-check"></i>
+                            </div>
+                            <div class="sidebar-action-info">
+                                <div class="sidebar-action-title">Judge Chest Number Sheet</div>
+                                <div class="sidebar-action-subtitle">Dynamic 2-layout judge score sheet</div>
+                            </div>
+                        </a>
+
+                        <a href="<?= app_url('/admin/printer/score-sheets.php') ?>?print_type=scores" class="sidebar-action-btn">
+                            <div class="sidebar-action-icon" style="background: rgba(139, 92, 246, 0.15); color: var(--accent);">
+                                <i class="fa-solid fa-file-invoice"></i>
+                            </div>
+                            <div class="sidebar-action-info">
+                                <div class="sidebar-action-title">Judges Score Sheets</div>
+                                <div class="sidebar-action-subtitle">Batch print sheets for judges</div>
+                            </div>
+                        </a>
+
+                        <a href="<?= app_url('/admin/printer/mc-sheets.php') ?>" class="sidebar-action-btn">
+                            <div class="sidebar-action-icon" style="background: rgba(14, 165, 233, 0.15); color: #38bdf8;">
+                                <i class="fa-solid fa-microphone"></i>
+                            </div>
+                            <div class="sidebar-action-info">
+                                <div class="sidebar-action-title">Emcee Stage Sheets</div>
+                                <div class="sidebar-action-subtitle">Batch print MC stage sheets</div>
+                            </div>
+                        </a>
+
+                        <a href="<?= app_url('/admin/printer/id-card-designer.php') ?>" class="sidebar-action-btn">
+                            <div class="sidebar-action-icon" style="background: rgba(59, 130, 246, 0.15); color: #3b82f6;">
+                                <i class="fa-solid fa-wand-magic-sparkles"></i>
+                            </div>
+                            <div class="sidebar-action-info">
+                                <div class="sidebar-action-title">ID Card Designer</div>
+                                <div class="sidebar-action-subtitle">Upload raw cards & customize positions</div>
+                            </div>
+                        </a>
+
                         <a href="<?= app_url('/admin/printer/id-cards-search.php') ?>" class="sidebar-action-btn">
                             <div class="sidebar-action-icon" style="background: rgba(139, 92, 246, 0.15); color: var(--accent);">
                                 <i class="fa-solid fa-address-card"></i>
@@ -109,7 +149,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                             </div>
                         </a>
 
-                        <a href="<?= app_url('/admin/event-manager/chest-numbers.php') ?>?mode=print" class="sidebar-action-btn">
+                        <a href="<?= app_url('/admin/printer/chest-numbers.php') ?>" class="sidebar-action-btn">
                             <div class="sidebar-action-icon" style="background: rgba(139, 92, 246, 0.15); color: var(--accent);">
                                 <i class="fa-solid fa-id-badge"></i>
                             </div>
@@ -119,23 +159,13 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                             </div>
                         </a>
 
-                        <a href="<?= app_url('/admin/event-manager/members.php') ?>?mode=export" class="sidebar-action-btn">
+                        <a href="<?= app_url('/admin/printer/members-export.php') ?>" class="sidebar-action-btn">
                             <div class="sidebar-action-icon" style="background: rgba(139, 92, 246, 0.15); color: var(--accent);">
                                 <i class="fa-solid fa-file-csv"></i>
                             </div>
                             <div class="sidebar-action-info">
                                 <div class="sidebar-action-title">Export Team Roster</div>
                                 <div class="sidebar-action-subtitle">Download CSV datasets</div>
-                            </div>
-                        </a>
-
-                        <a href="<?= app_url('/admin/score-entry/program-scores.php') ?>?mode=print" class="sidebar-action-btn">
-                            <div class="sidebar-action-icon" style="background: rgba(139, 92, 246, 0.15); color: var(--accent);">
-                                <i class="fa-solid fa-file-pdf"></i>
-                            </div>
-                            <div class="sidebar-action-info">
-                                <div class="sidebar-action-title">Print Score Sheets</div>
-                                <div class="sidebar-action-subtitle">Print results & sheets</div>
                             </div>
                         </a>
 

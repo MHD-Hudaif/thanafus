@@ -12,7 +12,6 @@ require_once __DIR__ . '/../../includes/header.php';
 require_once __DIR__ . '/../../includes/sidebar.php';
 ?>
 
-<link rel="stylesheet" href="<?= asset_url('css/musabaqa-categories.css') ?>">
 <script src="<?= asset_url('js/musabaqa-animated-bg.js') ?>"></script>
 
 <div class="main-content">
