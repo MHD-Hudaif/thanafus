@@ -1,1 +1,0 @@
-console.log("Kauzariyya Musabaqa Loaded");

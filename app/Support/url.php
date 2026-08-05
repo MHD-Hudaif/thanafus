@@ -5,6 +5,22 @@ if (!function_exists('app_normalize_base_url')) {
     {
         $baseUrl = trim((string)$baseUrl);
 
+        if (strtolower($baseUrl) === 'auto') {
+            if (isset($_SERVER['DOCUMENT_ROOT']) && $_SERVER['DOCUMENT_ROOT'] !== '') {
+                $docRoot = rtrim(str_replace('\\', '/', realpath($_SERVER['DOCUMENT_ROOT'])), '/');
+                $appRoot = rtrim(str_replace('\\', '/', defined('APP_ROOT') ? APP_ROOT : dirname(__DIR__, 2)), '/');
+                
+                if (stripos($appRoot, $docRoot) === 0) {
+                    $relative = substr($appRoot, strlen($docRoot));
+                    $baseUrl = '/' . ltrim($relative, '/');
+                } else {
+                    $baseUrl = '';
+                }
+            } else {
+                $baseUrl = '';
+            }
+        }
+
         if ($baseUrl === '' || $baseUrl === '/') {
             return '';
         }
