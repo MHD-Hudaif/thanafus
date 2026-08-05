@@ -25,6 +25,68 @@ if (!defined('DB_MUSABAQA_NAME')) {
 $dashboard_dsn =
 "mysql:host={$DB_HOST};dbname={$dashboard_db_name};charset={$DB_CHARSET}";
 
+if (!class_exists('LazyPDO')) {
+    class LazyPDO {
+        private ?PDO $pdo = null;
+        private Closure $initializer;
+
+        public function __construct(Closure $initializer) {
+            $this->initializer = $initializer;
+        }
+
+        public function getRealPdo(): PDO {
+            if ($this->pdo === null) {
+                $this->pdo = ($this->initializer)();
+            }
+            return $this->pdo;
+        }
+
+        public function __call(string $name, array $arguments): mixed {
+            return $this->getRealPdo()->$name(...$arguments);
+        }
+
+        public function prepare(string $query, array $options = []): PDOStatement {
+            return $this->getRealPdo()->prepare($query, $options);
+        }
+
+        public function query(string $query, ?int $fetchMode = null, mixed ...$fetchModeArgs): PDOStatement|false {
+            return $this->getRealPdo()->query($query, $fetchMode, ...$fetchModeArgs);
+        }
+
+        public function exec(string $statement): int|false {
+            return $this->getRealPdo()->exec($statement);
+        }
+
+        public function lastInsertId(?string $name = null): string|false {
+            return $this->getRealPdo()->lastInsertId($name);
+        }
+
+        public function beginTransaction(): bool {
+            return $this->getRealPdo()->beginTransaction();
+        }
+
+        public function commit(): bool {
+            return $this->getRealPdo()->commit();
+        }
+
+        public function rollBack(): bool {
+            return $this->getRealPdo()->rollBack();
+        }
+
+        public function inTransaction(): bool {
+            return $this->getRealPdo()->inTransaction();
+        }
+
+        public function setAttribute(int $attribute, mixed $value): bool {
+            return $this->getRealPdo()->setAttribute($attribute, $value);
+        }
+
+        public function getAttribute(int $attribute): mixed {
+            return $this->getRealPdo()->getAttribute($attribute);
+        }
+    }
+}
+
 function get_dashboard_pdo(): PDO {
     global $dashboard_dsn, $DB_USER, $DB_PASS;
     static $pdo = null;
@@ -43,7 +105,11 @@ function get_dashboard_pdo(): PDO {
     }
     return $pdo;
 }
-$dashboard_pdo = null;
+
+$dashboard_pdo = new LazyPDO(function() {
+    return get_dashboard_pdo();
+});
+
 
 
 /*
