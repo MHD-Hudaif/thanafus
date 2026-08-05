@@ -25,6 +25,9 @@ $dateLabel = $event ? date('d F Y', strtotime($event['start_date'] ?? '2026-07-1
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script>
+    window.APP_BASE_URL = <?= json_encode(app_url('/')) ?>;
+  </script>
   <meta name="theme-color" content="#07100c">
   <meta name="description" content="The official Kauzariyya Musabaqa companion for live scores, schedules, participants and festival results.">
   <title><?= e($title) ?></title>

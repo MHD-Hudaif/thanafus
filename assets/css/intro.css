@@ -131,6 +131,14 @@ header {
     transform: translateY(-2px);
 }
 
+.mobile-login-item {
+    display: none;
+}
+
+.menu-toggle-btn {
+    display: none;
+}
+
 /* Hero Section */
 .hero {
     min-height: 100vh;
@@ -752,9 +760,74 @@ footer {
 
 /* Responsiveness */
 @media (max-width: 991px) {
+    .menu-toggle-btn {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        width: 24px;
+        height: 18px;
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        padding: 0;
+        z-index: 101;
+    }
+    .menu-toggle-btn span {
+        display: block;
+        width: 100%;
+        height: 2px;
+        background-color: var(--brand-blue);
+        border-radius: 2px;
+        transition: var(--transition);
+    }
+    /* Animate hamburger to X when active */
+    .menu-toggle-btn.open span:nth-child(1) {
+        transform: translateY(8px) rotate(45deg);
+    }
+    .menu-toggle-btn.open span:nth-child(2) {
+        opacity: 0;
+    }
+    .menu-toggle-btn.open span:nth-child(3) {
+        transform: translateY(-8px) rotate(-45deg);
+    }
+
     .nav-menu {
+        display: flex;
+        flex-direction: column;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: rgba(252, 250, 246, 0.98);
+        backdrop-filter: blur(12px);
+        border-bottom: 1px solid var(--card-border);
+        padding: 2rem;
+        gap: 1.5rem;
+        align-items: stretch;
+        text-align: center;
+        opacity: 0;
+        visibility: hidden;
+        transform: translateY(-10px);
+        transition: var(--transition);
+        pointer-events: none;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+        z-index: 99;
+    }
+    .nav-menu.open {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0);
+        pointer-events: auto;
+    }
+
+    .mobile-login-item {
+        display: block;
+        margin-top: 1rem;
+    }
+    .nav-container > .btn-login {
         display: none;
     }
+
     .map-card {
         grid-template-columns: 1fr;
     }
@@ -767,6 +840,8 @@ footer {
     
     .countdown-container {
         gap: 0.75rem;
+        flex-wrap: wrap;
+        justify-content: center;
     }
     
     .countdown-box {
@@ -776,6 +851,11 @@ footer {
     
     .countdown-value {
         font-size: 1.8rem;
+    }
+
+    .scoring-table-container {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
     }
     
     .footer-top {

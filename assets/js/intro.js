@@ -197,4 +197,47 @@ document.addEventListener('DOMContentLoaded', () => {
     
     window.addEventListener('scroll', revealOnScroll);
     revealOnScroll(); // Trigger initial check
+
+    // 5. Mobile Menu Toggle
+    const menuToggle = document.querySelector('.menu-toggle-btn');
+    const navMenu = document.querySelector('.nav-menu');
+    
+    if (menuToggle && navMenu) {
+        const toggleMenu = () => {
+            const isOpen = navMenu.classList.toggle('open');
+            menuToggle.classList.toggle('open', isOpen);
+            menuToggle.setAttribute('aria-expanded', String(isOpen));
+        };
+        
+        const closeMenu = () => {
+            navMenu.classList.remove('open');
+            menuToggle.classList.remove('open');
+            menuToggle.setAttribute('aria-expanded', 'false');
+        };
+        
+        menuToggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleMenu();
+        });
+        
+        // Close menu on link clicks
+        const menuLinks = navMenu.querySelectorAll('a');
+        menuLinks.forEach(link => {
+            link.addEventListener('click', closeMenu);
+        });
+        
+        // Close menu when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!navMenu.contains(e.target) && !menuToggle.contains(e.target)) {
+                closeMenu();
+            }
+        });
+
+        // Close menu on Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeMenu();
+            }
+        });
+    }
 });

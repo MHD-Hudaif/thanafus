@@ -109,9 +109,17 @@ try {
                 <li><a href="#scholars" class="nav-link">Working Committee</a></li>
                 <li><a href="#stages" class="nav-link">Stages</a></li>
                 <li><a href="#location" class="nav-link">Location</a></li>
+                <li class="mobile-login-item"><a href="admin.php" class="btn-login">Portal Login</a></li>
             </ul>
             
             <a href="admin.php" class="btn-login">Portal Login</a>
+
+            <!-- Mobile Menu Toggle Button -->
+            <button class="menu-toggle-btn" aria-expanded="false" aria-label="Toggle navigation">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
         </div>
     </header>
 

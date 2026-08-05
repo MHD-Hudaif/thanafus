@@ -149,8 +149,8 @@
     const pollScores = async () => {
       if (document.hidden) return; // Pause polling when tab is inactive
       try {
-        const baseUrl = window.location.pathname.startsWith('/tv') ? '' : '/tv';
-        const response = await fetch(`${baseUrl}/api/leaderboard.php`, { cache: 'no-cache' });
+        const base = window.APP_BASE_URL || '/';
+        const response = await fetch(`${base}tv/api/leaderboard.php`, { cache: 'no-cache' });
         if (response.status === 304) return; // Not modified
         const res = await response.json();
         if (!res.success || !Array.isArray(res.data?.leaderboard)) return;
