@@ -9,6 +9,7 @@ $isLoggedIn = !empty($user);
 $page = $page ?? 'home';
 $title = $title ?? 'Al Jamiathul Kauzariyya | Musabaqa Platform';
 $nav = [
+    'intro' => 'Intro',
     'home' => 'Home',
     'scoreboard' => 'Scores',
     'schedule' => 'Schedule',
@@ -163,7 +164,7 @@ $dateLabel = $event ? date('d F Y', strtotime($event['start_date'] ?? '2026-07-1
   
   <nav class="site-nav" aria-label="Main navigation">
     <?php foreach ($nav as $key => $label): ?>
-      <?php $href = $key === 'home' ? app_url('/') : app_url('/' . $key); ?>
+      <?php $href = $key === 'intro' ? app_url('/') : app_url('/' . $key); ?>
       <a class="<?= $page === $key ? 'active' : '' ?>" href="<?= e($href) ?>"><?= e($label) ?></a>
     <?php endforeach; ?>
     

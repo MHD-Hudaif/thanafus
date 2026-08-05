@@ -259,3 +259,67 @@ function result_items(): array
         return [];
     }
 }
+
+function working_committee(): array
+{
+    $eventId = tv_active_event_id();
+    $pdo = $GLOBALS['musabaqa_pdo'];
+    $dashboardPdo = $GLOBALS['dashboard_pdo'];
+    
+    try {
+        if ($eventId > 0) {
+            $stmt = $pdo->prepare("
+                SELECT tt.id, tt.role, t.id as teacher_id, t.full_name, t.place, t.specialisation, u.profile_photo
+                FROM musabaqa_team_teachers tt
+                JOIN " . DB_PREFIX . "teachers t ON t.id = tt.teacher_id
+                LEFT JOIN " . DB_PREFIX . "users u ON u.id = t.user_id
+                WHERE tt.event_id = ? AND t.status = 'active'
+                ORDER BY tt.id ASC
+            ");
+            $stmt->execute([$eventId]);
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+            
+            if (!empty($rows)) {
+                $items = [];
+                foreach ($rows as $r) {
+                    $roleName = ucwords(str_replace('_', ' ', $r['role'] ?: ($r['specialisation'] ?: 'Working Committee')));
+                    $items[] = [
+                        'id' => (int)$r['id'],
+                        'name' => $r['full_name'],
+                        'role' => $roleName,
+                        'place' => $r['place'] ?: '',
+                        'image' => !empty($r['profile_photo']) ? $r['profile_photo'] : 'https://ui-avatars.com/api/?name=' . urlencode($r['full_name']) . '&background=1b4332&color=fff&size=512',
+                    ];
+                }
+                return $items;
+            }
+        }
+
+        // Fallback query to active teachers from teachers table if no team_teachers assigned
+        $stmt2 = $dashboardPdo->prepare("
+            SELECT t.id, t.full_name, t.place, t.specialisation, u.profile_photo
+            FROM teachers t
+            LEFT JOIN users u ON u.id = t.user_id
+            WHERE t.status = 'active' AND (t.specialisation IS NOT NULL OR t.full_name IS NOT NULL)
+            ORDER BY t.id ASC
+        ");
+        $stmt2->execute();
+        $rows2 = $stmt2->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        
+        $items = [];
+        foreach ($rows2 as $r) {
+            $items[] = [
+                'id' => (int)$r['id'],
+                'name' => $r['full_name'],
+                'role' => $r['specialisation'] ?: 'Working Committee Member',
+                'place' => $r['place'] ?: '',
+                'image' => !empty($r['profile_photo']) ? $r['profile_photo'] : 'https://ui-avatars.com/api/?name=' . urlencode($r['full_name']) . '&background=1b4332&color=fff&size=512',
+            ];
+        }
+        return $items;
+    } catch (Throwable $e) {
+        error_log('working_committee query failed: ' . $e->getMessage());
+        return [];
+    }
+}
+
