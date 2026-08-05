@@ -1,5 +1,5 @@
 ---
 deployment:
   tasks:
-    - export DEPLOYPATH=/home/$USER/public_html/kauzariyya-musabaqa/
+    - export DEPLOYPATH=/home1/$USER/public_html/kauzariyya-musabaqa/
     - /bin/cp -R * $DEPLOYPATH
