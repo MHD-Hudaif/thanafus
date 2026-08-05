@@ -25,7 +25,7 @@ if ($programId > 0 && $activeEvent) {
     $stmt = $pdo->prepare("
         SELECT p.*, ct.name AS class_type_name
         FROM musabaqa_programs p
-        LEFT JOIN kauzariyya.class_types ct ON ct.id = p.class_type_id
+        LEFT JOIN " . DB_MAIN_NAME . ".class_types ct ON ct.id = p.class_type_id
         WHERE p.id = ? AND p.event_id = ?
         LIMIT 1
     ");

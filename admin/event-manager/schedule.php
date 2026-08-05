@@ -305,8 +305,8 @@ $stmt = $pdo->prepare("
            t.full_name AS responsible_teacher_name, mp.allowed_sections, mp.stage_type_id,
            mp.{$startExpr} AS start_at, mp.{$endExpr} AS end_at
     FROM musabaqa_programs mp
-    LEFT JOIN kauzariyya.class_types ct ON ct.id = mp.class_type_id
-    LEFT JOIN kauzariyya.teachers t ON t.id = mp.responsible_teacher_id
+    LEFT JOIN " . DB_MAIN_NAME . ".class_types ct ON ct.id = mp.class_type_id
+    LEFT JOIN " . DB_MAIN_NAME . ".teachers t ON t.id = mp.responsible_teacher_id
     {$programWhere}
     ORDER BY mp.{$startExpr} ASC, mp.{$endExpr} ASC, mp.id ASC
 ");
@@ -344,8 +344,8 @@ $stmt = $pdo->prepare("
     SELECT mp.id, mp.title, mp.program_type, mp.class_type_id, ct.name AS class_type_name,
            t.full_name AS responsible_teacher_name, mp.allowed_sections
     FROM musabaqa_programs mp
-    LEFT JOIN kauzariyya.class_types ct ON ct.id = mp.class_type_id
-    LEFT JOIN kauzariyya.teachers t ON t.id = mp.responsible_teacher_id
+    LEFT JOIN " . DB_MAIN_NAME . ".class_types ct ON ct.id = mp.class_type_id
+    LEFT JOIN " . DB_MAIN_NAME . ".teachers t ON t.id = mp.responsible_teacher_id
     WHERE mp.event_id = ?
       AND (mp.{$startExpr} IS NULL OR mp.{$endExpr} IS NULL OR mp.stage_type_id IS NULL)
     ORDER BY mp.title ASC, mp.id DESC

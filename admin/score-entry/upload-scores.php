@@ -56,7 +56,7 @@ function program_scores_load_program(PDO $pdo, int $eventId, int $programId): ?a
     $stmt = $pdo->prepare("
         SELECT p.*, ct.name AS class_type_name
         FROM musabaqa_programs p
-        LEFT JOIN kauzariyya.class_types ct ON ct.id = p.class_type_id
+        LEFT JOIN " . DB_MAIN_NAME . ".class_types ct ON ct.id = p.class_type_id
         WHERE p.id = ? AND p.event_id = ?
         LIMIT 1
     ");
@@ -389,7 +389,7 @@ if ($program) {
             COALESCE(category_data.category_count, 0) AS category_count,
             COALESCE(category_data.category_total, 0) AS category_total
         FROM musabaqa_programs p
-        LEFT JOIN kauzariyya.class_types ct ON ct.id = p.class_type_id
+        LEFT JOIN " . DB_MAIN_NAME . ".class_types ct ON ct.id = p.class_type_id
         LEFT JOIN musabaqa_program_entries pe ON pe.program_id = p.id
         LEFT JOIN musabaqa_score_sheets ss ON ss.entry_id = pe.id
         LEFT JOIN (

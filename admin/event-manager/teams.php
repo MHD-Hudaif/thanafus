@@ -222,8 +222,8 @@ $leaderOptionsStmt = $pdo->prepare("
            COALESCE(NULLIF(c.name, ''), 'Unassigned') AS class_name,
            c.year AS class_year, c.class_type_id, c.id AS class_id
     FROM musabaqa_team_members tm
-    JOIN kauzariyya.students s ON s.id = tm.student_id AND s.status = 'active'
-    LEFT JOIN kauzariyya.classes c ON c.id = s.class_id
+    JOIN " . DB_MAIN_NAME . ".students s ON s.id = tm.student_id AND s.status = 'active'
+    LEFT JOIN " . DB_MAIN_NAME . ".classes c ON c.id = s.class_id
     WHERE tm.event_id = ? AND tm.status = 'active'
     ORDER BY tm.team_id ASC, (c.year IS NULL) ASC, c.year ASC, c.class_type_id ASC, c.id ASC, display_name ASC, s.id ASC
 ");

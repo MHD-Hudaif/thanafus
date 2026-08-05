@@ -32,11 +32,11 @@ $stmt = $pdo->prepare("
     FROM musabaqa_team_members mtm
     JOIN musabaqa_teams t ON t.id = mtm.team_id
     JOIN musabaqa_events ev ON ev.id = mtm.event_id
-    JOIN kauzariyya.students s ON s.id = mtm.student_id
-    LEFT JOIN kauzariyya.users u ON u.id = s.user_id
-    LEFT JOIN kauzariyya.classes c ON c.id = s.class_id
-    LEFT JOIN kauzariyya.class_types ct ON ct.id = c.class_type_id
-    LEFT JOIN kauzariyya.maddhabs m ON m.id = s.maddhab_id
+    JOIN " . DB_MAIN_NAME . ".students s ON s.id = mtm.student_id
+    LEFT JOIN " . DB_MAIN_NAME . ".users u ON u.id = s.user_id
+    LEFT JOIN " . DB_MAIN_NAME . ".classes c ON c.id = s.class_id
+    LEFT JOIN " . DB_MAIN_NAME . ".class_types ct ON ct.id = c.class_type_id
+    LEFT JOIN " . DB_MAIN_NAME . ".maddhabs m ON m.id = s.maddhab_id
     WHERE mtm.event_id = ?
       AND mtm.status = 'active'
     ORDER BY NULLIF(mtm.chest_number, '') IS NULL ASC, 

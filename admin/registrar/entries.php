@@ -53,7 +53,7 @@ function entries_load_program(PDO $pdo, int $eventId, int $programId): ?array
     $stmt = $pdo->prepare("
         SELECT mp.*, ct.name AS class_type_name
         FROM musabaqa_programs mp
-        LEFT JOIN kauzariyya.class_types ct ON ct.id = mp.class_type_id
+        LEFT JOIN " . DB_MAIN_NAME . ".class_types ct ON ct.id = mp.class_type_id
         WHERE mp.id = ? AND mp.event_id = ?
         LIMIT 1
     ");
@@ -76,7 +76,7 @@ $stmt = $pdo->prepare("
            mss.section_date AS schedule_section_date, mss.sort_order AS schedule_section_sort,
            (SELECT COUNT(*) FROM musabaqa_program_entries pe WHERE pe.program_id = mp.id AND pe.event_id = mp.event_id) AS current_entries
     FROM musabaqa_programs mp
-    LEFT JOIN kauzariyya.class_types ct ON ct.id = mp.class_type_id
+    LEFT JOIN " . DB_MAIN_NAME . ".class_types ct ON ct.id = mp.class_type_id
     LEFT JOIN musabaqa_schedule_sections mss ON mss.id = mp.section_id
     WHERE mp.event_id = ?
     ORDER BY COALESCE(mss.sort_order, 999) ASC, COALESCE(mss.start_time, '23:59:59') ASC, mp.title ASC
@@ -160,7 +160,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $stmt = $pdo->prepare("
                             SELECT tm.*, COALESCE(NULLIF(s.display_name, ''), s.full_name) AS full_name
                             FROM musabaqa_team_members tm
-                            JOIN kauzariyya.students s ON s.id = tm.student_id
+                            JOIN " . DB_MAIN_NAME . ".students s ON s.id = tm.student_id
                             WHERE tm.id = ?
                               AND tm.event_id = ?
                               AND tm.status = 'active'
@@ -283,7 +283,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $stmt = $pdo->prepare("
                             SELECT tm.*, COALESCE(NULLIF(s.display_name, ''), s.full_name) AS full_name
                             FROM musabaqa_team_members tm
-                            JOIN kauzariyya.students s ON s.id = tm.student_id
+                            JOIN " . DB_MAIN_NAME . ".students s ON s.id = tm.student_id
                             WHERE tm.id = ? AND tm.event_id = ? AND tm.team_id = ? AND tm.status = 'active'
                             LIMIT 1
                         ");
@@ -370,7 +370,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $stmt = $pdo->prepare("
                             SELECT tm.*, COALESCE(NULLIF(s.display_name, ''), s.full_name) AS full_name
                             FROM musabaqa_team_members tm
-                            JOIN kauzariyya.students s ON s.id = tm.student_id
+                            JOIN " . DB_MAIN_NAME . ".students s ON s.id = tm.student_id
                             WHERE tm.id = ? AND tm.event_id = ? AND tm.team_id = ? AND tm.status = 'active'
                             LIMIT 1
                         ");
@@ -481,7 +481,7 @@ if ($activeProgram) {
                (SELECT GROUP_CONCAT(COALESCE(NULLIF(s.display_name, ''), s.full_name) SEPARATOR ', ')
                 FROM musabaqa_entry_members em
                 JOIN musabaqa_team_members tm ON tm.id = em.team_member_id
-                JOIN kauzariyya.students s ON s.id = tm.student_id
+                JOIN " . DB_MAIN_NAME . ".students s ON s.id = tm.student_id
                 WHERE em.entry_id = pe.id) AS member_names,
                (SELECT GROUP_CONCAT(tm.chest_number SEPARATOR ', ')
                 FROM musabaqa_entry_members em
@@ -490,8 +490,8 @@ if ($activeProgram) {
                (SELECT c.name
                 FROM musabaqa_entry_members em
                 JOIN musabaqa_team_members tm ON tm.id = em.team_member_id
-                JOIN kauzariyya.students s ON s.id = tm.student_id
-                LEFT JOIN kauzariyya.classes c ON c.id = s.class_id
+                JOIN " . DB_MAIN_NAME . ".students s ON s.id = tm.student_id
+                LEFT JOIN " . DB_MAIN_NAME . ".classes c ON c.id = s.class_id
                 WHERE em.entry_id = pe.id LIMIT 1) AS class_name
         FROM musabaqa_program_entries pe
         JOIN musabaqa_teams t ON t.id = pe.team_id
@@ -541,9 +541,9 @@ if ($activeProgram) {
                c.id AS class_id, c.name AS class_name, c.year AS class_year, ct.name AS class_type
         FROM musabaqa_team_members tm
         JOIN musabaqa_teams t ON t.id = tm.team_id
-        JOIN kauzariyya.students s ON s.id = tm.student_id
-        LEFT JOIN kauzariyya.classes c ON c.id = s.class_id
-        LEFT JOIN kauzariyya.class_types ct ON ct.id = c.class_type_id
+        JOIN " . DB_MAIN_NAME . ".students s ON s.id = tm.student_id
+        LEFT JOIN " . DB_MAIN_NAME . ".classes c ON c.id = s.class_id
+        LEFT JOIN " . DB_MAIN_NAME . ".class_types ct ON ct.id = c.class_type_id
         WHERE tm.event_id = ?
           AND tm.status = 'active'
     ";

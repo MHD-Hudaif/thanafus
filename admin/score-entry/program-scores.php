@@ -32,7 +32,7 @@ function program_scores_load_program(PDO $pdo, int $eventId, int $programId): ?a
                mss.start_time AS schedule_section_start, mss.end_time AS schedule_section_end,
                mss.section_date AS schedule_section_date, mss.sort_order AS schedule_section_sort
         FROM musabaqa_programs p
-        LEFT JOIN kauzariyya.class_types ct ON ct.id = p.class_type_id
+        LEFT JOIN " . DB_MAIN_NAME . ".class_types ct ON ct.id = p.class_type_id
         LEFT JOIN musabaqa_schedule_sections mss ON mss.id = p.section_id
         WHERE p.id = ? AND p.event_id = ?
         LIMIT 1
@@ -84,7 +84,7 @@ if ($programId <= 0) {
                mss.section_date AS schedule_section_date, mss.sort_order AS schedule_section_sort,
                (SELECT COUNT(*) FROM musabaqa_program_entries WHERE program_id = p.id) AS entry_count
         FROM musabaqa_programs p
-        LEFT JOIN kauzariyya.class_types ct ON ct.id = p.class_type_id
+        LEFT JOIN " . DB_MAIN_NAME . ".class_types ct ON ct.id = p.class_type_id
         LEFT JOIN musabaqa_schedule_sections mss ON mss.id = p.section_id
         WHERE p.event_id = ?
         ORDER BY 

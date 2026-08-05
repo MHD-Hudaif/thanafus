@@ -43,7 +43,7 @@ if ($action === 'print' && $activeEvent) {
     $stmt = $pdo->prepare("
         SELECT p.*, ct.name AS class_type_name, mst.name AS stage_type_name
         FROM musabaqa_programs p
-        LEFT JOIN kauzariyya.class_types ct ON ct.id = p.class_type_id
+        LEFT JOIN " . DB_MAIN_NAME . ".class_types ct ON ct.id = p.class_type_id
         LEFT JOIN musabaqa_schedule_sections mss ON mss.id = p.section_id
         LEFT JOIN musabaqa_stage_types mst ON mst.id = p.stage_type_id
         WHERE p.id IN ($placeholders) AND p.event_id = ?
@@ -368,7 +368,7 @@ if ($activeEvent) {
         SELECT p.*, ct.name AS class_type_name, mst.name AS stage_type_name,
                (SELECT COUNT(*) FROM musabaqa_program_entries WHERE program_id = p.id) AS entry_count
         FROM musabaqa_programs p
-        LEFT JOIN kauzariyya.class_types ct ON ct.id = p.class_type_id
+        LEFT JOIN " . DB_MAIN_NAME . ".class_types ct ON ct.id = p.class_type_id
         LEFT JOIN musabaqa_schedule_sections mss ON mss.id = p.section_id
         LEFT JOIN musabaqa_stage_types mst ON mst.id = p.stage_type_id
         WHERE p.event_id = ?

@@ -87,7 +87,7 @@ function schedule_items(): array
                 ct.name AS class_name
             FROM musabaqa_programs p
             LEFT JOIN musabaqa_stage_types st ON st.id = p.stage_type_id
-            LEFT JOIN kauzariyya.class_types ct ON ct.id = p.class_type_id
+            LEFT JOIN " . DB_MAIN_NAME . ".class_types ct ON ct.id = p.class_type_id
             WHERE p.event_id = ? AND p.start_time IS NOT NULL AND p.stage_type_id IS NOT NULL
             ORDER BY p.start_time ASC, p.id ASC
         ");
@@ -158,11 +158,11 @@ function participants(string $query = ''): array
                 COALESCE(pe.final_score, 0) AS final_score
             FROM musabaqa_entry_members em
             JOIN musabaqa_team_members tm ON tm.id = em.team_member_id
-            JOIN kauzariyya.students s ON s.id = tm.student_id
+            JOIN " . DB_MAIN_NAME . ".students s ON s.id = tm.student_id
             JOIN musabaqa_teams t ON t.id = tm.team_id
             JOIN musabaqa_program_entries pe ON pe.id = em.entry_id
             JOIN musabaqa_programs p ON p.id = pe.program_id
-            LEFT JOIN kauzariyya.class_types ct ON ct.id = p.class_type_id
+            LEFT JOIN " . DB_MAIN_NAME . ".class_types ct ON ct.id = p.class_type_id
             WHERE tm.event_id = :event_id";
             
     $params = ['event_id' => $eventId];
@@ -222,10 +222,10 @@ function result_items(): array
             FROM musabaqa_program_entries pe
             JOIN musabaqa_programs p ON p.id = pe.program_id
             JOIN musabaqa_teams t ON t.id = pe.team_id
-            LEFT JOIN kauzariyya.class_types ct ON ct.id = p.class_type_id
+            LEFT JOIN " . DB_MAIN_NAME . ".class_types ct ON ct.id = p.class_type_id
             LEFT JOIN musabaqa_entry_members em ON em.entry_id = pe.id
             LEFT JOIN musabaqa_team_members tm ON tm.id = em.team_member_id
-            LEFT JOIN kauzariyya.students s ON s.id = tm.student_id
+            LEFT JOIN " . DB_MAIN_NAME . ".students s ON s.id = tm.student_id
             WHERE pe.event_id = :event_id
               AND (p.status = 'completed' OR p.approval_status = 'approved')
               AND (p.disable_scores IS NULL OR p.disable_scores = 0)

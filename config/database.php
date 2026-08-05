@@ -13,8 +13,17 @@ $DB_CHARSET = env('DB_CHARSET', 'utf8mb4');
 |--------------------------------------------------------------------------
 */
 
+$dashboard_db_name = env('DB_DATABASE', 'kauzariyya');
+if (!defined('DB_MAIN_NAME')) {
+    define('DB_MAIN_NAME', $dashboard_db_name);
+}
+$musabaqa_db_name = env('MUSABAQA_DB_DATABASE', 'kauzariyya_musabaqa');
+if (!defined('DB_MUSABAQA_NAME')) {
+    define('DB_MUSABAQA_NAME', $musabaqa_db_name);
+}
+
 $dashboard_dsn =
-"mysql:host={$DB_HOST};dbname=" . env('DB_DATABASE', 'kauzariyya') . ";charset={$DB_CHARSET}";
+"mysql:host={$DB_HOST};dbname={$dashboard_db_name};charset={$DB_CHARSET}";
 
 $dashboard_pdo = new PDO(
     $dashboard_dsn,

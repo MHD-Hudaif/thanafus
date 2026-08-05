@@ -74,7 +74,7 @@ $stmt = $pdo->prepare("
     FROM musabaqa_team_members mtm
     JOIN musabaqa_teams t ON t.id = mtm.team_id
     JOIN musabaqa_events ev ON ev.id = mtm.event_id
-    JOIN kauzariyya.students s ON s.id = mtm.student_id
+    JOIN " . DB_MAIN_NAME . ".students s ON s.id = mtm.student_id
     WHERE mtm.event_id = ?
       AND mtm.status = 'active'
       {$searchQuery}
@@ -117,7 +117,7 @@ $stmt = $pdo->prepare("
     FROM musabaqa_team_members mtm
     JOIN musabaqa_teams t ON t.id = mtm.team_id
     JOIN musabaqa_events ev ON ev.id = mtm.event_id
-    JOIN kauzariyya.students s ON s.id = mtm.student_id
+    JOIN " . DB_MAIN_NAME . ".students s ON s.id = mtm.student_id
     WHERE mtm.event_id = ?
       AND mtm.status = 'active'
       {$searchQuery}

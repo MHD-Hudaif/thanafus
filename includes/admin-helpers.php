@@ -898,8 +898,8 @@ function admin_validate_member_program_limits(PDO $pdo, int $eventId, int $progr
     $stmt = $pdo->prepare("
         SELECT tm.id, c.class_type_id, s.display_name, s.full_name
         FROM musabaqa_team_members tm
-        JOIN kauzariyya.students s ON s.id = tm.student_id
-        LEFT JOIN kauzariyya.classes c ON c.id = s.class_id
+        JOIN " . DB_MAIN_NAME . ".students s ON s.id = tm.student_id
+        LEFT JOIN " . DB_MAIN_NAME . ".classes c ON c.id = s.class_id
         WHERE tm.id = ? AND tm.event_id = ? AND tm.status = 'active'
         LIMIT 1
     ");

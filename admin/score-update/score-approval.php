@@ -74,7 +74,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $query = "
                 SELECT p.id
                 FROM musabaqa_programs p
-                LEFT JOIN kauzariyya.users submitter ON submitter.id = p.submitted_by
+                LEFT JOIN " . DB_MAIN_NAME . ".users submitter ON submitter.id = p.submitted_by
                 WHERE p.event_id = ?
                   AND p.approval_status IN ('submitted', 'rejected')
             ";
@@ -173,9 +173,9 @@ $stmt = $pdo->prepare("
         submitter.full_name AS submitted_name,
         submitter.username AS submitted_username
     FROM musabaqa_programs p
-    LEFT JOIN kauzariyya.class_types ct ON ct.id = p.class_type_id
+    LEFT JOIN " . DB_MAIN_NAME . ".class_types ct ON ct.id = p.class_type_id
     LEFT JOIN musabaqa_program_entries pe ON pe.program_id = p.id
-    LEFT JOIN kauzariyya.users submitter ON submitter.id = p.submitted_by
+    LEFT JOIN " . DB_MAIN_NAME . ".users submitter ON submitter.id = p.submitted_by
     {$where}
     GROUP BY p.id, ct.id, submitter.id
     ORDER BY p.submitted_at DESC, p.id DESC
@@ -199,8 +199,8 @@ if ($viewProgramId > 0) {
         $stmt = $pdo->prepare("
         SELECT p.*, ct.name AS class_type_name, submitter.full_name AS submitted_name, submitter.username AS submitted_username
         FROM musabaqa_programs p
-        LEFT JOIN kauzariyya.class_types ct ON ct.id = p.class_type_id
-        LEFT JOIN kauzariyya.users submitter ON submitter.id = p.submitted_by
+        LEFT JOIN " . DB_MAIN_NAME . ".class_types ct ON ct.id = p.class_type_id
+        LEFT JOIN " . DB_MAIN_NAME . ".users submitter ON submitter.id = p.submitted_by
         WHERE p.id = ? AND p.event_id = ?
         LIMIT 1
     ");

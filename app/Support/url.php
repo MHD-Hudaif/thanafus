@@ -82,6 +82,14 @@ if (!function_exists('app_url')) {
     }
 }
 
+if (!function_exists('url')) {
+    function url(string $path = ''): string
+    {
+        return app_url($path);
+    }
+}
+
+
 if (!function_exists('app_absolute_url')) {
     function app_absolute_url(string $path = ''): string
     {

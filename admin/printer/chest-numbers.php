@@ -36,9 +36,9 @@ if (isset($_GET['ajax_lookup']) && $_GET['ajax_lookup'] === '1') {
             c.class_type_id
         FROM musabaqa_team_members mtm
         JOIN musabaqa_teams t ON t.id = mtm.team_id
-        JOIN kauzariyya.students s ON s.id = mtm.student_id
-        LEFT JOIN kauzariyya.classes c ON c.id = s.class_id
-        LEFT JOIN kauzariyya.class_types ct ON ct.id = c.class_type_id
+        JOIN " . DB_MAIN_NAME . ".students s ON s.id = mtm.student_id
+        LEFT JOIN " . DB_MAIN_NAME . ".classes c ON c.id = s.class_id
+        LEFT JOIN " . DB_MAIN_NAME . ".class_types ct ON ct.id = c.class_type_id
         WHERE mtm.event_id = ?
           AND mtm.chest_number = ?
           AND mtm.id != ?
@@ -144,7 +144,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt = $pdo->prepare("
                 SELECT mtm.id, mtm.chest_number, COALESCE(NULLIF(s.display_name, ''), s.full_name) AS display_name
                 FROM musabaqa_team_members mtm
-                JOIN kauzariyya.students s ON s.id = mtm.student_id
+                JOIN " . DB_MAIN_NAME . ".students s ON s.id = mtm.student_id
                 WHERE mtm.id = ? AND mtm.event_id = ?
                 LIMIT 1
             ");
@@ -165,7 +165,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $findConflict = $pdo->prepare("
                     SELECT mtm.id, mtm.chest_number, COALESCE(NULLIF(s.display_name, ''), s.full_name) AS display_name
                     FROM musabaqa_team_members mtm
-                    JOIN kauzariyya.students s ON s.id = mtm.student_id
+                    JOIN " . DB_MAIN_NAME . ".students s ON s.id = mtm.student_id
                     WHERE mtm.event_id = ? AND mtm.chest_number = ? AND mtm.id != ?
                     LIMIT 1
                 ");
@@ -260,9 +260,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmtMembers = $pdo->prepare("
             SELECT mtm.id
             FROM musabaqa_team_members mtm
-            JOIN kauzariyya.students s ON s.id = mtm.student_id
-            LEFT JOIN kauzariyya.classes c ON c.id = s.class_id
-            LEFT JOIN kauzariyya.class_types ct ON ct.id = c.class_type_id
+            JOIN " . DB_MAIN_NAME . ".students s ON s.id = mtm.student_id
+            LEFT JOIN " . DB_MAIN_NAME . ".classes c ON c.id = s.class_id
+            LEFT JOIN " . DB_MAIN_NAME . ".class_types ct ON ct.id = c.class_type_id
             WHERE mtm.event_id = ? AND mtm.team_id = ? AND mtm.status = 'active'
             ORDER BY 
                 CASE 
@@ -323,9 +323,9 @@ $stmt = $pdo->prepare("
         ct.name AS class_type_name
     FROM musabaqa_team_members mtm
     JOIN musabaqa_teams t ON t.id = mtm.team_id
-    JOIN kauzariyya.students s ON s.id = mtm.student_id
-    LEFT JOIN kauzariyya.classes c ON c.id = s.class_id
-    LEFT JOIN kauzariyya.class_types ct ON ct.id = c.class_type_id
+    JOIN " . DB_MAIN_NAME . ".students s ON s.id = mtm.student_id
+    LEFT JOIN " . DB_MAIN_NAME . ".classes c ON c.id = s.class_id
+    LEFT JOIN " . DB_MAIN_NAME . ".class_types ct ON ct.id = c.class_type_id
     WHERE mtm.event_id = ?
       AND mtm.status = 'active'
     ORDER BY NULLIF(mtm.chest_number, '') IS NULL ASC,

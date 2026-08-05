@@ -79,7 +79,7 @@ $stmt = $pdo->prepare("
         COALESCE(category_data.category_count, 0) AS category_count,
         COALESCE(category_data.category_total, 0) AS category_total
     FROM musabaqa_programs p
-    LEFT JOIN kauzariyya.class_types ct ON ct.id = p.class_type_id
+    LEFT JOIN " . DB_MAIN_NAME . ".class_types ct ON ct.id = p.class_type_id
     LEFT JOIN musabaqa_schedule_sections mss ON mss.id = p.section_id
     LEFT JOIN musabaqa_program_entries pe ON pe.program_id = p.id
     LEFT JOIN musabaqa_score_sheets ss ON ss.entry_id = pe.id

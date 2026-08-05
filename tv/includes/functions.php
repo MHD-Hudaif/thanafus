@@ -581,7 +581,7 @@ function tv_program_rows(int $eventId): array
             COUNT(DISTINCT CASE WHEN pe.status = 'completed' THEN pe.id END) AS completed_entry_count
         FROM musabaqa_programs p
         LEFT JOIN musabaqa_stage_types st ON st.id = p.stage_type_id
-        LEFT JOIN kauzariyya.class_types ct ON ct.id = p.class_type_id
+        LEFT JOIN " . DB_MAIN_NAME . ".class_types ct ON ct.id = p.class_type_id
         LEFT JOIN musabaqa_program_entries pe ON pe.program_id = p.id AND pe.event_id = p.event_id
         WHERE p.event_id = ?
         GROUP BY p.id, st.id, ct.id
@@ -958,7 +958,7 @@ function tv_winners(?int $eventId = null, int $limit = 8): array
             ct.name AS class_type_name
         FROM musabaqa_programs p
         LEFT JOIN musabaqa_stage_types st ON st.id = p.stage_type_id
-        LEFT JOIN kauzariyya.class_types ct ON ct.id = p.class_type_id
+        LEFT JOIN " . DB_MAIN_NAME . ".class_types ct ON ct.id = p.class_type_id
         WHERE p.event_id = ?
           AND (p.status = 'completed' OR p.approval_status = 'approved')
           AND (p.disable_scores IS NULL OR p.disable_scores = 0)

@@ -51,9 +51,9 @@ if ($export !== '' && $activeEvent) {
                     FROM musabaqa_team_members mtm
                     JOIN musabaqa_teams t ON t.id = mtm.team_id
                     JOIN musabaqa_events ev ON ev.id = mtm.event_id
-                    JOIN kauzariyya.students s ON s.id = mtm.student_id
-                    LEFT JOIN kauzariyya.classes c ON c.id = s.class_id
-                    LEFT JOIN kauzariyya.class_types ct ON ct.id = c.class_type_id
+                    JOIN " . DB_MAIN_NAME . ".students s ON s.id = mtm.student_id
+                    LEFT JOIN " . DB_MAIN_NAME . ".classes c ON c.id = s.class_id
+                    LEFT JOIN " . DB_MAIN_NAME . ".class_types ct ON ct.id = c.class_type_id
                     WHERE mtm.event_id = ?
                       AND mtm.team_id = ?
                       AND mtm.status = 'active'

@@ -396,8 +396,8 @@ $stmt = $pdo->prepare("
         COUNT(DISTINCT pc.id) AS category_count
     FROM musabaqa_programs mp
     LEFT JOIN musabaqa_stage_types mst ON mst.id = mp.stage_type_id
-    LEFT JOIN kauzariyya.class_types ct ON ct.id = mp.class_type_id
-    LEFT JOIN kauzariyya.teachers t ON t.id = mp.responsible_teacher_id
+    LEFT JOIN " . DB_MAIN_NAME . ".class_types ct ON ct.id = mp.class_type_id
+    LEFT JOIN " . DB_MAIN_NAME . ".teachers t ON t.id = mp.responsible_teacher_id
     LEFT JOIN musabaqa_schedule_sections mss ON mss.id = mp.section_id
     LEFT JOIN musabaqa_program_entries pe ON pe.program_id = mp.id
     LEFT JOIN musabaqa_score_sheets ss ON ss.program_id = mp.id
