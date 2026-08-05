@@ -118,7 +118,57 @@ if ($email !== '') {
     }
 }
 
-// 3. User does not exist at all. Redirect to Login page with error.
-$_SESSION['oauth_error'] = "No account found matching this Google email. Please register on the dashboard first.";
-header("Location: " . app_url('/auth/login'));
+// 3. User does not exist at all -> Automatically sign up new account
+$baseUsername = strtolower(explode('@', $email)[0] ?? 'user');
+$baseUsername = preg_replace('/[^a-z0-9_]/', '', $baseUsername);
+if (strlen($baseUsername) < 3) {
+    $baseUsername = 'user';
+}
+
+$username = $baseUsername;
+$counter = 1;
+while (true) {
+    $stmt = $pdo->prepare("SELECT 1 FROM users WHERE username = ? LIMIT 1");
+    $stmt->execute([$username]);
+    if (!$stmt->fetch()) {
+        break;
+    }
+    $username = $baseUsername . $counter;
+    $counter++;
+}
+
+$randomPassword = password_hash(bin2hex(random_bytes(16)), PASSWORD_DEFAULT);
+$displayName = $full_name !== '' ? $full_name : ucfirst($username);
+
+$stmt = $pdo->prepare("
+    INSERT INTO users (username, phone, email, password, full_name, google_id, profile_photo, email_verified_at, status)
+    VALUES (?, '', ?, ?, ?, ?, ?, NOW(), 'active')
+");
+$stmt->execute([
+    $username,
+    $email !== '' ? $email : null,
+    $randomPassword,
+    $displayName,
+    $google_id,
+    $picture
+]);
+
+$newUserId = (int)$pdo->lastInsertId();
+
+// Assign default role (student / standard user = 3)
+try {
+    $pdo->prepare("INSERT INTO user_roles (user_id, role_id) VALUES (?, 3)")->execute([$newUserId]);
+} catch (Throwable $e) {
+    // Ignore if role already assigned or table constraint
+}
+
+login_user_session($newUserId);
+$_SESSION['just_logged_in'] = true;
+
+if (is_admin()) {
+    header("Location: " . app_url('/admin/dashboard'));
+} else {
+    header("Location: " . app_url('/'));
+}
 exit;
+
