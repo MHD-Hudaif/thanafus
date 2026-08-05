@@ -6,25 +6,25 @@ require_login();
 
 $pdo = $GLOBALS['musabaqa_pdo'];
 
-// Initialize DB schema if not exists
-$pdo->exec("
-    CREATE TABLE IF NOT EXISTS musabaqa_tv_components (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        event_id INT NULL,
-        slide_key VARCHAR(50) NOT NULL,
-        title VARCHAR(255) NOT NULL,
-        duration INT NOT NULL DEFAULT 15000,
-        is_enabled TINYINT(1) NOT NULL DEFAULT 1,
-        sort_order INT NOT NULL DEFAULT 0,
-        CONSTRAINT uniq_event_slide UNIQUE (event_id, slide_key)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-");
+// Ensure components table exists without running DDL on every request
+try {
+    $existingKeys = $pdo->query("SELECT DISTINCT slide_key FROM musabaqa_tv_components WHERE event_id IS NULL")->fetchAll(PDO::FETCH_COLUMN);
+} catch (Throwable $e) {
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS musabaqa_tv_components (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            event_id INT NULL,
+            slide_key VARCHAR(50) NOT NULL,
+            title VARCHAR(255) NOT NULL,
+            duration INT NOT NULL DEFAULT 15000,
+            is_enabled TINYINT(1) NOT NULL DEFAULT 1,
+            sort_order INT NOT NULL DEFAULT 0,
+            CONSTRAINT uniq_event_slide UNIQUE (event_id, slide_key)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    ");
+    $existingKeys = [];
+}
 
-// Clean up legacy/obsolete slide keys
-$pdo->exec("DELETE FROM musabaqa_tv_components WHERE slide_key NOT IN ('intro', 'leaderboard', 'schedule', 'current-program')");
-
-// Populate default global slide components if missing
-$existingKeys = $pdo->query("SELECT DISTINCT slide_key FROM musabaqa_tv_components WHERE event_id IS NULL")->fetchAll(PDO::FETCH_COLUMN);
 
 $defaultSlides = [
     'intro' => ['Welcome Intro', 12000, 1],

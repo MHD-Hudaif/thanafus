@@ -25,17 +25,26 @@ if (!defined('DB_MUSABAQA_NAME')) {
 $dashboard_dsn =
 "mysql:host={$DB_HOST};dbname={$dashboard_db_name};charset={$DB_CHARSET}";
 
-$dashboard_pdo = new PDO(
-    $dashboard_dsn,
-    $DB_USER,
-    $DB_PASS,
-    [
-        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-        PDO::ATTR_EMULATE_PREPARES => false,
-        PDO::MYSQL_ATTR_INIT_COMMAND => "SET SESSION sql_mode='NO_ENGINE_SUBSTITUTION'",
-    ]
-);
+function get_dashboard_pdo(): PDO {
+    global $dashboard_dsn, $DB_USER, $DB_PASS;
+    static $pdo = null;
+    if ($pdo === null) {
+        $pdo = new PDO(
+            $dashboard_dsn,
+            $DB_USER,
+            $DB_PASS,
+            [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                PDO::ATTR_EMULATE_PREPARES => false,
+                PDO::MYSQL_ATTR_INIT_COMMAND => "SET SESSION sql_mode='NO_ENGINE_SUBSTITUTION'",
+            ]
+        );
+    }
+    return $pdo;
+}
+$dashboard_pdo = null;
+
 
 /*
 |--------------------------------------------------------------------------

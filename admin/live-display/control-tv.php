@@ -12,25 +12,28 @@ $activeEventId = (int)$activeEvent['id'];
 // Load TV functions to fetch live statistics, settings, and winners
 require_once __DIR__ . '/../../tv/includes/functions.php';
 
-// Initialize DB schema if not exists
-$pdo->exec("
-    CREATE TABLE IF NOT EXISTS musabaqa_tv_components (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        event_id INT NULL,
-        slide_key VARCHAR(50) NOT NULL,
-        title VARCHAR(255) NOT NULL,
-        duration INT NOT NULL DEFAULT 15000,
-        is_enabled TINYINT(1) NOT NULL DEFAULT 1,
-        sort_order INT NOT NULL DEFAULT 0,
-        style VARCHAR(50) NOT NULL DEFAULT 'classic',
-        CONSTRAINT uniq_event_slide UNIQUE (event_id, slide_key)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-");
-
 // Copy default slides if missing for active event
-$existingKeys = $pdo->prepare("SELECT DISTINCT slide_key FROM musabaqa_tv_components WHERE event_id = ?");
-$existingKeys->execute([$activeEventId]);
-$activeKeys = $existingKeys->fetchAll(PDO::FETCH_COLUMN);
+try {
+    $existingKeys = $pdo->prepare("SELECT DISTINCT slide_key FROM musabaqa_tv_components WHERE event_id = ?");
+    $existingKeys->execute([$activeEventId]);
+    $activeKeys = $existingKeys->fetchAll(PDO::FETCH_COLUMN);
+} catch (Throwable $e) {
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS musabaqa_tv_components (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            event_id INT NULL,
+            slide_key VARCHAR(50) NOT NULL,
+            title VARCHAR(255) NOT NULL,
+            duration INT NOT NULL DEFAULT 15000,
+            is_enabled TINYINT(1) NOT NULL DEFAULT 1,
+            sort_order INT NOT NULL DEFAULT 0,
+            style VARCHAR(50) NOT NULL DEFAULT 'classic',
+            CONSTRAINT uniq_event_slide UNIQUE (event_id, slide_key)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    ");
+    $activeKeys = [];
+}
+
 
 $defaultSlides = [
     'intro' => ['Welcome Intro', 12000, 1],

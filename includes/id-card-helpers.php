@@ -93,25 +93,31 @@ function id_card_ensure_table(PDO $pdo): void
     if ($checked) {
         return;
     }
-    $pdo->exec("
-        CREATE TABLE IF NOT EXISTS `musabaqa_id_card_templates` (
-          `id` INT NOT NULL AUTO_INCREMENT,
-          `event_id` INT NOT NULL,
-          `team_id` INT NULL DEFAULT NULL,
-          `background_image` VARCHAR(255) NULL DEFAULT NULL,
-          `orientation` VARCHAR(20) NOT NULL DEFAULT 'portrait',
-          `card_width` INT NOT NULL DEFAULT 600,
-          `card_height` INT NOT NULL DEFAULT 950,
-          `layout_config` LONGTEXT NULL,
-          `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
-          `updated_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-          PRIMARY KEY (`id`),
-          UNIQUE KEY `uk_event_team` (`event_id`, `team_id`),
-          KEY `idx_event_id` (`event_id`),
-          KEY `idx_team_id` (`team_id`)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-    ");
-    $checked = true;
+    try {
+        $pdo->query("SELECT 1 FROM `musabaqa_id_card_templates` LIMIT 1");
+        $checked = true;
+        return;
+    } catch (Throwable $e) {
+        $pdo->exec("
+            CREATE TABLE IF NOT EXISTS `musabaqa_id_card_templates` (
+              `id` INT NOT NULL AUTO_INCREMENT,
+              `event_id` INT NOT NULL,
+              `team_id` INT NULL DEFAULT NULL,
+              `background_image` VARCHAR(255) NULL DEFAULT NULL,
+              `orientation` VARCHAR(20) NOT NULL DEFAULT 'portrait',
+              `card_width` INT NOT NULL DEFAULT 600,
+              `card_height` INT NOT NULL DEFAULT 950,
+              `layout_config` LONGTEXT NULL,
+              `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+              `updated_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              PRIMARY KEY (`id`),
+              UNIQUE KEY `uk_event_team` (`event_id`, `team_id`),
+              KEY `idx_event_id` (`event_id`),
+              KEY `idx_team_id` (`team_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        ");
+        $checked = true;
+    }
 }
 
 function id_card_default_layout(): array

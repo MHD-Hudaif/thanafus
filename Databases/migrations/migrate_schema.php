@@ -155,6 +155,52 @@ try {
     ");
     echo "Ensured musabaqa_id_card_templates table exists.\n";
 
+    // 9. Add missing performance indexes (from 002_add_performance_indexes.sql)
+    $addIndexIfMissing = function ($pdo, $table, $indexName, $sql) {
+        $stmt = $pdo->query("SHOW INDEX FROM `{$table}`");
+        $hasIndex = false;
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            if ($row['Key_name'] === $indexName) {
+                $hasIndex = true;
+                break;
+            }
+        }
+        if (!$hasIndex) {
+            $pdo->exec($sql);
+            echo "Added index {$indexName} to {$table}.\n";
+        } else {
+            echo "Index {$indexName} already exists on {$table}.\n";
+        }
+    };
+
+    $addIndexIfMissing(
+        $musabaqa_pdo,
+        'musabaqa_scores',
+        'idx_event_status_program',
+        'ALTER TABLE musabaqa_scores ADD INDEX idx_event_status_program (event_id, status, program_id)'
+    );
+
+    $addIndexIfMissing(
+        $musabaqa_pdo,
+        'musabaqa_program_entries',
+        'idx_event_program_team',
+        'ALTER TABLE musabaqa_program_entries ADD INDEX idx_event_program_team (event_id, program_id, team_id)'
+    );
+
+    $addIndexIfMissing(
+        $musabaqa_pdo,
+        'musabaqa_entry_members',
+        'idx_entry_team_member',
+        'ALTER TABLE musabaqa_entry_members ADD INDEX idx_entry_team_member (entry_id, team_member_id)'
+    );
+
+    $addIndexIfMissing(
+        $musabaqa_pdo,
+        'musabaqa_team_members',
+        'idx_event_student_team',
+        'ALTER TABLE musabaqa_team_members ADD INDEX idx_event_student_team (event_id, student_id, team_id)'
+    );
+
     echo "Migration completed successfully!\n";
 } catch (Throwable $e) {
     echo "Migration error: " . $e->getMessage() . "\n";

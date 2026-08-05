@@ -147,8 +147,10 @@
   const scoreboardEl = document.querySelector('[data-refresh="scoreboard"]');
   if (scoreboardEl) {
     const pollScores = async () => {
+      if (document.hidden) return; // Pause polling when tab is inactive
       try {
-        const response = await fetch('/kauzariyya-musabaqa/tv/api/leaderboard.php', { cache: 'no-cache' });
+        const baseUrl = window.location.pathname.startsWith('/tv') ? '' : '/tv';
+        const response = await fetch(`${baseUrl}/api/leaderboard.php`, { cache: 'no-cache' });
         if (response.status === 304) return; // Not modified
         const res = await response.json();
         if (!res.success || !Array.isArray(res.data?.leaderboard)) return;

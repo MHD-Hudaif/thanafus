@@ -22,6 +22,9 @@ function tv_pdo(): PDO
 
 function tv_dashboard_pdo(): PDO
 {
+    if (function_exists('get_dashboard_pdo')) {
+        return get_dashboard_pdo();
+    }
     return $GLOBALS['dashboard_pdo'];
 }
 

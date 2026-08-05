@@ -48,47 +48,36 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Automatically synchronize session active_event_id with the globally active event from DB
+// Automatically synchronize session active_event_id with the globally active event from DB (cached in session for 60s)
 if (isset($musabaqa_pdo)) {
-    try {
-        $stmt = $musabaqa_pdo->query("SELECT id FROM musabaqa_events WHERE status = 'active' LIMIT 1");
-        $dbActiveId = (int)($stmt->fetchColumn() ?: 0);
-        if ($dbActiveId > 0) {
-            $_SESSION['active_event_id'] = $dbActiveId;
-        } else {
-            // Fallback to the latest event if none is explicitly active
-            $stmt = $musabaqa_pdo->query("SELECT id FROM musabaqa_events ORDER BY id DESC LIMIT 1");
-            $latestId = (int)($stmt->fetchColumn() ?: 0);
-            if ($latestId > 0) {
-                $_SESSION['active_event_id'] = $latestId;
+    $now = time();
+    $cacheExpiry = 60; // Refresh active event ID from DB every 60 seconds
+    if (!isset($_SESSION['active_event_id']) || !isset($_SESSION['active_event_time']) || ($now - (int)$_SESSION['active_event_time']) > $cacheExpiry) {
+        try {
+            $stmt = $musabaqa_pdo->query("SELECT id FROM musabaqa_events WHERE status = 'active' LIMIT 1");
+            $dbActiveId = (int)($stmt->fetchColumn() ?: 0);
+            if ($dbActiveId > 0) {
+                $_SESSION['active_event_id'] = $dbActiveId;
             } else {
-                unset($_SESSION['active_event_id']);
+                $stmt = $musabaqa_pdo->query("SELECT id FROM musabaqa_events ORDER BY id DESC LIMIT 1");
+                $latestId = (int)($stmt->fetchColumn() ?: 0);
+                if ($latestId > 0) {
+                    $_SESSION['active_event_id'] = $latestId;
+                } else {
+                    unset($_SESSION['active_event_id']);
+                }
             }
+            $_SESSION['active_event_time'] = $now;
+        } catch (Throwable $e) {
+            // Ignore errors during installation/setup
         }
-    } catch (Throwable $e) {
-        // Ignore errors during installation/setup
-    }
-
-    // Self-healing schema initialization for musabaqa_reviews
-    try {
-        $musabaqa_pdo->exec("
-            CREATE TABLE IF NOT EXISTS musabaqa_reviews (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                event_id INT NULL,
-                rating TINYINT NOT NULL DEFAULT 5,
-                comment TEXT NOT NULL,
-                name VARCHAR(150) NULL,
-                ip_address VARCHAR(45) NULL,
-                user_agent VARCHAR(255) NULL,
-                status ENUM('pending', 'approved', 'archived') NOT NULL DEFAULT 'approved',
-                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                INDEX idx_event_status (event_id, status),
-                INDEX idx_created (created_at)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-        ");
-    } catch (Throwable $e) {
-        // Ignore errors if table exists or during setup
     }
 }
+
+// Release session lock for GET/HEAD requests to prevent concurrent request blocking
+if (session_status() === PHP_SESSION_ACTIVE && isset($_SERVER['REQUEST_METHOD']) && in_array(strtoupper($_SERVER['REQUEST_METHOD']), ['GET', 'HEAD'], true)) {
+    session_write_close();
+}
+
 
 

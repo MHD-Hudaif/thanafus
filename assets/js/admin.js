@@ -976,6 +976,7 @@
     }
 
     async function fetchChatMessages() {
+        if (document.hidden) return;
         const receiverId = activeRoomId === 'global' ? '' : activeRoomId;
         const feed = document.getElementById('chatMessagesFeed');
         if (!feed) return;
@@ -1092,6 +1093,7 @@
     }
 
     async function checkUnreadMessages() {
+        if (document.hidden) return;
         if (document.getElementById('globalChatModal')?.classList.contains('active') && activeRoomId === 'global') {
             return;
         }
