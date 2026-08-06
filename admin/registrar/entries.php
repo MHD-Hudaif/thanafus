@@ -235,103 +235,219 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         }
                         admin_flash('success', $msg);
                     } else {
-                        if ($teamId <= 0) {
-                            throw new RuntimeException('Please select a team.');
-                        }
+                        // Check if batch group entries posted
+                        $groupEntriesData = $_POST['group_entries'] ?? [];
+                        if (is_array($groupEntriesData) && !empty($groupEntriesData)) {
+                            $createdCount = 0;
+                            $skippedMessages = [];
 
-                        // Load team name
-                        $stmtTeam = $pdo->prepare("SELECT team_name FROM musabaqa_teams WHERE id = ? LIMIT 1");
-                        $stmtTeam->execute([$teamId]);
-                        $teamRow = $stmtTeam->fetch(PDO::FETCH_ASSOC);
-                        $teamName = $teamRow ? $teamRow['team_name'] : 'Team';
+                            foreach ($groupEntriesData as $tId => $gData) {
+                                $tId = (int)$tId;
+                                if ($tId <= 0) continue;
 
-                        $entryName = trim((string)($_POST['entry_name'] ?? ''));
-                        if ($entryName === '') {
-                            $entryName = $program['title'] . ' - ' . $teamName;
-                        }
+                                $teamMemberIds = [];
+                                if (isset($gData['team_member_ids']) && is_array($gData['team_member_ids'])) {
+                                    $teamMemberIds = array_filter(array_map('intval', $gData['team_member_ids']));
+                                }
 
-                        // Check team limit for group program
-                        $tCntStmt = $pdo->prepare("SELECT COUNT(*) FROM musabaqa_program_entries WHERE program_id = ? AND team_id = ? AND event_id = ?");
-                        $tCntStmt->execute([$programId, $teamId, $activeEventId]);
-                        $currentTeamEntries = (int)$tCntStmt->fetchColumn();
-                        if ($currentTeamEntries >= $perTeamLimit) {
-                            throw new RuntimeException("This team has reached its maximum limit of {$perTeamLimit} entries for this program.");
-                        }
+                                $entryName = trim((string)($gData['entry_name'] ?? ''));
 
-                        $dup = $pdo->prepare('SELECT id FROM musabaqa_program_entries WHERE event_id = ? AND program_id = ? AND team_id = ? AND entry_name = ? LIMIT 1');
-                        $dup->execute([$activeEventId, $programId, $teamId, $entryName]);
-                        if ($dup->fetchColumn()) {
-                            $altName = $entryName . ' (' . ($currentTeamEntries + 1) . ')';
-                            $dupAlt = $pdo->prepare('SELECT id FROM musabaqa_program_entries WHERE event_id = ? AND program_id = ? AND team_id = ? AND entry_name = ? LIMIT 1');
-                            $dupAlt->execute([$activeEventId, $programId, $teamId, $altName]);
-                            if (!$dupAlt->fetchColumn()) {
-                                $entryName = $altName;
-                            } else {
-                                throw new RuntimeException('This team already has an entry named "' . $entryName . '".');
+                                // Skip teams with no entry name and no selected members
+                                if ($entryName === '' && empty($teamMemberIds)) {
+                                    continue;
+                                }
+
+                                // Load team name
+                                $stmtTeam = $pdo->prepare("SELECT team_name FROM musabaqa_teams WHERE id = ? LIMIT 1");
+                                $stmtTeam->execute([$tId]);
+                                $teamRow = $stmtTeam->fetch(PDO::FETCH_ASSOC);
+                                $teamName = $teamRow ? $teamRow['team_name'] : 'Team';
+
+                                if ($entryName === '') {
+                                    $entryName = $program['title'] . ' - ' . $teamName;
+                                }
+
+                                // Check team limit
+                                $tCntStmt = $pdo->prepare("SELECT COUNT(*) FROM musabaqa_program_entries WHERE program_id = ? AND team_id = ? AND event_id = ?");
+                                $tCntStmt->execute([$programId, $tId, $activeEventId]);
+                                $currentTeamEntries = (int)$tCntStmt->fetchColumn();
+                                if ($currentTeamEntries >= $perTeamLimit) {
+                                    $skippedMessages[] = "{$teamName} (limit reached)";
+                                    continue;
+                                }
+
+                                $dup = $pdo->prepare('SELECT id FROM musabaqa_program_entries WHERE event_id = ? AND program_id = ? AND team_id = ? AND entry_name = ? LIMIT 1');
+                                $dup->execute([$activeEventId, $programId, $tId, $entryName]);
+                                if ($dup->fetchColumn()) {
+                                    $altName = $entryName . ' (' . ($currentTeamEntries + 1) . ')';
+                                    $dupAlt = $pdo->prepare('SELECT id FROM musabaqa_program_entries WHERE event_id = ? AND program_id = ? AND team_id = ? AND entry_name = ? LIMIT 1');
+                                    $dupAlt->execute([$activeEventId, $programId, $tId, $altName]);
+                                    if (!$dupAlt->fetchColumn()) {
+                                        $entryName = $altName;
+                                    } else {
+                                        $skippedMessages[] = "{$teamName} (duplicate name)";
+                                        continue;
+                                    }
+                                }
+
+                                $entryNumber = entries_next_number($pdo, $activeEventId, $programId);
+                                $perfOrder   = entries_next_performance_order($pdo, $activeEventId, $programId);
+
+                                $stmt = $pdo->prepare("
+                                    INSERT INTO musabaqa_program_entries
+                                        (event_id, program_id, team_id, entry_name, entry_number, performance_order, status)
+                                    VALUES (?, ?, ?, ?, ?, ?, 'approved')
+                                ");
+                                $stmt->execute([$activeEventId, $programId, $tId, $entryName, $entryNumber, $perfOrder]);
+                                $newEntryId = (int)$pdo->lastInsertId();
+
+                                $addedMemCount = 0;
+                                foreach ($teamMemberIds as $teamMemberId) {
+                                    $stmt = $pdo->prepare("
+                                        SELECT tm.*, COALESCE(NULLIF(s.display_name, ''), s.full_name) AS full_name
+                                        FROM musabaqa_team_members tm
+                                        JOIN " . DB_MAIN_NAME . ".students s ON s.id = tm.student_id
+                                        WHERE tm.id = ? AND tm.event_id = ? AND tm.team_id = ? AND tm.status = 'active'
+                                        LIMIT 1
+                                    ");
+                                    $stmt->execute([$teamMemberId, $activeEventId, $tId]);
+                                    $member = $stmt->fetch(PDO::FETCH_ASSOC);
+                                    if (!$member) continue;
+
+                                    $dupMem = $pdo->prepare("
+                                        SELECT em.id
+                                        FROM musabaqa_entry_members em
+                                        JOIN musabaqa_program_entries pe ON pe.id = em.entry_id
+                                        WHERE pe.event_id = ? AND pe.program_id = ? AND em.team_member_id = ?
+                                        LIMIT 1
+                                    ");
+                                    $dupMem->execute([$activeEventId, $programId, $teamMemberId]);
+                                    if ($dupMem->fetchColumn()) continue;
+
+                                    admin_validate_member_program_limits($pdo, $activeEventId, $programId, $teamMemberId);
+
+                                    $insMem = $pdo->prepare("INSERT INTO musabaqa_entry_members (entry_id, team_member_id, role_name) VALUES (?, ?, 'Participant')");
+                                    $insMem->execute([$newEntryId, $teamMemberId]);
+                                    $addedMemCount++;
+                                }
+
+                                $createdCount++;
                             }
-                        }
 
-                        $teamMemberIds = [];
-                        if (isset($_POST['team_member_ids']) && is_array($_POST['team_member_ids'])) {
-                            $teamMemberIds = array_filter(array_map('intval', $_POST['team_member_ids']));
-                        }
+                            if ($createdCount === 0) {
+                                $err = "No group entries were registered.";
+                                if (!empty($skippedMessages)) {
+                                    $err .= " (" . implode(', ', $skippedMessages) . ")";
+                                }
+                                throw new RuntimeException($err);
+                            }
 
-                        $entryNumber = entries_next_number($pdo, $activeEventId, $programId);
-                        $perfOrder   = entries_next_performance_order($pdo, $activeEventId, $programId);
+                            admin_recalculate_program_status($pdo, $programId);
+                            $msg = "{$createdCount} group entry(ies) created successfully.";
+                            if (!empty($skippedMessages)) {
+                                $msg .= " (" . count($skippedMessages) . " skipped: " . implode(', ', $skippedMessages) . ")";
+                            }
+                            admin_flash('success', $msg);
+                        } else {
+                            // Single team group entry fallback
+                            if ($teamId <= 0) {
+                                throw new RuntimeException('Please select a team.');
+                            }
 
-                        $stmt = $pdo->prepare("
-                            INSERT INTO musabaqa_program_entries
-                                (event_id, program_id, team_id, entry_name, entry_number, performance_order, status)
-                            VALUES (?, ?, ?, ?, ?, ?, 'approved')
-                        ");
-                        $stmt->execute([$activeEventId, $programId, $teamId, $entryName, $entryNumber, $perfOrder]);
-                        $newEntryId = (int)$pdo->lastInsertId();
+                            // Load team name
+                            $stmtTeam = $pdo->prepare("SELECT team_name FROM musabaqa_teams WHERE id = ? LIMIT 1");
+                            $stmtTeam->execute([$teamId]);
+                            $teamRow = $stmtTeam->fetch(PDO::FETCH_ASSOC);
+                            $teamName = $teamRow ? $teamRow['team_name'] : 'Team';
 
-                        $addedCount = 0;
-                        $skippedNames = [];
+                            $entryName = trim((string)($_POST['entry_name'] ?? ''));
+                            if ($entryName === '') {
+                                $entryName = $program['title'] . ' - ' . $teamName;
+                            }
 
-                        foreach ($teamMemberIds as $teamMemberId) {
+                            // Check team limit for group program
+                            $tCntStmt = $pdo->prepare("SELECT COUNT(*) FROM musabaqa_program_entries WHERE program_id = ? AND team_id = ? AND event_id = ?");
+                            $tCntStmt->execute([$programId, $teamId, $activeEventId]);
+                            $currentTeamEntries = (int)$tCntStmt->fetchColumn();
+                            if ($currentTeamEntries >= $perTeamLimit) {
+                                throw new RuntimeException("This team has reached its maximum limit of {$perTeamLimit} entries for this program.");
+                            }
+
+                            $dup = $pdo->prepare('SELECT id FROM musabaqa_program_entries WHERE event_id = ? AND program_id = ? AND team_id = ? AND entry_name = ? LIMIT 1');
+                            $dup->execute([$activeEventId, $programId, $teamId, $entryName]);
+                            if ($dup->fetchColumn()) {
+                                $altName = $entryName . ' (' . ($currentTeamEntries + 1) . ')';
+                                $dupAlt = $pdo->prepare('SELECT id FROM musabaqa_program_entries WHERE event_id = ? AND program_id = ? AND team_id = ? AND entry_name = ? LIMIT 1');
+                                $dupAlt->execute([$activeEventId, $programId, $teamId, $altName]);
+                                if (!$dupAlt->fetchColumn()) {
+                                    $entryName = $altName;
+                                } else {
+                                    throw new RuntimeException('This team already has an entry named "' . $entryName . '".');
+                                }
+                            }
+
+                            $teamMemberIds = [];
+                            if (isset($_POST['team_member_ids']) && is_array($_POST['team_member_ids'])) {
+                                $teamMemberIds = array_filter(array_map('intval', $_POST['team_member_ids']));
+                            }
+
+                            $entryNumber = entries_next_number($pdo, $activeEventId, $programId);
+                            $perfOrder   = entries_next_performance_order($pdo, $activeEventId, $programId);
+
                             $stmt = $pdo->prepare("
-                                SELECT tm.*, COALESCE(NULLIF(s.display_name, ''), s.full_name) AS full_name
-                                FROM musabaqa_team_members tm
-                                JOIN " . DB_MAIN_NAME . ".students s ON s.id = tm.student_id
-                                WHERE tm.id = ? AND tm.event_id = ? AND tm.team_id = ? AND tm.status = 'active'
-                                LIMIT 1
+                                INSERT INTO musabaqa_program_entries
+                                    (event_id, program_id, team_id, entry_name, entry_number, performance_order, status)
+                                VALUES (?, ?, ?, ?, ?, ?, 'approved')
                             ");
-                            $stmt->execute([$teamMemberId, $activeEventId, $teamId]);
-                            $member = $stmt->fetch(PDO::FETCH_ASSOC);
+                            $stmt->execute([$activeEventId, $programId, $teamId, $entryName, $entryNumber, $perfOrder]);
+                            $newEntryId = (int)$pdo->lastInsertId();
 
-                            if (!$member) {
-                                continue;
+                            $addedCount = 0;
+                            $skippedNames = [];
+
+                            foreach ($teamMemberIds as $teamMemberId) {
+                                $stmt = $pdo->prepare("
+                                    SELECT tm.*, COALESCE(NULLIF(s.display_name, ''), s.full_name) AS full_name
+                                    FROM musabaqa_team_members tm
+                                    JOIN " . DB_MAIN_NAME . ".students s ON s.id = tm.student_id
+                                    WHERE tm.id = ? AND tm.event_id = ? AND tm.team_id = ? AND tm.status = 'active'
+                                    LIMIT 1
+                                ");
+                                $stmt->execute([$teamMemberId, $activeEventId, $teamId]);
+                                $member = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                                if (!$member) {
+                                    continue;
+                                }
+
+                                // Duplicate check in this program
+                                $dupMem = $pdo->prepare("
+                                    SELECT em.id
+                                    FROM musabaqa_entry_members em
+                                    JOIN musabaqa_program_entries pe ON pe.id = em.entry_id
+                                    WHERE pe.event_id = ? AND pe.program_id = ? AND em.team_member_id = ?
+                                    LIMIT 1
+                                ");
+                                $dupMem->execute([$activeEventId, $programId, $teamMemberId]);
+                                if ($dupMem->fetchColumn()) {
+                                    $skippedNames[] = $member['full_name'] . " (already assigned)";
+                                    continue;
+                                }
+
+                                admin_validate_member_program_limits($pdo, $activeEventId, $programId, $teamMemberId);
+
+                                $insMem = $pdo->prepare("INSERT INTO musabaqa_entry_members (entry_id, team_member_id, role_name) VALUES (?, ?, 'Participant')");
+                                $insMem->execute([$newEntryId, $teamMemberId]);
+                                $addedCount++;
                             }
 
-                            // Duplicate check in this program
-                            $dupMem = $pdo->prepare("
-                                SELECT em.id
-                                FROM musabaqa_entry_members em
-                                JOIN musabaqa_program_entries pe ON pe.id = em.entry_id
-                                WHERE pe.event_id = ? AND pe.program_id = ? AND em.team_member_id = ?
-                                LIMIT 1
-                            ");
-                            $dupMem->execute([$activeEventId, $programId, $teamMemberId]);
-                            if ($dupMem->fetchColumn()) {
-                                $skippedNames[] = $member['full_name'] . " (already assigned)";
-                                continue;
+                            admin_recalculate_program_status($pdo, $programId);
+                            $msg = "Group entry '{$entryName}' created successfully with {$addedCount} member(s).";
+                            if (!empty($skippedNames)) {
+                                $msg .= " (" . count($skippedNames) . " skipped: " . implode(', ', $skippedNames) . ")";
                             }
-
-                            admin_validate_member_program_limits($pdo, $activeEventId, $programId, $teamMemberId);
-
-                            $insMem = $pdo->prepare("INSERT INTO musabaqa_entry_members (entry_id, team_member_id, role_name) VALUES (?, ?, 'Participant')");
-                            $insMem->execute([$newEntryId, $teamMemberId]);
-                            $addedCount++;
+                            admin_flash('success', $msg);
                         }
-
-                        admin_recalculate_program_status($pdo, $programId);
-                        $msg = "Group entry '{$entryName}' created successfully with {$addedCount} member(s).";
-                        if (!empty($skippedNames)) {
-                            $msg .= " (" . count($skippedNames) . " skipped: " . implode(', ', $skippedNames) . ")";
-                        }
-                        admin_flash('success', $msg);
                     }
                 } else {
                     $stmt = $pdo->prepare("
@@ -445,6 +561,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 admin_recalculate_team_totals($pdo, $activeEventId);
 
                 admin_flash('success', "Entry undone/deleted successfully" . ($deletedEntryName ? " ({$deletedEntryName})" : '') . ".");
+            } elseif ($action === 'randomize_order') {
+                $program = entries_load_program($pdo, $activeEventId, $programId);
+                if (!$program) {
+                    throw new RuntimeException('Selected program is invalid.');
+                }
+                if (in_array((string)$program['approval_status'], ['submitted', 'approved'], true)) {
+                    throw new RuntimeException('Submitted or approved programs cannot be changed.');
+                }
+
+                $stmt = $pdo->prepare('SELECT id FROM musabaqa_program_entries WHERE event_id = ? AND program_id = ?');
+                $stmt->execute([$activeEventId, $programId]);
+                $entryIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+                if ($entryIds) {
+                    shuffle($entryIds);
+                    $updateStmt = $pdo->prepare('UPDATE musabaqa_program_entries SET performance_order = ? WHERE id = ?');
+                    foreach ($entryIds as $index => $id) {
+                        $updateStmt->execute([$index + 1, $id]);
+                    }
+                }
+                admin_flash('success', 'Performance order randomized successfully.');
             } else {
                 throw new RuntimeException('Invalid entry action.');
             }
@@ -1046,9 +1183,21 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                     Registered Competition Entries (<?= count($currentEntries) ?>)
                 </h3>
 
-                <a href="<?= app_url('/admin/registrar/entries.php?program_id=' . (int)$activeProgram['id'] . '&view=assign') ?>" class="btn btn-primary btn-sm" style="background: #10b981; border-color: #10b981;">
-                    <i class="fa-solid fa-plus mr-1"></i> Add / Assign Entries
-                </a>
+                <div class="flex gap-2">
+                    <?php if (!empty($currentEntries) && !in_array((string)$activeProgram['approval_status'], ['submitted', 'approved'], true)): ?>
+                        <form method="POST" style="display: inline;">
+                            <?= admin_csrf_field() ?>
+                            <input type="hidden" name="action" value="randomize_order">
+                            <input type="hidden" name="program_id" value="<?= (int)$activeProgram['id'] ?>">
+                            <button type="submit" class="btn btn-secondary btn-sm" style="background: #6366f1; border-color: #6366f1; color: white;" onclick="return confirm('Are you sure you want to shuffle and randomize the performance order of all entries in this program?');">
+                                <i class="fa-solid fa-shuffle mr-1"></i> Shuffle Order
+                            </button>
+                        </form>
+                    <?php endif; ?>
+                    <a href="<?= app_url('/admin/registrar/entries.php?program_id=' . (int)$activeProgram['id'] . '&view=assign') ?>" class="btn btn-primary btn-sm" style="background: #10b981; border-color: #10b981;">
+                        <i class="fa-solid fa-plus mr-1"></i> Add / Assign Entries
+                    </a>
+                </div>
             </div>
 
             <?php if (empty($currentEntries)): ?>
@@ -1110,15 +1259,22 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                         </span>
                                     </td>
                                     <td style="text-align: right;">
-                                        <form method="POST" style="display: inline;" onsubmit="return confirm('Are you sure you want to UNDO and delete this entry? This action cannot be undone.');">
-                                            <?= admin_csrf_field() ?>
-                                            <input type="hidden" name="action" value="delete_entry">
-                                            <input type="hidden" name="entry_id" value="<?= (int)$entry['id'] ?>">
-                                            <input type="hidden" name="program_id" value="<?= (int)$activeProgram['id'] ?>">
-                                            <button type="submit" class="btn btn-xs btn-danger" style="background: #ef4444; border-color: #ef4444; color: #fff; font-weight: 700;">
-                                                <i class="fa-solid fa-rotate-left mr-1"></i> Undo Entry
-                                            </button>
-                                        </form>
+                                        <div class="flex gap-2 justify-end">
+                                            <?php if (strtolower($activeProgram['program_type']) === 'group'): ?>
+                                                <button type="button" class="btn btn-xs btn-primary edit-group-entry-btn" data-entry="<?= e(json_encode($entry)) ?>" data-team-members="<?= e(json_encode($teamsGrouped['team-' . $entry['team_id']]['members'] ?? [])) ?>" style="font-weight: 700;">
+                                                    <i class="fa-solid fa-pen-to-square mr-1"></i> Edit Entry
+                                                </button>
+                                            <?php endif; ?>
+                                            <form method="POST" style="display: inline;" onsubmit="return confirm('Are you sure you want to UNDO and delete this entry? This action cannot be undone.');">
+                                                <?= admin_csrf_field() ?>
+                                                <input type="hidden" name="action" value="delete_entry">
+                                                <input type="hidden" name="entry_id" value="<?= (int)$entry['id'] ?>">
+                                                <input type="hidden" name="program_id" value="<?= (int)$activeProgram['id'] ?>">
+                                                <button type="submit" class="btn btn-xs btn-danger" style="background: #ef4444; border-color: #ef4444; color: #fff; font-weight: 700;">
+                                                    <i class="fa-solid fa-rotate-left mr-1"></i> Undo Entry
+                                                </button>
+                                            </form>
+                                        </div>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
@@ -1414,96 +1570,108 @@ require_once __DIR__ . '/../../includes/sidebar.php';
 
         <?php else: ?>
             <!-- GROUP PROGRAM ENTRY CREATION & ASSIGNMENT WORKSPACE -->
-            <div style="display: flex; flex-direction: column; gap: 24px;">
-                <?php foreach ($teamsGrouped as $teamKey => $teamGroup): ?>
-                    <?php
-                        $teamId = (int)$teamGroup['id'];
-                        $tAssigned = (int)($teamAssignedCounts[$teamId] ?? 0);
-                        $isTeamFull = $tAssigned >= $perTeamLimit;
-                        $defaultGroupEntryName = $activeProgram['title'] . ' - ' . $teamGroup['name'];
-                        if ($tAssigned > 0) {
-                            $defaultGroupEntryName .= ' (' . ($tAssigned + 1) . ')';
-                        }
+            <form method="POST" id="batchGroupForm">
+                <?= admin_csrf_field() ?>
+                <input type="hidden" name="action" value="create_entry">
+                <input type="hidden" name="program_id" value="<?= (int)$activeProgram['id'] ?>">
 
-                        // Existing entries for this team
-                        $teamEntries = array_values(array_filter($currentEntries, static fn($e) => (int)$e['team_id'] === $teamId));
-                    ?>
-
-                    <div class="panel" style="padding: 22px; background: rgba(15,23,42,0.65); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; border-left: 5px solid <?= e($teamGroup['color']) ?>;">
-                        <div class="flex-between mb-4" style="border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 12px; flex-wrap: wrap; gap: 10px;">
-                            <div>
-                                <h3 style="margin: 0; color: #fff; font-size: 17px; font-weight: 800; display: flex; align-items: center; gap: 8px;">
-                                    <span class="team-color-dot" style="background: <?= e($teamGroup['color']) ?>; width: 12px; height: 12px; border-radius: 50%;"></span>
-                                    <?= e($teamGroup['name']) ?>
-                                </h3>
-                                <div class="muted" style="font-size: 12.5px; margin-top: 3px;">
-                                    <?= count($teamGroup['members']) ?> Eligible Members · Auto Name: <strong style="color: #60a5fa;"><?= e($defaultGroupEntryName) ?></strong>
-                                </div>
-                            </div>
-                            <div style="display: flex; align-items: center; gap: 10px;">
-                                <span class="badge <?= $isTeamFull ? 'badge-warning' : 'badge-success' ?>" style="font-weight: 700; font-size: 12px; padding: 6px 12px;">
-                                    <?= $tAssigned ?> / <?= $perTeamLimit ?> Entries Registered
-                                </span>
-                                <?php if (!$isTeamFull): ?>
-                                    <button type="submit" form="groupEntryForm_<?= $teamId ?>" class="btn btn-glow-success btn-sm" style="font-weight: 700; height: 34px; padding: 0 14px;">
-                                        <i class="fa-solid fa-plus mr-1"></i> Register <?= e($teamGroup['name']) ?> Entry
-                                    </button>
-                                <?php endif; ?>
-                            </div>
+                <!-- Sticky Selection Command Bar with Single Save Button -->
+                <div class="selection-sticky-bar" id="selectionStickyBarGroup" style="display: flex; justify-content: space-between; align-items: center; background: rgba(15,23,42,0.95); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.12); padding: 14px 22px; border-radius: 14px; position: sticky; top: 15px; z-index: 100; margin-bottom: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <span class="badge badge-success" style="font-size: 13px; font-weight: 700; padding: 6px 12px;">
+                            <i class="fa-solid fa-users-rectangle mr-1"></i> Group Program Workspace
+                        </span>
+                        <div style="font-size: 13px; color: var(--muted);">
+                            Fill group names / select participants per team below, then click <strong style="color: #34d399;">Save Group Entries</strong>.
                         </div>
+                    </div>
+                    <button type="submit" class="btn btn-glow-success btn-md" style="font-weight: 800; padding: 10px 22px; font-size: 14px;">
+                        <i class="fa-solid fa-check-double mr-1"></i> Save Selected Group Entries
+                    </button>
+                </div>
 
-                        <!-- Registered Group Entries for this Team -->
-                        <?php if (!empty($teamEntries)): ?>
-                            <div class="mb-4" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; padding: 14px;">
-                                <div style="font-size: 12.5px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px;">
-                                    <i class="fa-solid fa-list-check mr-1" style="color: #34d399;"></i> Registered Entries for <?= e($teamGroup['name']) ?>:
+                <div style="display: flex; flex-direction: column; gap: 24px;">
+                    <?php foreach ($teamsGrouped as $teamKey => $teamGroup): ?>
+                        <?php
+                            $teamId = (int)$teamGroup['id'];
+                            $tAssigned = (int)($teamAssignedCounts[$teamId] ?? 0);
+                            $isTeamFull = $tAssigned >= $perTeamLimit;
+                            $defaultGroupEntryName = $activeProgram['title'] . ' - ' . $teamGroup['name'];
+                            if ($tAssigned > 0) {
+                                $defaultGroupEntryName .= ' (' . ($tAssigned + 1) . ')';
+                            }
+
+                            // Existing entries for this team
+                            $teamEntries = array_values(array_filter($currentEntries, static fn($e) => (int)$e['team_id'] === $teamId));
+                        ?>
+
+                        <div class="panel" id="groupTeamPanel_<?= $teamId ?>" style="padding: 22px; background: rgba(15,23,42,0.65); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; border-left: 5px solid <?= e($teamGroup['color']) ?>;">
+                            <div class="flex-between mb-4" style="border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 12px; flex-wrap: wrap; gap: 10px;">
+                                <div>
+                                    <h3 style="margin: 0; color: #fff; font-size: 17px; font-weight: 800; display: flex; align-items: center; gap: 8px;">
+                                        <span class="team-color-dot" style="background: <?= e($teamGroup['color']) ?>; width: 12px; height: 12px; border-radius: 50%;"></span>
+                                        <?= e($teamGroup['name']) ?>
+                                    </h3>
+                                    <div class="muted" style="font-size: 12.5px; margin-top: 3px;">
+                                        <?= count($teamGroup['members']) ?> Eligible Members · Auto Name: <strong style="color: #60a5fa;"><?= e($defaultGroupEntryName) ?></strong>
+                                    </div>
                                 </div>
-                                <div style="display: flex; flex-direction: column; gap: 8px;">
-                                    <?php foreach ($teamEntries as $tEntry): ?>
-                                        <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(15,23,42,0.8); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 10px 14px; flex-wrap: wrap; gap: 8px;">
-                                            <div>
-                                                <strong style="color: #fff; font-size: 14px;"><?= e($tEntry['entry_name']) ?></strong>
-                                                <?php if (!empty($tEntry['member_names'])): ?>
-                                                    <div style="font-size: 12px; color: #94a3b8; margin-top: 2px;">
-                                                        <i class="fa-solid fa-users mr-1"></i> <?= e($tEntry['member_names']) ?>
-                                                    </div>
-                                                <?php endif; ?>
-                                            </div>
-                                            <div class="flex gap-2 align-center">
-                                                <span class="badge badge-neutral"><?= count($tEntry['member_ids']) ?> member(s)</span>
-                                                <button type="submit" form="undoForm_<?= (int)$tEntry['id'] ?>" class="btn btn-xs btn-danger" style="font-weight: 700;">
-                                                    <i class="fa-solid fa-rotate-left mr-1"></i> Undo Entry
-                                                </button>
-                                            </div>
-                                        </div>
-                                    <?php endforeach; ?>
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <span class="badge <?= $isTeamFull ? 'badge-warning' : 'badge-success' ?>" style="font-weight: 700; font-size: 12px; padding: 6px 12px;">
+                                        <span class="team-assigned-count" data-team-id="<?= $teamId ?>"><?= $tAssigned ?></span> / <?= $perTeamLimit ?> Entries Registered
+                                    </span>
                                 </div>
                             </div>
-                        <?php endif; ?>
 
-                        <!-- Create Group Entry Form -->
-                        <?php if (!$isTeamFull): ?>
-                            <form method="POST" id="groupEntryForm_<?= $teamId ?>">
-                                <?= admin_csrf_field() ?>
-                                <input type="hidden" name="action" value="create_entry">
-                                <input type="hidden" name="program_id" value="<?= (int)$activeProgram['id'] ?>">
-                                <input type="hidden" name="team_id" value="<?= $teamId ?>">
+                            <!-- Registered Group Entries for this Team -->
+                            <?php if (!empty($teamEntries)): ?>
+                                <div class="mb-4" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; padding: 14px;">
+                                    <div style="font-size: 12.5px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px;">
+                                        <i class="fa-solid fa-list-check mr-1" style="color: #34d399;"></i> Registered Entries for <?= e($teamGroup['name']) ?>:
+                                    </div>
+                                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                                        <?php foreach ($teamEntries as $tEntry): ?>
+                                            <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(15,23,42,0.8); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 10px 14px; flex-wrap: wrap; gap: 8px;">
+                                                <div>
+                                                    <strong style="color: #fff; font-size: 14px;"><?= e($tEntry['entry_name']) ?></strong>
+                                                    <?php if (!empty($tEntry['member_names'])): ?>
+                                                        <div style="font-size: 12px; color: #94a3b8; margin-top: 2px;">
+                                                            <i class="fa-solid fa-users mr-1"></i> <?= e($tEntry['member_names']) ?>
+                                                        </div>
+                                                    <?php endif; ?>
+                                                </div>
+                                                <div class="flex gap-2 align-center">
+                                                    <span class="badge badge-neutral"><?= count($tEntry['member_ids']) ?> member(s)</span>
+                                                    <button type="button" class="btn btn-xs btn-primary edit-group-entry-btn" data-entry="<?= e(json_encode($tEntry)) ?>" data-team-members="<?= e(json_encode($teamGroup['members'])) ?>" style="font-weight: 700;">
+                                                        <i class="fa-solid fa-pen-to-square mr-1"></i> Edit Entry
+                                                    </button>
+                                                    <button type="submit" form="undoForm_<?= (int)$tEntry['id'] ?>" class="btn btn-xs btn-danger" style="font-weight: 700;">
+                                                        <i class="fa-solid fa-rotate-left mr-1"></i> Undo Entry
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                </div>
+                            <?php endif; ?>
 
-                                <div class="grid gap-4 mb-4" style="grid-template-columns: minmax(260px, 1fr) 2fr; align-items: flex-start;">
+                            <!-- Create Group Entry Inputs for this Team -->
+                            <?php if (!$isTeamFull): ?>
+                                <div class="grid gap-4" style="grid-template-columns: minmax(260px, 1fr) 2fr; align-items: flex-start;">
                                     <div>
                                         <label style="font-weight: 700; font-size: 13px; color: #fff; display: block; margin-bottom: 6px;">
                                             Entry Name <span style="color: #60a5fa; font-weight: 500;">(Program - Team)</span>
                                         </label>
-                                        <input type="text" name="entry_name" class="form-input" value="<?= e($defaultGroupEntryName) ?>" placeholder="<?= e($defaultGroupEntryName) ?>" required style="height: 42px; font-weight: 600; background: rgba(15,23,42,0.8); border: 1px solid rgba(99,102,241,0.3); border-radius: 8px; color: #fff; width: 100%;">
+                                        <input type="text" name="group_entries[<?= $teamId ?>][entry_name]" class="form-input" value="<?= e($defaultGroupEntryName) ?>" placeholder="<?= e($defaultGroupEntryName) ?>" style="height: 42px; font-weight: 600; background: rgba(15,23,42,0.8); border: 1px solid rgba(99,102,241,0.3); border-radius: 8px; color: #fff; width: 100%;">
                                         <div class="muted" style="font-size: 11.5px; margin-top: 4px;">
-                                            Automatically formatted as <strong>Program Name - Team Name</strong>
+                                            Pre-filled as <strong>Program Name - Team Name</strong>
                                         </div>
                                     </div>
 
                                     <div>
                                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
                                             <label style="font-weight: 700; font-size: 13px; color: #fff; margin: 0;">
-                                                Select Participants for this Group Entry
+                                                Select Participants for <?= e($teamGroup['name']) ?>
                                             </label>
                                             <button type="button" class="btn btn-xs btn-secondary toggle-team-members-btn" data-team-id="<?= $teamId ?>" style="font-size: 11px; padding: 3px 8px; border-radius: 6px;">
                                                 <i class="fa-solid fa-check-double mr-1"></i> Select All
@@ -1524,7 +1692,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                                     </div>
                                                 <?php else: ?>
                                                     <label class="student-card-selection" style="padding: 8px 12px; margin: 0; cursor: pointer;">
-                                                        <input type="checkbox" name="team_member_ids[]" value="<?= $mId ?>" class="member-checkbox" data-team-id="<?= $teamId ?>" style="display:none;">
+                                                        <input type="checkbox" name="group_entries[<?= $teamId ?>][team_member_ids][]" value="<?= $mId ?>" class="member-checkbox" data-team-id="<?= $teamId ?>" style="display:none;">
                                                         <span class="student-avatar-badge" style="width: 28px; height: 28px; font-size: 11px;">
                                                             <span class="badge-text-chest">#<?= e($m['chest_number'] ?: mb_substr((string)$m['full_name'], 0, 1)) ?></span>
                                                             <i class="fa-solid fa-check badge-icon-check" style="font-size: 10px;"></i>
@@ -1543,21 +1711,22 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                         </div>
                                     </div>
                                 </div>
-
-                                <div style="display: flex; justify-content: flex-end; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 12px;">
-                                    <button type="submit" class="btn btn-glow-success btn-md">
-                                        <i class="fa-solid fa-plus mr-1"></i> Create Group Entry for <?= e($teamGroup['name']) ?>
-                                    </button>
+                            <?php else: ?>
+                                <div style="font-size: 13px; color: #f87171; font-weight: 600; padding: 10px 14px; background: rgba(239, 68, 68, 0.1); border-radius: 8px; border: 1px solid rgba(239, 68, 68, 0.2);">
+                                    <i class="fa-solid fa-lock mr-1"></i> Maximum entry limit (<?= $perTeamLimit ?>) reached for <?= e($teamGroup['name']) ?>.
                                 </div>
-                            </form>
-                        <?php else: ?>
-                            <div style="font-size: 13px; color: #f87171; font-weight: 600; padding: 10px 14px; background: rgba(239, 68, 68, 0.1); border-radius: 8px; border: 1px solid rgba(239, 68, 68, 0.2);">
-                                <i class="fa-solid fa-lock mr-1"></i> Maximum entry limit (<?= $perTeamLimit ?>) reached for <?= e($teamGroup['name']) ?>.
-                            </div>
-                        <?php endif; ?>
-                    </div>
-                <?php endforeach; ?>
-            </div>
+                            <?php endif; ?>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+
+                <!-- Bottom Single Save Button -->
+                <div style="display: flex; justify-content: flex-end; margin-top: 24px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.08);">
+                    <button type="submit" class="btn btn-glow-success btn-lg" style="font-weight: 800; padding: 12px 28px;">
+                        <i class="fa-solid fa-check-double mr-1"></i> Save Selected Group Entries
+                    </button>
+                </div>
+            </form>
 
             <!-- Hidden Undo Forms for Group Entries -->
             <?php foreach ($currentEntries as $entry): ?>
@@ -1570,6 +1739,41 @@ require_once __DIR__ . '/../../includes/sidebar.php';
             <?php endforeach; ?>
         <?php endif; ?>
     <?php endif; ?>
+</div>
+
+<!-- EDIT GROUP ENTRY MODAL -->
+<div class="modal-overlay" id="editGroupEntryModal">
+    <div class="modal-content" style="max-width: 650px;">
+        <div class="modal-header">
+            <h3 id="editGroupModalTitle" style="margin: 0; color: #fff; font-size: 16px; font-weight: 800;">Edit Group Entry</h3>
+            <button type="button" class="modal-close" onclick="closeModal('editGroupEntryModal')">&times;</button>
+        </div>
+        <form method="POST">
+            <?= admin_csrf_field() ?>
+            <input type="hidden" name="action" value="update_entry">
+            <input type="hidden" name="entry_id" id="editGroupEntryId" value="">
+            <input type="hidden" name="program_id" value="<?= (int)$activeProgram['id'] ?>">
+            <input type="hidden" name="update_group_members" value="1">
+
+            <div class="modal-body" style="padding: 20px;">
+                <div class="input-group mb-4">
+                    <label style="font-weight: 700; color: #fff; font-size: 13px; display: block; margin-bottom: 6px;">Entry Name</label>
+                    <input type="text" name="entry_name" id="editGroupEntryName" class="form-input" required style="height: 42px; font-weight: 600; background: rgba(15,23,42,0.8); border: 1px solid rgba(99,102,241,0.3); border-radius: 8px; color: #fff; width: 100%;">
+                </div>
+
+                <div class="input-group">
+                    <label style="font-weight: 700; color: #fff; font-size: 13px; margin-bottom: 8px; display: block;">Select Group Members</label>
+                    <div id="editGroupMembersContainer" class="grid gap-2" style="grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); max-height: 300px; overflow-y: auto; padding-right: 4px;">
+                        <!-- Populated dynamically via JS -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer" style="padding: 14px 20px; display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid rgba(255,255,255,0.08);">
+                <button type="button" class="btn btn-secondary btn-md" onclick="closeModal('editGroupEntryModal')">Cancel</button>
+                <button type="submit" class="btn btn-primary btn-md" style="background: #10b981; border-color: #10b981; font-weight: 700;"><i class="fa-solid fa-save mr-1"></i> Save Changes</button>
+            </div>
+        </form>
+    </div>
 </div>
 
 <script>
@@ -1667,13 +1871,17 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    function escapeHtml(str) {
+        return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
     document.querySelectorAll('.toggle-team-members-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             const teamId = btn.getAttribute('data-team-id');
-            const teamForm = document.getElementById(`groupEntryForm_${teamId}`);
-            if (!teamForm) return;
+            const teamPanel = document.getElementById(`groupTeamPanel_${teamId}`) || document.getElementById(`groupEntryForm_${teamId}`);
+            if (!teamPanel) return;
 
-            const cbs = Array.from(teamForm.querySelectorAll('.member-checkbox:not([disabled])'));
+            const cbs = Array.from(teamPanel.querySelectorAll('.member-checkbox:not([disabled])'));
             const allChecked = cbs.length > 0 && cbs.every(cb => cb.checked);
 
             cbs.forEach(cb => {
@@ -1689,6 +1897,55 @@ document.addEventListener('DOMContentLoaded', () => {
                 '<i class="fa-solid fa-check-double mr-1"></i> Select All';
             updateCount();
         });
+    });
+
+    document.addEventListener('click', e => {
+        const editBtn = e.target.closest('.edit-group-entry-btn');
+        if (editBtn) {
+            try {
+                const entry = JSON.parse(editBtn.dataset.entry);
+                const teamMembers = JSON.parse(editBtn.dataset.teamMembers || '[]');
+
+                const titleEl = document.getElementById('editGroupModalTitle');
+                if (titleEl) titleEl.textContent = 'Edit Group Entry: ' + entry.entry_name;
+
+                const idEl = document.getElementById('editGroupEntryId');
+                if (idEl) idEl.value = entry.id;
+
+                const nameEl = document.getElementById('editGroupEntryName');
+                if (nameEl) nameEl.value = entry.entry_name;
+
+                const container = document.getElementById('editGroupMembersContainer');
+                if (container) {
+                    const assignedIds = (entry.member_ids || []).map(Number);
+                    container.innerHTML = teamMembers.map(m => {
+                        const mId = Number(m.team_member_id);
+                        const isChecked = assignedIds.includes(mId);
+                        return `
+                            <label class="student-card-selection ${isChecked ? 'selected' : ''}" style="padding: 8px 12px; margin: 0; cursor: pointer;">
+                                <input type="checkbox" name="team_member_ids[]" value="${mId}" class="modal-member-checkbox" ${isChecked ? 'checked' : ''} style="display:none;" onchange="this.closest('.student-card-selection').classList.toggle('selected', this.checked)">
+                                <span class="student-avatar-badge" style="width: 28px; height: 28px; font-size: 11px;">
+                                    <span class="badge-text-chest">#${escapeHtml(m.chest_number || (m.full_name ? m.full_name.charAt(0) : 'M'))}</span>
+                                    <i class="fa-solid fa-check badge-icon-check" style="font-size: 10px;"></i>
+                                </span>
+                                <div style="flex: 1; min-width: 0;">
+                                    <strong style="color: #fff; font-size: 12.5px; font-weight: 600; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                        ${escapeHtml(m.full_name)}
+                                    </strong>
+                                    <div style="font-size: 10.5px; color: var(--muted);">
+                                        ${escapeHtml(m.class_name || 'General')}
+                                    </div>
+                                </div>
+                            </label>
+                        `;
+                    }).join('');
+                }
+
+                openModal('editGroupEntryModal');
+            } catch (err) {
+                console.error('Error parsing group entry data:', err);
+            }
+        }
     });
 
     // Run initial state update

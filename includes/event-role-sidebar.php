@@ -43,7 +43,7 @@ $currentPath = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH);
             <a href="<?= app_url('/admin/registrar/program-entries.php') ?>" class="<?= str_contains($currentPath, 'program-entries.php') ? 'active' : '' ?>"><i class="fa-solid fa-list-check"></i> Assign Entries</a>
         <?php endif; ?>
         <?php if (current_user_has_authority('upload-scores')): ?>
-            <a href="<?= app_url('/admin/score-entry/upload-scores.php') ?>" class="<?= str_contains($currentPath, 'upload-scores.php') ? 'active' : '' ?>"><i class="fa-solid fa-pen-to-square"></i> Upload Scores</a>
+            <a href="<?= app_url('/admin/score-entry/score-entry.php') ?>" class="<?= str_contains($currentPath, 'score-entry.php') ? 'active' : '' ?>"><i class="fa-solid fa-pen-to-square"></i> Score Entry</a>
         <?php endif; ?>
         <?php if (current_user_has_authority('control-tv')): ?>
             <a href="<?= app_url('/admin/live-display/control-tv.php') ?>" class="<?= str_contains($currentPath, 'control-tv.php') ? 'active' : '' ?>"><i class="fa-solid fa-tv"></i> TV Control</a>

@@ -161,9 +161,6 @@ $_SESSION['active_workspace'] = $activeSpace;
             <a href="<?= app_url('/admin/score-entry/score-entry.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('score-entry.php') ?>">
                 <i class="fa-solid fa-calculator"></i> <span>Score Entry</span>
             </a>
-            <a href="<?= app_url('/admin/score-entry/upload-scores.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('upload-scores.php') ?>">
-                <i class="fa-solid fa-file-arrow-up"></i> <span>Upload Scores</span>
-            </a>
             <a href="<?= app_url('/admin/score-entry/program-scores.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('program-scores.php') ?>">
                 <i class="fa-solid fa-file-lines"></i> <span>Score Sheets</span>
             </a>

@@ -1203,7 +1203,7 @@ if (!function_exists('get_user_default_category_url')) {
             return '/admin/event/program-entries.php';
         }
         if (current_user_has_authority('upload-scores')) {
-            return '/admin/event/upload-scores.php';
+            return '/admin/score-entry/score-entry.php';
         }
         if (current_user_has_authority('control-tv')) {
             return '/admin/event/control-tv.php';

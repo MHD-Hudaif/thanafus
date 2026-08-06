@@ -397,9 +397,6 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                                     <i class="fa-solid fa-pen-to-square mr-1"></i> Score Entry
                                                 </a>
                                             <?php endif; ?>
-                                            <a class="btn btn-secondary btn-sm" href="<?= app_url('/admin/registrar/entries.php') ?>?program_id=<?= (int)$program['id'] ?>">
-                                                <i class="fa-solid fa-list-check mr-1"></i> Entries
-                                            </a>
                                         </div>
                                     </td>
                                 </tr>
@@ -521,9 +518,6 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                                     <i class="fa-solid fa-pen-to-square mr-1"></i> Score Entry
                                                 </a>
                                             <?php endif; ?>
-                                            <a class="btn btn-secondary btn-sm" href="<?= app_url('/admin/registrar/entries.php') ?>?program_id=<?= (int)$program['id'] ?>">
-                                                <i class="fa-solid fa-list-check mr-1"></i> Entries
-                                            </a>
                                         </div>
                                     </td>
                                 </tr>

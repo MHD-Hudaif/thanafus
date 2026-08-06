@@ -713,7 +713,11 @@ if (isset($_GET['action']) && $_GET['action'] === 'score_data') {
 
     try {
         $stmt = $pdo->prepare("
-            SELECT pe.*, t.team_name, t.team_color
+            SELECT pe.*, t.team_name, t.team_color,
+                   (SELECT GROUP_CONCAT(tm.chest_number SEPARATOR ', ')
+                    FROM musabaqa_entry_members em
+                    JOIN musabaqa_team_members tm ON tm.id = em.team_member_id
+                    WHERE em.entry_id = pe.id AND tm.chest_number IS NOT NULL AND tm.chest_number <> '') AS chest_number
             FROM musabaqa_program_entries pe
             JOIN musabaqa_teams t ON t.id = pe.team_id
             WHERE pe.id = ?
@@ -746,6 +750,20 @@ if (isset($_GET['action']) && $_GET['action'] === 'score_data') {
             }
         }
 
+        // Find next and previous entries for modal quick navigation
+        $allEntriesStmt = $pdo->prepare("
+            SELECT id FROM musabaqa_program_entries
+            WHERE program_id = ? AND event_id = ?
+            ORDER BY performance_order ASC, id ASC
+        ");
+        $allEntriesStmt->execute([$programId, $activeEventId]);
+        $allIds = array_map('intval', $allEntriesStmt->fetchAll(PDO::FETCH_COLUMN));
+
+        $currPos = array_search((int)$entryId, $allIds, true);
+        $prevEntryId = ($currPos !== false && $currPos > 0) ? $allIds[$currPos - 1] : null;
+        $nextEntryId = ($currPos !== false && $currPos < count($allIds) - 1) ? $allIds[$currPos + 1] : null;
+        $entryPosition = ($currPos !== false) ? ($currPos + 1) . ' of ' . count($allIds) : '';
+
         echo json_encode([
             'success' => true,
             'entry' => $entry,
@@ -755,6 +773,9 @@ if (isset($_GET['action']) && $_GET['action'] === 'score_data') {
             'scores' => $scores,
             'locked' => program_scores_entry_locked($program, $sheet),
             'categories_valid' => $categoriesValid,
+            'prev_entry_id' => $prevEntryId,
+            'next_entry_id' => $nextEntryId,
+            'entry_position' => $entryPosition,
         ], JSON_UNESCAPED_UNICODE);
     } catch (Throwable $e) {
         http_response_code(500);
@@ -1032,6 +1053,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             admin_log_activity($pdo, $currentUserId, $activeEventId, $logType, 'musabaqa_score_sheets', $scoreSheetId, $logText);
         });
 
+        $saveAndNext = !empty($_POST['save_and_next']);
+
+        if ($saveAndNext) {
+            $nextStmt = $pdo->prepare("
+                SELECT pe.id, pe.entry_name
+                FROM musabaqa_program_entries pe
+                LEFT JOIN musabaqa_score_sheets ss ON ss.entry_id = pe.id
+                WHERE pe.program_id = ? AND pe.event_id = ? AND pe.id != ?
+                  AND (ss.id IS NULL OR ss.status != 'completed')
+                ORDER BY pe.performance_order ASC, pe.id ASC
+                LIMIT 1
+            ");
+            $nextStmt->execute([$programId, $activeEventId, $entryId]);
+            $nextEntry = $nextStmt->fetch(PDO::FETCH_ASSOC);
+
+            if ($nextEntry) {
+                admin_flash('success', 'Score sheet saved! Now scoring: ' . ($nextEntry['entry_name'] ?: 'Next Entry'));
+                admin_redirect('/admin/score-entry/program-scores.php', [
+                    'program_id' => $programId,
+                    'open_entry_id' => (int)$nextEntry['id']
+                ]);
+                exit;
+            }
+        }
+
         if (admin_program_ready_for_approval($pdo, $programId)) {
             admin_flash('ready', 'All entries for this program have been scored. This program is ready for submission.');
         } else {
@@ -1056,7 +1102,11 @@ $stmt = $pdo->prepare("
         ss.judge1_total,
         ss.judge2_total,
         ss.final_total,
-        ss.status AS sheet_status
+        ss.status AS sheet_status,
+        (SELECT GROUP_CONCAT(tm.chest_number SEPARATOR ', ')
+         FROM musabaqa_entry_members em
+         JOIN musabaqa_team_members tm ON tm.id = em.team_member_id
+         WHERE em.entry_id = pe.id AND tm.chest_number IS NOT NULL AND tm.chest_number <> '') AS chest_number
     FROM musabaqa_program_entries pe
     JOIN musabaqa_teams t ON t.id = pe.team_id
     LEFT JOIN musabaqa_score_sheets ss ON ss.entry_id = pe.id
@@ -1075,6 +1125,7 @@ foreach ($rawEntries as $entry) {
         && stripos((string)($entry['entry_number'] ?? ''), $entrySearch) === false
         && stripos((string)($entry['entry_name'] ?? ''), $entrySearch) === false
         && stripos((string)($entry['team_name'] ?? ''), $entrySearch) === false
+        && stripos((string)($entry['chest_number'] ?? ''), $entrySearch) === false
         && stripos((string)$statusText, $entrySearch) === false
         && stripos((string)$scoreText, $entrySearch) === false
     ) {
@@ -1111,7 +1162,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
             ?>
             <tr>
                 <td><strong><?= $orderIndex++ ?></strong></td>
-                <td><strong>#<?= e(str_pad((string)$entry['entry_number'], 3, '0', STR_PAD_LEFT)) ?></strong></td>
+                <td><strong><?= e($entry['chest_number'] ?: '-') ?></strong></td>
                 <td><?= e($entry['entry_name'] ?: 'Unnamed Entry') ?></td>
                 <td><span class="team-color-pill" style="background: <?= e($entry['team_color'] ?? '#64748b') ?>22;"><?= e($entry['team_name']) ?></span></td>
                 <td><span class="badge <?= program_scores_badge($entry['status']) ?>"><?= e(ucfirst((string)$entry['status'])) ?></span></td>
@@ -1185,14 +1236,9 @@ require_once __DIR__ . '/../../includes/sidebar.php';
         <div class="alert <?= in_array($flash['type'], ['success', 'ready'], true) ? 'alert-success' : 'alert-error' ?>" id="<?= $flash['type'] === 'ready' ? 'programReadyAlert' : '' ?>"><?= e($flash['message']) ?></div>
     <?php endif; ?>
 
-    <?php if (!$categoriesValid): ?>
-        <div class="alert alert-warning">Program categories must total exactly 100 before scores can be saved.</div>
-    <?php endif; ?>
-
     <div class="grid grid-auto gap-5 mb-6">
         <div class="stat-card"><div class="stat-icon"><i class="fa-solid fa-list-check"></i></div><div class="stat-value"><?= count($entries) ?></div><div class="stat-label">Entries</div></div>
         <div class="stat-card"><div class="stat-icon"><i class="fa-solid fa-clipboard-check"></i></div><div class="stat-value"><?= count(array_filter($entries, static fn ($row) => in_array((string)($row['sheet_status'] ?? ''), ['completed','submitted','approved','rejected'], true))) ?></div><div class="stat-label">Scored</div></div>
-        <div class="stat-card"><div class="stat-icon"><i class="fa-solid fa-sliders"></i></div><div class="stat-value"><?= number_format($categoryTotal, 2) ?></div><div class="stat-label">Category Total</div></div>
     </div>
 
     <div class="panel mb-6">
@@ -1200,7 +1246,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
             <input type="hidden" name="program_id" value="<?= (int)$programId ?>">
             <div class="input-group full-width">
                 <label>Search Entries</label>
-                <input type="text" name="search" value="<?= e($entrySearch) ?>" placeholder="Entry number, entry name, team, status or score">
+                <input type="text" name="search" value="<?= e($entrySearch) ?>" placeholder="Chest number, entry name, team, status or score">
             </div>
             <div class="form-actions full-width">
                 <button class="btn btn-secondary btn-md" type="submit"><i class="fa-solid fa-magnifying-glass"></i> Search</button>
@@ -1211,104 +1257,63 @@ require_once __DIR__ . '/../../includes/sidebar.php';
         </form>
     </div>
 
-    <div class="panel mb-6">
-        <div class="flex-between">
-            <div>
-                <div class="dashboard-heading">Scoring Categories</div>
-                <div class="page-subtitle">
-                    <?= $categoriesEditable ? 'Add, edit, delete, and reorder categories before scoring approval.' : 'Categories are read-only for submitted or approved programs.' ?>
+    <div class="modal-overlay" id="scorePanel">
+        <div class="modal-box modal-lg">
+            <div class="modal-header flex-between" style="align-items: center;">
+                <div>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <div class="modal-title" id="scorePanelTitle">Score Entry</div>
+                        <span class="badge badge-neutral" id="scoreEntryPositionBadge" style="font-weight: 700; font-size: 11px; display: none;"></span>
+                    </div>
+                    <div class="page-subtitle" id="scorePanelSubtitle"></div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <button type="button" class="btn btn-secondary btn-sm" id="prevEntryBtn" title="Previous Entry" style="display: none;">
+                        <i class="fa-solid fa-chevron-left"></i> Prev
+                    </button>
+                    <button type="button" class="btn btn-secondary btn-sm" id="nextEntryBtn" title="Next Entry" style="display: none;">
+                        Next <i class="fa-solid fa-chevron-right"></i>
+                    </button>
+                    <button class="modal-close" type="button" id="closeScorePanel"><i class="fa-solid fa-xmark"></i></button>
                 </div>
             </div>
-            <span class="badge <?= $categoriesValid ? 'badge-success' : 'badge-danger' ?>">Total <?= e(number_format($categoryTotal, 2)) ?> / 100</span>
+            <form method="POST" id="scoreForm">
+                <?= admin_csrf_field() ?>
+                <input type="hidden" name="action" value="save_score_sheet">
+                <input type="hidden" name="program_id" value="<?= (int)$programId ?>">
+                <input type="hidden" name="entry_id" id="scoreEntryId">
+
+                <div class="panel mb-6">
+                    <div class="grid grid-auto gap-4">
+                        <div class="input-group"><label>Program</label><input type="text" value="<?= e($program['title']) ?>" readonly></div>
+                        <div class="input-group"><label>Entry</label><input type="text" id="panelEntryName" readonly></div>
+                        <div class="input-group"><label>Team</label><input type="text" id="panelTeamName" readonly></div>
+                        <div class="input-group"><label>Chest Number</label><input type="text" id="panelEntryNumber" readonly></div>
+                    </div>
+                </div>
+
+                <div id="judgeScoreBlocks" class="grid grid-2 gap-4"></div>
+
+                <div class="panel mt-4">
+                    <div class="flex-between">
+                        <div><strong>Final Score</strong><div class="field-help">Judge 1 total + Judge 2 total</div></div>
+                        <div class="stat-value" id="finalTotal">0.00</div>
+                    </div>
+                </div>
+
+                <div class="form-actions" style="display: flex; justify-content: space-between; align-items: center; gap: 10px; width: 100%;">
+                    <button class="btn btn-secondary btn-md" type="button" id="cancelScorePanel">Cancel</button>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn btn-success btn-md" type="submit" name="save_and_next" value="0" id="saveScoreButton" style="font-weight: 700;">
+                            <i class="fa-solid fa-check mr-1"></i> Save Score
+                        </button>
+                        <button class="btn btn-glow-success btn-md" type="submit" name="save_and_next" value="1" id="saveAndNextButton" style="background: linear-gradient(135deg, #10b981, #059669); font-weight: 800; border-color: #10b981;">
+                            <i class="fa-solid fa-forward-step mr-1"></i> Save & Next Entry
+                        </button>
+                    </div>
+                </div>
+            </form>
         </div>
-
-        <form method="POST" id="categoryForm" class="mt-4">
-            <?= admin_csrf_field() ?>
-            <input type="hidden" name="action" value="save_categories">
-            <input type="hidden" name="program_id" value="<?= (int)$programId ?>">
-
-            <div class="table-wrapper">
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>Category Name</th>
-                            <th>Maximum Marks</th>
-                            <th>Sort Order</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody id="categoryRows">
-                        <?php foreach ($categories as $category): ?>
-                            <tr class="category-row">
-                                <td>
-                                    <input type="hidden" name="category_id[]" value="<?= (int)$category['id'] ?>">
-                                    <input type="text" name="category_name[]" value="<?= e($category['name']) ?>" <?= $categoriesEditable ? 'required' : 'readonly' ?>>
-                                </td>
-                                <td><input type="number" name="category_marks[]" min="0" max="100" step="0.01" value="<?= e((string)$category['max_marks']) ?>" <?= $categoriesEditable ? 'required' : 'readonly' ?>></td>
-                                <td><input type="number" name="category_sort_order[]" min="1" step="1" value="<?= (int)$category['sort_order'] ?>" <?= $categoriesEditable ? 'required' : 'readonly' ?>></td>
-                                <td>
-                                    <button class="btn btn-danger btn-sm" type="button" data-remove-category <?= $categoriesEditable ? '' : 'disabled' ?>>
-                                        <i class="fa-solid fa-trash"></i> Delete
-                                    </button>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
-            </div>
-
-            <div class="flex-between mt-4">
-                <button class="btn btn-secondary btn-sm" type="button" id="addCategoryRow" <?= $categoriesEditable ? '' : 'disabled' ?>>
-                    <i class="fa-solid fa-plus"></i> Add Category
-                </button>
-                <div class="badge badge-neutral">Total: <span id="categoryTotalLive"><?= e(number_format($categoryTotal, 2)) ?></span> / 100</div>
-            </div>
-
-            <?php if ($categoriesEditable): ?>
-                <div class="form-actions">
-                    <button class="btn btn-success btn-md" type="submit"><i class="fa-solid fa-floppy-disk"></i> Save Categories</button>
-                </div>
-            <?php endif; ?>
-        </form>
-    </div>
-
-    <div class="panel mb-6 hidden" id="scorePanel">
-        <div class="modal-header">
-            <div>
-                <div class="modal-title" id="scorePanelTitle">Score Entry</div>
-                <div class="page-subtitle" id="scorePanelSubtitle"></div>
-            </div>
-            <button class="modal-close" type="button" id="closeScorePanel"><i class="fa-solid fa-xmark"></i></button>
-        </div>
-        <form method="POST" id="scoreForm">
-            <?= admin_csrf_field() ?>
-            <input type="hidden" name="action" value="save_score_sheet">
-            <input type="hidden" name="program_id" value="<?= (int)$programId ?>">
-            <input type="hidden" name="entry_id" id="scoreEntryId">
-
-            <div class="panel mb-6">
-                <div class="grid grid-auto gap-4">
-                    <div class="input-group"><label>Program</label><input type="text" value="<?= e($program['title']) ?>" readonly></div>
-                    <div class="input-group"><label>Entry</label><input type="text" id="panelEntryName" readonly></div>
-                    <div class="input-group"><label>Team</label><input type="text" id="panelTeamName" readonly></div>
-                    <div class="input-group"><label>Entry Number</label><input type="text" id="panelEntryNumber" readonly></div>
-                </div>
-            </div>
-
-            <div id="judgeScoreBlocks" class="grid grid-2 gap-4"></div>
-
-            <div class="panel mt-4">
-                <div class="flex-between">
-                    <div><strong>Final Score</strong><div class="field-help">Judge 1 total + Judge 2 total</div></div>
-                    <div class="stat-value" id="finalTotal">0.00</div>
-                </div>
-            </div>
-
-            <div class="form-actions form-actions-between">
-                <button class="btn btn-secondary btn-md" type="button" id="cancelScorePanel">Cancel</button>
-                <button class="btn btn-success btn-md" type="submit" id="saveScoreButton">Save Score</button>
-            </div>
-        </form>
     </div>
 
     <?php if (!$entries): ?>
@@ -1319,7 +1324,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                 <thead>
                     <tr>
                         <th style="width: 80px;">Order</th>
-                        <th>Entry Number</th>
+                        <th>Chest Number</th>
                         <th>Entry Name</th>
                         <th>Team</th>
                         <th>Status</th>
@@ -1333,7 +1338,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                         <?php $hasSheet = !empty($entry['score_sheet_id']); ?>
                         <tr>
                             <td><strong><?= $orderIndex++ ?></strong></td>
-                            <td><strong>#<?= e(str_pad((string)$entry['entry_number'], 3, '0', STR_PAD_LEFT)) ?></strong></td>
+                            <td><strong><?= e($entry['chest_number'] ?: '-') ?></strong></td>
                             <td><?= e($entry['entry_name'] ?: 'Unnamed Entry') ?></td>
                             <td><span class="team-color-pill" style="background: <?= e($entry['team_color'] ?? '#64748b') ?>22;"><?= e($entry['team_name']) ?></span></td>
                             <td><span class="badge <?= program_scores_badge($entry['status']) ?>"><?= e(ucfirst((string)$entry['status'])) ?></span></td>
@@ -1369,6 +1374,19 @@ require_once __DIR__ . '/../../includes/sidebar.php';
     display: grid;
     gap: 12px;
 }
+body.modal-open {
+    overflow: hidden !important;
+}
+.modal-overlay {
+    z-index: 10000 !important;
+    align-items: flex-start !important;
+    overflow-y: auto !important;
+    padding-top: 5vh !important;
+    padding-bottom: 5vh !important;
+}
+.modal-box {
+    margin: 0 auto !important;
+}
 </style>
 
 <script>
@@ -1377,47 +1395,6 @@ const CATEGORIES_EDITABLE = <?= json_encode($categoriesEditable) ?>;
 
 function escapeHtml(value){return String(value ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;')}
 function formatNumber(value){const n = Number(value); return Number.isFinite(n) ? n.toFixed(2) : '0.00'}
-
-function refreshCategoryTotal() {
-    const total = Array.from(document.querySelectorAll('input[name="category_marks[]"]')).reduce((sum, input) => sum + Number(input.value || 0), 0);
-    const target = document.getElementById('categoryTotalLive');
-    if (target) target.textContent = formatNumber(total);
-}
-
-function bindCategoryControls() {
-    document.querySelectorAll('input[name="category_marks[]"]').forEach(input => input.oninput = refreshCategoryTotal);
-    document.querySelectorAll('[data-remove-category]').forEach(button => {
-        button.onclick = () => {
-            if (!CATEGORIES_EDITABLE) return;
-            button.closest('tr')?.remove();
-            refreshCategoryTotal();
-        };
-    });
-}
-
-function categoryRow() {
-    return `
-        <tr class="category-row">
-            <td>
-                <input type="hidden" name="category_id[]" value="0">
-                <input type="text" name="category_name[]" required>
-            </td>
-            <td><input type="number" name="category_marks[]" min="0" max="100" step="0.01" required></td>
-            <td><input type="number" name="category_sort_order[]" min="1" step="1" value="${document.querySelectorAll('.category-row').length + 1}" required></td>
-            <td><button class="btn btn-danger btn-sm" type="button" data-remove-category><i class="fa-solid fa-trash"></i> Delete</button></td>
-        </tr>
-    `;
-}
-
-document.getElementById('addCategoryRow')?.addEventListener('click', () => {
-    if (!CATEGORIES_EDITABLE) return;
-    document.getElementById('categoryRows')?.insertAdjacentHTML('beforeend', categoryRow());
-    bindCategoryControls();
-    refreshCategoryTotal();
-});
-
-bindCategoryControls();
-refreshCategoryTotal();
 
 function calculateTotals() {
     const totals = {};
@@ -1454,11 +1431,9 @@ function renderJudgeBlock(judgeNo, categories, scores, locked) {
 }
 
 async function openScoreModal(entryId) {
-    const panel = document.getElementById('scorePanel');
-    panel.classList.remove('hidden');
+    window.openModal('scorePanel');
     document.getElementById('judgeScoreBlocks').innerHTML = '<div class="panel">Loading...</div>';
     document.getElementById('saveScoreButton').disabled = true;
-    panel.scrollIntoView({behavior: 'smooth', block: 'start'});
 
     try {
         const response = await fetch(`${PROGRAM_SCORE_URL}&action=score_data&entry_id=${encodeURIComponent(entryId)}`, {cache: 'no-store'});
@@ -1467,6 +1442,33 @@ async function openScoreModal(entryId) {
 
         document.getElementById('scoreEntryId').value = data.entry.id || '';
         document.getElementById('scorePanelTitle').textContent = data.locked ? 'View Score Sheet' : 'Score Entry';
+        
+        const posBadge = document.getElementById('scoreEntryPositionBadge');
+        if (posBadge) {
+            posBadge.textContent = data.entry_position ? `Entry ${data.entry_position}` : '';
+            posBadge.style.display = data.entry_position ? 'inline-block' : 'none';
+        }
+
+        const prevBtn = document.getElementById('prevEntryBtn');
+        if (prevBtn) {
+            if (data.prev_entry_id) {
+                prevBtn.style.display = 'inline-flex';
+                prevBtn.setAttribute('data-prev-id', data.prev_entry_id);
+            } else {
+                prevBtn.style.display = 'none';
+            }
+        }
+
+        const nextBtn = document.getElementById('nextEntryBtn');
+        if (nextBtn) {
+            if (data.next_entry_id) {
+                nextBtn.style.display = 'inline-flex';
+                nextBtn.setAttribute('data-next-id', data.next_entry_id);
+            } else {
+                nextBtn.style.display = 'none';
+            }
+        }
+
         const subtitleEl = document.getElementById('scorePanelSubtitle');
         if (subtitleEl) {
             subtitleEl.innerHTML = escapeHtml(data.program.title || '');
@@ -1479,7 +1481,7 @@ async function openScoreModal(entryId) {
         }
         document.getElementById('panelEntryName').value = data.entry.entry_name || 'Unnamed Entry';
         document.getElementById('panelTeamName').value = data.entry.team_name || '';
-        document.getElementById('panelEntryNumber').value = data.entry.entry_number ? `#${String(data.entry.entry_number).padStart(3, '0')}` : '';
+        document.getElementById('panelEntryNumber').value = data.entry.chest_number || data.entry.entry_number || '';
         
         if (data.program.disable_scores === 1 || data.program.disable_scores === '1') {
             const currentTotal = data.sheet ? Number(data.sheet.final_total) : 0;
@@ -1512,6 +1514,11 @@ async function openScoreModal(entryId) {
 
             document.getElementById('saveScoreButton').style.display = data.locked ? 'none' : '';
             document.getElementById('saveScoreButton').disabled = !!data.locked;
+            const saveNextBtn = document.getElementById('saveAndNextButton');
+            if (saveNextBtn) {
+                saveNextBtn.style.display = data.locked ? 'none' : '';
+                saveNextBtn.disabled = !!data.locked;
+            }
         } else {
             const judgesCount = Number(data.program.judges_count || 2);
             let blocksHtml = '';
@@ -1522,6 +1529,11 @@ async function openScoreModal(entryId) {
             
             document.getElementById('saveScoreButton').style.display = data.locked ? 'none' : '';
             document.getElementById('saveScoreButton').disabled = !!data.locked;
+            const saveNextBtn = document.getElementById('saveAndNextButton');
+            if (saveNextBtn) {
+                saveNextBtn.style.display = data.locked ? 'none' : '';
+                saveNextBtn.disabled = !!data.locked;
+            }
             document.querySelectorAll('[data-judge-score]').forEach(input => input.addEventListener('input', calculateTotals));
             calculateTotals();
         }
@@ -1536,8 +1548,42 @@ document.addEventListener('click', (e) => {
         openScoreModal(btn.dataset.scoreEntry);
     }
 });
-document.getElementById('closeScorePanel')?.addEventListener('click', () => document.getElementById('scorePanel')?.classList.add('hidden'));
-document.getElementById('cancelScorePanel')?.addEventListener('click', () => document.getElementById('scorePanel')?.classList.add('hidden'));
+document.getElementById('prevEntryBtn')?.addEventListener('click', () => {
+    const prevId = document.getElementById('prevEntryBtn').getAttribute('data-prev-id');
+    if (prevId) openScoreModal(prevId);
+});
+document.getElementById('nextEntryBtn')?.addEventListener('click', () => {
+    const nextId = document.getElementById('nextEntryBtn').getAttribute('data-next-id');
+    if (nextId) openScoreModal(nextId);
+});
+document.getElementById('closeScorePanel')?.addEventListener('click', () => window.closeModal('scorePanel'));
+document.getElementById('cancelScorePanel')?.addEventListener('click', () => window.closeModal('scorePanel'));
+document.getElementById('scorePanel')?.addEventListener('click', (e) => {
+    if (e.target === document.getElementById('scorePanel')) {
+        window.closeModal('scorePanel');
+    }
+});
+
+// Keyboard shortcut: Ctrl + Enter to Save & Next
+document.getElementById('scoreForm')?.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        const saveNextBtn = document.getElementById('saveAndNextButton');
+        if (saveNextBtn && !saveNextBtn.disabled && saveNextBtn.style.display !== 'none') {
+            saveNextBtn.click();
+        } else {
+            document.getElementById('saveScoreButton')?.click();
+        }
+    }
+});
+
+// Auto-open modal on page load if open_entry_id URL parameter present
+const urlParams = new URLSearchParams(window.location.search);
+const openEntryId = urlParams.get('open_entry_id');
+if (openEntryId) {
+    openScoreModal(openEntryId);
+}
+
 if (document.getElementById('programReadyAlert')) {
     setTimeout(() => {
         document.getElementById('sendApprovalButton')?.scrollIntoView({behavior: 'smooth', block: 'center'});
