@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__ . '/../../tv/includes/functions.php';
+require_once __DIR__ . '/includes/functions.php';
 
 // Get the active event id
 $event = tv_active_event();

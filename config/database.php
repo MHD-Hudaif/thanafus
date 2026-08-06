@@ -87,21 +87,34 @@ if (!class_exists('LazyPDO')) {
     }
 }
 
+function create_pdo_connection(string $dsn, string $user, string $pass, string $host = ''): PDO {
+    $options = [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+        PDO::ATTR_EMULATE_PREPARES => false,
+        PDO::MYSQL_ATTR_INIT_COMMAND => "SET SESSION sql_mode='NO_ENGINE_SUBSTITUTION'",
+    ];
+
+    try {
+        return new PDO($dsn, $user, $pass, $options);
+    } catch (PDOException $e) {
+        if (($host === 'localhost' || $host === '127.0.0.1') && str_contains($user, 'ensplpmy')) {
+            $remoteDsn = str_replace(['host=localhost', 'host=127.0.0.1'], 'host=kauzariyya.com', $dsn);
+            try {
+                return new PDO($remoteDsn, $user, $pass, $options);
+            } catch (PDOException $remoteEx) {
+                // fall through
+            }
+        }
+        throw $e;
+    }
+}
+
 function get_dashboard_pdo(): PDO {
-    global $dashboard_dsn, $DB_USER, $DB_PASS;
+    global $dashboard_dsn, $DB_USER, $DB_PASS, $DB_HOST;
     static $pdo = null;
     if ($pdo === null) {
-        $pdo = new PDO(
-            $dashboard_dsn,
-            $DB_USER,
-            $DB_PASS,
-            [
-                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-                PDO::ATTR_EMULATE_PREPARES => false,
-                PDO::MYSQL_ATTR_INIT_COMMAND => "SET SESSION sql_mode='NO_ENGINE_SUBSTITUTION'",
-            ]
-        );
+        $pdo = create_pdo_connection($dashboard_dsn, $DB_USER, $DB_PASS, $DB_HOST);
     }
     return $pdo;
 }
@@ -125,14 +138,4 @@ $musabaqa_pass = env('MUSABAQA_DB_PASSWORD', $DB_PASS);
 $musabaqa_dsn =
 "mysql:host={$musabaqa_host};dbname=" . env('MUSABAQA_DB_DATABASE', 'kauzariyya_musabaqa') . ";charset={$DB_CHARSET}";
 
-$musabaqa_pdo = new PDO(
-    $musabaqa_dsn,
-    $musabaqa_user,
-    $musabaqa_pass,
-    [
-        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-        PDO::ATTR_EMULATE_PREPARES => false,
-        PDO::MYSQL_ATTR_INIT_COMMAND => "SET SESSION sql_mode='NO_ENGINE_SUBSTITUTION'",
-    ]
-);
+$musabaqa_pdo = create_pdo_connection($musabaqa_dsn, $musabaqa_user, $musabaqa_pass, $musabaqa_host);
