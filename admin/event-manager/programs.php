@@ -38,6 +38,8 @@ $scheduleSections = $pdo->prepare("SELECT id, name FROM musabaqa_schedule_sectio
 $scheduleSections->execute([$activeEventId]);
 $scheduleSections = $scheduleSections->fetchAll(PDO::FETCH_ASSOC);
 
+$stageTypes = $pdo->query("SELECT id, name FROM musabaqa_stage_types ORDER BY id ASC")->fetchAll(PDO::FETCH_ASSOC);
+
 function programs_redirect(): void
 {
     admin_redirect('/admin/event-manager/programs.php');
@@ -277,6 +279,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $responsibleTeacherId = $respTeacherIdsArr ? $respTeacherIdsArr[0] : null;
 
         $sectionId = isset($_POST['section_id']) && $_POST['section_id'] !== '' ? (int)$_POST['section_id'] : null;
+        $stageTypeId = isset($_POST['stage_type_id']) && $_POST['stage_type_id'] !== '' ? (int)$_POST['stage_type_id'] : 1;
+        $location = isset($_POST['location']) && $_POST['location'] !== '' ? trim((string)$_POST['location']) : null;
 
         if ($action === 'update' && $programId > 0) {
             $stmt = $pdo->prepare("
@@ -287,7 +291,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     team_points_config = ?, only_team_marks = ?,
                     allowed_sections = ?,
                     responsible_teacher_id = ?, responsible_teacher_ids = ?,
-                    section_id = ?
+                    section_id = ?, stage_type_id = ?, location = ?
                 WHERE id = ? AND event_id = ?
             ");
             $stmt->execute([
@@ -306,6 +310,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $responsibleTeacherId,
                 $responsibleTeacherIds,
                 $sectionId,
+                $stageTypeId,
+                $location,
                 $programId,
                 $activeEventId
             ]);
@@ -318,8 +324,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                      is_special, judges_count, total_marks, entries_limit, redirect_to_team, disable_scores, 
                      team_points_config, only_team_marks,
                      allowed_sections, responsible_teacher_id, responsible_teacher_ids,
-                     section_id)
-                VALUES (?, ?, ?, ?, 'active', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     section_id, stage_type_id, location)
+                VALUES (?, ?, ?, ?, 'active', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
             $stmt->execute([
                 $activeEventId,
@@ -337,7 +343,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $allowedSectionsStr,
                 $responsibleTeacherId,
                 $responsibleTeacherIds,
-                $sectionId
+                $sectionId,
+                $stageTypeId,
+                $location
             ]);
             $programId = (int)$pdo->lastInsertId();
 
@@ -752,6 +760,27 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                     </select>
                     <div class="field-help" style="margin-top: 4px;">Assign to group programs into Morning, Evening, or Night slots. If set to Auto-detect, the TV display will place it based on program timing.</div>
                 </div>
+
+                <?php
+                $defaultStageId = $latestProgramData ? $latestProgramData['stage_type_id'] : 1;
+                $defaultLocation = $latestProgramData ? $latestProgramData['location'] : '';
+                ?>
+                <div class="input-group">
+                    <label>Stage Category <span class="required">*</span></label>
+                    <select name="stage_type_id" id="programStageTypeId" required>
+                        <?php foreach ($stageTypes as $st): ?>
+                            <option value="<?= (int)$st['id'] ?>" <?= (int)$st['id'] === (int)$defaultStageId ? 'selected' : '' ?>><?= e($st['name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label>Specific Venue/Location</label>
+                    <select name="location" id="programLocation">
+                        <option value="">-- Select Stage --</option>
+                        <option value="Darul Quran" <?= $defaultLocation === 'Darul Quran' ? 'selected' : '' ?>>Darul Quran (Normal Stage)</option>
+                        <option value="Kauzariyya Library" <?= $defaultLocation === 'Kauzariyya Library' ? 'selected' : '' ?>>Kauzariyya Library (Off Stage)</option>
+                    </select>
+                </div>
                 <div class="input-group full-width" style="grid-column: span 2;">
                     <label style="font-weight: 600; margin-bottom: 8px; display: block; color: var(--muted);">Allowed Sections (Class Types) <span class="required">*</span></label>
                     <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 5px;">
@@ -1099,6 +1128,11 @@ document.addEventListener('click', (e) => {
         document.querySelectorAll('.responsible-teacher-chk').forEach(chk => chk.checked = false);
         const secEl = document.getElementById('programSectionId');
         if (secEl) secEl.value = '';
+
+        const pStageType = document.getElementById('programStageTypeId');
+        if (pStageType) pStageType.value = '1';
+        const pLocation = document.getElementById('programLocation');
+        if (pLocation) pLocation.value = '';
         
         const jCount = document.getElementById('judgesCount');
         if (jCount) jCount.value = window.GLOBAL_DEFAULT_JUDGES || '2';
@@ -1154,6 +1188,11 @@ document.addEventListener('click', (e) => {
             document.querySelectorAll('.allowed-section-chk').forEach(chk => {
                 chk.checked = allowed.includes(chk.value) || (p.class_type_id && String(p.class_type_id) === String(chk.value));
             });
+
+            const pStageType = document.getElementById('programStageTypeId');
+            if (pStageType) pStageType.value = String(p.stage_type_id || '1');
+            const pLocation = document.getElementById('programLocation');
+            if (pLocation) pLocation.value = p.location || '';
 
             const jCount = document.getElementById('judgesCount');
             if (jCount) jCount.value = String(p.judges_count || '2');
