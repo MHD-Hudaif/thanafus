@@ -883,15 +883,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             throw new RuntimeException('Invalid scoring action.');
         }
 
-        if (!$categoriesValid) {
-            throw new RuntimeException('Program categories must total exactly 100 before scoring.');
-        }
         if (in_array((string)$program['approval_status'], ['submitted', 'approved'], true)) {
             throw new RuntimeException('Submitted or approved program scores are locked.');
         }
 
         $entryId = (int)($_POST['entry_id'] ?? 0);
-        $postedScores = (array)($_POST['scores'] ?? []);
 
         $stmt = $pdo->prepare("
             SELECT pe.id, pe.program_id
@@ -905,6 +901,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!$stmt->fetchColumn()) {
             throw new RuntimeException('Entry not found for this program.');
         }
+
+        if (!empty($program['disable_scores'])) {
+            // Direct rank entry
+            $rankInput = (int)($_POST['placement_rank'] ?? 0);
+            $finalTotal = 0.0;
+            if ($rankInput === 1) $finalTotal = 100.0;
+            elseif ($rankInput === 2) $finalTotal = 90.0;
+            elseif ($rankInput === 3) $finalTotal = 80.0;
+
+            $judge1Total = $finalTotal / 2;
+            $judge2Total = $finalTotal / 2;
+
+            admin_db_transaction($pdo, function ($pdo) use ($entryId, $programId, $judge1Total, $judge2Total, $finalTotal, $currentUserId) {
+                $stmt = $pdo->prepare('SELECT id FROM musabaqa_score_sheets WHERE entry_id = ? LIMIT 1');
+                $stmt->execute([$entryId]);
+                $sheetId = (int)$stmt->fetchColumn();
+
+                if ($sheetId > 0) {
+                    $stmt = $pdo->prepare("
+                        UPDATE musabaqa_score_sheets
+                        SET program_id = ?, judge1_total = ?, judge2_total = ?, final_total = ?, status = 'completed'
+                        WHERE id = ?
+                    ");
+                    $stmt->execute([$programId, $judge1Total, $judge2Total, $finalTotal, $sheetId]);
+                } else {
+                    $stmt = $pdo->prepare("
+                        INSERT INTO musabaqa_score_sheets (entry_id, program_id, judge1_total, judge2_total, final_total, status, created_by)
+                        VALUES (?, ?, ?, ?, ?, 'completed', ?)
+                    ");
+                    $stmt->execute([$entryId, $programId, $judge1Total, $judge2Total, $finalTotal, $currentUserId]);
+                }
+            });
+
+            admin_flash('success', 'Placement rank saved.');
+            program_scores_redirect($programId);
+            exit;
+        }
+
+        if (!$categoriesValid) {
+            throw new RuntimeException('Program categories must total exactly 100 before scoring.');
+        }
+
+        $postedScores = (array)($_POST['scores'] ?? []);
 
         $judgesCount = (int)($program['judges_count'] ?? 2);
         $judgeTotals = [];
@@ -1078,7 +1117,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
                 <td><span class="badge <?= program_scores_badge($entry['status']) ?>"><?= e(ucfirst((string)$entry['status'])) ?></span></td>
                 <td><?= $hasSheet ? e(number_format((float)$entry['final_total'], 2)) : '<span class="badge badge-neutral">Missing</span>' ?></td>
                 <td>
-                    <button class="btn btn-secondary btn-sm" type="button" data-score-entry="<?= (int)$entry['id'] ?>" <?= $categoriesValid ? '' : 'disabled' ?>>
+                    <button class="btn btn-secondary btn-sm" type="button" data-score-entry="<?= (int)$entry['id'] ?>" <?= ($categoriesValid || !empty($program['disable_scores'])) ? '' : 'disabled' ?>>
                         <i class="fa-solid fa-pen-to-square"></i> <?= $hasSheet ? ($scoresLocked ? 'View' : 'Edit') : 'Score' ?>
                     </button>
                 </td>
@@ -1300,7 +1339,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                             <td><span class="badge <?= program_scores_badge($entry['status']) ?>"><?= e(ucfirst((string)$entry['status'])) ?></span></td>
                             <td><?= $hasSheet ? e(number_format((float)$entry['final_total'], 2)) : '<span class="badge badge-neutral">Missing</span>' ?></td>
                             <td>
-                                <button class="btn btn-secondary btn-sm" type="button" data-score-entry="<?= (int)$entry['id'] ?>" <?= $categoriesValid ? '' : 'disabled' ?>>
+                                <button class="btn btn-secondary btn-sm" type="button" data-score-entry="<?= (int)$entry['id'] ?>" <?= ($categoriesValid || !empty($program['disable_scores'])) ? '' : 'disabled' ?>>
                                     <i class="fa-solid fa-pen-to-square"></i> <?= $hasSheet ? ($scoresLocked ? 'View' : 'Edit') : 'Score' ?>
                                 </button>
                             </td>
@@ -1442,17 +1481,50 @@ async function openScoreModal(entryId) {
         document.getElementById('panelTeamName').value = data.entry.team_name || '';
         document.getElementById('panelEntryNumber').value = data.entry.entry_number ? `#${String(data.entry.entry_number).padStart(3, '0')}` : '';
         
-        const judgesCount = Number(data.program.judges_count || 2);
-        let blocksHtml = '';
-        for (let j = 1; j <= judgesCount; j++) {
-            blocksHtml += renderJudgeBlock(j, data.categories || [], data.scores || {}, data.locked);
+        if (data.program.disable_scores === 1 || data.program.disable_scores === '1') {
+            const currentTotal = data.sheet ? Number(data.sheet.final_total) : 0;
+            let currentRank = 0;
+            if (currentTotal === 100) currentRank = 1;
+            else if (currentTotal === 90) currentRank = 2;
+            else if (currentTotal === 80) currentRank = 3;
+
+            let blocksHtml = `
+                <div class="panel" style="grid-column: span 2; width: 100%;">
+                    <div class="dashboard-heading">Rank Selection</div>
+                    <div class="input-group mt-4">
+                        <label>Select Placement Rank</label>
+                        <select name="placement_rank" id="placementRankSelect" class="form-select" style="width: 100%; padding: 10px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface-2); color: var(--text);" ${data.locked ? 'disabled' : ''}>
+                            <option value="0" ${currentRank === 0 ? 'selected' : ''}>-- No Rank --</option>
+                            <option value="1" ${currentRank === 1 ? 'selected' : ''}>1st Place</option>
+                            <option value="2" ${currentRank === 2 ? 'selected' : ''}>2nd Place</option>
+                            <option value="3" ${currentRank === 3 ? 'selected' : ''}>3rd Place</option>
+                        </select>
+                    </div>
+                </div>
+            `;
+            document.getElementById('judgeScoreBlocks').innerHTML = blocksHtml;
+            document.getElementById('finalTotal').textContent = currentRank > 0 ? (currentRank === 1 ? '1st Place' : (currentRank === 2 ? '2nd Place' : '3rd Place')) : 'No Rank';
+            
+            document.getElementById('placementRankSelect').addEventListener('change', function() {
+                const val = Number(this.value);
+                document.getElementById('finalTotal').textContent = val > 0 ? (val === 1 ? '1st Place' : (val === 2 ? '2nd Place' : '3rd Place')) : 'No Rank';
+            });
+
+            document.getElementById('saveScoreButton').style.display = data.locked ? 'none' : '';
+            document.getElementById('saveScoreButton').disabled = !!data.locked;
+        } else {
+            const judgesCount = Number(data.program.judges_count || 2);
+            let blocksHtml = '';
+            for (let j = 1; j <= judgesCount; j++) {
+                blocksHtml += renderJudgeBlock(j, data.categories || [], data.scores || {}, data.locked);
+            }
+            document.getElementById('judgeScoreBlocks').innerHTML = blocksHtml;
+            
+            document.getElementById('saveScoreButton').style.display = data.locked ? 'none' : '';
+            document.getElementById('saveScoreButton').disabled = !!data.locked;
+            document.querySelectorAll('[data-judge-score]').forEach(input => input.addEventListener('input', calculateTotals));
+            calculateTotals();
         }
-        document.getElementById('judgeScoreBlocks').innerHTML = blocksHtml;
-        
-        document.getElementById('saveScoreButton').style.display = data.locked ? 'none' : '';
-        document.getElementById('saveScoreButton').disabled = !!data.locked;
-        document.querySelectorAll('[data-judge-score]').forEach(input => input.addEventListener('input', calculateTotals));
-        calculateTotals();
     } catch (error) {
         document.getElementById('judgeScoreBlocks').innerHTML = `<div class="alert alert-error">${escapeHtml(error.message)}</div>`;
     }

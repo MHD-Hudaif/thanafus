@@ -1355,6 +1355,16 @@ document.getElementById('addRankBtn')?.addEventListener('click', () => {
 });
 
 document.getElementById('programForm')?.addEventListener('submit', () => {
+    // Re-enable disabled controls so their values post to backend cleanly
+    const jCount = document.getElementById('judgesCount');
+    if (jCount) jCount.disabled = false;
+    const tMarks = document.getElementById('totalMarks');
+    if (tMarks) tMarks.disabled = false;
+    const rTeam = document.getElementById('redirectToTeam');
+    if (rTeam) rTeam.disabled = false;
+    const oTeam = document.getElementById('onlyTeamMarks');
+    if (oTeam) oTeam.disabled = false;
+
     const config = {};
     document.querySelectorAll('#ranksContainer .rank-row').forEach((row, idx) => {
         const rankNo = idx + 1;
@@ -1369,32 +1379,57 @@ function syncDisableScoresState() {
     const dScores = document.getElementById('disableScores');
     const rTeam = document.getElementById('redirectToTeam');
     const oTeam = document.getElementById('onlyTeamMarks');
-    if (dScores && rTeam && oTeam) {
-        const rRow = document.getElementById('rowRedirectToTeam');
-        const oRow = document.getElementById('rowOnlyTeamMarks');
-        if (dScores.checked) {
-            rTeam.disabled = true;
-            oTeam.disabled = true;
-            rTeam.checked = false;
-            oTeam.checked = false;
-            if (rRow) {
-                rRow.style.opacity = '0.5';
-                rRow.style.pointerEvents = 'none';
+    const jCount = document.getElementById('judgesCount');
+    const tMarks = document.getElementById('totalMarks');
+
+    if (dScores) {
+        const isDisabled = dScores.checked;
+
+        if (jCount) {
+            jCount.disabled = isDisabled;
+            const jGroup = jCount.closest('.input-group');
+            if (jGroup) {
+                jGroup.style.opacity = isDisabled ? '0.45' : '1';
+                jGroup.style.pointerEvents = isDisabled ? 'none' : 'auto';
             }
-            if (oRow) {
-                oRow.style.opacity = '0.5';
-                oRow.style.pointerEvents = 'none';
+        }
+
+        if (tMarks) {
+            tMarks.disabled = isDisabled;
+            const tGroup = tMarks.closest('.input-group');
+            if (tGroup) {
+                tGroup.style.opacity = isDisabled ? '0.45' : '1';
+                tGroup.style.pointerEvents = isDisabled ? 'none' : 'auto';
             }
-        } else {
-            rTeam.disabled = false;
-            oTeam.disabled = false;
-            if (rRow) {
-                rRow.style.opacity = '1';
-                rRow.style.pointerEvents = 'auto';
-            }
-            if (oRow) {
-                oRow.style.opacity = '1';
-                oRow.style.pointerEvents = 'auto';
+        }
+
+        if (rTeam && oTeam) {
+            const rRow = document.getElementById('rowRedirectToTeam');
+            const oRow = document.getElementById('rowOnlyTeamMarks');
+            if (isDisabled) {
+                rTeam.disabled = true;
+                oTeam.disabled = true;
+                rTeam.checked = false;
+                oTeam.checked = false;
+                if (rRow) {
+                    rRow.style.opacity = '0.5';
+                    rRow.style.pointerEvents = 'none';
+                }
+                if (oRow) {
+                    oRow.style.opacity = '0.5';
+                    oRow.style.pointerEvents = 'none';
+                }
+            } else {
+                rTeam.disabled = false;
+                oTeam.disabled = false;
+                if (rRow) {
+                    rRow.style.opacity = '1';
+                    rRow.style.pointerEvents = 'auto';
+                }
+                if (oRow) {
+                    oRow.style.opacity = '1';
+                    oRow.style.pointerEvents = 'auto';
+                }
             }
         }
     }

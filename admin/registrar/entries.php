@@ -1440,10 +1440,15 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                     <?= count($teamGroup['members']) ?> Eligible Members · Auto Name: <strong style="color: #60a5fa;"><?= e($defaultGroupEntryName) ?></strong>
                                 </div>
                             </div>
-                            <div>
+                            <div style="display: flex; align-items: center; gap: 10px;">
                                 <span class="badge <?= $isTeamFull ? 'badge-warning' : 'badge-success' ?>" style="font-weight: 700; font-size: 12px; padding: 6px 12px;">
                                     <?= $tAssigned ?> / <?= $perTeamLimit ?> Entries Registered
                                 </span>
+                                <?php if (!$isTeamFull): ?>
+                                    <button type="submit" form="groupEntryForm_<?= $teamId ?>" class="btn btn-glow-success btn-sm" style="font-weight: 700; height: 34px; padding: 0 14px;">
+                                        <i class="fa-solid fa-plus mr-1"></i> Register <?= e($teamGroup['name']) ?> Entry
+                                    </button>
+                                <?php endif; ?>
                             </div>
                         </div>
 
@@ -1478,7 +1483,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
 
                         <!-- Create Group Entry Form -->
                         <?php if (!$isTeamFull): ?>
-                            <form method="POST">
+                            <form method="POST" id="groupEntryForm_<?= $teamId ?>">
                                 <?= admin_csrf_field() ?>
                                 <input type="hidden" name="action" value="create_entry">
                                 <input type="hidden" name="program_id" value="<?= (int)$activeProgram['id'] ?>">
@@ -1496,9 +1501,14 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                     </div>
 
                                     <div>
-                                        <label style="font-weight: 700; font-size: 13px; color: #fff; display: block; margin-bottom: 6px;">
-                                            Select Participants for this Group Entry
-                                        </label>
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                            <label style="font-weight: 700; font-size: 13px; color: #fff; margin: 0;">
+                                                Select Participants for this Group Entry
+                                            </label>
+                                            <button type="button" class="btn btn-xs btn-secondary toggle-team-members-btn" data-team-id="<?= $teamId ?>" style="font-size: 11px; padding: 3px 8px; border-radius: 6px;">
+                                                <i class="fa-solid fa-check-double mr-1"></i> Select All
+                                            </button>
+                                        </div>
                                         <div class="grid gap-2" style="grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); max-height: 260px; overflow-y: auto; padding-right: 4px;">
                                             <?php foreach ($teamGroup['members'] as $m): ?>
                                                 <?php
@@ -1514,7 +1524,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                                     </div>
                                                 <?php else: ?>
                                                     <label class="student-card-selection" style="padding: 8px 12px; margin: 0; cursor: pointer;">
-                                                        <input type="checkbox" name="team_member_ids[]" value="<?= $mId ?>" class="member-checkbox" style="display:none;">
+                                                        <input type="checkbox" name="team_member_ids[]" value="<?= $mId ?>" class="member-checkbox" data-team-id="<?= $teamId ?>" style="display:none;">
                                                         <span class="student-avatar-badge" style="width: 28px; height: 28px; font-size: 11px;">
                                                             <span class="badge-text-chest">#<?= e($m['chest_number'] ?: mb_substr((string)$m['full_name'], 0, 1)) ?></span>
                                                             <i class="fa-solid fa-check badge-icon-check" style="font-size: 10px;"></i>
@@ -1653,6 +1663,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (cb.checked) card.classList.add('selected');
                 else card.classList.remove('selected');
             }
+            updateCount();
+        });
+    });
+
+    document.querySelectorAll('.toggle-team-members-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const teamId = btn.getAttribute('data-team-id');
+            const teamForm = document.getElementById(`groupEntryForm_${teamId}`);
+            if (!teamForm) return;
+
+            const cbs = Array.from(teamForm.querySelectorAll('.member-checkbox:not([disabled])'));
+            const allChecked = cbs.length > 0 && cbs.every(cb => cb.checked);
+
+            cbs.forEach(cb => {
+                cb.checked = !allChecked;
+                const card = cb.closest('.student-card-selection');
+                if (card) {
+                    if (cb.checked) card.classList.add('selected');
+                    else card.classList.remove('selected');
+                }
+            });
+            btn.innerHTML = !allChecked ?
+                '<i class="fa-solid fa-square-xmark mr-1"></i> Deselect All' :
+                '<i class="fa-solid fa-check-double mr-1"></i> Select All';
             updateCount();
         });
     });
