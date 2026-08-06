@@ -634,7 +634,11 @@ document.getElementById('clearSelection')?.addEventListener('click', () => {
 addMembersForm?.addEventListener('submit', event => {
     if (!checkboxes().some(input => input.checked)) {
         event.preventDefault();
-        alert('Please select at least one student.');
+        if (window.showToast) {
+            window.showToast('Please select at least one student.', 'error');
+        } else {
+            alert('Please select at least one student.');
+        }
     }
 });
 

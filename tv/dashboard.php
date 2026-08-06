@@ -1,5 +1,5 @@
 <?php
-$pageTitle = 'TV Display Control';
+$pageTitle = 'Live Display Control';
 
 require_once __DIR__ . '/../includes/admin-helpers.php';
 require_login();
@@ -322,12 +322,12 @@ body.dark .tv-stat-card {
 <div class="main-content">
     <div class="topbar">
         <div>
-            <div class="page-title">TV Broadcast Control</div>
+            <div class="page-title">Live Display Control</div>
             <div class="page-subtitle">Configure screen slide ordering and durations</div>
         </div>
         <div class="flex gap-3">
             <a href="<?= APP_URL ?>/tv/index.php" target="_blank" class="btn btn-primary btn-md" data-ajax-ignore>
-                <i class="fa-solid fa-square-rss"></i> Launch TV Display
+                <i class="fa-solid fa-square-rss"></i> Launch Live Display
             </a>
         </div>
     </div>
@@ -485,7 +485,7 @@ body.dark .tv-stat-card {
             <div class="panel sticky-preview">
                 <div class="flex justify-between items-center mb-4" style="border-bottom: 1px solid var(--border-color, #e2e8f0); padding-bottom: 12px;">
                     <h3 style="font-size: 16px; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 8px;">
-                        <i class="fa-solid fa-tv text-primary"></i> Live TV Preview
+                        <i class="fa-solid fa-display text-primary"></i> Live Display Preview
                     </h3>
                     <span class="live-badge"><span class="live-dot"></span> LIVE FEED</span>
                 </div>
@@ -579,12 +579,12 @@ body.dark .tv-stat-card {
 
             if (willEnable) {
                 titleEl.textContent = 'Enable Slide';
-                msgEl.innerHTML = `Enable <strong>${slideName}</strong> on the TV broadcast? It will start appearing in the rotation.`;
+                msgEl.innerHTML = `Enable <strong>${slideName}</strong> on the live display? It will start appearing in the rotation.`;
                 confirmBtn.innerHTML = '<i class="fa-solid fa-eye"></i> Enable';
                 confirmBtn.className = 'btn btn-success btn-md';
             } else {
                 titleEl.textContent = 'Disable Slide';
-                msgEl.innerHTML = `Disable <strong>${slideName}</strong> from the TV broadcast? It will no longer appear in the rotation.`;
+                msgEl.innerHTML = `Disable <strong>${slideName}</strong> from the live display? It will no longer appear in the rotation.`;
                 confirmBtn.innerHTML = '<i class="fa-solid fa-eye-slash"></i> Disable';
                 confirmBtn.className = 'btn btn-danger btn-md';
             }

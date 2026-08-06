@@ -1182,6 +1182,54 @@
         }
     }
 
+    function applyBootstrap(data) {
+        if (!data) return;
+
+        const settings = data.settings || {};
+
+        // Sync playback state
+        if (typeof settings.is_playing === 'boolean') state.is_playing = settings.is_playing;
+        if (settings.mode) state.mode = settings.mode;
+        if (settings.theme) state.theme = settings.theme;
+
+        // Rebuild slides map and ordered rotation from settings
+        const slidesMap = settings.slides || {};
+        state.slides = {};
+
+        const slideArray = Object.values(slidesMap);
+        slideArray.sort((a, b) => (a.sort_order ?? 99) - (b.sort_order ?? 99));
+
+        state.slideOrder = slideArray.map(s => s.key || s.slide_key).filter(Boolean);
+        slideArray.forEach(slide => {
+            const key = slide.key || slide.slide_key;
+            if (key) {
+                state.slides[key] = {
+                    key,
+                    title: slide.title || key,
+                    duration: slide.duration || 12000,
+                    enabled: slide.enabled !== false,
+                    sort_order: slide.sort_order ?? 99,
+                    style: slide.style || 'classic'
+                };
+            }
+        });
+
+        // Fallback: ensure all known slide keys exist so the rotation never stalls
+        ['intro', 'leaderboard', 'schedule', 'current-program'].forEach(key => {
+            if (!state.slides[key]) {
+                state.slides[key] = { key, title: key, duration: 12000, enabled: true, sort_order: 99, style: 'classic' };
+            }
+            if (!state.slideOrder.includes(key)) {
+                state.slideOrder.push(key);
+            }
+        });
+
+        // Populate slides with live data
+        if (data.leaderboard) renderLeaderboard(data.leaderboard);
+        if (data.current)     renderCurrent(data.current);
+        if (data.schedule)    renderSchedule(data.schedule);
+    }
+
     function startRefreshLoop() {
         // Disabled automatic settings/data polling refresh loop
     }
@@ -1304,7 +1352,10 @@
         setActiveSlide(first);
 
         if (first === 'intro' && els.introVideo) {
+            let advanced = false;
             const introDone = () => {
+                if (advanced) return;
+                advanced = true;
                 if (state.mode === 'auto' && !state.isCelebrating) {
                     const next = getNextEnabledSlide();
                     setActiveSlide(next);
@@ -1320,7 +1371,14 @@
             els.introVideo.play().catch(() => {
                 introDone();
             });
-        } else if (first !== 'schedule') {
+
+            // Fallback: advance after configured intro duration regardless of video state
+            const introDuration = state.slides['intro']?.duration || 12000;
+            setTimeout(introDone, introDuration);
+
+        } else if (first === 'schedule') {
+            startSchedulePlayback();
+        } else {
             scheduleNextSlide(state.slides[first]?.duration || 12000);
         }
     }

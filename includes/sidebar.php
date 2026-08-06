@@ -95,6 +95,9 @@ $_SESSION['active_workspace'] = $activeSpace;
             <a href="<?= app_url('/admin/event-manager/schedule.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('schedule') ?>">
                 <i class="fa-solid fa-calendar-days"></i> <span>Schedule</span>
             </a>
+            <a href="<?= app_url('/admin/event-manager/progress.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('progress') ?>">
+                <i class="fa-solid fa-square-poll-vertical"></i> <span>Marks & Progress</span>
+            </a>
             <a href="<?= app_url('/admin/event-manager/analytics.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('analytics') ?>">
                 <i class="fa-solid fa-chart-line"></i> <span>Analytics</span>
             </a>

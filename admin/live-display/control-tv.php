@@ -1,5 +1,5 @@
 <?php
-$pageTitle = 'TV Display Control';
+$pageTitle = 'Live Display Control';
 
 define('EVENT_AUTHORITY_SCOPE', 'control-tv');
 require_once __DIR__ . '/../../includes/admin-helpers.php';
@@ -229,13 +229,13 @@ require_once __DIR__ . '/../../includes/sidebar.php';
 <main class="main-content event-workspace-content">
     <section class="workspace-hero">
         <div>
-            <span class="eyebrow"><i class="fa-solid fa-tv"></i> Scoreboard Controller</span>
-            <h1>TV Display Control</h1>
+            <span class="eyebrow"><i class="fa-solid fa-display"></i> Scoreboard Controller</span>
+            <h1>Live Display Control</h1>
             <p>Orchestrate slides, ticker announcements, alert overlays, and trophy reveals for the big screen.</p>
         </div>
         <div class="hero-actions">
             <a href="<?= app_url('/tv/index.php') ?>" target="_blank" class="btn btn-primary btn-md" data-ajax-ignore>
-                <i class="fa-solid fa-square-rss"></i> Open TV Screen
+                <i class="fa-solid fa-square-rss"></i> Open Live Display
             </a>
         </div>
     </section>
@@ -416,7 +416,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
             <div class="panel">
                 <div class="flex justify-between items-center mb-4" style="border-bottom: 1px solid var(--border); padding-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
                     <h3 style="font-size: 16px; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 8px;">
-                        <i class="fa-solid fa-tv text-primary"></i> Screen Loop Preview
+                        <i class="fa-solid fa-display text-primary"></i> Screen Loop Preview
                     </h3>
                     <div style="display: inline-flex; align-items: center; gap: 8px;">
                         <span class="badge badge-success" style="font-size: 11px; padding: 2px 8px; border-radius: 8px; display: flex; align-items: center; gap: 4px;">
@@ -513,12 +513,14 @@ require_once __DIR__ . '/../../includes/sidebar.php';
             });
             const res = await response.json();
             if (!res.success) {
-                alert(res.message || 'Action failed.');
+                if (window.showToast) window.showToast(res.message || 'Action failed.', 'error');
+                else alert(res.message || 'Action failed.');
             }
             return res;
         } catch (e) {
             console.error(e);
-            alert('A network error occurred.');
+            if (window.showToast) window.showToast('A network error occurred.', 'error');
+            else alert('A network error occurred.');
             return null;
         }
     }

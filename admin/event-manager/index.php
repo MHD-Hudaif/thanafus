@@ -102,6 +102,16 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                 <div class="panel">
                     <h3 class="mb-4"><i class="fa-solid fa-compass mr-2" style="color: var(--accent);"></i> Quick Navigation</h3>
                     <div class="dashboard-list">
+                        <a href="<?= app_url('/admin/event-manager/progress.php') ?>" class="sidebar-action-btn">
+                            <div class="sidebar-action-icon" style="background: rgba(52, 211, 153, 0.15); color: #34d399;">
+                                <i class="fa-solid fa-square-poll-vertical"></i>
+                            </div>
+                            <div class="sidebar-action-info">
+                                <div class="sidebar-action-title">Marks & Progress</div>
+                                <div class="sidebar-action-subtitle">Individual student judge marks</div>
+                            </div>
+                        </a>
+
                         <a href="<?= app_url('/admin/event-manager/analytics.php') ?>" class="sidebar-action-btn">
                             <div class="sidebar-action-icon" style="background: rgba(16, 185, 129, 0.15); color: #34d399;">
                                 <i class="fa-solid fa-chart-line"></i>

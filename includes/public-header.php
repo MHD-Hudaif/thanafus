@@ -172,7 +172,7 @@ $dateLabel = $event ? date('d F Y', strtotime($event['start_date'] ?? '2026-07-1
     <?php endforeach; ?>
     
     <!-- Mobile only links -->
-    <a class="mobile-only-action" href="<?= app_url('/tv') ?>"><i class="fa-solid fa-tv"></i> TV Mode</a>
+    <a class="mobile-only-action" href="<?= app_url('/tv') ?>"><i class="fa-solid fa-display"></i> Live Display</a>
     <?php if ($isLoggedIn): ?>
         <div class="mobile-only-action" style="display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-top: 1px solid var(--line);">
             <img src="<?=
@@ -201,7 +201,7 @@ $dateLabel = $event ? date('d F Y', strtotime($event['start_date'] ?? '2026-07-1
 
   <!-- Desktop header actions -->
   <div class="header-actions">
-      <a href="<?= app_url('/tv') ?>" class="button button-ghost" style="padding: 6px 12px; font-size: 14px;"><i class="fa-solid fa-tv"></i> TV Mode</a>
+      <a href="<?= app_url('/tv') ?>" class="button button-ghost" style="padding: 6px 12px; font-size: 14px;"><i class="fa-solid fa-display"></i> Live Display</a>
       <?php if ($isLoggedIn): ?>
           <div class="user-avatar-badge" style="display: flex; align-items: center; gap: 8px; margin-left: 10px;">
               <img src="<?=
