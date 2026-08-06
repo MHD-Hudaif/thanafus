@@ -819,63 +819,62 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new RuntimeException('Category max marks must total exactly 100.');
             }
 
-            $pdo->beginTransaction();
+            admin_db_transaction($pdo, function ($pdo) use ($programId, $rows, $currentUserId, $activeEventId) {
+                $stmt = $pdo->prepare('SELECT id FROM musabaqa_program_categories WHERE program_id = ?');
+                $stmt->execute([$programId]);
+                $existingIds = array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+                $keptIds = [];
 
-            $stmt = $pdo->prepare('SELECT id FROM musabaqa_program_categories WHERE program_id = ?');
-            $stmt->execute([$programId]);
-            $existingIds = array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
-            $keptIds = [];
+                $update = $pdo->prepare('UPDATE musabaqa_program_categories SET name = ?, max_marks = ?, sort_order = ? WHERE id = ? AND program_id = ?');
+                $insert = $pdo->prepare('INSERT INTO musabaqa_program_categories (program_id, name, max_marks, sort_order) VALUES (?, ?, ?, ?)');
 
-            $update = $pdo->prepare('UPDATE musabaqa_program_categories SET name = ?, max_marks = ?, sort_order = ? WHERE id = ? AND program_id = ?');
-            $insert = $pdo->prepare('INSERT INTO musabaqa_program_categories (program_id, name, max_marks, sort_order) VALUES (?, ?, ?, ?)');
-
-            foreach ($rows as $row) {
-                if ($row['id'] > 0 && in_array($row['id'], $existingIds, true)) {
-                    $update->execute([$row['name'], $row['max_marks'], $row['sort_order'], $row['id'], $programId]);
-                    $keptIds[] = $row['id'];
-                } else {
-                    $insert->execute([$programId, $row['name'], $row['max_marks'], $row['sort_order']]);
-                    $keptIds[] = (int)$pdo->lastInsertId();
+                foreach ($rows as $row) {
+                    if ($row['id'] > 0 && in_array($row['id'], $existingIds, true)) {
+                        $update->execute([$row['name'], $row['max_marks'], $row['sort_order'], $row['id'], $programId]);
+                        $keptIds[] = $row['id'];
+                    } else {
+                        $insert->execute([$programId, $row['name'], $row['max_marks'], $row['sort_order']]);
+                        $keptIds[] = (int)$pdo->lastInsertId();
+                    }
                 }
-            }
 
-            $deleteIds = array_diff($existingIds, $keptIds);
-            if ($deleteIds) {
-                $placeholders = implode(',', array_fill(0, count($deleteIds), '?'));
-                $stmt = $pdo->prepare("DELETE FROM musabaqa_program_categories WHERE program_id = ? AND id IN ($placeholders)");
-                $stmt->execute(array_merge([$programId], array_values($deleteIds)));
-            }
+                $deleteIds = array_diff($existingIds, $keptIds);
+                if ($deleteIds) {
+                    $placeholders = implode(',', array_fill(0, count($deleteIds), '?'));
+                    $stmt = $pdo->prepare("DELETE FROM musabaqa_program_categories WHERE program_id = ? AND id IN ($placeholders)");
+                    $stmt->execute(array_merge([$programId], array_values($deleteIds)));
+                }
 
-            $stmt = $pdo->prepare('SELECT id FROM musabaqa_score_sheets WHERE program_id = ?');
-            $stmt->execute([$programId]);
-            $scoreSheetIds = array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
-            if ($scoreSheetIds) {
-                $placeholders = implode(',', array_fill(0, count($scoreSheetIds), '?'));
-                $pdo->prepare("DELETE FROM musabaqa_category_scores WHERE score_sheet_id IN ($placeholders)")
-                    ->execute($scoreSheetIds);
-                $pdo->prepare("
-                    UPDATE musabaqa_score_sheets
-                    SET judge1_total = 0,
-                        judge2_total = 0,
-                        final_total = 0,
-                        status = 'draft'
-                    WHERE program_id = ?
-                      AND status NOT IN ('submitted','approved')
-                ")->execute([$programId]);
-            }
+                $stmt = $pdo->prepare('SELECT id FROM musabaqa_score_sheets WHERE program_id = ?');
+                $stmt->execute([$programId]);
+                $scoreSheetIds = array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+                if ($scoreSheetIds) {
+                    $placeholders = implode(',', array_fill(0, count($scoreSheetIds), '?'));
+                    $pdo->prepare("DELETE FROM musabaqa_category_scores WHERE score_sheet_id IN ($placeholders)")
+                        ->execute($scoreSheetIds);
+                    $pdo->prepare("
+                        UPDATE musabaqa_score_sheets
+                        SET judge1_total = 0,
+                            judge2_total = 0,
+                            final_total = 0,
+                            status = 'draft'
+                        WHERE program_id = ?
+                          AND status NOT IN ('submitted','approved')
+                    ")->execute([$programId]);
+                }
 
-            admin_recalculate_program_status($pdo, $programId);
-            admin_log_activity($pdo, $currentUserId, $activeEventId, 'category_update', 'musabaqa_program_categories', $programId, 'Program scoring categories updated.');
+                admin_recalculate_program_status($pdo, $programId);
+                admin_log_activity($pdo, $currentUserId, $activeEventId, 'category_update', 'musabaqa_program_categories', $programId, 'Program scoring categories updated.');
+            });
 
-            $pdo->commit();
             admin_flash('success', 'Categories saved. Existing editable score sheets were reset for re-scoring.');
             program_scores_redirect($programId);
         }
 
         if ($action === 'submit_program') {
-            $pdo->beginTransaction();
-            admin_submit_program_for_approval($pdo, $activeEventId, $programId, $currentUserId);
-            $pdo->commit();
+            admin_db_transaction($pdo, function ($pdo) use ($activeEventId, $programId, $currentUserId) {
+                admin_submit_program_for_approval($pdo, $activeEventId, $programId, $currentUserId);
+            });
             admin_flash('success', 'Program sent for approval.');
             program_scores_redirect($programId);
         }
@@ -940,70 +939,66 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $finalTotal = round(array_sum($judgeTotals), 2);
 
-        $pdo->beginTransaction();
+        admin_db_transaction($pdo, function ($pdo) use ($entryId, $program, $judgeTotals, $judgesCount, $postedScores, $categoryMap, $programId, $activeEventId, $currentUserId, $finalTotal) {
+            $stmt = $pdo->prepare('SELECT * FROM musabaqa_score_sheets WHERE entry_id = ? LIMIT 1');
+            $stmt->execute([$entryId]);
+            $existingSheet = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
 
-        $stmt = $pdo->prepare('SELECT * FROM musabaqa_score_sheets WHERE entry_id = ? LIMIT 1');
-        $stmt->execute([$entryId]);
-        $existingSheet = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
-
-        if (program_scores_entry_locked($program, $existingSheet)) {
-            throw new RuntimeException('This score sheet is locked.');
-        }
-
-        $judge1Total = $judgeTotals[1] ?? 0.0;
-        $judge2Total = $judgeTotals[2] ?? 0.0;
-
-        if ($existingSheet) {
-            $stmt = $pdo->prepare("
-                UPDATE musabaqa_score_sheets
-                SET program_id = ?,
-                    judge1_total = ?,
-                    judge2_total = ?,
-                    final_total = ?,
-                    status = 'completed'
-                WHERE id = ?
-            ");
-            $stmt->execute([$programId, $judge1Total, $judge2Total, $finalTotal, (int)$existingSheet['id']]);
-            $scoreSheetId = (int)$existingSheet['id'];
-            $logType = 'score_update';
-            $logText = 'Program score sheet updated.';
-        } else {
-            $stmt = $pdo->prepare("
-                INSERT INTO musabaqa_score_sheets
-                    (entry_id, program_id, judge1_total, judge2_total, final_total, status, created_by)
-                VALUES (?, ?, ?, ?, ?, 'completed', ?)
-            ");
-            $stmt->execute([$entryId, $programId, $judge1Total, $judge2Total, $finalTotal, $currentUserId]);
-            $scoreSheetId = (int)$pdo->lastInsertId();
-            $logType = 'score_creation';
-            $logText = 'Program score sheet created.';
-        }
-
-        $pdo->prepare('DELETE FROM musabaqa_category_scores WHERE score_sheet_id = ?')->execute([$scoreSheetId]);
-        $insert = $pdo->prepare("
-            INSERT INTO musabaqa_category_scores (score_sheet_id, judge_no, category_id, score)
-            VALUES (?, ?, ?, ?)
-        ");
-        for ($judgeNo = 1; $judgeNo <= $judgesCount; $judgeNo++) {
-            foreach ($categoryMap as $categoryId => $category) {
-                $insert->execute([$scoreSheetId, $judgeNo, $categoryId, (float)$postedScores[$judgeNo][$categoryId]]);
+            if (program_scores_entry_locked($program, $existingSheet)) {
+                throw new RuntimeException('This score sheet is locked.');
             }
-        }
 
-        admin_recalculate_entry_status($pdo, $entryId);
-        admin_recalculate_program_status($pdo, $programId);
-        admin_log_activity($pdo, $currentUserId, $activeEventId, $logType, 'musabaqa_score_sheets', $scoreSheetId, $logText);
+            $judge1Total = $judgeTotals[1] ?? 0.0;
+            $judge2Total = $judgeTotals[2] ?? 0.0;
 
-        $pdo->commit();
+            if ($existingSheet) {
+                $stmt = $pdo->prepare("
+                    UPDATE musabaqa_score_sheets
+                    SET program_id = ?,
+                        judge1_total = ?,
+                        judge2_total = ?,
+                        final_total = ?,
+                        status = 'completed'
+                    WHERE id = ?
+                ");
+                $stmt->execute([$programId, $judge1Total, $judge2Total, $finalTotal, (int)$existingSheet['id']]);
+                $scoreSheetId = (int)$existingSheet['id'];
+                $logType = 'score_update';
+                $logText = 'Program score sheet updated.';
+            } else {
+                $stmt = $pdo->prepare("
+                    INSERT INTO musabaqa_score_sheets
+                        (entry_id, program_id, judge1_total, judge2_total, final_total, status, created_by)
+                    VALUES (?, ?, ?, ?, ?, 'completed', ?)
+                ");
+                $stmt->execute([$entryId, $programId, $judge1Total, $judge2Total, $finalTotal, $currentUserId]);
+                $scoreSheetId = (int)$pdo->lastInsertId();
+                $logType = 'score_creation';
+                $logText = 'Program score sheet created.';
+            }
+
+            $pdo->prepare('DELETE FROM musabaqa_category_scores WHERE score_sheet_id = ?')->execute([$scoreSheetId]);
+            $insert = $pdo->prepare("
+                INSERT INTO musabaqa_category_scores (score_sheet_id, judge_no, category_id, score)
+                VALUES (?, ?, ?, ?)
+            ");
+            for ($judgeNo = 1; $judgeNo <= $judgesCount; $judgeNo++) {
+                foreach ($categoryMap as $categoryId => $category) {
+                    $insert->execute([$scoreSheetId, $judgeNo, $categoryId, (float)$postedScores[$judgeNo][$categoryId]]);
+                }
+            }
+
+            admin_recalculate_entry_status($pdo, $entryId);
+            admin_recalculate_program_status($pdo, $programId);
+            admin_log_activity($pdo, $currentUserId, $activeEventId, $logType, 'musabaqa_score_sheets', $scoreSheetId, $logText);
+        });
+
         if (admin_program_ready_for_approval($pdo, $programId)) {
             admin_flash('ready', 'All entries for this program have been scored. This program is ready for submission.');
         } else {
             admin_flash('success', 'Score sheet saved.');
         }
     } catch (Throwable $e) {
-        if ($pdo->inTransaction()) {
-            $pdo->rollBack();
-        }
         admin_flash('error', $e->getMessage() ?: 'Unable to save score sheet.');
     }
 

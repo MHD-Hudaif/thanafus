@@ -172,13 +172,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $sectionId = (int)($_POST['section_id'] ?? 0);
 
             if ($sectionId > 0) {
-                $pdo->beginTransaction();
-                $stmt = $pdo->prepare("UPDATE musabaqa_programs SET section_id = NULL WHERE section_id = ? AND event_id = ?");
-                $stmt->execute([$sectionId, $activeEventId]);
+                admin_db_transaction($pdo, function ($pdo) use ($sectionId, $activeEventId) {
+                    $stmt = $pdo->prepare("UPDATE musabaqa_programs SET section_id = NULL WHERE section_id = ? AND event_id = ?");
+                    $stmt->execute([$sectionId, $activeEventId]);
 
-                $stmt = $pdo->prepare("DELETE FROM musabaqa_schedule_sections WHERE id = ? AND event_id = ?");
-                $stmt->execute([$sectionId, $activeEventId]);
-                $pdo->commit();
+                    $stmt = $pdo->prepare("DELETE FROM musabaqa_schedule_sections WHERE id = ? AND event_id = ?");
+                    $stmt->execute([$sectionId, $activeEventId]);
+                });
 
                 admin_flash('success', 'Session removed.');
             } else {
@@ -194,39 +194,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ['Night', '19:30:00', '23:30:00', 3]
             ];
 
-            $pdo->beginTransaction();
-            $pdo->prepare("DELETE FROM musabaqa_schedule_sections WHERE event_id = ?")->execute([$activeEventId]);
+            admin_db_transaction($pdo, function ($pdo) use ($activeEventId, $startDateStr, $endDateStr, $defaults) {
+                $pdo->prepare("DELETE FROM musabaqa_schedule_sections WHERE event_id = ?")->execute([$activeEventId]);
 
-            $ins = $pdo->prepare("
-                INSERT INTO musabaqa_schedule_sections (event_id, name, start_time, end_time, section_date, sort_order)
-                VALUES (?, ?, ?, ?, ?, ?)
-            ");
+                $ins = $pdo->prepare("
+                    INSERT INTO musabaqa_schedule_sections (event_id, name, start_time, end_time, section_date, sort_order)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                ");
 
-            if ($startDateStr && $endDateStr) {
-                $start = new DateTime($startDateStr);
-                $end = new DateTime($endDateStr);
-                $end->modify('+1 day');
-                $interval = new DateInterval('P1D');
-                $period = new DatePeriod($start, $interval, $end);
+                if ($startDateStr && $endDateStr) {
+                    $start = new DateTime($startDateStr);
+                    $end = new DateTime($endDateStr);
+                    $end->modify('+1 day');
+                    $interval = new DateInterval('P1D');
+                    $period = new DatePeriod($start, $interval, $end);
 
-                $dayNum = 1;
-                foreach ($period as $dt) {
-                    $dateSql = $dt->format('Y-m-d');
-                    $dayLabel = "Day " . $dayNum;
-                    foreach ($defaults as $def) {
-                        $name = $dayLabel . " - " . $def[0];
-                        $ins->execute([$activeEventId, $name, $def[1], $def[2], $dateSql, ($dayNum - 1) * 10 + $def[3]]);
+                    $dayNum = 1;
+                    foreach ($period as $dt) {
+                        $dateSql = $dt->format('Y-m-d');
+                        $dayLabel = "Day " . $dayNum;
+                        foreach ($defaults as $def) {
+                            $name = $dayLabel . " - " . $def[0];
+                            $ins->execute([$activeEventId, $name, $def[1], $def[2], $dateSql, ($dayNum - 1) * 10 + $def[3]]);
+                        }
+                        $dayNum++;
                     }
-                    $dayNum++;
+                } else {
+                    foreach ($defaults as $def) {
+                        $ins->execute([$activeEventId, $def[0], $def[1], $def[2], null, $def[3]]);
+                    }
                 }
-            } else {
-                foreach ($defaults as $def) {
-                    $ins->execute([$activeEventId, $def[0], $def[1], $def[2], null, $def[3]]);
-                }
-            }
 
-            admin_auto_assign_programs_to_sections($pdo, $activeEventId);
-            $pdo->commit();
+                admin_auto_assign_programs_to_sections($pdo, $activeEventId);
+            });
 
             admin_flash('success', 'Default sessions (Morning, Evening, Night) generated and programs auto-assigned.');
         } elseif ($action === 'auto_assign') {

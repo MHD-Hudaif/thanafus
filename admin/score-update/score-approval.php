@@ -48,96 +48,93 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     ];
 
     try {
-        $pdo->beginTransaction();
+        admin_db_transaction($pdo, function ($pdo) use (
+            $action, $programId, $activeEventId, $currentUserId, $selectedProgramIds, $returnFilters, $notes, $dashboardPdo
+        ) {
+            if ($action === 'approve') {
+                $stmt = $pdo->prepare('SELECT * FROM musabaqa_programs WHERE id = ? AND event_id = ? LIMIT 1');
+                $stmt->execute([$programId, $activeEventId]);
+                $program = $stmt->fetch(PDO::FETCH_ASSOC);
+                if (!$program) {
+                    throw new RuntimeException('Program not found.');
+                }
+                if (!approval_can_approve($program['approval_status'] ?? null)) {
+                    throw new RuntimeException('Only submitted or rejected programs can be approved.');
+                }
+                admin_approve_program_scores($pdo, $activeEventId, $programId, $currentUserId);
+                admin_flash('success', 'Program scores approved.');
+            } elseif ($action === 'approve_selected') {
+                if (!$selectedProgramIds) {
+                    throw new RuntimeException('Please select at least one program to approve.');
+                }
+                foreach ($selectedProgramIds as $selectedProgramId) {
+                    admin_approve_program_scores($pdo, $activeEventId, $selectedProgramId, $currentUserId);
+                }
+                admin_flash('success', count($selectedProgramIds) . ' program(s) approved.');
+            } elseif ($action === 'approve_all') {
+                $query = "
+                    SELECT p.id
+                    FROM musabaqa_programs p
+                    LEFT JOIN " . DB_MAIN_NAME . ".users submitter ON submitter.id = p.submitted_by
+                    WHERE p.event_id = ?
+                      AND p.approval_status IN ('submitted', 'rejected')
+                ";
+                $queryParams = [$activeEventId];
 
-        if ($action === 'approve') {
-            $stmt = $pdo->prepare('SELECT * FROM musabaqa_programs WHERE id = ? AND event_id = ? LIMIT 1');
-            $stmt->execute([$programId, $activeEventId]);
-            $program = $stmt->fetch(PDO::FETCH_ASSOC);
-            if (!$program) {
-                throw new RuntimeException('Program not found.');
-            }
-            if (!approval_can_approve($program['approval_status'] ?? null)) {
-                throw new RuntimeException('Only submitted or rejected programs can be approved.');
-            }
-            admin_approve_program_scores($pdo, $activeEventId, $programId, $currentUserId);
-            admin_flash('success', 'Program scores approved.');
-        } elseif ($action === 'approve_selected') {
-            if (!$selectedProgramIds) {
-                throw new RuntimeException('Please select at least one program to approve.');
-            }
-            foreach ($selectedProgramIds as $selectedProgramId) {
-                admin_approve_program_scores($pdo, $activeEventId, $selectedProgramId, $currentUserId);
-            }
-            admin_flash('success', count($selectedProgramIds) . ' program(s) approved.');
-        } elseif ($action === 'approve_all') {
-            $query = "
-                SELECT p.id
-                FROM musabaqa_programs p
-                LEFT JOIN " . DB_MAIN_NAME . ".users submitter ON submitter.id = p.submitted_by
-                WHERE p.event_id = ?
-                  AND p.approval_status IN ('submitted', 'rejected')
-            ";
-            $queryParams = [$activeEventId];
+                if ($returnFilters['status'] === 'submitted' || $returnFilters['status'] === 'rejected') {
+                    $query .= ' AND p.approval_status = ?';
+                    $queryParams[] = $returnFilters['status'];
+                }
 
-            if ($returnFilters['status'] === 'submitted' || $returnFilters['status'] === 'rejected') {
-                $query .= ' AND p.approval_status = ?';
-                $queryParams[] = $returnFilters['status'];
-            }
+                if ($returnFilters['search'] !== '') {
+                    $query .= ' AND (p.title LIKE ? OR submitter.full_name LIKE ? OR submitter.username LIKE ?)';
+                    $like = '%' . $returnFilters['search'] . '%';
+                    array_push($queryParams, $like, $like, $like);
+                }
 
-            if ($returnFilters['search'] !== '') {
-                $query .= ' AND (p.title LIKE ? OR submitter.full_name LIKE ? OR submitter.username LIKE ?)';
-                $like = '%' . $returnFilters['search'] . '%';
-                array_push($queryParams, $like, $like, $like);
-            }
+                [$classSql, $classParams] = admin_program_class_filter_sql($dashboardPdo, $returnFilters['class'] ?? 'all', 'p');
+                $query .= $classSql;
+                array_push($queryParams, ...$classParams);
 
-            [$classSql, $classParams] = admin_program_class_filter_sql($dashboardPdo, $returnFilters['class'] ?? 'all', 'p');
-            $query .= $classSql;
-            array_push($queryParams, ...$classParams);
-
-            $stmt = $pdo->prepare($query);
-            $stmt->execute($queryParams);
-            $selectedProgramIds = array_map('intval', array_column($stmt->fetchAll(PDO::FETCH_ASSOC), 'id'));
-            if (!$selectedProgramIds) {
-                throw new RuntimeException('No submitted or rejected programs match the current filter to approve.');
+                $stmt = $pdo->prepare($query);
+                $stmt->execute($queryParams);
+                $selectedProgramIds = array_map('intval', array_column($stmt->fetchAll(PDO::FETCH_ASSOC), 'id'));
+                if (!$selectedProgramIds) {
+                    throw new RuntimeException('No submitted or rejected programs match the current filter to approve.');
+                }
+                foreach ($selectedProgramIds as $selectedProgramId) {
+                    admin_approve_program_scores($pdo, $activeEventId, $selectedProgramId, $currentUserId);
+                }
+                admin_flash('success', count($selectedProgramIds) . ' program(s) approved.');
+            } elseif ($action === 'reject') {
+                $stmt = $pdo->prepare('SELECT * FROM musabaqa_programs WHERE id = ? AND event_id = ? LIMIT 1');
+                $stmt->execute([$programId, $activeEventId]);
+                $program = $stmt->fetch(PDO::FETCH_ASSOC);
+                if (!$program) {
+                    throw new RuntimeException('Program not found.');
+                }
+                if (($program['approval_status'] ?? '') !== 'submitted') {
+                    throw new RuntimeException('Only submitted programs can be rejected.');
+                }
+                admin_reject_program_scores($pdo, $activeEventId, $programId, $currentUserId, $notes);
+                admin_flash('success', 'Program scores rejected.');
+            } elseif ($action === 'revoke_approved') {
+                $stmt = $pdo->prepare('SELECT * FROM musabaqa_programs WHERE id = ? AND event_id = ? LIMIT 1');
+                $stmt->execute([$programId, $activeEventId]);
+                $program = $stmt->fetch(PDO::FETCH_ASSOC);
+                if (!$program) {
+                    throw new RuntimeException('Program not found.');
+                }
+                if (($program['approval_status'] ?? '') !== 'approved') {
+                    throw new RuntimeException('Only approved programs can be revoked.');
+                }
+                admin_revoke_program_approval($pdo, $activeEventId, $programId, $currentUserId, $notes);
+                admin_flash('success', 'Approval revoked. Finalized marks were removed and score sheets can be corrected.');
+            } else {
+                throw new RuntimeException('Invalid approval action.');
             }
-            foreach ($selectedProgramIds as $selectedProgramId) {
-                admin_approve_program_scores($pdo, $activeEventId, $selectedProgramId, $currentUserId);
-            }
-            admin_flash('success', count($selectedProgramIds) . ' program(s) approved.');
-        } elseif ($action === 'reject') {
-            $stmt = $pdo->prepare('SELECT * FROM musabaqa_programs WHERE id = ? AND event_id = ? LIMIT 1');
-            $stmt->execute([$programId, $activeEventId]);
-            $program = $stmt->fetch(PDO::FETCH_ASSOC);
-            if (!$program) {
-                throw new RuntimeException('Program not found.');
-            }
-            if (($program['approval_status'] ?? '') !== 'submitted') {
-                throw new RuntimeException('Only submitted programs can be rejected.');
-            }
-            admin_reject_program_scores($pdo, $activeEventId, $programId, $currentUserId, $notes);
-            admin_flash('success', 'Program scores rejected.');
-        } elseif ($action === 'revoke_approved') {
-            $stmt = $pdo->prepare('SELECT * FROM musabaqa_programs WHERE id = ? AND event_id = ? LIMIT 1');
-            $stmt->execute([$programId, $activeEventId]);
-            $program = $stmt->fetch(PDO::FETCH_ASSOC);
-            if (!$program) {
-                throw new RuntimeException('Program not found.');
-            }
-            if (($program['approval_status'] ?? '') !== 'approved') {
-                throw new RuntimeException('Only approved programs can be revoked.');
-            }
-            admin_revoke_program_approval($pdo, $activeEventId, $programId, $currentUserId, $notes);
-            admin_flash('success', 'Approval revoked. Finalized marks were removed and score sheets can be corrected.');
-        } else {
-            throw new RuntimeException('Invalid approval action.');
-        }
-
-        $pdo->commit();
+        });
     } catch (Throwable $e) {
-        if ($pdo->inTransaction()) {
-            $pdo->rollBack();
-        }
         admin_flash('error', $e->getMessage() ?: 'Unable to process program scores.');
     }
 
@@ -246,29 +243,65 @@ if ($viewProgramId > 0) {
             $pointConfig[(int)$r] = (int)$pts;
         }
 
-        $rank = 0;
-        $position = 0;
-        $previous = null;
-        $teamTotals = [];
-        foreach ($entries as &$entry) {
-            $position++;
-            $total = (float)$entry['final_total'];
-            if ($previous === null || $total < $previous) {
-                $rank = $position;
-            }
-            $previous = $total;
-            $entry['rank'] = $rank;
-
-            $teamPoints = isset($pointConfig[$rank]) ? $pointConfig[$rank] : 0;
-            $entry['team_points'] = $teamPoints;
-
-            $team = (string)$entry['team_name'];
-            $teamTotals[$team] = [
-                'total' => ($teamTotals[$team]['total'] ?? 0) + $teamPoints,
-                'color' => $entry['team_color'] ?: '#64748b',
-            ];
+        $scoreGroups = [];
+        foreach ($entries as $entry) {
+            $scoreKey = (string)(float)$entry['final_total'];
+            $scoreGroups[$scoreKey][] = $entry;
         }
-        unset($entry);
+
+        $groupCounts = [];
+        foreach ($scoreGroups as $scoreStr => $groupEntries) {
+            $groupCounts[] = count($groupEntries);
+        }
+
+        $position = 1;
+        $idx = 0;
+        $processedEntries = [];
+        $teamTotals = [];
+
+        foreach ($scoreGroups as $scoreStr => $groupEntries) {
+            $count = count($groupEntries);
+            $rank = $position;
+
+            // Custom tie scoring logic
+            $teamPoints = 0;
+            if ($idx === 0) {
+                $teamPoints = $pointConfig[1];
+            } elseif ($idx === 1) {
+                $c1 = $groupCounts[0];
+                if ($c1 === 1 || $c1 === 2) {
+                    $teamPoints = $pointConfig[2];
+                } else {
+                    $teamPoints = 0;
+                }
+            } elseif ($idx === 2) {
+                $c1 = $groupCounts[0];
+                $c2 = $groupCounts[1];
+                if ($c1 === 1 && $c2 === 1) {
+                    $teamPoints = $pointConfig[3];
+                } else {
+                    $teamPoints = 0;
+                }
+            } else {
+                $teamPoints = 0;
+            }
+
+            foreach ($groupEntries as $entry) {
+                $entry['rank'] = $rank;
+                $entry['team_points'] = $teamPoints;
+                $processedEntries[] = $entry;
+
+                $team = (string)$entry['team_name'];
+                $teamTotals[$team] = [
+                    'total' => ($teamTotals[$team]['total'] ?? 0) + $teamPoints,
+                    'color' => $entry['team_color'] ?: '#64748b',
+                ];
+            }
+
+            $position += $count;
+            $idx++;
+        }
+        $entries = $processedEntries;
         uasort($teamTotals, static function ($a, $b) {
             return $b['total'] <=> $a['total'];
         });

@@ -105,50 +105,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     try {
         if ($action === 'delete') {
-            $pdo->beginTransaction();
+            admin_db_transaction($pdo, function ($pdo) use ($programId, $activeEventId) {
+                // 1. Get entries associated with this program
+                $entryStmt = $pdo->prepare('SELECT id FROM musabaqa_program_entries WHERE program_id = ? AND event_id = ?');
+                $entryStmt->execute([$programId, $activeEventId]);
+                $entryIds = $entryStmt->fetchAll(PDO::FETCH_COLUMN);
 
-            // 1. Get entries associated with this program
-            $entryStmt = $pdo->prepare('SELECT id FROM musabaqa_program_entries WHERE program_id = ? AND event_id = ?');
-            $entryStmt->execute([$programId, $activeEventId]);
-            $entryIds = $entryStmt->fetchAll(PDO::FETCH_COLUMN);
+                // 2. Delete member scores linked to program
+                $pdo->prepare('DELETE FROM musabaqa_member_scores WHERE program_id = ?')->execute([$programId]);
 
-            // 2. Delete member scores linked to program
-            $pdo->prepare('DELETE FROM musabaqa_member_scores WHERE program_id = ?')->execute([$programId]);
+                // 3. Delete program scores linked to program
+                $pdo->prepare('DELETE FROM musabaqa_scores WHERE program_id = ? AND event_id = ?')->execute([$programId, $activeEventId]);
 
-            // 3. Delete program scores linked to program
-            $pdo->prepare('DELETE FROM musabaqa_scores WHERE program_id = ? AND event_id = ?')->execute([$programId, $activeEventId]);
+                // 4. Delete score sheets & category scores for entries under this program
+                if ($entryIds) {
+                    $placeholders = implode(',', array_fill(0, count($entryIds), '?'));
+                    $sheetStmt = $pdo->prepare("SELECT id FROM musabaqa_score_sheets WHERE entry_id IN ($placeholders)");
+                    $sheetStmt->execute($entryIds);
+                    $sheetIds = $sheetStmt->fetchAll(PDO::FETCH_COLUMN);
 
-            // 4. Delete score sheets & category scores for entries under this program
-            if ($entryIds) {
-                $placeholders = implode(',', array_fill(0, count($entryIds), '?'));
-                $sheetStmt = $pdo->prepare("SELECT id FROM musabaqa_score_sheets WHERE entry_id IN ($placeholders)");
-                $sheetStmt->execute($entryIds);
-                $sheetIds = $sheetStmt->fetchAll(PDO::FETCH_COLUMN);
+                    if ($sheetIds) {
+                        $sheetPlaceholders = implode(',', array_fill(0, count($sheetIds), '?'));
+                        $pdo->prepare("DELETE FROM musabaqa_category_scores WHERE score_sheet_id IN ($sheetPlaceholders)")->execute($sheetIds);
+                    }
 
-                if ($sheetIds) {
-                    $sheetPlaceholders = implode(',', array_fill(0, count($sheetIds), '?'));
-                    $pdo->prepare("DELETE FROM musabaqa_category_scores WHERE score_sheet_id IN ($sheetPlaceholders)")->execute($sheetIds);
+                    $pdo->prepare("DELETE FROM musabaqa_score_sheets WHERE entry_id IN ($placeholders)")->execute($entryIds);
+                    $pdo->prepare("DELETE FROM musabaqa_entry_members WHERE entry_id IN ($placeholders)")->execute($entryIds);
                 }
 
-                $pdo->prepare("DELETE FROM musabaqa_score_sheets WHERE entry_id IN ($placeholders)")->execute($entryIds);
-                $pdo->prepare("DELETE FROM musabaqa_entry_members WHERE entry_id IN ($placeholders)")->execute($entryIds);
-            }
+                // 5. Delete scoring categories for this program
+                $pdo->prepare('DELETE FROM musabaqa_program_categories WHERE program_id = ?')->execute([$programId]);
 
-            // 5. Delete scoring categories for this program
-            $pdo->prepare('DELETE FROM musabaqa_program_categories WHERE program_id = ?')->execute([$programId]);
+                // 6. Delete program entries
+                $pdo->prepare('DELETE FROM musabaqa_program_entries WHERE program_id = ? AND event_id = ?')->execute([$programId, $activeEventId]);
 
-            // 6. Delete program entries
-            $pdo->prepare('DELETE FROM musabaqa_program_entries WHERE program_id = ? AND event_id = ?')->execute([$programId, $activeEventId]);
+                // 7. Delete the program itself
+                $pdo->prepare('DELETE FROM musabaqa_programs WHERE id = ? AND event_id = ?')->execute([$programId, $activeEventId]);
 
-            // 7. Delete the program itself
-            $pdo->prepare('DELETE FROM musabaqa_programs WHERE id = ? AND event_id = ?')->execute([$programId, $activeEventId]);
+                // 8. Recalculate event team totals to undo any team marks contributed by this program
+                admin_recalculate_team_totals($pdo, $activeEventId);
 
-            // 8. Recalculate event team totals to undo any team marks contributed by this program
-            admin_recalculate_team_totals($pdo, $activeEventId);
-
-            admin_log_activity($pdo, (int)($_SESSION['user_id'] ?? 0), $activeEventId, 'delete_program', 'musabaqa_programs', $programId, 'Deleted program and reset all associated entries, marks, and leaderboard totals.');
-
-            $pdo->commit();
+                admin_log_activity($pdo, (int)($_SESSION['user_id'] ?? 0), $activeEventId, 'delete_program', 'musabaqa_programs', $programId, 'Deleted program and reset all associated entries, marks, and leaderboard totals.');
+            });
 
             admin_flash('success', 'Program deleted successfully. All associated entries, scores, and team marks have been undone.');
             programs_redirect();
@@ -182,58 +180,57 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new RuntimeException('Category max marks must total 100.');
             }
 
-            $pdo->beginTransaction();
+            admin_db_transaction($pdo, function ($pdo) use ($programId, $activeEventId, $rows) {
+                $stmt = $pdo->prepare('SELECT approval_status FROM musabaqa_programs WHERE id = ? AND event_id = ? LIMIT 1');
+                $stmt->execute([$programId, $activeEventId]);
+                $approvalStatus = $stmt->fetchColumn();
 
-            $stmt = $pdo->prepare('SELECT approval_status FROM musabaqa_programs WHERE id = ? AND event_id = ? LIMIT 1');
-            $stmt->execute([$programId, $activeEventId]);
-            $approvalStatus = $stmt->fetchColumn();
+                if ($approvalStatus === false) {
+                    throw new RuntimeException('Program not found.');
+                }
 
-            if ($approvalStatus === false) {
-                throw new RuntimeException('Program not found.');
-            }
+                if (in_array((string)$approvalStatus, ['submitted', 'approved'], true)) {
+                    throw new RuntimeException('Categories are read-only after program submission or approval.');
+                }
 
-            if (in_array((string)$approvalStatus, ['submitted', 'approved'], true)) {
-                throw new RuntimeException('Categories are read-only after program submission or approval.');
-            }
+                $pdo->prepare('DELETE FROM musabaqa_program_categories WHERE program_id = ?')->execute([$programId]);
 
-            $pdo->prepare('DELETE FROM musabaqa_program_categories WHERE program_id = ?')->execute([$programId]);
+                $insert = $pdo->prepare('INSERT INTO musabaqa_program_categories (program_id, name, max_marks, sort_order) VALUES (?, ?, ?, ?)');
+                foreach ($rows as $row) {
+                    $insert->execute([$programId, $row[0], $row[1], $row[2]]);
+                }
 
-            $insert = $pdo->prepare('INSERT INTO musabaqa_program_categories (program_id, name, max_marks, sort_order) VALUES (?, ?, ?, ?)');
-            foreach ($rows as $row) {
-                $insert->execute([$programId, $row[0], $row[1], $row[2]]);
-            }
+                $stmt = $pdo->prepare('SELECT id FROM musabaqa_score_sheets WHERE program_id = ?');
+                $stmt->execute([$programId]);
+                $scoreSheetIds = array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
 
-            $stmt = $pdo->prepare('SELECT id FROM musabaqa_score_sheets WHERE program_id = ?');
-            $stmt->execute([$programId]);
-            $scoreSheetIds = array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+                if ($scoreSheetIds) {
+                    $placeholders = implode(',', array_fill(0, count($scoreSheetIds), '?'));
+                    $pdo->prepare("DELETE FROM musabaqa_category_scores WHERE score_sheet_id IN ($placeholders)")
+                        ->execute($scoreSheetIds);
 
-            if ($scoreSheetIds) {
-                $placeholders = implode(',', array_fill(0, count($scoreSheetIds), '?'));
-                $pdo->prepare("DELETE FROM musabaqa_category_scores WHERE score_sheet_id IN ($placeholders)")
-                    ->execute($scoreSheetIds);
+                    $pdo->prepare("
+                        UPDATE musabaqa_score_sheets
+                        SET judge1_total = 0,
+                            judge2_total = 0,
+                            final_total = 0,
+                            status = 'draft'
+                        WHERE program_id = ?
+                          AND status NOT IN ('submitted','approved')
+                    ")->execute([$programId]);
+                }
 
-                $pdo->prepare("
-                    UPDATE musabaqa_score_sheets
-                    SET judge1_total = 0,
-                        judge2_total = 0,
-                        final_total = 0,
-                        status = 'draft'
-                    WHERE program_id = ?
-                      AND status NOT IN ('submitted','approved')
-                ")->execute([$programId]);
-            }
-
-            admin_recalculate_program_status($pdo, $programId);
-            admin_log_activity(
-                $pdo,
-                (int)($_SESSION['user_id'] ?? 0),
-                $activeEventId,
-                'category_update',
-                'musabaqa_program_categories',
-                $programId,
-                'Program scoring categories updated.'
-            );
-            $pdo->commit();
+                admin_recalculate_program_status($pdo, $programId);
+                admin_log_activity(
+                    $pdo,
+                    (int)($_SESSION['user_id'] ?? 0),
+                    $activeEventId,
+                    'category_update',
+                    'musabaqa_program_categories',
+                    $programId,
+                    'Program scoring categories updated.'
+                );
+            });
 
             admin_flash('success', 'Scoring categories saved.');
             programs_redirect();

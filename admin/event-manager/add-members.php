@@ -39,34 +39,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     try {
-        $pdo->beginTransaction();
+        admin_db_transaction($pdo, function ($pdo) use ($studentIds, $activeEventId, $activeTeamId) {
+            $placeholders = implode(',', array_fill(0, count($studentIds), '?'));
+            $stmt = $pdo->prepare("
+                SELECT student_id
+                FROM musabaqa_team_members
+                WHERE event_id = ?
+                  AND student_id IN ({$placeholders})
+            ");
+            $stmt->execute(array_merge([$activeEventId], $studentIds));
+            $existing = array_map('intval', array_column($stmt->fetchAll(PDO::FETCH_ASSOC), 'student_id'));
+            $newStudentIds = array_values(array_diff($studentIds, $existing));
 
-        $placeholders = implode(',', array_fill(0, count($studentIds), '?'));
-        $stmt = $pdo->prepare("
-            SELECT student_id
-            FROM musabaqa_team_members
-            WHERE event_id = ?
-              AND student_id IN ({$placeholders})
-        ");
-        $stmt->execute(array_merge([$activeEventId], $studentIds));
-        $existing = array_map('intval', array_column($stmt->fetchAll(PDO::FETCH_ASSOC), 'student_id'));
-        $newStudentIds = array_values(array_diff($studentIds, $existing));
+            if (!$newStudentIds) {
+                throw new RuntimeException('All selected students are already assigned in this event.');
+            }
 
-        if (!$newStudentIds) {
-            throw new RuntimeException('All selected students are already assigned in this event.');
-        }
-
-        $insert = $pdo->prepare('INSERT INTO musabaqa_team_members (event_id, team_id, student_id, chest_number, status) VALUES (?, ?, ?, ?, "active")');
-        foreach ($newStudentIds as $studentId) {
-            $insert->execute([$activeEventId, $activeTeamId, $studentId, null]);
-        }
-
-        $pdo->commit();
-        admin_flash('success', count($newStudentIds) . ' member(s) added successfully.');
+            $insert = $pdo->prepare('INSERT INTO musabaqa_team_members (event_id, team_id, student_id, chest_number, status) VALUES (?, ?, ?, ?, "active")');
+            foreach ($newStudentIds as $studentId) {
+                $insert->execute([$activeEventId, $activeTeamId, $studentId, null]);
+            }
+        });
+        admin_flash('success', 'Members added successfully.');
     } catch (Throwable $e) {
-        if ($pdo->inTransaction()) {
-            $pdo->rollBack();
-        }
         admin_flash('error', $e->getMessage() ?: 'Unable to add members.');
     }
 

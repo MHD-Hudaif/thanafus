@@ -172,18 +172,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $findConflict->execute([$activeEventId, $newChestNumber, $memberId]);
                 $conflictingMember = $findConflict->fetch(PDO::FETCH_ASSOC);
 
-                $pdo->beginTransaction();
+                admin_db_transaction($pdo, function ($pdo) use ($conflictingMember, $newChestNumber, $memberId, $activeEventId, $oldChestNumber) {
+                    if ($conflictingMember) {
+                        $otherMemberId = (int)$conflictingMember['id'];
+                        $updateOther = $pdo->prepare('UPDATE musabaqa_team_members SET chest_number = ? WHERE id = ? AND event_id = ?');
+                        $updateOther->execute([$oldChestNumber !== '' ? $oldChestNumber : NULL, $otherMemberId, $activeEventId]);
+
+                        $updateCurrent = $pdo->prepare('UPDATE musabaqa_team_members SET chest_number = ? WHERE id = ? AND event_id = ?');
+                        $updateCurrent->execute([$newChestNumber, $memberId, $activeEventId]);
+                    } else {
+                        $updateCurrent = $pdo->prepare('UPDATE musabaqa_team_members SET chest_number = ? WHERE id = ? AND event_id = ?');
+                        $updateCurrent->execute([$newChestNumber, $memberId, $activeEventId]);
+                    }
+                });
 
                 if ($conflictingMember) {
-                    $otherMemberId = (int)$conflictingMember['id'];
-                    $updateOther = $pdo->prepare('UPDATE musabaqa_team_members SET chest_number = ? WHERE id = ? AND event_id = ?');
-                    $updateOther->execute([$oldChestNumber !== '' ? $oldChestNumber : NULL, $otherMemberId, $activeEventId]);
-
-                    $updateCurrent = $pdo->prepare('UPDATE musabaqa_team_members SET chest_number = ? WHERE id = ? AND event_id = ?');
-                    $updateCurrent->execute([$newChestNumber, $memberId, $activeEventId]);
-
-                    $pdo->commit();
-
                     $msg = 'Assigned chest number #' . $newChestNumber . ' to ' . $currentMember['display_name'] . '.';
                     if ($oldChestNumber !== '') {
                         $msg .= ' Swapped chest number #' . $oldChestNumber . ' with ' . $conflictingMember['display_name'] . '.';
@@ -192,17 +195,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                     admin_flash('success', $msg);
                 } else {
-                    $updateCurrent = $pdo->prepare('UPDATE musabaqa_team_members SET chest_number = ? WHERE id = ? AND event_id = ?');
-                    $updateCurrent->execute([$newChestNumber, $memberId, $activeEventId]);
-
-                    $pdo->commit();
                     admin_flash('success', 'Assigned chest number #' . $newChestNumber . ' to ' . $currentMember['display_name'] . '.');
                 }
             }
         } catch (Throwable $e) {
-            if ($pdo->inTransaction()) {
-                $pdo->rollBack();
-            }
             admin_flash('error', $e->getMessage() ?: 'Unable to update chest number.');
         }
 
@@ -251,60 +247,56 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ];
         }
 
-        $pdo->beginTransaction();
-
-        // Reset all existing chest numbers for this event first to avoid duplicates or orphans
-        $clearStmt = $pdo->prepare('UPDATE musabaqa_team_members SET chest_number = NULL WHERE event_id = ?');
-        $clearStmt->execute([$activeEventId]);
-
-        $stmtMembers = $pdo->prepare("
-            SELECT mtm.id
-            FROM musabaqa_team_members mtm
-            JOIN " . DB_MAIN_NAME . ".students s ON s.id = mtm.student_id
-            LEFT JOIN " . DB_MAIN_NAME . ".classes c ON c.id = s.class_id
-            LEFT JOIN " . DB_MAIN_NAME . ".class_types ct ON ct.id = c.class_type_id
-            WHERE mtm.event_id = ? AND mtm.team_id = ? AND mtm.status = 'active'
-            ORDER BY 
-                CASE 
-                    WHEN c.name LIKE '%دورة%' THEN 1
-                    WHEN c.name LIKE '%عالية%ثانية%' OR c.name LIKE '%العالية%الثانية%' THEN 2
-                    WHEN c.name LIKE '%عالية%أولى%' OR c.name LIKE '%العالية%الأولى%' THEN 3
-                    WHEN c.name LIKE '%ثانوية%ثالثة%' OR c.name LIKE '%ثاتوية%ثالثة%' OR c.name LIKE '%الثانوية%الثالثة%' OR c.name LIKE '%الثاتوية%الثالثة%' THEN 4
-                    WHEN c.name LIKE '%ثانوية%ثانية%' OR c.name LIKE '%الثانوية%الثانية%' THEN 5
-                    WHEN c.name LIKE '%ثانوية%أولى%' OR c.name LIKE '%الثانوية%الأولى%' THEN 6
-                    WHEN c.name LIKE '%حفظ%' THEN 7
-                    ELSE 8
-                END ASC,
-                c.name ASC,
-                COALESCE(NULLIF(s.display_name, ''), s.full_name) ASC,
-                mtm.id ASC
-        ");
-
-        $updateStmt = $pdo->prepare('UPDATE musabaqa_team_members SET chest_number = ? WHERE id = ? AND event_id = ? AND team_id = ?');
         $assigned = 0;
+        admin_db_transaction($pdo, function ($pdo) use ($activeEventId, $teams, $ranges, &$assigned) {
+            // Reset all existing chest numbers for this event first to avoid duplicates or orphans
+            $clearStmt = $pdo->prepare('UPDATE musabaqa_team_members SET chest_number = NULL WHERE event_id = ?');
+            $clearStmt->execute([$activeEventId]);
 
-        foreach ($teams as $team) {
-            $teamId = (int)$team['id'];
-            $range = $ranges[$teamId];
-            $teamStart = (int)$range['start'];
+            $stmtMembers = $pdo->prepare("
+                SELECT mtm.id
+                FROM musabaqa_team_members mtm
+                JOIN " . DB_MAIN_NAME . ".students s ON s.id = mtm.student_id
+                LEFT JOIN " . DB_MAIN_NAME . ".classes c ON c.id = s.class_id
+                LEFT JOIN " . DB_MAIN_NAME . ".class_types ct ON ct.id = c.class_type_id
+                WHERE mtm.event_id = ? AND mtm.team_id = ? AND mtm.status = 'active'
+                ORDER BY 
+                    CASE 
+                        WHEN c.name LIKE '%دورة%' THEN 1
+                        WHEN c.name LIKE '%عالية%ثانية%' OR c.name LIKE '%العالية%الثانية%' THEN 2
+                        WHEN c.name LIKE '%عالية%أولى%' OR c.name LIKE '%العالية%الأولى%' THEN 3
+                        WHEN c.name LIKE '%ثانوية%ثالثة%' OR c.name LIKE '%ثاتوية%ثالثة%' OR c.name LIKE '%الثانوية%الثالثة%' OR c.name LIKE '%الثاتوية%الثالثة%' THEN 4
+                        WHEN c.name LIKE '%ثانوية%ثانية%' OR c.name LIKE '%الثانوية%الثانية%' THEN 5
+                        WHEN c.name LIKE '%ثانوية%أولى%' OR c.name LIKE '%الثانوية%الأولى%' THEN 6
+                        WHEN c.name LIKE '%حفظ%' THEN 7
+                        ELSE 8
+                    END ASC,
+                    c.name ASC,
+                    COALESCE(NULLIF(s.display_name, ''), s.full_name) ASC,
+                    mtm.id ASC
+            ");
 
-            $stmtMembers->execute([$activeEventId, $teamId]);
-            $members = $stmtMembers->fetchAll(PDO::FETCH_COLUMN);
+            $updateStmt = $pdo->prepare('UPDATE musabaqa_team_members SET chest_number = ? WHERE id = ? AND event_id = ? AND team_id = ?');
 
-            $currentNumber = $teamStart;
-            foreach ($members as $memberId) {
-                $updateStmt->execute([(string)$currentNumber, (int)$memberId, $activeEventId, $teamId]);
-                $currentNumber++;
-                $assigned++;
+            foreach ($teams as $team) {
+                $teamId = (int)$team['id'];
+                $range = $ranges[$teamId];
+                $teamStart = (int)$range['start'];
+
+                $stmtMembers->execute([$activeEventId, $teamId]);
+                $members = $stmtMembers->fetchAll(PDO::FETCH_COLUMN);
+
+                $currentNumber = $teamStart;
+                foreach ($members as $memberId) {
+                    $updateStmt->execute([(string)$currentNumber, (int)$memberId, $activeEventId, $teamId]);
+                    $currentNumber++;
+                    $assigned++;
+                }
             }
-        }
+        });
 
-        $pdo->commit();
         admin_flash('success', 'Generated chest numbers for ' . $assigned . ' active member(s). Existing active chest numbers were reset.');
     } catch (Throwable $e) {
-        if ($pdo->inTransaction()) {
-            $pdo->rollBack();
-        }
         admin_flash('error', $e->getMessage() ?: 'Unable to generate chest numbers.');
     }
 

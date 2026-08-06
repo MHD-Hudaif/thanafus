@@ -63,19 +63,24 @@ function entries_load_program(PDO $pdo, int $eventId, int $programId): ?array
     return $program ?: null;
 }
 
+// Fetch all class types for map
+$classTypes = $dashboardPdo->query("SELECT id, name FROM class_types ORDER BY name ASC")->fetchAll(PDO::FETCH_ASSOC);
+
 // Fetch all schedule sessions for this event
 $stmtSec = $pdo->prepare("SELECT * FROM musabaqa_schedule_sections WHERE event_id = ? ORDER BY sort_order ASC, start_time ASC");
 $stmtSec->execute([$activeEventId]);
 $scheduleSessions = $stmtSec->fetchAll(PDO::FETCH_ASSOC);
 
-// Fetch all programs for header dropdowns & list with schedule session info
+// Fetch all programs for header dropdowns & list with schedule session info & stage type info
 $stmt = $pdo->prepare("
     SELECT mp.*, ct.name AS class_type_name,
+           mst.name AS stage_type_name,
            mss.id AS schedule_section_id, mss.name AS schedule_section_name,
            mss.start_time AS schedule_section_start, mss.end_time AS schedule_section_end,
            mss.section_date AS schedule_section_date, mss.sort_order AS schedule_section_sort,
            (SELECT COUNT(*) FROM musabaqa_program_entries pe WHERE pe.program_id = mp.id AND pe.event_id = mp.event_id) AS current_entries
     FROM musabaqa_programs mp
+    LEFT JOIN musabaqa_stage_types mst ON mst.id = mp.stage_type_id
     LEFT JOIN " . DB_MAIN_NAME . ".class_types ct ON ct.id = mp.class_type_id
     LEFT JOIN musabaqa_schedule_sections mss ON mss.id = mp.section_id
     WHERE mp.event_id = ?
@@ -127,87 +132,135 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     try {
-        $pdo->beginTransaction();
+        admin_db_transaction($pdo, function ($pdo) use ($action, $activeEventId, $programId, $entryId, $teamId, $viewMode) {
+            if (in_array($action, ['create_entry', 'update_entry'], true)) {
+                $program = entries_load_program($pdo, $activeEventId, $programId);
+                if (!$program) {
+                    throw new RuntimeException('Selected program is invalid.');
+                }
+                if (in_array((string)$program['approval_status'], ['submitted', 'approved'], true)) {
+                    throw new RuntimeException('Submitted or approved programs cannot be changed.');
+                }
 
-        if (in_array($action, ['create_entry', 'update_entry'], true)) {
-            $program = entries_load_program($pdo, $activeEventId, $programId);
-            if (!$program) {
-                throw new RuntimeException('Selected program is invalid.');
-            }
-            if (in_array((string)$program['approval_status'], ['submitted', 'approved'], true)) {
-                throw new RuntimeException('Submitted or approved programs cannot be changed.');
-            }
+                $perTeamLimit = (int)($program['entries_limit'] ?? 10);
 
-            $perTeamLimit = (int)($program['entries_limit'] ?? 10);
-
-            if ($action === 'create_entry') {
-                if ($program['program_type'] === 'individual') {
-                    $teamMemberIds = [];
-                    if (isset($_POST['team_member_ids']) && is_array($_POST['team_member_ids'])) {
-                        $teamMemberIds = array_filter(array_map('intval', $_POST['team_member_ids']));
-                    } elseif (!empty($_POST['team_member_id'])) {
-                        $teamMemberIds = [(int)$_POST['team_member_id']];
-                    }
-
-                    if (empty($teamMemberIds)) {
-                        throw new RuntimeException('Please select at least one participant.');
-                    }
-
-                    $addedCount = 0;
-                    $skippedNames = [];
-
-                    foreach ($teamMemberIds as $teamMemberId) {
-                        $stmt = $pdo->prepare("
-                            SELECT tm.*, COALESCE(NULLIF(s.display_name, ''), s.full_name) AS full_name
-                            FROM musabaqa_team_members tm
-                            JOIN " . DB_MAIN_NAME . ".students s ON s.id = tm.student_id
-                            WHERE tm.id = ?
-                              AND tm.event_id = ?
-                              AND tm.status = 'active'
-                            LIMIT 1
-                        ");
-                        $stmt->execute([$teamMemberId, $activeEventId]);
-                        $member = $stmt->fetch(PDO::FETCH_ASSOC);
-
-                        if (!$member) {
-                            continue;
+                if ($action === 'create_entry') {
+                    if ($program['program_type'] === 'individual') {
+                        $teamMemberIds = [];
+                        if (isset($_POST['team_member_ids']) && is_array($_POST['team_member_ids'])) {
+                            $teamMemberIds = array_filter(array_map('intval', $_POST['team_member_ids']));
+                        } elseif (!empty($_POST['team_member_id'])) {
+                            $teamMemberIds = [(int)$_POST['team_member_id']];
                         }
 
-                        $memberTeamId = (int)$member['team_id'];
-                        if ($memberTeamId <= 0) {
-                            continue;
+                        if (empty($teamMemberIds)) {
+                            throw new RuntimeException('Please select at least one participant.');
                         }
 
-                        // Check team limit for this program
-                        $tCntStmt = $pdo->prepare("SELECT COUNT(*) FROM musabaqa_program_entries WHERE program_id = ? AND team_id = ? AND event_id = ?");
-                        $tCntStmt->execute([$programId, $memberTeamId, $activeEventId]);
-                        $teamCurrentEntries = (int)$tCntStmt->fetchColumn();
+                        $addedCount = 0;
+                        $skippedNames = [];
 
-                        if ($teamCurrentEntries >= $perTeamLimit) {
-                            $skippedNames[] = $member['full_name'] . " (Team limit of {$perTeamLimit} reached)";
-                            continue;
-                        }
+                        foreach ($teamMemberIds as $teamMemberId) {
+                            $stmt = $pdo->prepare("
+                                SELECT tm.*, COALESCE(NULLIF(s.display_name, ''), s.full_name) AS full_name
+                                FROM musabaqa_team_members tm
+                                JOIN " . DB_MAIN_NAME . ".students s ON s.id = tm.student_id
+                                WHERE tm.id = ?
+                                  AND tm.event_id = ?
+                                  AND tm.status = 'active'
+                                LIMIT 1
+                            ");
+                            $stmt->execute([$teamMemberId, $activeEventId]);
+                            $member = $stmt->fetch(PDO::FETCH_ASSOC);
 
-                        // Duplicate check
-                        $dup = $pdo->prepare("
-                            SELECT em.id
-                            FROM musabaqa_entry_members em
-                            JOIN musabaqa_program_entries pe ON pe.id = em.entry_id
-                            WHERE pe.event_id = ?
-                              AND pe.program_id = ?
-                              AND em.team_member_id = ?
-                            LIMIT 1
-                        ");
-                        $dup->execute([$activeEventId, $programId, $teamMemberId]);
-                        if ($dup->fetchColumn()) {
-                            if (count($teamMemberIds) === 1) {
-                                throw new RuntimeException("Participant {$member['full_name']} is already assigned to this program.");
+                            if (!$member) {
+                                continue;
                             }
-                            $skippedNames[] = $member['full_name'] . " (already assigned)";
-                            continue;
+
+                            $memberTeamId = (int)$member['team_id'];
+
+                            // Check team limit for this program
+                            $tCntStmt = $pdo->prepare("SELECT COUNT(*) FROM musabaqa_program_entries WHERE program_id = ? AND team_id = ? AND event_id = ?");
+                            $tCntStmt->execute([$programId, $memberTeamId, $activeEventId]);
+                            if ((int)$tCntStmt->fetchColumn() >= $perTeamLimit) {
+                                $skippedNames[] = $member['full_name'] . " (team limit reached)";
+                                continue;
+                            }
+
+                            // Duplicate check in this program
+                            $dup = $pdo->prepare("
+                                SELECT pe.id
+                                FROM musabaqa_program_entries pe
+                                JOIN musabaqa_entry_members em ON em.entry_id = pe.id
+                                WHERE pe.event_id = ? AND pe.program_id = ? AND em.team_member_id = ?
+                                LIMIT 1
+                            ");
+                            $dup->execute([$activeEventId, $programId, $teamMemberId]);
+                            if ($dup->fetchColumn()) {
+                                $skippedNames[] = $member['full_name'] . " (already assigned)";
+                                continue;
+                            }
+
+                            admin_validate_member_program_limits($pdo, $activeEventId, $programId, $teamMemberId);
+
+                            $entryName = (string)$member['full_name'];
+                            $entryNumber = entries_next_number($pdo, $activeEventId, $programId);
+                            $perfOrder   = entries_next_performance_order($pdo, $activeEventId, $programId);
+
+                            $stmt = $pdo->prepare("
+                                INSERT INTO musabaqa_program_entries
+                                    (event_id, program_id, team_id, entry_name, entry_number, performance_order, status)
+                                VALUES (?, ?, ?, ?, ?, ?, 'approved')
+                            ");
+                            $stmt->execute([$activeEventId, $programId, $memberTeamId, $entryName, $entryNumber, $perfOrder]);
+                            $newEntryId = (int)$pdo->lastInsertId();
+
+                            $insMem = $pdo->prepare("INSERT INTO musabaqa_entry_members (entry_id, team_member_id, role_name) VALUES (?, ?, 'Participant')");
+                            $insMem->execute([$newEntryId, $teamMemberId]);
+                            $addedCount++;
                         }
 
-                        admin_validate_member_program_limits($pdo, $activeEventId, $programId, $teamMemberId);
+                        if ($addedCount === 0) {
+                            $err = "No participants could be registered.";
+                            if (!empty($skippedNames)) {
+                                $err .= " (" . implode(', ', $skippedNames) . ")";
+                            }
+                            throw new RuntimeException($err);
+                        }
+
+                        admin_recalculate_program_status($pdo, $programId);
+                        $msg = "{$addedCount} participant(s) registered successfully.";
+                        if (!empty($skippedNames)) {
+                            $msg .= " (" . count($skippedNames) . " skipped: " . implode(', ', $skippedNames) . ")";
+                        }
+                        admin_flash('success', $msg);
+                    } else {
+                        if ($teamId <= 0) {
+                            throw new RuntimeException('Please select a team.');
+                        }
+
+                        $entryName = trim((string)($_POST['entry_name'] ?? ''));
+                        if ($entryName === '') {
+                            throw new RuntimeException('Entry name is required.');
+                        }
+
+                        // Check team limit for group program
+                        $tCntStmt = $pdo->prepare("SELECT COUNT(*) FROM musabaqa_program_entries WHERE program_id = ? AND team_id = ? AND event_id = ?");
+                        $tCntStmt->execute([$programId, $teamId, $activeEventId]);
+                        if ((int)$tCntStmt->fetchColumn() >= $perTeamLimit) {
+                            throw new RuntimeException("This team has reached its maximum limit of {$perTeamLimit} entries for this program.");
+                        }
+
+                        $dup = $pdo->prepare('SELECT id FROM musabaqa_program_entries WHERE event_id = ? AND program_id = ? AND team_id = ? AND entry_name = ? LIMIT 1');
+                        $dup->execute([$activeEventId, $programId, $teamId, $entryName]);
+                        if ($dup->fetchColumn()) {
+                            throw new RuntimeException('This team already has an entry with that name.');
+                        }
+
+                        $teamMemberIds = [];
+                        if (isset($_POST['team_member_ids']) && is_array($_POST['team_member_ids'])) {
+                            $teamMemberIds = array_filter(array_map('intval', $_POST['team_member_ids']));
+                        }
 
                         $entryNumber = entries_next_number($pdo, $activeEventId, $programId);
                         $perfOrder   = entries_next_performance_order($pdo, $activeEventId, $programId);
@@ -217,233 +270,173 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 (event_id, program_id, team_id, entry_name, entry_number, performance_order, status)
                             VALUES (?, ?, ?, ?, ?, ?, 'approved')
                         ");
-                        $stmt->execute([$activeEventId, $programId, $memberTeamId, $member['full_name'], $entryNumber, $perfOrder]);
+                        $stmt->execute([$activeEventId, $programId, $teamId, $entryName, $entryNumber, $perfOrder]);
                         $newEntryId = (int)$pdo->lastInsertId();
 
-                        $stmt = $pdo->prepare("INSERT INTO musabaqa_entry_members (entry_id, team_member_id, role_name) VALUES (?, ?, 'Participant')");
-                        $stmt->execute([$newEntryId, $teamMemberId]);
+                        $addedCount = 0;
+                        $skippedNames = [];
 
-                        $addedCount++;
-                    }
+                        foreach ($teamMemberIds as $teamMemberId) {
+                            $stmt = $pdo->prepare("
+                                SELECT tm.*, COALESCE(NULLIF(s.display_name, ''), s.full_name) AS full_name
+                                FROM musabaqa_team_members tm
+                                JOIN " . DB_MAIN_NAME . ".students s ON s.id = tm.student_id
+                                WHERE tm.id = ? AND tm.event_id = ? AND tm.team_id = ? AND tm.status = 'active'
+                                LIMIT 1
+                            ");
+                            $stmt->execute([$teamMemberId, $activeEventId, $teamId]);
+                            $member = $stmt->fetch(PDO::FETCH_ASSOC);
 
-                    if ($addedCount === 0) {
-                        $reason = !empty($skippedNames) ? implode(', ', $skippedNames) : 'Selected participants could not be added.';
-                        throw new RuntimeException("No entries created. Reason: {$reason}");
-                    }
+                            if (!$member) {
+                                continue;
+                            }
 
-                    admin_recalculate_program_status($pdo, $programId);
-                    $msg = "{$addedCount} participant(s) registered successfully.";
-                    if (!empty($skippedNames)) {
-                        $msg .= " (" . count($skippedNames) . " skipped: " . implode(', ', $skippedNames) . ")";
+                            // Duplicate check in this program
+                            $dupMem = $pdo->prepare("
+                                SELECT em.id
+                                FROM musabaqa_entry_members em
+                                JOIN musabaqa_program_entries pe ON pe.id = em.entry_id
+                                WHERE pe.event_id = ? AND pe.program_id = ? AND em.team_member_id = ?
+                                LIMIT 1
+                            ");
+                            $dupMem->execute([$activeEventId, $programId, $teamMemberId]);
+                            if ($dupMem->fetchColumn()) {
+                                $skippedNames[] = $member['full_name'] . " (already assigned)";
+                                continue;
+                            }
+
+                            admin_validate_member_program_limits($pdo, $activeEventId, $programId, $teamMemberId);
+
+                            $insMem = $pdo->prepare("INSERT INTO musabaqa_entry_members (entry_id, team_member_id, role_name) VALUES (?, ?, 'Participant')");
+                            $insMem->execute([$newEntryId, $teamMemberId]);
+                            $addedCount++;
+                        }
+
+                        admin_recalculate_program_status($pdo, $programId);
+                        $msg = "Group entry '{$entryName}' created successfully with {$addedCount} member(s).";
+                        if (!empty($skippedNames)) {
+                            $msg .= " (" . count($skippedNames) . " skipped: " . implode(', ', $skippedNames) . ")";
+                        }
+                        admin_flash('success', $msg);
                     }
-                    admin_flash('success', $msg);
                 } else {
-                    if ($teamId <= 0) {
-                        throw new RuntimeException('Please select a team.');
+                    $stmt = $pdo->prepare("
+                        SELECT pe.*, old_program.program_type AS old_program_type
+                        FROM musabaqa_program_entries pe
+                        JOIN musabaqa_programs old_program ON old_program.id = pe.program_id
+                        WHERE pe.id = ? AND pe.event_id = ?
+                        LIMIT 1
+                    ");
+                    $stmt->execute([$entryId, $activeEventId]);
+                    $entry = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                    if (!$entry) {
+                        throw new RuntimeException('Entry not found.');
+                    }
+                    if ($entry['status'] === 'completed') {
+                        throw new RuntimeException('Completed entries cannot be reassigned.');
                     }
 
-                    $entryName = trim((string)($_POST['entry_name'] ?? ''));
-                    if ($entryName === '') {
-                        throw new RuntimeException('Entry name is required.');
+                    $entryName = (string)$entry['entry_name'];
+                    if ($program['program_type'] === 'group') {
+                        $entryName = trim((string)($_POST['entry_name'] ?? ''));
+                        if ($entryName === '') {
+                            throw new RuntimeException('Entry name is required.');
+                        }
                     }
-
-                    // Check team limit for group program
-                    $tCntStmt = $pdo->prepare("SELECT COUNT(*) FROM musabaqa_program_entries WHERE program_id = ? AND team_id = ? AND event_id = ?");
-                    $tCntStmt->execute([$programId, $teamId, $activeEventId]);
-                    if ((int)$tCntStmt->fetchColumn() >= $perTeamLimit) {
-                        throw new RuntimeException("This team has reached its maximum limit of {$perTeamLimit} entries for this program.");
-                    }
-
-                    $dup = $pdo->prepare('SELECT id FROM musabaqa_program_entries WHERE event_id = ? AND program_id = ? AND team_id = ? AND entry_name = ? LIMIT 1');
-                    $dup->execute([$activeEventId, $programId, $teamId, $entryName]);
-                    if ($dup->fetchColumn()) {
-                        throw new RuntimeException('This team already has an entry with that name.');
-                    }
-
-                    $teamMemberIds = [];
-                    if (isset($_POST['team_member_ids']) && is_array($_POST['team_member_ids'])) {
-                        $teamMemberIds = array_filter(array_map('intval', $_POST['team_member_ids']));
-                    }
-
-                    $entryNumber = entries_next_number($pdo, $activeEventId, $programId);
-                    $perfOrder   = entries_next_performance_order($pdo, $activeEventId, $programId);
 
                     $stmt = $pdo->prepare("
-                        INSERT INTO musabaqa_program_entries
-                            (event_id, program_id, team_id, entry_name, entry_number, performance_order, status)
-                        VALUES (?, ?, ?, ?, ?, ?, 'approved')
+                        UPDATE musabaqa_program_entries
+                        SET entry_name = ?
+                        WHERE id = ? AND event_id = ?
                     ");
-                    $stmt->execute([$activeEventId, $programId, $teamId, $entryName, $entryNumber, $perfOrder]);
-                    $newEntryId = (int)$pdo->lastInsertId();
+                    $stmt->execute([$entryName, $entryId, $activeEventId]);
 
-                    $addedCount = 0;
-                    $skippedNames = [];
-
-                    foreach ($teamMemberIds as $teamMemberId) {
-                        $stmt = $pdo->prepare("
-                            SELECT tm.*, COALESCE(NULLIF(s.display_name, ''), s.full_name) AS full_name
-                            FROM musabaqa_team_members tm
-                            JOIN " . DB_MAIN_NAME . ".students s ON s.id = tm.student_id
-                            WHERE tm.id = ? AND tm.event_id = ? AND tm.team_id = ? AND tm.status = 'active'
-                            LIMIT 1
-                        ");
-                        $stmt->execute([$teamMemberId, $activeEventId, $teamId]);
-                        $member = $stmt->fetch(PDO::FETCH_ASSOC);
-
-                        if (!$member) {
-                            continue;
+                    if ($program['program_type'] === 'group' && isset($_POST['update_group_members'])) {
+                        $teamMemberIds = [];
+                        if (isset($_POST['team_member_ids']) && is_array($_POST['team_member_ids'])) {
+                            $teamMemberIds = array_filter(array_map('intval', $_POST['team_member_ids']));
                         }
 
-                        // Duplicate check in this program
-                        $dupMem = $pdo->prepare("
-                            SELECT em.id
-                            FROM musabaqa_entry_members em
-                            JOIN musabaqa_program_entries pe ON pe.id = em.entry_id
-                            WHERE pe.event_id = ? AND pe.program_id = ? AND em.team_member_id = ?
-                            LIMIT 1
-                        ");
-                        $dupMem->execute([$activeEventId, $programId, $teamMemberId]);
-                        if ($dupMem->fetchColumn()) {
-                            $skippedNames[] = $member['full_name'] . " (already assigned)";
-                            continue;
+                        // Remove current members for this entry
+                        $pdo->prepare("DELETE FROM musabaqa_entry_members WHERE entry_id = ?")->execute([$entryId]);
+
+                        $addedCount = 0;
+                        $skippedNames = [];
+                        foreach ($teamMemberIds as $teamMemberId) {
+                            $stmt = $pdo->prepare("
+                                SELECT tm.*, COALESCE(NULLIF(s.display_name, ''), s.full_name) AS full_name
+                                FROM musabaqa_team_members tm
+                                JOIN " . DB_MAIN_NAME . ".students s ON s.id = tm.student_id
+                                WHERE tm.id = ? AND tm.event_id = ? AND tm.team_id = ? AND tm.status = 'active'
+                                LIMIT 1
+                            ");
+                            $stmt->execute([$teamMemberId, $activeEventId, (int)$entry['team_id']]);
+                            $member = $stmt->fetch(PDO::FETCH_ASSOC);
+                            if (!$member) {
+                                continue;
+                            }
+
+                            // Duplicate check excluding current entry
+                            $dupMem = $pdo->prepare("
+                                SELECT em.id
+                                FROM musabaqa_entry_members em
+                                JOIN musabaqa_program_entries pe ON pe.id = em.entry_id
+                                WHERE pe.event_id = ? AND pe.program_id = ? AND em.team_member_id = ? AND pe.id != ?
+                                LIMIT 1
+                            ");
+                            $dupMem->execute([$activeEventId, $programId, $teamMemberId, $entryId]);
+                            if ($dupMem->fetchColumn()) {
+                                $skippedNames[] = $member['full_name'] . " (assigned to another entry)";
+                                continue;
+                            }
+
+                            admin_validate_member_program_limits($pdo, $activeEventId, $programId, $teamMemberId, $entryId);
+
+                            $insMem = $pdo->prepare("INSERT INTO musabaqa_entry_members (entry_id, team_member_id, role_name) VALUES (?, ?, 'Participant')");
+                            $insMem->execute([$entryId, $teamMemberId]);
+                            $addedCount++;
                         }
-
-                        admin_validate_member_program_limits($pdo, $activeEventId, $programId, $teamMemberId);
-
-                        $insMem = $pdo->prepare("INSERT INTO musabaqa_entry_members (entry_id, team_member_id, role_name) VALUES (?, ?, 'Participant')");
-                        $insMem->execute([$newEntryId, $teamMemberId]);
-                        $addedCount++;
                     }
 
                     admin_recalculate_program_status($pdo, $programId);
-                    $msg = "Group entry '{$entryName}' created successfully with {$addedCount} member(s).";
-                    if (!empty($skippedNames)) {
-                        $msg .= " (" . count($skippedNames) . " skipped: " . implode(', ', $skippedNames) . ")";
-                    }
-                    admin_flash('success', $msg);
+                    admin_flash('success', 'Group entry updated successfully.');
                 }
-            } else {
-                $stmt = $pdo->prepare("
-                    SELECT pe.*, old_program.program_type AS old_program_type
-                    FROM musabaqa_program_entries pe
-                    JOIN musabaqa_programs old_program ON old_program.id = pe.program_id
-                    WHERE pe.id = ? AND pe.event_id = ?
-                    LIMIT 1
-                ");
+            } elseif ($action === 'delete_entry') {
+                $stmt = $pdo->prepare('SELECT program_id, entry_name FROM musabaqa_program_entries WHERE id = ? AND event_id = ? LIMIT 1');
                 $stmt->execute([$entryId, $activeEventId]);
-                $entry = $stmt->fetch(PDO::FETCH_ASSOC);
+                $row = $stmt->fetch(PDO::FETCH_ASSOC);
+                $entryProgramId = (int)($row['program_id'] ?? 0);
+                $deletedEntryName = (string)($row['entry_name'] ?? '');
 
-                if (!$entry) {
-                    throw new RuntimeException('Entry not found.');
+                $pdo->prepare('DELETE FROM musabaqa_member_scores WHERE entry_id = ?')->execute([$entryId]);
+                $pdo->prepare('DELETE FROM musabaqa_scores WHERE entry_id = ? AND event_id = ?')->execute([$entryId, $activeEventId]);
+
+                $sheetStmt = $pdo->prepare('SELECT id FROM musabaqa_score_sheets WHERE entry_id = ?');
+                $sheetStmt->execute([$entryId]);
+                $sheetIds = $sheetStmt->fetchAll(PDO::FETCH_COLUMN);
+                if ($sheetIds) {
+                    $sheetPlaceholders = implode(',', array_fill(0, count($sheetIds), '?'));
+                    $pdo->prepare("DELETE FROM musabaqa_category_scores WHERE score_sheet_id IN ($sheetPlaceholders)")->execute($sheetIds);
                 }
-                if ($entry['status'] === 'completed') {
-                    throw new RuntimeException('Completed entries cannot be reassigned.');
+                $pdo->prepare('DELETE FROM musabaqa_score_sheets WHERE entry_id = ?')->execute([$entryId]);
+
+                $pdo->prepare('DELETE FROM musabaqa_entry_members WHERE entry_id = ?')->execute([$entryId]);
+                $pdo->prepare('DELETE FROM musabaqa_program_entries WHERE id = ? AND event_id = ?')->execute([$entryId, $activeEventId]);
+
+                if ($entryProgramId > 0) {
+                    admin_recalculate_participant_totals($pdo, $activeEventId, $entryProgramId);
+                    admin_recalculate_program_results($pdo, $activeEventId, $entryProgramId);
                 }
+                admin_recalculate_team_totals($pdo, $activeEventId);
 
-                $entryName = (string)$entry['entry_name'];
-                if ($program['program_type'] === 'group') {
-                    $entryName = trim((string)($_POST['entry_name'] ?? ''));
-                    if ($entryName === '') {
-                        throw new RuntimeException('Entry name is required.');
-                    }
-                }
-
-                $stmt = $pdo->prepare("
-                    UPDATE musabaqa_program_entries
-                    SET entry_name = ?
-                    WHERE id = ? AND event_id = ?
-                ");
-                $stmt->execute([$entryName, $entryId, $activeEventId]);
-
-                if ($program['program_type'] === 'group' && isset($_POST['update_group_members'])) {
-                    $teamMemberIds = [];
-                    if (isset($_POST['team_member_ids']) && is_array($_POST['team_member_ids'])) {
-                        $teamMemberIds = array_filter(array_map('intval', $_POST['team_member_ids']));
-                    }
-
-                    // Remove current members for this entry
-                    $pdo->prepare("DELETE FROM musabaqa_entry_members WHERE entry_id = ?")->execute([$entryId]);
-
-                    $addedCount = 0;
-                    $skippedNames = [];
-                    foreach ($teamMemberIds as $teamMemberId) {
-                        $stmt = $pdo->prepare("
-                            SELECT tm.*, COALESCE(NULLIF(s.display_name, ''), s.full_name) AS full_name
-                            FROM musabaqa_team_members tm
-                            JOIN " . DB_MAIN_NAME . ".students s ON s.id = tm.student_id
-                            WHERE tm.id = ? AND tm.event_id = ? AND tm.team_id = ? AND tm.status = 'active'
-                            LIMIT 1
-                        ");
-                        $stmt->execute([$teamMemberId, $activeEventId, (int)$entry['team_id']]);
-                        $member = $stmt->fetch(PDO::FETCH_ASSOC);
-                        if (!$member) {
-                            continue;
-                        }
-
-                        // Duplicate check excluding current entry
-                        $dupMem = $pdo->prepare("
-                            SELECT em.id
-                            FROM musabaqa_entry_members em
-                            JOIN musabaqa_program_entries pe ON pe.id = em.entry_id
-                            WHERE pe.event_id = ? AND pe.program_id = ? AND em.team_member_id = ? AND pe.id != ?
-                            LIMIT 1
-                        ");
-                        $dupMem->execute([$activeEventId, $programId, $teamMemberId, $entryId]);
-                        if ($dupMem->fetchColumn()) {
-                            $skippedNames[] = $member['full_name'] . " (assigned to another entry)";
-                            continue;
-                        }
-
-                        admin_validate_member_program_limits($pdo, $activeEventId, $programId, $teamMemberId, $entryId);
-
-                        $insMem = $pdo->prepare("INSERT INTO musabaqa_entry_members (entry_id, team_member_id, role_name) VALUES (?, ?, 'Participant')");
-                        $insMem->execute([$entryId, $teamMemberId]);
-                        $addedCount++;
-                    }
-                }
-
-                admin_recalculate_program_status($pdo, $programId);
-                admin_flash('success', 'Group entry updated successfully.');
+                admin_flash('success', "Entry undone/deleted successfully" . ($deletedEntryName ? " ({$deletedEntryName})" : '') . ".");
+            } else {
+                throw new RuntimeException('Invalid entry action.');
             }
-        } elseif ($action === 'delete_entry') {
-            $stmt = $pdo->prepare('SELECT program_id, entry_name FROM musabaqa_program_entries WHERE id = ? AND event_id = ? LIMIT 1');
-            $stmt->execute([$entryId, $activeEventId]);
-            $row = $stmt->fetch(PDO::FETCH_ASSOC);
-            $entryProgramId = (int)($row['program_id'] ?? 0);
-            $deletedEntryName = (string)($row['entry_name'] ?? '');
-
-            $pdo->prepare('DELETE FROM musabaqa_member_scores WHERE entry_id = ?')->execute([$entryId]);
-            $pdo->prepare('DELETE FROM musabaqa_scores WHERE entry_id = ? AND event_id = ?')->execute([$entryId, $activeEventId]);
-
-            $sheetStmt = $pdo->prepare('SELECT id FROM musabaqa_score_sheets WHERE entry_id = ?');
-            $sheetStmt->execute([$entryId]);
-            $sheetIds = $sheetStmt->fetchAll(PDO::FETCH_COLUMN);
-            if ($sheetIds) {
-                $sheetPlaceholders = implode(',', array_fill(0, count($sheetIds), '?'));
-                $pdo->prepare("DELETE FROM musabaqa_category_scores WHERE score_sheet_id IN ($sheetPlaceholders)")->execute($sheetIds);
-            }
-            $pdo->prepare('DELETE FROM musabaqa_score_sheets WHERE entry_id = ?')->execute([$entryId]);
-
-            $pdo->prepare('DELETE FROM musabaqa_entry_members WHERE entry_id = ?')->execute([$entryId]);
-            $pdo->prepare('DELETE FROM musabaqa_program_entries WHERE id = ? AND event_id = ?')->execute([$entryId, $activeEventId]);
-
-            if ($entryProgramId > 0) {
-                admin_recalculate_participant_totals($pdo, $activeEventId, $entryProgramId);
-                admin_recalculate_program_results($pdo, $activeEventId, $entryProgramId);
-            }
-            admin_recalculate_team_totals($pdo, $activeEventId);
-
-            admin_flash('success', "Entry undone/deleted successfully" . ($deletedEntryName ? " ({$deletedEntryName})" : '') . ".");
-        } else {
-            throw new RuntimeException('Invalid entry action.');
-        }
-
-        $pdo->commit();
+        });
     } catch (Throwable $e) {
-        if ($pdo->inTransaction()) {
-            $pdo->rollBack();
-        }
-        admin_flash('error', $e->getMessage() ?: 'Unable to update entries.');
+        admin_flash('error', $e->getMessage() ?: 'Unable to process entry operation.');
     }
 
     entries_redirect($returnQuery);
@@ -659,7 +652,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
 
         <?php
             $sessionIdFilter = (int)($_GET['session_id'] ?? 0);
-            $programGroupBy  = trim((string)($_GET['program_group_by'] ?? 'session'));
+            $programGroupBy  = trim((string)($_GET['program_group_by'] ?? 'division'));
 
             // Filter programs
             $filteredPrograms = $programs;
@@ -682,7 +675,68 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                 $filteredPrograms = array_values(array_filter($filteredPrograms, fn($p) => str_contains(strtolower($p['title']), $term) || str_contains(strtolower($p['class_type_name'] ?? ''), $term)));
             }
 
-            // Grouping Structure 1: By Schedule Session
+            $classTypesMap = [];
+            foreach ($classTypes as $type) {
+                $classTypesMap[(int)$type['id']] = $type['name'];
+            }
+
+            $tierNames = [
+                'subjunior' => 'Sub Junior Division',
+                'junior'    => 'Junior Division',
+                'senior'    => 'Senior Division',
+                'general'   => 'General / Open Division'
+            ];
+
+            // Grouping Structure 1: By Class Division (Matches Programs Page Structure)
+            $groupedByDivision = [];
+            $groupedByDivision['group'] = [
+                'title' => 'Group Programs',
+                'icon'  => 'fa-people-group',
+                'color' => '#818cf8',
+                'programs' => []
+            ];
+            $groupedByDivision['offstage'] = [
+                'title' => 'Off-Stage Programs',
+                'icon'  => 'fa-pen-ruler',
+                'color' => '#f59e0b',
+                'programs' => []
+            ];
+            foreach ($tierNames as $tierKey => $tierLabel) {
+                $groupedByDivision['normal_' . $tierKey] = [
+                    'title' => "{$tierLabel} (Normal Stage)",
+                    'icon'  => 'fa-layer-group',
+                    'color' => '#34d399',
+                    'programs' => []
+                ];
+            }
+
+            foreach ($filteredPrograms as $program) {
+                $isGroup = strtolower((string)$program['program_type']) === 'group';
+                $isOffStage = str_contains(strtolower((string)($program['stage_type_name'] ?? '')), 'off');
+
+                if ($isGroup) {
+                    $groupedByDivision['group']['programs'][] = $program;
+                    continue;
+                }
+
+                if ($isOffStage) {
+                    $groupedByDivision['offstage']['programs'][] = $program;
+                    continue;
+                }
+
+                $classTier = admin_class_type_tier_from_name($program['class_type_name'] ?? '');
+                $allowedCount = !empty($program['allowed_sections']) ? count(explode(',', $program['allowed_sections'])) : 0;
+
+                if ($allowedCount > 1 || !$classTier) {
+                    $tierKey = 'general';
+                } else {
+                    $tierKey = $classTier;
+                }
+
+                $groupedByDivision['normal_' . $tierKey]['programs'][] = $program;
+            }
+
+            // Grouping Structure 2: By Schedule Session
             $groupedBySession = [];
             foreach ($scheduleSessions as $sec) {
                 $secId = (int)$sec['id'];
@@ -692,7 +746,9 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                 }
                 $groupedBySession['session_' . $secId] = [
                     'id' => $secId,
-                    'name' => $sec['name'],
+                    'title' => $sec['name'],
+                    'icon' => 'fa-clock',
+                    'color' => '#34d399',
                     'time_range' => $timeStr,
                     'date' => !empty($sec['section_date']) ? date('M d, Y', strtotime($sec['section_date'])) : '',
                     'programs' => []
@@ -700,7 +756,9 @@ require_once __DIR__ . '/../../includes/sidebar.php';
             }
             $groupedBySession['unassigned'] = [
                 'id' => 0,
-                'name' => 'Unassigned Schedule Sessions',
+                'title' => 'Unassigned Schedule Sessions',
+                'icon' => 'fa-clock',
+                'color' => '#94a3b8',
                 'time_range' => '',
                 'date' => '',
                 'programs' => []
@@ -711,6 +769,8 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                 $key = ($secId > 0 && isset($groupedBySession['session_' . $secId])) ? 'session_' . $secId : 'unassigned';
                 $groupedBySession[$key]['programs'][] = $prog;
             }
+
+            $activePanels = ($programGroupBy === 'session') ? $groupedBySession : $groupedByDivision;
         ?>
 
         <div class="panel mb-6">
@@ -762,86 +822,147 @@ require_once __DIR__ . '/../../includes/sidebar.php';
 
                 <div class="form-actions" style="grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 6px;">
                     <div style="display: flex; align-items: center; background: rgba(255,255,255,0.04); padding: 3px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08);">
+                        <a href="<?= app_url('/admin/registrar/entries.php?view=programs&program_group_by=division' . ($sessionIdFilter !== 0 ? '&session_id=' . $sessionIdFilter : '') . ($classFilter !== 'all' ? '&class=' . urlencode($classFilter) : '') . ($typeFilter !== 'all' ? '&type=' . urlencode($typeFilter) : '') . ($search !== '' ? '&search=' . urlencode($search) : '')) ?>" class="btn btn-xs <?= $programGroupBy !== 'session' ? 'btn-primary' : 'btn-secondary' ?>" style="font-size:11.5px; padding: 5px 12px; border-radius: 6px;">
+                            <i class="fa-solid fa-layer-group mr-1"></i> By Class Division
+                        </a>
                         <a href="<?= app_url('/admin/registrar/entries.php?view=programs&program_group_by=session' . ($sessionIdFilter !== 0 ? '&session_id=' . $sessionIdFilter : '') . ($classFilter !== 'all' ? '&class=' . urlencode($classFilter) : '') . ($typeFilter !== 'all' ? '&type=' . urlencode($typeFilter) : '') . ($search !== '' ? '&search=' . urlencode($search) : '')) ?>" class="btn btn-xs <?= $programGroupBy === 'session' ? 'btn-primary' : 'btn-secondary' ?>" style="font-size:11.5px; padding: 5px 12px; border-radius: 6px;">
                             <i class="fa-solid fa-clock mr-1"></i> By Schedule Session
-                        </a>
-                        <a href="<?= app_url('/admin/registrar/entries.php?view=programs&program_group_by=division' . ($sessionIdFilter !== 0 ? '&session_id=' . $sessionIdFilter : '') . ($classFilter !== 'all' ? '&class=' . urlencode($classFilter) : '') . ($typeFilter !== 'all' ? '&type=' . urlencode($typeFilter) : '') . ($search !== '' ? '&search=' . urlencode($search) : '')) ?>" class="btn btn-xs <?= $programGroupBy === 'division' ? 'btn-primary' : 'btn-secondary' ?>" style="font-size:11.5px; padding: 5px 12px; border-radius: 6px;">
-                            <i class="fa-solid fa-layer-group mr-1"></i> By Class Division
                         </a>
                     </div>
 
                     <div style="display: flex; gap: 8px;">
                         <button class="btn btn-secondary btn-md" type="submit"><i class="fa-solid fa-filter mr-1"></i> Filter</button>
+                        <?php if ($search !== '' || $sessionIdFilter !== 0 || $classFilter !== 'all' || $typeFilter !== 'all'): ?>
+                            <a class="btn btn-secondary btn-md" href="<?= app_url('/admin/registrar/entries.php?view=programs&program_group_by=' . urlencode($programGroupBy)) ?>">Clear</a>
+                        <?php endif; ?>
                     </div>
                 </div>
             </form>
         </div>
 
-        <?php foreach ($groupedBySession as $secKey => $sessionGroup): ?>
-            <?php if (empty($sessionGroup['programs'])) continue; ?>
-            <div class="panel mb-6" style="border: 1px solid rgba(255,255,255,0.06); border-radius: 14px; overflow: hidden; padding: 0; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(16px);">
-                <div style="background: rgba(255,255,255,0.03); padding: 16px 22px; border-bottom: 1px solid rgba(255,255,255,0.06); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-                    <h3 style="font-size: 16px; font-weight: 800; color: #fff; margin: 0; display: flex; align-items: center; gap: 10px;">
-                        <i class="fa-solid fa-clock" style="color: #34d399;"></i>
-                        <?= e($sessionGroup['name']) ?>
-                    </h3>
-                    <span style="font-size: 12px; font-weight: 700; padding: 4px 12px; border-radius: 999px; background: rgba(16,185,129,0.15); color: #34d399;">
-                        <?= count($sessionGroup['programs']) ?> Programs
-                    </span>
-                </div>
+        <?php
+        $hasAnyPrograms = false;
+        foreach ($activePanels as $p) {
+            if (!empty($p['programs'])) {
+                $hasAnyPrograms = true;
+                break;
+            }
+        }
+        ?>
 
-                <div class="table-wrapper" style="margin: 0; border: none; border-radius: 0;">
-                    <table class="table table-glass">
-                        <thead>
-                            <tr>
-                                <th>Program Title & Time</th>
-                                <th>Type</th>
-                                <th>Section / Class</th>
-                                <th>Limit per Team</th>
-                                <th>Total Entries</th>
-                                <th style="text-align: right; width: 180px;">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($sessionGroup['programs'] as $prog): ?>
-                                <?php
-                                    $limitVal = (int)($prog['entries_limit'] ?? 10);
-                                    $currentVal = (int)($prog['current_entries'] ?? 0);
-                                ?>
-                                <tr>
-                                    <td>
-                                        <strong style="color: #fff; font-size: 14px;"><?= e($prog['title']) ?></strong>
-                                    </td>
-                                    <td>
-                                        <span class="badge <?= $prog['program_type'] === 'individual' ? 'badge-info' : 'badge-neutral' ?>">
-                                            <?= e(ucfirst($prog['program_type'])) ?>
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <span style="color: #a5b4fc; font-size: 13px; font-weight: 600;">
-                                            <?= e(admin_class_type_display($prog['class_type_name'] ?? null, (int)($prog['class_type_id'] ?? 0))) ?>
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <strong style="color: #6366f1; font-size: 13px;"><?= $limitVal ?> Entries / Team</strong>
-                                    </td>
-                                    <td>
-                                        <span class="badge badge-success" style="font-size: 12px; font-weight: 700;">
-                                            <?= $currentVal ?> Registered
-                                        </span>
-                                    </td>
-                                    <td style="text-align: right;">
-                                        <a href="<?= app_url('/admin/registrar/entries.php?program_id=' . (int)$prog['id']) ?>" class="btn btn-primary btn-sm">
-                                            <i class="fa-solid fa-list-check mr-1"></i> View Entries (<?= $currentVal ?>)
-                                        </a>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
+        <?php if (!$hasAnyPrograms): ?>
+            <div class="empty-state">
+                <div class="empty-icon"><i class="fa-solid fa-layer-group"></i></div>
+                <div class="empty-title">No Programs Found</div>
+                <div class="empty-subtitle">No programs match the selected filter criteria.</div>
             </div>
-        <?php endforeach; ?>
+        <?php else: ?>
+            <?php foreach ($activePanels as $panelKey => $panel): ?>
+                <?php $tierPrograms = $panel['programs']; ?>
+                <?php if (!$tierPrograms) continue; ?>
+
+                <div class="panel mb-6" style="border: 1px solid rgba(255,255,255,0.04); border-radius: 12px; overflow: hidden; padding: 0;">
+                    <div style="background: rgba(255,255,255,0.015); padding: 14px 20px; border-bottom: 1px solid rgba(255,255,255,0.04); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                        <h3 style="font-size: 15px; font-weight: 800; color: #fff; margin: 0; display: flex; align-items: center; gap: 8px;">
+                            <i class="fa-solid <?= $panel['icon'] ?>" style="color: <?= $panel['color'] ?>;"></i>
+                            <?= e($panel['title']) ?>
+                            <?php if (!empty($panel['time_range'])): ?>
+                                <span style="font-size: 12px; color: var(--muted); font-weight: 500; margin-left: 6px;">(<?= e($panel['time_range']) ?>)</span>
+                            <?php endif; ?>
+                        </h3>
+                        <span style="font-size: 11.5px; font-weight: 700; padding: 3px 10px; border-radius: 99px; background: rgba(255,255,255,0.04); color: var(--muted); border: 1px solid rgba(255,255,255,0.02);">
+                            <?= count($tierPrograms) ?> <?= count($tierPrograms) === 1 ? 'Program' : 'Programs' ?>
+                        </span>
+                    </div>
+
+                    <div class="table-wrapper" style="margin: 0; border: none; border-radius: 0;">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Program</th>
+                                    <th>Type</th>
+                                    <th>Stage</th>
+                                    <th>Section</th>
+                                    <th>Limit / Registered</th>
+                                    <th style="text-align: right; width: 220px;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($tierPrograms as $prog): ?>
+                                    <?php
+                                        $limitVal = (int)($prog['entries_limit'] ?? 10);
+                                        $currentVal = (int)($prog['current_entries'] ?? 0);
+
+                                        $secNames = [];
+                                        if (!empty($prog['allowed_sections'])) {
+                                            $secIds = array_filter(array_map('intval', explode(',', $prog['allowed_sections'])));
+                                            foreach ($secIds as $sid) {
+                                                if (isset($classTypesMap[$sid])) {
+                                                    $classTier = admin_class_type_tier_from_name($classTypesMap[$sid]);
+                                                    $label = $classTier ? admin_class_type_tier_label($classTier) : $classTypesMap[$sid];
+                                                    if ($label && !in_array($label, $secNames, true)) {
+                                                        $secNames[] = $label;
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        $sectionDisplay = implode(' & ', $secNames);
+                                        if ($sectionDisplay === '') {
+                                            $classTier = admin_class_type_tier_from_name($prog['class_type_name'] ?? '');
+                                            $sectionDisplay = $classTier ? admin_class_type_tier_label($classTier) : ($prog['class_type_name'] ?? '—');
+                                        } else {
+                                            $classTier = admin_class_type_tier_from_name($prog['class_type_name'] ?? '');
+                                        }
+                                    ?>
+                                    <tr>
+                                        <td>
+                                            <strong style="color: #fff; font-size: 14px;"><?= e($prog['title']) ?></strong>
+                                            <div class="muted" style="font-size: 12px; font-weight: 500; margin-top: 2px;"><?= e($prog['location'] ?: '-') ?></div>
+                                        </td>
+                                        <td>
+                                            <span class="badge <?= strtolower((string)$prog['program_type']) === 'individual' ? 'badge-info' : 'badge-neutral' ?>">
+                                                <?= e(ucfirst($prog['program_type'])) ?>
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <?= e($prog['stage_type_name'] ?: '-') ?>
+                                            <?php if (!empty($prog['schedule_section_name'])): ?>
+                                                <div class="muted" style="font-size: 11.5px; margin-top: 2.5px;">
+                                                    <i class="fa-solid fa-clock" style="margin-right: 4px; color: var(--accent);"></i> <?= e($prog['schedule_section_name']) ?>
+                                                </div>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td>
+                                            <span class="badge <?= admin_class_type_badge_class($classTier) ?>">
+                                                <?= e($sectionDisplay) ?>
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="badge badge-success" style="font-size: 12px; font-weight: 700;">
+                                                <?= $currentVal ?> Registered
+                                            </span>
+                                            <div class="muted" style="font-size: 11.5px; margin-top: 2px;">
+                                                <?= $limitVal ?> Limit / Team
+                                            </div>
+                                        </td>
+                                        <td style="text-align: right;">
+                                            <div class="flex gap-2 justify-end">
+                                                <a href="<?= app_url('/admin/registrar/entries.php?program_id=' . (int)$prog['id']) ?>" class="btn btn-primary btn-sm">
+                                                    <i class="fa-solid fa-list-check mr-1"></i> View Entries (<?= $currentVal ?>)
+                                                </a>
+                                                <a href="<?= app_url('/admin/registrar/entries.php?program_id=' . (int)$prog['id'] . '&view=assign') ?>" class="btn btn-success btn-sm">
+                                                    <i class="fa-solid fa-user-plus mr-1"></i> Assign
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+        <?php endif; ?>
 
     <?php elseif ($viewMode !== 'assign'): ?>
         <!-- ========================================================= -->

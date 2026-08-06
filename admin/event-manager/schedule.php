@@ -11,7 +11,8 @@ $activeEventId = (int)$activeEvent['id'];
 
 function schedule_redirect(int $stageTypeId = 0): void
 {
-    admin_redirect('/admin/event-manager/schedule.php');
+    $query = $stageTypeId > 0 ? ['stage_id' => $stageTypeId] : [];
+    admin_redirect('/admin/event-manager/schedule.php', $query);
 }
 
 function schedule_program_datetime_columns(PDO $pdo): array
@@ -274,6 +275,7 @@ $flash = admin_take_flash();
 [$startExpr, $endExpr] = schedule_program_datetime_columns($pdo);
 
 $stageTypes = $pdo->query('SELECT id, name FROM musabaqa_stage_types ORDER BY name ASC')->fetchAll(PDO::FETCH_ASSOC);
+$activeStageId = (int)($_GET['stage_id'] ?? ($stageTypes[0]['id'] ?? 0));
 $classFilter = trim((string)($_GET['class'] ?? 'all'));
 $search = trim((string)($_GET['search'] ?? ''));
 
@@ -342,12 +344,13 @@ foreach ($allBreaks as $break) {
 
 $stmt = $pdo->prepare("
     SELECT mp.id, mp.title, mp.program_type, mp.class_type_id, ct.name AS class_type_name,
-           t.full_name AS responsible_teacher_name, mp.allowed_sections, mp.location
+           t.full_name AS responsible_teacher_name, mp.allowed_sections, mp.location,
+           COALESCE(mp.stage_type_id, 1) AS stage_type_id
     FROM musabaqa_programs mp
     LEFT JOIN " . DB_MAIN_NAME . ".class_types ct ON ct.id = mp.class_type_id
     LEFT JOIN " . DB_MAIN_NAME . ".teachers t ON t.id = mp.responsible_teacher_id
     WHERE mp.event_id = ?
-      AND (mp.{$startExpr} IS NULL OR mp.{$endExpr} IS NULL OR mp.stage_type_id IS NULL)
+      AND (mp.{$startExpr} IS NULL OR mp.{$endExpr} IS NULL)
     ORDER BY mp.title ASC, mp.id DESC
 ");
 $stmt->execute([$activeEventId]);
@@ -436,18 +439,14 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                     <?php 
                     $stId = (int)$stage['id'];
                     $stCount = count($programsByStage[$stId] ?? []);
+                    $isTabActive = ($stId === $activeStageId) || ($activeStageId <= 0 && $idx === 0);
                     ?>
-                    <button type="button" class="stage-tab-btn <?= $idx === 0 ? 'active' : '' ?>" data-stage-tab="<?= $stId ?>" style="padding: 10px 18px; border-radius: 10px; font-weight: 700; font-size: 13.5px; border: 1px solid rgba(255,255,255,0.08); background: <?= $idx === 0 ? 'linear-gradient(135deg, rgba(99,102,241,0.2), rgba(168,85,247,0.2))' : 'rgba(255,255,255,0.02)' ?>; color: <?= $idx === 0 ? '#fff' : 'var(--muted)' ?>; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; gap: 8px;">
+                    <button type="button" class="stage-tab-btn <?= $isTabActive ? 'active' : '' ?>" data-stage-tab="<?= $stId ?>" style="padding: 10px 18px; border-radius: 10px; font-weight: 700; font-size: 13.5px; border: 1px solid rgba(255,255,255,0.08); background: <?= $isTabActive ? 'linear-gradient(135deg, rgba(99,102,241,0.2), rgba(168,85,247,0.2))' : 'rgba(255,255,255,0.02)' ?>; color: <?= $isTabActive ? '#fff' : 'var(--muted)' ?>; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; gap: 8px;">
                         <i class="fa-solid fa-map-pin" style="color: var(--accent);"></i>
                         <span><?= e($stage['name']) ?></span>
                         <span class="badge badge-neutral" style="font-size: 11px; padding: 2px 7px; border-radius: 99px;"><?= $stCount ?></span>
                     </button>
                 <?php endforeach; ?>
-                
-                <button type="button" class="stage-tab-btn" data-stage-tab="all" style="padding: 10px 18px; border-radius: 10px; font-weight: 700; font-size: 13.5px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.02); color: var(--muted); cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; gap: 8px;">
-                    <i class="fa-solid fa-layer-group" style="color: #f59e0b;"></i>
-                    <span>All Stages</span>
-                </button>
             </div>
 
             <!-- LIVE TIMELINE FILTER BAR -->
@@ -474,8 +473,9 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                     $stageBreakMap = $breakMapByStage[$stageId] ?? [];
                     $lastProg = !empty($stageProgs) ? end($stageProgs) : null;
                     $lastEndAt = $lastProg ? $lastProg['end_at'] : '';
+                    $isPanelActive = ($stageId === $activeStageId) || ($activeStageId <= 0 && $idx === 0);
                     ?>
-                    <div class="stage-panel-item panel" data-stage-id="<?= $stageId ?>" data-last-end-at="<?= e($lastEndAt) ?>" style="padding: 24px; background: rgba(255,255,255,0.01); border: 2px dashed rgba(255,255,255,0.06); transition: all 0.2s ease; <?= $idx !== 0 ? 'display: none;' : '' ?>">
+                    <div class="stage-panel-item panel" data-stage-id="<?= $stageId ?>" data-last-end-at="<?= e($lastEndAt) ?>" style="padding: 24px; background: rgba(255,255,255,0.01); border: 2px dashed rgba(255,255,255,0.06); transition: all 0.2s ease; <?= !$isPanelActive ? 'display: none;' : '' ?>">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 12px;">
                             <div class="dashboard-heading" style="margin: 0; font-size: 16px; display: flex; align-items: center; gap: 8px;">
                                 <i class="fa-solid fa-map-pin" style="color: var(--accent);"></i>
@@ -628,7 +628,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                     <i class="fa-solid fa-clock" style="color: var(--warning);"></i>
                     <span>Unscheduled Programs</span>
                 </div>
-                <span class="badge badge-neutral" style="font-size: 11px; font-weight: 700; border-radius: 99px;"><?= count($unscheduledPrograms) ?></span>
+                <span class="badge badge-neutral" id="sidebarUnscheduledCount" style="font-size: 11px; font-weight: 700; border-radius: 99px;"><?= count($unscheduledPrograms) ?></span>
             </div>
 
             <div style="position: relative; display: flex; align-items: center; margin-bottom: 12px;">
@@ -637,7 +637,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
             </div>
 
             <div style="font-size: 11px; color: var(--muted); margin-bottom: 10px; font-style: italic;">
-                <i class="fa-solid fa-grip-vertical mr-1"></i> Drag card to any stage timeline to schedule
+                <i class="fa-solid fa-grip-vertical mr-1"></i> Drag card to active stage timeline to schedule
             </div>
 
             <div class="unscheduled-sidebar-content" style="display: flex; flex-direction: column; gap: 10px; overflow-y: auto; flex: 1; padding-right: 4px;">
@@ -645,7 +645,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                     <?php $tierProgs = $unscheduledGrouped[$tierKey] ?? []; ?>
                     <div class="accordion-item sidebar-accordion-item" data-tier="<?= $tierKey ?>">
                         <button class="accordion-header" type="button" style="width: 100%; text-align: left; padding: 10px 12px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; color: #fff; font-weight: 700; font-size: 12.5px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: all 0.2s;">
-                            <span><?= e($tierLabel) ?> <span style="font-size: 11px; color: var(--muted); margin-left: 4px;">(<?= count($tierProgs) ?>)</span></span>
+                            <span><?= e($tierLabel) ?> <span class="tier-count" style="font-size: 11px; color: var(--muted); margin-left: 4px;">(<?= count($tierProgs) ?>)</span></span>
                             <i class="fa-solid fa-chevron-down accordion-icon" style="font-size: 10px; transition: transform 0.2s;"></i>
                         </button>
                         <div class="accordion-content" style="max-height: 0; overflow: hidden; transition: max-height 0.25s ease-out;">
@@ -675,7 +675,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                         }
                                         $classTier = admin_class_type_tier_from_name($prog['class_type_name'] ?? '');
                                         ?>
-                                        <div class="unscheduled-card panel draggable-program-card" draggable="true" data-title="<?= e($prog['title']) ?>" data-program-json='<?= e(json_encode($prog, JSON_HEX_APOS | JSON_HEX_QUOT)) ?>' style="padding: 10px 12px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; cursor: grab; display: flex; flex-direction: column; gap: 8px; transition: all 0.2s ease;">
+                                        <div class="unscheduled-card panel draggable-program-card" draggable="true" data-title="<?= e($prog['title']) ?>" data-stage-type-id="<?= (int)($prog['stage_type_id'] ?? 0) ?>" data-program-json='<?= e(json_encode($prog, JSON_HEX_APOS | JSON_HEX_QUOT)) ?>' style="padding: 10px 12px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; cursor: grab; display: flex; flex-direction: column; gap: 8px; transition: all 0.2s ease;">
                                             <div style="display: flex; align-items: flex-start; gap: 8px;">
                                                 <i class="fa-solid fa-grip-vertical" style="color: var(--muted); font-size: 13px; margin-top: 2px;"></i>
                                                 <div style="min-width: 0; flex: 1;">
@@ -770,7 +770,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                             $sectionDisplay = $classTier ? admin_class_type_tier_label($classTier) : ($prog['class_type_name'] ?? '—');
                                         }
                                         ?>
-                                        <option value="<?= (int)$prog['id'] ?>" data-location="<?= e($prog['location'] ?? '') ?>"><?= e($prog['title']) ?> (<?= e($sectionDisplay) ?>)</option>
+                                        <option value="<?= (int)$prog['id'] ?>" data-stage-type-id="<?= (int)($prog['stage_type_id'] ?? 0) ?>" data-location="<?= e($prog['location'] ?? '') ?>"><?= e($prog['title']) ?> (<?= e($sectionDisplay) ?>)</option>
                                     <?php endforeach; ?>
                                 </optgroup>
                             <?php endif; ?>
@@ -855,7 +855,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                     <div style="font-size: 12px; color: var(--muted); text-align: center; padding: 10px; background: rgba(0,0,0,0.05); border-radius: 6px;">No programs</div>
                                 <?php else: ?>
                                     <?php foreach ($tierProgs as $prog): ?>
-                                        <div class="unscheduled-card panel" data-title="<?= e($prog['title']) ?>" style="padding: 10px 12px; background: rgba(255,255,255,0.01); border-color: rgba(255,255,255,0.04); display: flex; flex-direction: column; gap: 8px;">
+                                        <div class="unscheduled-card panel" data-title="<?= e($prog['title']) ?>" data-stage-type-id="<?= (int)($prog['stage_type_id'] ?? 0) ?>" style="padding: 10px 12px; background: rgba(255,255,255,0.01); border-color: rgba(255,255,255,0.04); display: flex; flex-direction: column; gap: 8px;">
                                             <div style="min-width: 0; flex: 1;">
                                                 <strong style="display: block; font-size: 13px; line-height: 1.3;" title="<?= e($prog['title']) ?>"><?= e($prog['title']) ?></strong>
                                             </div>
@@ -946,28 +946,108 @@ require_once __DIR__ . '/../../includes/sidebar.php';
 </style>
 
 <script>
+let currentActiveStageId = '<?= (int)($activeStageId ?: ($stageTypes[0]['id'] ?? 0)) ?>';
+
+function updateActiveStage(stageId) {
+    currentActiveStageId = String(stageId);
+
+    // 1. Update Stage Tab buttons active state
+    document.querySelectorAll('.stage-tab-btn').forEach(btn => {
+        const isTarget = btn.dataset.stageTab === currentActiveStageId;
+        btn.classList.toggle('active', isTarget);
+        btn.style.background = isTarget ? 'linear-gradient(135deg, rgba(99,102,241,0.2), rgba(168,85,247,0.2))' : 'rgba(255,255,255,0.02)';
+        btn.style.color = isTarget ? '#fff' : 'var(--muted)';
+        btn.style.borderColor = isTarget ? 'rgba(99,102,241,0.5)' : 'rgba(255,255,255,0.08)';
+    });
+
+    // 2. Toggle Stage Panels
+    document.querySelectorAll('.stage-panel-item').forEach(panel => {
+        panel.style.display = (panel.dataset.stageId === currentActiveStageId) ? '' : 'none';
+    });
+
+    // 3. Filter Sidebar Unscheduled Cards
+    filterSidebarUnscheduled();
+
+    // 4. Filter Modal Program Select Dropdown Options
+    filterModalProgramOptions();
+}
+
+function filterSidebarUnscheduled() {
+    const query = sidebarUnscheduledSearch ? sidebarUnscheduledSearch.value.toLowerCase().trim() : '';
+    let totalVisible = 0;
+
+    document.querySelectorAll('.sidebar-accordion-item').forEach(item => {
+        let matchCount = 0;
+        const cards = item.querySelectorAll('.draggable-program-card');
+        const content = item.querySelector('.accordion-content');
+        const icon = item.querySelector('.accordion-icon');
+        const countSpan = item.querySelector('.tier-count');
+
+        cards.forEach(card => {
+            const title = card.dataset.title.toLowerCase();
+            const cardStage = card.dataset.stageTypeId || '1';
+
+            // Match ONLY programs belonging to the current active stage tab
+            const matchesStage = (String(cardStage) === String(currentActiveStageId));
+            const matchesQuery = (query === '') || title.includes(query);
+
+            if (matchesStage && matchesQuery) {
+                card.style.display = '';
+                matchCount++;
+                totalVisible++;
+            } else {
+                card.style.display = 'none';
+            }
+        });
+
+        if (countSpan) {
+            countSpan.textContent = '(' + matchCount + ')';
+        }
+
+        if (query !== '' && matchCount > 0) {
+            item.classList.add('is-open');
+            if (content) content.style.maxHeight = content.scrollHeight + 'px';
+            if (icon) icon.style.transform = 'rotate(180deg)';
+            item.style.display = '';
+        } else if (query !== '' && matchCount === 0) {
+            item.style.display = 'none';
+        } else {
+            item.style.display = '';
+            if (!item.classList.contains('is-open')) {
+                if (content) content.style.maxHeight = '0';
+                if (icon) icon.style.transform = 'rotate(0deg)';
+            }
+        }
+    });
+
+    const headerCount = document.getElementById('sidebarUnscheduledCount');
+    if (headerCount) {
+        headerCount.textContent = totalVisible;
+    }
+}
+
+function filterModalProgramOptions() {
+    const selectEl = document.getElementById('scheduleProgramSelect');
+    if (selectEl) {
+        Array.from(selectEl.options).forEach(opt => {
+            if (!opt.value) return;
+            const optStage = opt.dataset.stageTypeId || '1';
+            const matchesStage = (String(optStage) === String(currentActiveStageId));
+            opt.disabled = !matchesStage;
+            opt.style.display = matchesStage ? '' : 'none';
+        });
+    }
+
+    const stageSelect = document.getElementById('scheduleStageTypeId');
+    if (stageSelect && currentActiveStageId && currentActiveStageId !== '0') {
+        stageSelect.value = currentActiveStageId;
+    }
+}
+
 // Stage Tabs Switching
 document.querySelectorAll('.stage-tab-btn').forEach(tabBtn => {
     tabBtn.addEventListener('click', () => {
-        document.querySelectorAll('.stage-tab-btn').forEach(b => {
-            b.classList.remove('active');
-            b.style.background = 'rgba(255,255,255,0.02)';
-            b.style.color = 'var(--muted)';
-            b.style.borderColor = 'rgba(255,255,255,0.08)';
-        });
-        tabBtn.classList.add('active');
-        tabBtn.style.background = 'linear-gradient(135deg, rgba(99,102,241,0.2), rgba(168,85,247,0.2))';
-        tabBtn.style.color = '#fff';
-        tabBtn.style.borderColor = 'rgba(99,102,241,0.5)';
-
-        const targetStage = tabBtn.dataset.stageTab;
-        document.querySelectorAll('.stage-panel-item').forEach(panel => {
-            if (targetStage === 'all' || panel.dataset.stageId === targetStage) {
-                panel.style.display = '';
-            } else {
-                panel.style.display = 'none';
-            }
-        });
+        updateActiveStage(tabBtn.dataset.stageTab);
     });
 });
 
@@ -992,37 +1072,12 @@ document.querySelectorAll('.accordion-header').forEach(header => {
 // Sidebar Unscheduled Search
 const sidebarUnscheduledSearch = document.getElementById('sidebarUnscheduledSearch');
 sidebarUnscheduledSearch?.addEventListener('input', () => {
-    const query = sidebarUnscheduledSearch.value.toLowerCase().trim();
-    document.querySelectorAll('.sidebar-accordion-item').forEach(item => {
-        let matchCount = 0;
-        const cards = item.querySelectorAll('.draggable-program-card');
-        const content = item.querySelector('.accordion-content');
-        const icon = item.querySelector('.accordion-icon');
-        
-        cards.forEach(card => {
-            const title = card.dataset.title.toLowerCase();
-            if (title.includes(query)) {
-                card.style.display = '';
-                matchCount++;
-            } else {
-                card.style.display = 'none';
-            }
-        });
-        
-        if (query !== '' && matchCount > 0) {
-            item.classList.add('is-open');
-            content.style.maxHeight = content.scrollHeight + 'px';
-            if (icon) icon.style.transform = 'rotate(180deg)';
-            item.style.display = '';
-        } else if (query !== '' && matchCount === 0) {
-            item.style.display = 'none';
-        } else {
-            item.style.display = '';
-            item.classList.remove('is-open');
-            content.style.maxHeight = '0';
-            if (icon) icon.style.transform = 'rotate(0deg)';
-        }
-    });
+    filterSidebarUnscheduled();
+});
+
+// Run stage filter on initial load
+document.addEventListener('DOMContentLoaded', () => {
+    updateActiveStage(currentActiveStageId);
 });
 
 // HTML5 Drag and Drop for Unscheduled Programs

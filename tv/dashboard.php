@@ -84,44 +84,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $slides = $_POST['slides'] ?? [];
     try {
-        $pdo->beginTransaction();
-        foreach ($slides as $key => $slideData) {
-            $title = trim((string)($slideData['title'] ?? ''));
-            if ($title === '') {
-                $title = ucfirst($key);
-            }
-            // Convert seconds back to milliseconds
-            $duration = max(1, (int)($slideData['duration'] ?? 10)) * 1000;
-            $isEnabled = isset($slideData['is_enabled']) ? 1 : 0;
-            $sortOrder = (int)($slideData['sort_order'] ?? 0);
-            
-            $style = trim((string)($slideData['style'] ?? 'classic'));
-            if (!in_array($style, ['classic', 'orbit', 'podium', 'staggered', 'style2'], true)) {
-                $style = 'classic';
-            }
+        admin_db_transaction($pdo, function ($pdo) use ($slides, $activeEventId) {
+            foreach ($slides as $key => $slideData) {
+                $title = trim((string)($slideData['title'] ?? ''));
+                if ($title === '') {
+                    $title = ucfirst($key);
+                }
+                // Convert seconds back to milliseconds
+                $duration = max(1, (int)($slideData['duration'] ?? 10)) * 1000;
+                $isEnabled = isset($slideData['is_enabled']) ? 1 : 0;
+                $sortOrder = (int)($slideData['sort_order'] ?? 0);
+                
+                $style = trim((string)($slideData['style'] ?? 'classic'));
+                if (!in_array($style, ['classic', 'orbit', 'podium', 'staggered', 'style2'], true)) {
+                    $style = 'classic';
+                }
 
-            if ($activeEventId > 0) {
-                $stmt = $pdo->prepare("
-                    UPDATE musabaqa_tv_components 
-                    SET title = ?, duration = ?, is_enabled = ?, sort_order = ?, style = ?
-                    WHERE event_id = ? AND slide_key = ?
-                ");
-                $stmt->execute([$title, $duration, $isEnabled, $sortOrder, $style, $activeEventId, $key]);
-            } else {
-                $stmt = $pdo->prepare("
-                    UPDATE musabaqa_tv_components 
-                    SET title = ?, duration = ?, is_enabled = ?, sort_order = ?, style = ?
-                    WHERE event_id IS NULL AND slide_key = ?
-                ");
-                $stmt->execute([$title, $duration, $isEnabled, $sortOrder, $style, $key]);
+                if ($activeEventId > 0) {
+                    $stmt = $pdo->prepare("
+                        UPDATE musabaqa_tv_components 
+                        SET title = ?, duration = ?, is_enabled = ?, sort_order = ?, style = ?
+                        WHERE event_id = ? AND slide_key = ?
+                    ");
+                    $stmt->execute([$title, $duration, $isEnabled, $sortOrder, $style, $activeEventId, $key]);
+                } else {
+                    $stmt = $pdo->prepare("
+                        UPDATE musabaqa_tv_components 
+                        SET title = ?, duration = ?, is_enabled = ?, sort_order = ?, style = ?
+                        WHERE event_id IS NULL AND slide_key = ?
+                    ");
+                    $stmt->execute([$title, $duration, $isEnabled, $sortOrder, $style, $key]);
+                }
             }
-        }
-        $pdo->commit();
+        });
         admin_flash('success', 'TV slides updated successfully.');
     } catch (Throwable $e) {
-        if ($pdo->inTransaction()) {
-            $pdo->rollBack();
-        }
         admin_flash('error', 'Failed to save settings: ' . $e->getMessage());
     }
     admin_redirect('/tv/dashboard.php');

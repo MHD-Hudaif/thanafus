@@ -33,55 +33,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($action === 'delete') {
         try {
-            $pdo->beginTransaction();
+            admin_db_transaction($pdo, function ($pdo) use ($eventId, $user) {
+                $tablesToDelete = [
+                    'musabaqa_member_scores',
+                    'musabaqa_category_scores',
+                    'musabaqa_score_sheets',
+                    'musabaqa_scores',
+                    'musabaqa_entry_members',
+                    'musabaqa_program_entries',
+                    'musabaqa_program_categories',
+                    'musabaqa_programs',
+                    'musabaqa_team_members',
+                    'musabaqa_teams',
+                    'musabaqa_breaks',
+                    'musabaqa_schedule_sections',
+                    'musabaqa_manual_scoreboard'
+                ];
 
-            $tablesToDelete = [
-                'musabaqa_member_scores',
-                'musabaqa_category_scores',
-                'musabaqa_score_sheets',
-                'musabaqa_scores',
-                'musabaqa_entry_members',
-                'musabaqa_program_entries',
-                'musabaqa_program_categories',
-                'musabaqa_programs',
-                'musabaqa_team_members',
-                'musabaqa_teams',
-                'musabaqa_breaks',
-                'musabaqa_schedule_sections',
-                'musabaqa_manual_scoreboard'
-            ];
-
-            foreach ($tablesToDelete as $table) {
-                try {
-                    if ($table === 'musabaqa_member_scores' || $table === 'musabaqa_program_categories') {
-                        $pdo->prepare("DELETE FROM {$table} WHERE program_id IN (SELECT id FROM musabaqa_programs WHERE event_id = ?)")->execute([$eventId]);
-                    } elseif ($table === 'musabaqa_category_scores' || $table === 'musabaqa_score_sheets') {
-                        $pdo->prepare("DELETE FROM {$table} WHERE program_id IN (SELECT id FROM musabaqa_programs WHERE event_id = ?)")->execute([$eventId]);
-                    } elseif ($table === 'musabaqa_entry_members') {
-                        $pdo->prepare("DELETE FROM {$table} WHERE entry_id IN (SELECT id FROM musabaqa_program_entries WHERE event_id = ?)")->execute([$eventId]);
-                    } else {
-                        $pdo->prepare("DELETE FROM {$table} WHERE event_id = ?")->execute([$eventId]);
+                foreach ($tablesToDelete as $table) {
+                    try {
+                        if ($table === 'musabaqa_member_scores' || $table === 'musabaqa_program_categories') {
+                            $pdo->prepare("DELETE FROM {$table} WHERE program_id IN (SELECT id FROM musabaqa_programs WHERE event_id = ?)")->execute([$eventId]);
+                        } elseif ($table === 'musabaqa_category_scores' || $table === 'musabaqa_score_sheets') {
+                            $pdo->prepare("DELETE FROM {$table} WHERE program_id IN (SELECT id FROM musabaqa_programs WHERE event_id = ?)")->execute([$eventId]);
+                        } elseif ($table === 'musabaqa_entry_members') {
+                            $pdo->prepare("DELETE FROM {$table} WHERE entry_id IN (SELECT id FROM musabaqa_program_entries WHERE event_id = ?)")->execute([$eventId]);
+                        } else {
+                            $pdo->prepare("DELETE FROM {$table} WHERE event_id = ?")->execute([$eventId]);
+                        }
+                    } catch (Throwable $e) {
+                        // Ignore if table does not exist in database schema
                     }
-                } catch (Throwable $e) {
-                    // Ignore if table does not exist in database schema
                 }
-            }
 
-            $stmt = $pdo->prepare('DELETE FROM musabaqa_events WHERE id = ?');
-            $stmt->execute([$eventId]);
+                $stmt = $pdo->prepare('DELETE FROM musabaqa_events WHERE id = ?');
+                $stmt->execute([$eventId]);
 
-            if ((int)($_SESSION['selected_event_id'] ?? 0) === $eventId) {
-                unset($_SESSION['selected_event_id'], $_SESSION['active_team_id']);
-            }
+                if ((int)($_SESSION['selected_event_id'] ?? 0) === $eventId) {
+                    unset($_SESSION['selected_event_id'], $_SESSION['active_team_id']);
+                }
 
-            admin_log_activity($pdo, (int)$user['id'], null, 'delete_event', 'musabaqa_events', $eventId, 'Deleted event and all associated programs, entries, teams and scores.');
+                admin_log_activity($pdo, (int)$user['id'], null, 'delete_event', 'musabaqa_events', $eventId, 'Deleted event and all associated programs, entries, teams and scores.');
+            });
 
-            $pdo->commit();
             admin_flash('success', 'Event and all connected programs, entries, and scores were deleted successfully.');
         } catch (Throwable $e) {
-            if ($pdo->inTransaction()) {
-                $pdo->rollBack();
-            }
             admin_flash('error', $e->getMessage() ?: 'Unable to delete event.');
         }
         admin_redirect('/admin/index.php');
@@ -106,41 +102,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             throw new RuntimeException('Another event already uses that slug.');
         }
 
-        $pdo->beginTransaction();
-
-        if ($status === 'active') {
-            if ($action === 'update' && $eventId > 0) {
-                $pdo->prepare("UPDATE musabaqa_events SET status = 'completed' WHERE status = 'active' AND id <> ?")->execute([$eventId]);
-            } else {
-                $pdo->exec("UPDATE musabaqa_events SET status = 'completed' WHERE status = 'active'");
+        admin_db_transaction($pdo, function ($pdo) use ($status, $action, $eventId, $title, $slug, $description, $themeColors, $scoreboardMode, $introEnabled, $scoreboardEnabled, $startDate, $endDate) {
+            if ($status === 'active') {
+                if ($action === 'update' && $eventId > 0) {
+                    $pdo->prepare("UPDATE musabaqa_events SET status = 'completed' WHERE status = 'active' AND id <> ?")->execute([$eventId]);
+                } else {
+                    $pdo->exec("UPDATE musabaqa_events SET status = 'completed' WHERE status = 'active'");
+                }
             }
-        }
 
-        if ($action === 'update' && $eventId > 0) {
-            $stmt = $pdo->prepare("
-                UPDATE musabaqa_events
-                SET title = ?, slug = ?, description = ?, theme_colors = ?, scoreboard_mode = ?,
-                    intro_enabled = ?, scoreboard_enabled = ?, status = ?, start_date = ?, end_date = ?
-                WHERE id = ?
-            ");
-            $stmt->execute([$title, $slug, $description, $themeColors, $scoreboardMode, $introEnabled, $scoreboardEnabled, $status, $startDate, $endDate, $eventId]);
-            admin_flash('success', 'Event updated successfully.');
-        } else {
-            $stmt = $pdo->prepare("
-                INSERT INTO musabaqa_events (
-                    title, slug, description, theme_colors, scoreboard_mode,
-                    intro_enabled, scoreboard_enabled, status, start_date, end_date, created_by
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ");
-            $stmt->execute([$title, $slug, $description, $themeColors, $scoreboardMode, $introEnabled, $scoreboardEnabled, $status, $startDate, $endDate, (int)($_SESSION['user_id'] ?? 0)]);
-            admin_flash('success', 'Event created successfully.');
-        }
-
-        $pdo->commit();
+            if ($action === 'update' && $eventId > 0) {
+                $stmt = $pdo->prepare("
+                    UPDATE musabaqa_events
+                    SET title = ?, slug = ?, description = ?, theme_colors = ?, scoreboard_mode = ?,
+                        intro_enabled = ?, scoreboard_enabled = ?, status = ?, start_date = ?, end_date = ?
+                    WHERE id = ?
+                ");
+                $stmt->execute([$title, $slug, $description, $themeColors, $scoreboardMode, $introEnabled, $scoreboardEnabled, $status, $startDate, $endDate, $eventId]);
+                admin_flash('success', 'Event updated successfully.');
+            } else {
+                $stmt = $pdo->prepare("
+                    INSERT INTO musabaqa_events (
+                        title, slug, description, theme_colors, scoreboard_mode,
+                        intro_enabled, scoreboard_enabled, status, start_date, end_date, created_by
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ");
+                $stmt->execute([$title, $slug, $description, $themeColors, $scoreboardMode, $introEnabled, $scoreboardEnabled, $status, $startDate, $endDate, (int)($_SESSION['user_id'] ?? 0)]);
+                admin_flash('success', 'Event created successfully.');
+            }
+        });
     } catch (Throwable $e) {
-        if ($pdo->inTransaction()) {
-            $pdo->rollBack();
-        }
         admin_flash('error', $e->getMessage() ?: 'Unable to save event.');
     }
 
