@@ -48,6 +48,11 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+if (empty($_SESSION['csrf_token'])) {
+    $length = defined('CSRF_TOKEN_LENGTH') ? (int)CSRF_TOKEN_LENGTH : 32;
+    $_SESSION['csrf_token'] = bin2hex(random_bytes($length));
+}
+
 // Automatically synchronize session active_event_id with the globally active event from DB (cached in session for 60s)
 if (isset($musabaqa_pdo)) {
     $now = time();

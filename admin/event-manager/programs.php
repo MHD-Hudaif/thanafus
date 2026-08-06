@@ -248,6 +248,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $allowedSectionsStr = implode(',', array_map('intval', $allowedSectionsArr));
         // Keep class_type_id backward compatible
         $classTypeId = count($allowedSectionsArr) === 1 ? (int)$allowedSectionsArr[0] : null;
+        if ($classTypeId !== null) {
+            $chkStmt = $dashboardPdo->prepare("SELECT id FROM class_types WHERE id = ? LIMIT 1");
+            $chkStmt->execute([$classTypeId]);
+            if (!$chkStmt->fetchColumn()) {
+                $classTypeId = null;
+            }
+        }
 
         $judgesCount = max(1, min(10, (int)($_POST['judges_count'] ?? 2)));
         $totalMarks = max(1, min(1000, (int)($_POST['total_marks'] ?? 100)));
@@ -399,7 +406,7 @@ $stmt = $pdo->prepare("
     LEFT JOIN " . DB_MAIN_NAME . ".class_types ct ON ct.id = mp.class_type_id
     LEFT JOIN " . DB_MAIN_NAME . ".teachers t ON t.id = mp.responsible_teacher_id
     LEFT JOIN musabaqa_schedule_sections mss ON mss.id = mp.section_id
-    LEFT JOIN musabaqa_program_entries pe ON pe.program_id = mp.id
+    LEFT JOIN musabaqa_program_entries pe ON pe.program_id = mp.id AND pe.event_id = mp.event_id
     LEFT JOIN musabaqa_score_sheets ss ON ss.program_id = mp.id
     LEFT JOIN musabaqa_program_categories pc ON pc.program_id = mp.id
     {$where}

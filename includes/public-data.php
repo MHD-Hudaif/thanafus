@@ -128,7 +128,7 @@ function schedule_items(): array
                 'session' => $session,
                 'duration_minutes' => $duration,
                 'status' => $status,
-                'venue' => $row['stage_name'] ?: ($row['location'] ?: 'Main Venue'),
+                'venue' => $row['location'] ?: ($row['stage_name'] ?: 'Main Venue'),
             ];
         }
         return $items;
@@ -319,6 +319,72 @@ function working_committee(): array
         return $items;
     } catch (Throwable $e) {
         error_log('working_committee query failed: ' . $e->getMessage());
+        return [];
+    }
+}
+
+function venues_data(): array
+{
+    $eventId = tv_active_event_id();
+    if ($eventId <= 0) {
+        return [];
+    }
+
+    $pdo = $GLOBALS['musabaqa_pdo'];
+    try {
+        $stmt = $pdo->prepare("
+            SELECT DISTINCT location 
+            FROM musabaqa_programs 
+            WHERE event_id = ? AND location IS NOT NULL AND location != ''
+            ORDER BY location ASC
+        ");
+        $stmt->execute([$eventId]);
+        $locations = $stmt->fetchAll(PDO::FETCH_COLUMN) ?: [];
+
+        $venues = [];
+        foreach ($locations as $loc) {
+            // Count total programs
+            $stmtCount = $pdo->prepare("
+                SELECT COUNT(*) 
+                FROM musabaqa_programs 
+                WHERE event_id = ? AND location = ?
+            ");
+            $stmtCount->execute([$eventId, $loc]);
+            $count = (int)$stmtCount->fetchColumn();
+
+            // Find current/next active program
+            $stmtNext = $pdo->prepare("
+                SELECT title, status, start_time 
+                FROM musabaqa_programs 
+                WHERE event_id = ? AND location = ? AND status != 'completed'
+                ORDER BY start_time ASC, id ASC
+                LIMIT 1
+            ");
+            $stmtNext->execute([$eventId, $loc]);
+            $nextProgram = $stmtNext->fetch(PDO::FETCH_ASSOC);
+
+            // Fetch last completed program
+            $stmtLast = $pdo->prepare("
+                SELECT title 
+                FROM musabaqa_programs 
+                WHERE event_id = ? AND location = ? AND status = 'completed'
+                ORDER BY end_time DESC, id DESC
+                LIMIT 1
+            ");
+            $stmtLast->execute([$eventId, $loc]);
+            $lastProgram = $stmtLast->fetchColumn();
+
+            $venues[] = [
+                'name' => $loc,
+                'count' => $count,
+                'next_program' => $nextProgram ? $nextProgram['title'] : null,
+                'next_program_status' => $nextProgram ? $nextProgram['status'] : null,
+                'last_program' => $lastProgram ?: null
+            ];
+        }
+        return $venues;
+    } catch (Throwable $e) {
+        error_log('venues_data query failed: ' . $e->getMessage());
         return [];
     }
 }

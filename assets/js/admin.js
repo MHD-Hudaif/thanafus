@@ -908,8 +908,8 @@
         initModals();
         initModalScrollLock();
         initAlerts();
-        initRouter();
-        initAjaxPaginationControls();
+        // initRouter(); // Replaced by HTMX
+        // initAjaxPaginationControls(); // Replaced by HTMX
         initAdminChat();
     });
 
@@ -1217,6 +1217,112 @@
         syncModalScrollLock();
     };
 
+
+    /* =====================================================
+       HTMX INTEGRATION FOR SPA NAVIGATION
+       ===================================================== */
+    if (typeof htmx !== 'undefined') {
+        // Configure HTMX to send X-Requested-With header to reuse backend optimizations
+        htmx.config.headers = htmx.config.headers || {};
+        htmx.config.headers['X-Requested-With'] = 'XMLHttpRequest';
+
+        // Listen to HTMX shouldProcess event to ignore data-ajax-ignore and certain paths
+        document.addEventListener('htmx:shouldProcess', (evt) => {
+            const el = evt.detail.elt;
+            if (el.hasAttribute('data-ajax-ignore') || el.closest('[data-ajax-ignore]')) {
+                evt.preventDefault();
+                return;
+            }
+            const url = el.href || el.action;
+            if (url) {
+                if (url.includes('/tv/') || url.includes('/auth/') || url.includes('/utilities/')) {
+                    evt.preventDefault();
+                    return;
+                }
+                // If it is an anchor, ensure it belongs to the admin workspace
+                if (el.tagName === 'A' && !isAdminUrl(url)) {
+                    evt.preventDefault();
+                }
+            }
+        });
+
+        // Handle show loader and dispatch cleanup events
+        document.addEventListener('htmx:beforeRequest', (evt) => {
+            showLoader();
+            window.dispatchEvent(new CustomEvent('admin:before-content-swap'));
+        });
+
+        // Hide loader after request
+        document.addEventListener('htmx:afterRequest', (evt) => {
+            hideLoader();
+        });
+
+        // Intercept JSON redirects returned by admin_redirect()
+        document.addEventListener('htmx:beforeSwap', (evt) => {
+            const xhr = evt.detail.xhr;
+            if (xhr.getResponseHeader('Content-Type')?.includes('application/json')) {
+                try {
+                    const data = JSON.parse(xhr.responseText);
+                    if (data.redirect) {
+                        evt.preventDefault(); // Stop the current swap
+                        htmx.ajax('GET', data.redirect, { target: '.main-content' });
+                    }
+                } catch (e) {
+                    console.error('[HTMX] JSON redirect parsing failed:', e);
+                }
+            }
+        });
+
+        // Re-initialize layout scripts and animations after page content swap
+        document.addEventListener('htmx:afterSwap', (evt) => {
+            const mainContent = document.querySelector('.main-content');
+            if (mainContent) {
+                // Ensure no nested sidebar or nav header exists inside mainContent
+                mainContent.querySelectorAll('.sidebar-vertical, .sidebar, .nav-container-wrapper, .event-top-nav').forEach(el => el.remove());
+                
+                // Clear previously injected AJAX inline styles to avoid conflicts
+                document.querySelectorAll('style[data-ajax-injected]').forEach(el => el.remove());
+                
+                // Re-initialize UI widgets
+                initModals();
+                initAlerts();
+                initCursorGlows();
+
+                // Dispatch content-swapped event for analytics and other hooks
+                const url = evt.detail.pathInfo?.requestPath || location.href;
+                window.dispatchEvent(new CustomEvent('admin:content-swapped', {
+                    detail: { url, container: mainContent }
+                }));
+
+                // Animate in the new content
+                if (hasGsap()) {
+                    mainContent.style.opacity = '0';
+                    runEntryAnimations();
+                } else {
+                    mainContent.style.opacity = '';
+                    mainContent.style.transform = '';
+                }
+
+                // Update active states and close mobile drawer
+                updateSidebarActive(url);
+                closeSidebarOnMobile();
+
+                // Scroll to top of main content
+                mainContent.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        });
+
+        // Handle page titles dynamically if a title element is returned
+        document.addEventListener('htmx:afterOnLoad', (evt) => {
+            const mainContent = document.querySelector('.main-content');
+            if (mainContent) {
+                const titleEl = mainContent.querySelector('.page-title');
+                if (titleEl) {
+                    document.title = titleEl.textContent.trim() + ' — Kauzariyya Musabaqa';
+                }
+            }
+        });
+    }
 
     document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.main-content .sidebar-vertical, .main-content .sidebar').forEach(el => el.remove());

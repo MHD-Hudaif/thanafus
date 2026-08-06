@@ -15,6 +15,7 @@ try {
     $teams = teams();
     $schedule = schedule_items();
     $workingCommittee = working_committee();
+    $venues = venues_data();
     
     $eventTitle = trim((string)($event['title'] ?? 'Kauzariyya Musabaqa 2026-27'));
     $eventTitle = $eventTitle !== '' ? $eventTitle : 'Kauzariyya Musabaqa 2026-27';
@@ -50,6 +51,7 @@ try {
     $programsText = '45';
     $divisionsCount = '3';
     $workingCommittee = [];
+    $venues = [];
 }
 ?>
 <!DOCTYPE html>
@@ -80,7 +82,7 @@ try {
     <header>
         <div class="nav-container">
             <a href="<?= app_url('/') ?>" class="logo-link">
-                <img src="<?= asset_url('images/kauzariyya-logo.png') ?>" alt="Al-Jamiathul Kauzariyya" style="height: 40px; width: auto; object-fit: contain;">
+                <img src="<?= asset_url('logo-black.png') ?>" alt="Al-Jamiathul Kauzariyya" style="height: 60px; width: auto; object-fit: contain;">
             </a>
             
             <ul class="nav-menu">
@@ -400,6 +402,40 @@ try {
         </div>
 
         <div class="stages-grid">
+        <?php if (!empty($venues)): ?>
+            <?php foreach ($venues as $index => $venue): 
+                $badgeLetter = chr(65 + $index); // Stage A, B, C, D...
+            ?>
+                <div class="stage-card reveal-3d">
+                    <div class="stage-tag-badge">Stage <?= $badgeLetter ?></div>
+                    <h3 class="stage-title" style="font-size: 1.4rem; font-weight: 700; color: var(--color-primary);"><?= htmlspecialchars($venue['name']) ?></h3>
+                    <div class="stage-subtitle"><?= $venue['count'] ?> Program<?= $venue['count'] === 1 ? '' : 's' ?> Scheduled</div>
+                    <div class="stage-divider-line"></div>
+                    
+                    <?php if ($venue['next_program']): ?>
+                        <?php if ($venue['next_program_status'] === 'scoring'): ?>
+                            <p class="stage-text" style="color: #ef4444; font-weight: 600;">
+                                <i class="fa-solid fa-circle-play" style="margin-right: 4px;"></i> LIVE NOW:<br>
+                                <span style="color: var(--color-text); font-weight: normal;"><?= htmlspecialchars($venue['next_program']) ?></span>
+                            </p>
+                        <?php else: ?>
+                            <p class="stage-text" style="color: #eab308; font-weight: 600;">
+                                <i class="fa-solid fa-hourglass-half" style="margin-right: 4px;"></i> UPCOMING:<br>
+                                <span style="color: var(--color-text); font-weight: normal;"><?= htmlspecialchars($venue['next_program']) ?></span>
+                            </p>
+                        <?php endif; ?>
+                    <?php elseif ($venue['last_program']): ?>
+                        <p class="stage-text" style="color: #10b981; font-weight: 600;">
+                            <i class="fa-solid fa-circle-check" style="margin-right: 4px;"></i> COMPLETED:<br>
+                            <span style="color: var(--color-text); font-weight: normal;"><?= htmlspecialchars($venue['last_program']) ?></span>
+                        </p>
+                    <?php else: ?>
+                        <p class="stage-text">No programs currently active on this stage.</p>
+                    <?php endif; ?>
+                </div>
+            <?php endforeach; ?>
+        <?php else: ?>
+            <!-- Fallback Static Stages -->
             <div class="stage-card reveal-3d">
                 <div class="stage-tag-badge">Stage A</div>
                 <h3 class="stage-title"><?= term('Baghdad', 'بغداد') ?></h3>
@@ -431,6 +467,7 @@ try {
                 <div class="stage-divider-line"></div>
                 <p class="stage-text">A quiet, focused environment reserved for calligraphy assessments, original poetry compositions, long-form essays, and wall magazine layouts.</p>
             </div>
+        <?php endif; ?>
         </div>
     </section>
 

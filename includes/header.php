@@ -100,9 +100,11 @@ window.APP_CONFIG = {
 </script>
 <script src="<?= asset_url('js/admin.js') ?>?v=<?= filemtime(__DIR__ . '/../assets/js/admin.js') ?>" defer></script>
 
+<script src="https://unpkg.com/htmx.org@1.9.12"></script>
+<script src="https://unpkg.com/htmx.org/dist/ext/sse.js"></script>
 </head>
 
-<body class="layout-sidebar-enabled">
+<body class="layout-sidebar-enabled" hx-boost="true" hx-target=".main-content">
 
 <div class="admin-layout<?= !empty($useTopNavigation) ? ' admin-layout-topnav' : '' ?>">
 <?php endif; ?>

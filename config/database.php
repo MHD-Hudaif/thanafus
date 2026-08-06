@@ -26,7 +26,7 @@ $dashboard_dsn =
 "mysql:host={$DB_HOST};dbname={$dashboard_db_name};charset={$DB_CHARSET}";
 
 if (!class_exists('LazyPDO')) {
-    class LazyPDO {
+    class LazyPDO extends PDO {
         private ?PDO $pdo = null;
         private Closure $initializer;
 
@@ -45,11 +45,14 @@ if (!class_exists('LazyPDO')) {
             return $this->getRealPdo()->$name(...$arguments);
         }
 
-        public function prepare(string $query, array $options = []): PDOStatement {
+        public function prepare(string $query, array $options = []): PDOStatement|false {
             return $this->getRealPdo()->prepare($query, $options);
         }
 
         public function query(string $query, ?int $fetchMode = null, mixed ...$fetchModeArgs): PDOStatement|false {
+            if ($fetchMode === null) {
+                return $this->getRealPdo()->query($query);
+            }
             return $this->getRealPdo()->query($query, $fetchMode, ...$fetchModeArgs);
         }
 
@@ -84,6 +87,18 @@ if (!class_exists('LazyPDO')) {
         public function getAttribute(int $attribute): mixed {
             return $this->getRealPdo()->getAttribute($attribute);
         }
+
+        public function errorCode(): ?string {
+            return $this->getRealPdo()->errorCode();
+        }
+
+        public function errorInfo(): array {
+            return $this->getRealPdo()->errorInfo();
+        }
+
+        public function quote(string $string, int $type = PDO::PARAM_STR): string|false {
+            return $this->getRealPdo()->quote($string, $type);
+        }
     }
 }
 
@@ -99,7 +114,7 @@ function create_pdo_connection(string $dsn, string $user, string $pass, string $
         return new PDO($dsn, $user, $pass, $options);
     } catch (PDOException $e) {
         if (($host === 'localhost' || $host === '127.0.0.1') && str_contains($user, 'ensplpmy')) {
-            $remoteDsn = str_replace(['host=localhost', 'host=127.0.0.1'], 'host=kauzariyya.com', $dsn);
+            $remoteDsn = str_replace(['host=localhost', 'host=127.0.0.1'], 'host=162.214.80.164', $dsn);
             try {
                 return new PDO($remoteDsn, $user, $pass, $options);
             } catch (PDOException $remoteEx) {
@@ -138,4 +153,15 @@ $musabaqa_pass = env('MUSABAQA_DB_PASSWORD', $DB_PASS);
 $musabaqa_dsn =
 "mysql:host={$musabaqa_host};dbname=" . env('MUSABAQA_DB_DATABASE', 'kauzariyya_musabaqa') . ";charset={$DB_CHARSET}";
 
-$musabaqa_pdo = create_pdo_connection($musabaqa_dsn, $musabaqa_user, $musabaqa_pass, $musabaqa_host);
+function get_musabaqa_pdo(): PDO {
+    global $musabaqa_dsn, $musabaqa_user, $musabaqa_pass, $musabaqa_host;
+    static $pdo = null;
+    if ($pdo === null) {
+        $pdo = create_pdo_connection($musabaqa_dsn, $musabaqa_user, $musabaqa_pass, $musabaqa_host);
+    }
+    return $pdo;
+}
+
+$musabaqa_pdo = new LazyPDO(function() {
+    return get_musabaqa_pdo();
+});
