@@ -58,6 +58,9 @@ $currentPath = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH);
             <span class="event-user-details"><strong><?= e($eventRoleName) ?></strong><small><?= e($roleLabel) ?></small></span>
         </div>
         <a class="event-nav-icon" href="<?= app_url('/home.php') ?>" aria-label="Back to home" title="Back to home"><i class="fa-solid fa-house"></i></a>
+        <?php if (is_admin()): ?>
+            <a class="event-nav-icon" href="<?= app_url('/admin/index.php') ?>" aria-label="Event Selection" title="Musabaqa Event Selection"><i class="fa-solid fa-calendar-days" style="color:#34d399;"></i></a>
+        <?php endif; ?>
         <a class="event-logout" href="<?= app_url('/auth/logout.php') ?>" aria-label="Logout" title="Logout"><i class="fa-solid fa-right-from-bracket"></i></a>
     </div>
 </header>

@@ -19,6 +19,7 @@
     let navigationSequence = 0;
     let pageScriptController = null;
     let pageScriptScopeSequence = 0;
+    let cursorGlowsInitialized = false;
 
     function escapeHtml(value) {
         return String(value ?? '')
@@ -56,104 +57,54 @@
     }
 
     function runEntryAnimations() {
-
         if (!hasGsap()) return;
 
         const mc = document.querySelector('.main-content');
         if (!mc) return;
 
         gsap.fromTo(mc,
-            { opacity: 0, y: 18 },
-            { opacity: 1, y: 0, duration: 0.55, ease: 'power3.out', clearProps: 'transform' }
+            { opacity: 0, y: 8 },
+            { opacity: 1, y: 0, duration: 0.2, ease: 'power2.out', clearProps: 'transform' }
         );
-
-        const topbar = mc.querySelector('.topbar');
-        if (topbar) {
-            gsap.fromTo(topbar,
-                { y: -16, opacity: 0 },
-                { y: 0, opacity: 1, duration: 0.6, delay: 0.08, ease: 'power3.out' }
-            );
-        }
-
-        const title = mc.querySelector('.page-title');
-        if (title) {
-            gsap.fromTo(title,
-                { y: 22, opacity: 0 },
-                { y: 0, opacity: 1, duration: 0.7, delay: 0.12, ease: 'power4.out' }
-            );
-        }
-
-        const subtitle = mc.querySelector('.page-subtitle');
-        if (subtitle) {
-            gsap.fromTo(subtitle,
-                { y: 14, opacity: 0 },
-                { y: 0, opacity: 1, duration: 0.7, delay: 0.18, ease: 'power3.out' }
-            );
-        }
-
-        mc.querySelectorAll('.dashboard-card').forEach((card, i) => {
-            gsap.fromTo(card,
-                { y: 40, opacity: 0 },
-                { y: 0, opacity: 1, duration: 0.7, stagger: 0.06, delay: 0.15 + i * 0.06, ease: 'power3.out' }
-            );
-        });
-
-        mc.querySelectorAll('.stat-card').forEach((card, i) => {
-            gsap.fromTo(card,
-                { y: 30, opacity: 0 },
-                { y: 0, opacity: 1, duration: 0.6, delay: 0.12 + i * 0.05, ease: 'power3.out' }
-            );
-        });
-
-        mc.querySelectorAll('.event-card').forEach((card, i) => {
-            gsap.fromTo(card,
-                { y: 50, opacity: 0 },
-                { y: 0, opacity: 1, duration: 0.7, delay: 0.15 + i * 0.06, ease: 'power3.out' }
-            );
-        });
-
-        const activePanel = mc.querySelector('.active-team-panel');
-        if (activePanel) {
-            gsap.fromTo(activePanel,
-                { y: 40, opacity: 0 },
-                { y: 0, opacity: 1, duration: 0.8, delay: 0.15, ease: 'power4.out' }
-            );
-        }
-
-        mc.querySelectorAll('.quick-action-btn').forEach((btn, i) => {
-            gsap.fromTo(btn,
-                { scale: 0.92, opacity: 0 },
-                { scale: 1, opacity: 1, duration: 0.6, delay: 0.18 + i * 0.04, ease: 'back.out(1.4)' }
-            );
-        });
-
-        const rows = mc.querySelectorAll('table tbody tr');
-        rows.forEach((row, i) => {
-            gsap.fromTo(row,
-                { y: 16, opacity: 0 },
-                { y: 0, opacity: 1, duration: 0.5, delay: 0.12 + i * 0.03, ease: 'power2.out' }
-            );
-        });
-
-        mc.querySelectorAll('.panel').forEach((panel, i) => {
-            gsap.fromTo(panel,
-                { y: 20, opacity: 0 },
-                { y: 0, opacity: 1, duration: 0.6, delay: 0.1 + i * 0.06, ease: 'power3.out' }
-            );
-        });
     }
 
     function initCursorGlows() {
-        const containers = document.querySelectorAll('.panel, .card, .role-action-btn, .dashboard-card, .stat-card, .stat-card-v2, .quick-action-btn, .utility-card, .program-card, .section-card');
-        containers.forEach(container => {
-            container.addEventListener('mousemove', (e) => {
-                const rect = container.getBoundingClientRect();
-                const x = e.clientX - rect.left;
-                const y = e.clientY - rect.top;
-                container.style.setProperty('--mouse-x', `${x}px`);
-                container.style.setProperty('--mouse-y', `${y}px`);
+        // This handler belongs to the persistent admin shell. Re-registering it
+        // after every AJAX navigation causes duplicated work on each pointer move.
+        if (cursorGlowsInitialized || !window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+        cursorGlowsInitialized = true;
+
+        let activeCard = null;
+        let activeRect = null;
+        let animationFrame = null;
+        let lastX = 0, lastY = 0;
+
+        document.addEventListener('mouseover', (e) => {
+            const card = e.target.closest('.panel, .card, .role-action-btn, .dashboard-card, .stat-card, .stat-card-v2, .quick-action-btn, .utility-card, .program-card, .section-card');
+            if (card && card !== activeCard) {
+                activeCard = card;
+                activeRect = card.getBoundingClientRect();
+            }
+        }, { passive: true });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!activeCard || !activeRect) return;
+
+            if (Math.abs(e.clientX - lastX) < 4 && Math.abs(e.clientY - lastY) < 4) return;
+            lastX = e.clientX;
+            lastY = e.clientY;
+
+            if (animationFrame) return;
+            animationFrame = requestAnimationFrame(() => {
+                animationFrame = null;
+                if (activeCard && activeRect) {
+                    const x = e.clientX - activeRect.left;
+                    const y = e.clientY - activeRect.top;
+                    activeCard.style.setProperty('--mouse-x', `${x}px`);
+                    activeCard.style.setProperty('--mouse-y', `${y}px`);
+                }
             });
-        });
+        }, { passive: true });
     }
 
     /* =====================================================
@@ -200,32 +151,7 @@
         const mobileMenuBtn = document.getElementById('eventMobileMenuBtn');
         const navMenu = document.getElementById('eventNavMenu');
 
-        document.addEventListener('click', (e) => {
-            const wsBtn = e.target.closest('#headerWorkspaceBtn, .event-brand-btn');
-            if (wsBtn) {
-                e.preventDefault();
-                e.stopPropagation();
-                const topNav = document.getElementById('eventTopNav') || document.querySelector('.event-top-nav');
-                if (topNav) {
-                    const isWsOpen = topNav.classList.toggle('is-workspace-mode');
-                    wsBtn.classList.toggle('open', isWsOpen);
-                    wsBtn.setAttribute('aria-expanded', isWsOpen ? 'true' : 'false');
-                }
-                return;
-            }
 
-            const topNav = document.getElementById('eventTopNav') || document.querySelector('.event-top-nav');
-            if (topNav && topNav.classList.contains('is-workspace-mode')) {
-                if (!topNav.contains(e.target)) {
-                    topNav.classList.remove('is-workspace-mode');
-                    const b = document.getElementById('headerWorkspaceBtn');
-                    if (b) {
-                        b.classList.remove('open');
-                        b.setAttribute('aria-expanded', 'false');
-                    }
-                }
-            }
-        });
 
         if (mobileMenuBtn && navMenu) {
             mobileMenuBtn.addEventListener('click', (e) => {
@@ -402,6 +328,25 @@
                     };
                 }
 
+                // Page scripts run inside the AJAX content area. Track their
+                // scheduled work so it cannot continue after the next page swap.
+                if (property === 'setInterval' || property === 'setTimeout') {
+                    const clearMethod = property === 'setInterval' ? 'clearInterval' : 'clearTimeout';
+                    return (callback, delay, ...args) => {
+                        const timerId = object[property](callback, delay, ...args);
+                        signal.addEventListener('abort', () => object[clearMethod](timerId), { once: true });
+                        return timerId;
+                    };
+                }
+
+                if (property === 'requestAnimationFrame') {
+                    return callback => {
+                        const frameId = object.requestAnimationFrame(callback);
+                        signal.addEventListener('abort', () => object.cancelAnimationFrame(frameId), { once: true });
+                        return frameId;
+                    };
+                }
+
                 const value = object[property];
                 return typeof value === 'function' ? value.bind(object) : value;
             },
@@ -439,7 +384,7 @@
                     const isModule = oldScript.type === 'module';
                     newScript.textContent = isModule
                         ? source
-                        : `((document, window) => {\n${source}\n})(window[${JSON.stringify(scopeKey)}].document, window[${JSON.stringify(scopeKey)}].window);`;
+                        : `((document, window, setInterval, clearInterval, setTimeout, clearTimeout, requestAnimationFrame, cancelAnimationFrame) => {\n${source}\n})(window[${JSON.stringify(scopeKey)}].document, window[${JSON.stringify(scopeKey)}].window, window[${JSON.stringify(scopeKey)}].window.setInterval, window[${JSON.stringify(scopeKey)}].window.clearInterval, window[${JSON.stringify(scopeKey)}].window.setTimeout, window[${JSON.stringify(scopeKey)}].window.clearTimeout, window[${JSON.stringify(scopeKey)}].window.requestAnimationFrame, window[${JSON.stringify(scopeKey)}].window.cancelAnimationFrame);`;
                 }
                 for (const attr of oldScript.attributes) {
                     if (attr.name !== 'src') {
@@ -650,6 +595,9 @@
         const completeSwap = () => {
                 if (navigationId !== navigationSequence) return;
 
+                // Give the outgoing page a chance to release charts, timers, or
+                // other resources that were created on a full page load.
+                window.dispatchEvent(new CustomEvent('admin:before-content-swap'));
                 pageScriptController?.abort();
                 pageScriptController = new AbortController();
                 window.adminAjaxPaginationFetch = null;
@@ -1098,25 +1046,18 @@
             return;
         }
         try {
-            const res = await fetch(chatApiUrl('get_messages', { receiver_id: '' }), {
+            const lastSeen = parseInt(localStorage.getItem('chat_last_seen_global') || '0', 10);
+            const res = await fetch(chatApiUrl('get_unread_count', { after_id: lastSeen }), {
                 headers: AJAX_HEADER,
                 credentials: 'same-origin',
                 cache: 'no-store'
             });
             const data = await parseChatResponse(res);
-            if (Array.isArray(data.messages)) {
-                const lastSeen = parseInt(localStorage.getItem('chat_last_seen_global') || '0', 10);
-                let unreadCount = 0;
-                data.messages.forEach(msg => {
-                    if (!msg.is_me && parseInt(msg.id, 10) > lastSeen) {
-                        unreadCount++;
-                    }
-                });
-
+            if (Number.isInteger(data.unread_count)) {
                 const badge = document.getElementById('chatUnreadCount');
                 if (badge) {
-                    if (unreadCount > 0) {
-                        badge.textContent = String(unreadCount);
+                    if (data.unread_count > 0) {
+                        badge.textContent = String(data.unread_count);
                         badge.style.display = 'inline-block';
                     } else {
                         badge.style.display = 'none';
@@ -1253,36 +1194,6 @@
         if (modal) modal.classList.remove('active');
     };
 
-    window.toggleWorkspaceHeaderNav = function (e) {
-        if (e) {
-            if (typeof e.preventDefault === 'function') e.preventDefault();
-            if (typeof e.stopPropagation === 'function') e.stopPropagation();
-        }
-        const topNav = document.getElementById('eventTopNav') || document.querySelector('.event-top-nav');
-        const brand = document.getElementById('sidebarBrandBtn') || document.querySelector('.sidebar-vertical-brand');
-        if (topNav) {
-            const isWsOpen = topNav.classList.toggle('is-workspace-mode');
-            if (brand) brand.classList.toggle('open', isWsOpen);
-        }
-    };
-
-    /* Delegated sidebar brand logo click toggle: replaces floating header pill links with workspace selector */
-    document.addEventListener('click', (e) => {
-        const sidebarBrand = e.target.closest('#sidebarBrandBtn, .sidebar-vertical-brand, .sidebar-logo-icon, .sidebar-logo-img, .sidebar-brand-info, .sidebar-brand-name, .sidebar-brand-tag, .header-logo-btn');
-        if (sidebarBrand) {
-            window.toggleWorkspaceHeaderNav(e);
-            return;
-        }
-
-        const topNav = document.getElementById('eventTopNav') || document.querySelector('.event-top-nav');
-        if (topNav && topNav.classList.contains('is-workspace-mode')) {
-            if (!e.target.closest('#sidebarBrandBtn, .sidebar-vertical-brand, .sidebar-logo-icon, .sidebar-logo-img, .sidebar-brand-info, .sidebar-brand-name, .sidebar-brand-tag, .header-logo-btn, .event-top-nav')) {
-                topNav.classList.remove('is-workspace-mode');
-                const brand = document.getElementById('sidebarBrandBtn') || document.querySelector('.sidebar-vertical-brand');
-                if (brand) brand.classList.remove('open');
-            }
-        }
-    });
 
     document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.main-content .sidebar-vertical, .main-content .sidebar').forEach(el => el.remove());

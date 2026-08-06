@@ -1381,3 +1381,190 @@ footer {
     0%, 100% { transform: translateY(0); }
     50% { transform: translateY(-5px); }
 }
+
+/* =====================================================
+   COMPLETE MOBILE RESPONSIVENESS OVERHAUL
+   ===================================================== */
+
+@media (max-width: 991px) {
+    .nav-container {
+        padding: 1rem 1.25rem;
+    }
+
+    .hero {
+        padding: 5.5rem 1.25rem 3rem;
+        min-height: auto;
+    }
+
+    .hero-title {
+        font-size: clamp(2rem, 8.5vw, 3.4rem);
+        letter-spacing: -1px;
+    }
+
+    .hero-description {
+        font-size: 1.05rem;
+        padding: 0 0.5rem;
+    }
+
+    .section-header {
+        margin-bottom: 2.5rem;
+        padding: 0 1rem;
+    }
+
+    .section-title {
+        font-size: 2rem;
+    }
+
+    .stats, .scholars, .map-section, .categories-section, .scoring-section, .stages-section, .guidelines-section, .articles-section, .text-block-section {
+        padding: 3.5rem 1.25rem;
+    }
+
+    .text-block-grid {
+        grid-template-columns: 1fr;
+        gap: 2rem;
+    }
+
+    .map-card {
+        grid-template-columns: 1fr;
+        padding: 1.25rem;
+        border-radius: 20px;
+        gap: 1.5rem;
+    }
+
+    .map-iframe-container {
+        min-height: 280px;
+        border-radius: 16px;
+    }
+
+    .map-info {
+        padding: 0.25rem;
+    }
+
+    .map-info-title {
+        font-size: 1.75rem;
+    }
+
+    .scoring-rules, .guidelines-grid {
+        grid-template-columns: 1fr;
+        gap: 1.25rem;
+    }
+}
+
+@media (max-width: 640px) {
+    .nav-container {
+        padding: 0.85rem 1rem;
+    }
+
+    .hero {
+        padding: 4.8rem 1rem 2.5rem;
+    }
+
+    .hero-subtitle {
+        font-size: 0.85rem;
+        letter-spacing: 2.5px;
+    }
+
+    .hero-title {
+        font-size: clamp(1.85rem, 8vw, 2.6rem);
+    }
+
+    .countdown-container {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.75rem;
+        width: 100%;
+        max-width: 340px;
+        margin: 1.25rem auto;
+    }
+
+    .countdown-box {
+        padding: 1rem 0.75rem;
+        min-width: 0;
+        border-radius: 16px;
+        text-align: center;
+    }
+
+    .countdown-value {
+        font-size: 1.75rem;
+    }
+
+    .countdown-label {
+        font-size: 0.7rem;
+        margin-top: 0.35rem;
+    }
+
+    .hero-actions {
+        flex-direction: column;
+        width: 100%;
+        max-width: 320px;
+        gap: 0.75rem;
+    }
+
+    .btn-primary, .btn-secondary {
+        width: 100%;
+        text-align: center;
+        padding: 0.85rem 1.5rem;
+        font-size: 0.95rem;
+    }
+
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+    }
+
+    .stat-card {
+        padding: 1.5rem 1.25rem;
+        min-height: 200px;
+        border-radius: 24px;
+    }
+
+    .stat-number {
+        font-size: 2.8rem;
+    }
+
+    .stat-name {
+        font-size: 1.2rem;
+    }
+
+    .scholars-grid {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+
+    .scholar-card {
+        height: 350px;
+        border-radius: 20px;
+    }
+
+    .categories-grid, .stages-grid, .articles-grid {
+        grid-template-columns: 1fr;
+        gap: 1.25rem;
+    }
+
+    .category-card, .stage-card, .article-card, .rule-box, .guideline-card {
+        padding: 1.75rem 1.25rem;
+        border-radius: 20px;
+    }
+
+    .scoring-table th, .scoring-table td {
+        padding: 0.85rem 1rem;
+        font-size: 0.85rem;
+    }
+
+    .footer-container {
+        gap: 2.5rem;
+    }
+
+    footer {
+        padding: 3.5rem 1.25rem 2rem;
+    }
+
+    .footer-brand {
+        max-width: 100%;
+    }
+
+    .footer-links-group {
+        gap: 2rem;
+        flex-direction: column;
+    }
+}

@@ -134,7 +134,7 @@ function admin_class_type_badge_class(?string $tier): string
     };
 }
 
-function admin_class_type_ids_for_tier(PDO $dashboardPdo, string $tier): array
+function admin_class_type_ids_for_tier($dashboardPdo, string $tier): array
 {
     if (!in_array($tier, ['senior', 'junior', 'subjunior'], true)) {
         return [];
@@ -155,7 +155,7 @@ function admin_class_type_ids_for_tier(PDO $dashboardPdo, string $tier): array
 /**
  * @return array{0: string, 1: array<int>}
  */
-function admin_program_class_filter_sql(PDO $dashboardPdo, string $classFilter, string $programAlias = 'mp'): array
+function admin_program_class_filter_sql($dashboardPdo, string $classFilter, string $programAlias = 'mp'): array
 {
     $classFilter = trim($classFilter);
 

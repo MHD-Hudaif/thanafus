@@ -183,7 +183,7 @@ $dateLabel = $event ? date('d F Y', strtotime($event['start_date'] ?? '2026-07-1
             <span style="font-size: 14px; font-weight: 600; color: #ffffff;"><?= e($user['username']) ?></span>
         </div>
         <?php if (is_admin()): ?>
-            <a class="mobile-only-action" href="<?= app_url('/admin/dashboard') ?>"><i class="fa-solid fa-table-columns"></i> Dashboard</a>
+            <a class="mobile-only-action" href="<?= app_url('/admin/index.php') ?>"><i class="fa-solid fa-table-columns"></i> Dashboard</a>
         <?php else: ?>
             <a class="mobile-only-action" href="<?= app_url('/auth/logout') ?>"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
         <?php endif; ?>
@@ -212,7 +212,7 @@ $dateLabel = $event ? date('d F Y', strtotime($event['start_date'] ?? '2026-07-1
               <span style="font-size: 14px; font-weight: 600; color: #ffffff;"><?= e($user['username']) ?></span>
           </div>
           <?php if (is_admin()): ?>
-              <a href="<?= app_url('/admin/dashboard') ?>" class="button button-light" style="padding: 6px 12px; font-size: 14px;"><i class="fa-solid fa-table-columns"></i> Dashboard</a>
+              <a href="<?= app_url('/admin/index.php') ?>" class="button button-light" style="padding: 6px 12px; font-size: 14px;"><i class="fa-solid fa-table-columns"></i> Dashboard</a>
           <?php else: ?>
               <a href="<?= app_url('/auth/logout') ?>" class="button button-light" style="padding: 6px 12px; font-size: 14px;"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
           <?php endif; ?>

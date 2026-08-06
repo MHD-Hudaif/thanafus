@@ -25,7 +25,7 @@ if(!$activeEventId){
 
     header(
         'Location: '
-        . app_url('/admin/events')
+        . app_url('/admin/index.php')
     );
 
     exit;

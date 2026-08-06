@@ -21,11 +21,13 @@ require_once __DIR__ . '/../../includes/sidebar.php';
             <h1><i class="fa-solid fa-tv" style="color:#ec4899;"></i> Live Display Space</h1>
             <p>Control TV Scoreboards, Live Presentation Feeds, Rankings & Announcements</p>
         </div>
+        <?php if (is_admin()): ?>
         <div>
-            <a href="<?= app_url('/admin/events.php') ?>" class="btn btn-secondary btn-md">
-                <i class="fa-solid fa-calendar-days mr-1"></i> Musabaqa Selection
+            <a href="<?= app_url('/admin/index.php') ?>" class="btn btn-secondary btn-md">
+                <i class="fa-solid fa-calendar-days mr-1"></i> All Events
             </a>
         </div>
+        <?php endif; ?>
     </div>
 
     <?php if (!$activeEvent): ?>

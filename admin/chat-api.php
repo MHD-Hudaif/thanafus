@@ -71,6 +71,14 @@ try {
         chat_json(['success' => true, 'users' => $users]);
     }
 
+    if ($action === 'get_unread_count') {
+        $afterId = max(0, (int)($_GET['after_id'] ?? 0));
+        $stmt = $pdo->prepare("\n            SELECT COUNT(*)\n            FROM musabaqa_chat_messages\n            WHERE receiver_id IS NULL\n              AND sender_id <> ?\n              AND id > ?\n        ");
+        $stmt->execute([$currentUserId, $afterId]);
+
+        chat_json(['success' => true, 'unread_count' => (int)$stmt->fetchColumn()]);
+    }
+
     if ($action === 'get_messages') {
         $receiverId = isset($_GET['receiver_id']) && $_GET['receiver_id'] !== '' ? (int)$_GET['receiver_id'] : null;
 

@@ -597,6 +597,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Auto-refresh every 12 seconds
     autoRefreshInterval = setInterval(loadAnalyticsData, 12000);
+
+    // The admin uses AJAX navigation, so this page can disappear without a
+    // browser unload. Release its polling timer and canvas resources first.
+    window.addEventListener('admin:before-content-swap', () => {
+        clearInterval(autoRefreshInterval);
+        teamChartInstance?.destroy();
+        programChartInstance?.destroy();
+        categoryChartInstance?.destroy();
+    }, { once: true });
 });
 </script>
 

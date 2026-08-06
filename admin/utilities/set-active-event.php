@@ -8,7 +8,7 @@ $musabaqa_pdo = $GLOBALS['musabaqa_pdo'];
 $id = (int)($_GET['id'] ?? 0);
 
 if ($id <= 0) {
-    header('Location: ' . app_url('/admin/events.php'));
+    header('Location: ' . app_url('/admin/index.php'));
     exit;
 }
 
@@ -17,7 +17,7 @@ $stmt->execute([$id]);
 $event = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$event) {
-    header('Location: ' . app_url('/admin/events.php'));
+    header('Location: ' . app_url('/admin/index.php'));
     exit;
 }
 

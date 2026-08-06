@@ -829,23 +829,45 @@ require_once __DIR__ . '/../../includes/sidebar.php';
 </div>
 
 <div class="modal-overlay" id="categoryModal">
-    <div class="modal-box modal-lg">
-        <div class="modal-header">
-            <div class="modal-title" id="categoryModalTitle">Scoring Categories</div>
-            <button class="modal-close" type="button" data-close="categoryModal"><i class="fa-solid fa-xmark"></i></button>
+    <div class="modal-box" style="max-width: 520px; width: 95%; padding: 0; border-radius: 14px; overflow: hidden; border: 1px solid rgba(255,255,255,0.08); background: #0e1726; box-shadow: 0 20px 45px rgba(0,0,0,0.5);">
+        <div class="modal-header" style="padding: 16px 20px; background: rgba(255,255,255,0.02); border-bottom: 1px solid rgba(255,255,255,0.06); display: flex; align-items: center; justify-content: space-between;">
+            <div>
+                <div class="modal-title" style="font-size: 16px; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 8px;">
+                    <i class="fa-solid fa-sliders" style="color: #34d399;"></i>
+                    <span>Scoring Categories</span>
+                </div>
+                <div id="categoryModalSubTitle" style="font-size: 12px; color: var(--muted, #94a3b8); margin-top: 2px;">Configure breakdown criteria for judge scoring</div>
+            </div>
+            <button class="modal-close" type="button" data-close="categoryModal" style="background: none; border: none; color: var(--muted); font-size: 16px; cursor: pointer;"><i class="fa-solid fa-xmark"></i></button>
         </div>
-        <form method="POST" id="categoryForm">
+        <form method="POST" id="categoryForm" style="padding: 20px;">
             <?= admin_csrf_field() ?>
             <input type="hidden" name="action" value="save_categories">
             <input type="hidden" name="program_id" id="categoryProgramId">
-            <div id="categoryRows" class="score-category-list"></div>
-            <div class="flex-between mt-4">
-                <button type="button" class="btn btn-secondary btn-sm" id="addCategoryRow"><i class="fa-solid fa-plus"></i> Add Category</button>
-                <div class="badge badge-neutral">Total: <span id="categoryTotal">0</span> / 100</div>
+            
+            <!-- Compact Table Header -->
+            <div style="display: grid; grid-template-columns: 1fr 100px 34px; gap: 10px; padding: 0 6px 8px 6px; border-bottom: 1px solid rgba(255,255,255,0.06); margin-bottom: 10px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted, #94a3b8);">
+                <span>Category Name</span>
+                <span style="text-align: right;">Max Marks</span>
+                <span></span>
             </div>
-            <div class="form-actions">
-                <button type="button" class="btn btn-secondary btn-md" data-close="categoryModal">Cancel</button>
-                <button class="btn btn-success btn-md" type="submit">Save Categories</button>
+
+            <!-- Dynamic Category List -->
+            <div id="categoryRows" style="display: flex; flex-direction: column; gap: 8px; max-height: 280px; overflow-y: auto; padding-right: 4px;"></div>
+            
+            <!-- Controls & Total Summary -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 16px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.06);">
+                <button type="button" class="btn btn-secondary btn-sm" id="addCategoryRow" style="font-size: 12px; padding: 6px 12px; border-radius: 8px;">
+                    <i class="fa-solid fa-plus" style="margin-right: 4px;"></i> Add Category
+                </button>
+                <div id="categoryTotalBadge" style="font-size: 12.5px; font-weight: 700; padding: 5px 14px; border-radius: 20px; transition: all 0.2s ease;">
+                    Total: <span id="categoryTotal">0</span> / 100
+                </div>
+            </div>
+
+            <div class="form-actions" style="margin-top: 18px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.06); display: flex; justify-content: flex-end; gap: 10px;">
+                <button type="button" class="btn btn-secondary btn-md" data-close="categoryModal" style="padding: 8px 16px; font-size: 13px;">Cancel</button>
+                <button class="btn btn-success btn-md" type="submit" id="saveCategoriesBtn" style="padding: 8px 18px; font-size: 13px; font-weight: 600;"><i class="fa-solid fa-check" style="margin-right: 4px;"></i> Save Categories</button>
             </div>
         </form>
     </div>
@@ -1124,8 +1146,8 @@ document.addEventListener('click', (e) => {
     if (catBtn) {
         try {
             const payload = JSON.parse(catBtn.dataset.categories);
-            const cTitle = document.getElementById('categoryModalTitle');
-            if (cTitle) cTitle.textContent = `Scoring Categories · ${payload.program.title || 'Program'}`;
+            const cSub = document.getElementById('categoryModalSubTitle');
+            if (cSub) cSub.textContent = `Criteria breakdown for: ${payload.program.title || 'Program'}`;
             const cId = document.getElementById('categoryProgramId');
             if (cId) cId.value = payload.program.id || '';
 
@@ -1147,10 +1169,12 @@ document.querySelectorAll('.modal-overlay').forEach(modal => modal.addEventListe
 
 function categoryRow(name = '', marks = '') {
     return `
-        <div class="score-category-row">
-            <div class="input-group"><label>Name</label><input name="category_name[]" value="${escapeHtml(name)}" required></div>
-            <div class="input-group"><label>Max Marks</label><input type="number" name="category_marks[]" min="0" max="100" step="0.01" value="${escapeHtml(marks)}" required></div>
-            <button class="btn btn-danger btn-sm" type="button" data-remove-category><i class="fa-solid fa-trash"></i></button>
+        <div class="score-category-row" style="display: grid; grid-template-columns: 1fr 100px 34px; gap: 10px; align-items: center; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); padding: 5px 8px; border-radius: 8px;">
+            <input type="text" class="form-input" name="category_name[]" value="${escapeHtml(name)}" placeholder="Category Name (e.g. Pitch / Tajweed)" style="height: 34px; font-size: 13px; padding: 4px 10px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; color: #fff;" required>
+            <input type="number" class="form-input category-marks-input" name="category_marks[]" min="0" max="100" step="0.01" value="${escapeHtml(marks)}" placeholder="100" style="height: 34px; font-size: 13px; text-align: right; padding: 4px 10px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; color: #fff;" required>
+            <button class="btn btn-danger btn-sm" type="button" data-remove-category style="height: 34px; width: 34px; padding: 0; display: grid; place-items: center; border-radius: 6px;" title="Remove Category">
+                <i class="fa-solid fa-trash" style="font-size: 11px;"></i>
+            </button>
         </div>
     `;
 }
@@ -1159,6 +1183,19 @@ function refreshCategoryTotal() {
     const total = Array.from(document.querySelectorAll('input[name="category_marks[]"]')).reduce((sum, input) => sum + Number(input.value || 0), 0);
     const catTot = document.getElementById('categoryTotal');
     if (catTot) catTot.textContent = total.toFixed(2);
+    
+    const badge = document.getElementById('categoryTotalBadge');
+    if (badge) {
+        if (Math.abs(total - 100.0) < 0.01) {
+            badge.style.background = 'rgba(16, 185, 129, 0.15)';
+            badge.style.color = '#34d399';
+            badge.style.border = '1px solid rgba(16, 185, 129, 0.3)';
+        } else {
+            badge.style.background = 'rgba(239, 68, 68, 0.15)';
+            badge.style.color = '#f87171';
+            badge.style.border = '1px solid rgba(239, 68, 68, 0.3)';
+        }
+    }
 }
 
 function bindCategoryRows() {

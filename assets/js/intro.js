@@ -20,9 +20,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         requestAnimationFrame(raf);
         
-        // Connect Lenis scroll to reveal updates
+        // Connect Lenis scroll
         lenis.on('scroll', () => {
-            revealOnScroll();
+            // Lenis smooth scroll active
         });
 
         // Smooth scroll navigation clicks
@@ -36,8 +36,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (targetEl) {
                         lenis.scrollTo(targetEl, {
                             offset: -80, // Offset for the fixed header height
-                            duration: 1.4,
-                            easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)), // smooth ease out
+                            duration: 1.2,
+                            easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
                         });
                     }
                 }
@@ -88,8 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (typewriterEl) {
         const phrases = [
             "where talent finds its stage.",
-            "celebrating Islamic arts and literature.",
-            "bridging classical traditions with modern expressions.",
+            "One stage, endless talent welcome to Al-Thanafus",
             "Qur'an Recitation, Oratory, and Literary contests.",
             "a grand gathering of creative and intellectual minds.",
             "fostering academic leadership and spiritual growth.",
@@ -112,20 +111,20 @@ document.addEventListener('DOMContentLoaded', () => {
             if (isDeleting) {
                 typewriterEl.innerText = currentPhrase.substring(0, charIndex - 1);
                 charIndex--;
-                typingSpeed = 40; // Faster deleting speed
+                typingSpeed = 40;
             } else {
                 typewriterEl.innerText = currentPhrase.substring(0, charIndex + 1);
                 charIndex++;
-                typingSpeed = 80; // Typing speed
+                typingSpeed = 80;
             }
             
             if (!isDeleting && charIndex === currentPhrase.length) {
                 isDeleting = true;
-                typingSpeed = 2000; // Pause at full word
+                typingSpeed = 2000;
             } else if (isDeleting && charIndex === 0) {
                 isDeleting = false;
                 phraseIndex = (phraseIndex + 1) % phrases.length;
-                typingSpeed = 500; // Pause before typing next word
+                typingSpeed = 500;
             }
             
             setTimeout(typeEffect, typingSpeed);
@@ -140,7 +139,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const emojis = ['🎉', '✨', '🎈', '🥳', '🏆', '⭐', '🌈', '🎊'];
         
         celebrateBtn.addEventListener('click', (e) => {
-            for (let i = 0; i < 30; i++) {
+            for (let i = 0; i < 20; i++) {
                 createParticle(e.clientX, e.clientY);
             }
         });
@@ -151,9 +150,9 @@ document.addEventListener('DOMContentLoaded', () => {
             particle.innerText = emojis[Math.floor(Math.random() * emojis.length)];
             
             const angle = Math.random() * Math.PI * 2;
-            const velocity = 50 + Math.random() * 150;
+            const velocity = 40 + Math.random() * 120;
             const targetX = Math.cos(angle) * velocity;
-            const targetY = Math.sin(angle) * velocity - 100;
+            const targetY = Math.sin(angle) * velocity - 80;
             const rotation = Math.random() * 360;
             
             particle.style.left = `${x}px`;
@@ -166,37 +165,38 @@ document.addEventListener('DOMContentLoaded', () => {
             
             setTimeout(() => {
                 particle.remove();
-            }, 1200);
+            }, 1000);
         }
     }
     
-    // 4. Staggered 3D Scroll Reveal Animation (Intersection Observer)
+    // 4. High-Performance IntersectionObserver Scroll Reveal
     const revealElements = document.querySelectorAll('.reveal-3d');
     
-    // Configure delay helper for child grids
     const grids = document.querySelectorAll('.stats-grid, .scholars-grid, .categories-grid, .stages-grid, .articles-grid');
     grids.forEach(grid => {
         const children = grid.querySelectorAll('.reveal-3d');
         children.forEach((child, index) => {
-            child.style.transitionDelay = `${index * 0.15}s`;
+            child.style.transitionDelay = `${index * 0.08}s`;
         });
     });
 
-    const revealOnScroll = () => {
-        const triggerBottom = window.innerHeight * 0.95;
-        const triggerTop = 20;
-        revealElements.forEach(el => {
-            const rect = el.getBoundingClientRect();
-            if (rect.top < triggerBottom && rect.bottom > triggerTop) {
-                el.classList.add('visible');
-            } else {
-                el.classList.remove('visible'); // Fade and slide out when out of view
-            }
+    if ('IntersectionObserver' in window) {
+        const revealObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                }
+            });
+        }, {
+            root: null,
+            rootMargin: '0px 0px -50px 0px',
+            threshold: 0.05
         });
-    };
-    
-    window.addEventListener('scroll', revealOnScroll);
-    revealOnScroll(); // Trigger initial check
+
+        revealElements.forEach(el => revealObserver.observe(el));
+    } else {
+        revealElements.forEach(el => el.classList.add('visible'));
+    }
 
     // 5. Mobile Menu Toggle
     const menuToggle = document.querySelector('.menu-toggle-btn');

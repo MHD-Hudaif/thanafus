@@ -36,6 +36,37 @@
     --info: #38bdf8;
 }
 
+/* High-Performance Hardware-Accelerated Scroll Optimizations */
+html, body {
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+}
+
+.main-content {
+    contain: layout style;
+    transform: translateZ(0);
+}
+
+.table-wrapper {
+    contain: paint layout;
+    transform: translateZ(0);
+}
+
+.panel, .card, .dashboard-card, .stat-card, .event-card, .btn, .nav-item-link, .sidebar-vertical-link {
+    contain: layout style;
+    will-change: transform;
+    transform: translateZ(0);
+}
+
+/* Fast, non-layout-thrashing hover transitions */
+.btn, .nav-item-link, .sidebar-vertical-link, .card, .panel, .dashboard-card, .stat-card, .event-card, .quick-action-btn {
+    transition: transform 0.12s cubic-bezier(0.2, 0.9, 0.2, 1), background-color 0.12s ease, border-color 0.12s ease, opacity 0.12s ease !important;
+}
+
+table tbody tr {
+    transition: background-color 0.08s ease !important;
+}
+
 /* Custom Scrollbars */
 ::-webkit-scrollbar {
     width: 6px;
@@ -2685,11 +2716,15 @@ video {
     border-bottom: 1px solid rgba(255, 255, 255, 0.06);
     box-shadow: 0 16px 34px rgba(0, 0, 0, 0.28);
     transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transform: translateZ(0);
 }
 
 @media (min-width: 921px) {
     body.layout-sidebar-enabled .event-top-nav {
         left: 290px !important;
+    }
+    body.layout-sidebar-enabled .event-nav-left {
+        display: none !important;
     }
 }
 
@@ -3875,7 +3910,8 @@ textarea:focus,
 }
 
 .table-wrapper {
-    overflow: hidden;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
 }
 
 th {
@@ -3892,11 +3928,67 @@ td {
     background: rgba(255, 255, 255, 0.04) !important;
 }
 
+/* Hide duplicate topbar page nav group when vertical sidebar is present or on screen widths under 1280px */
+body.layout-sidebar-enabled .page-nav-group,
+@media (max-width: 1280px) {
+    .event-nav-group.page-nav-group {
+        display: none !important;
+    }
+}
+
+/* GPU Optimization: Remove heavy backdrop blurs on mobile and low-power displays to prevent lag */
+@media (max-width: 920px) {
+    .event-top-nav,
+    .sidebar-vertical,
+    .panel,
+    .stat-card,
+    .table-wrapper,
+    .modal-overlay {
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+    }
+}
+
+/* Mobile & Small Screen Layout Responsiveness Improvements */
+@media (max-width: 768px) {
+    .topbar {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 12px !important;
+    }
+    .topbar > div:last-child {
+        width: 100% !important;
+        justify-content: flex-start !important;
+        flex-wrap: wrap !important;
+    }
+    .topbar .btn {
+        flex: 1 1 auto !important;
+        justify-content: center !important;
+        text-align: center !important;
+        font-size: 12px !important;
+        padding: 8px 10px !important;
+    }
+    .stats-grid {
+        grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)) !important;
+        gap: 8px !important;
+    }
+    .stat-card {
+        padding: 12px !important;
+    }
+    .stat-value {
+        font-size: 20px !important;
+    }
+    .main-content {
+        padding-left: 14px !important;
+        padding-right: 14px !important;
+        padding-top: 82px !important;
+    }
+}
+
 @media (min-width: 921px) {
     .sidebar-vertical,
     .event-top-nav {
-        background:
-            linear-gradient(180deg, rgba(16, 18, 24, 0.82), rgba(8, 10, 14, 0.92)) !important;
+        background: rgba(10, 14, 20, 0.95) !important;
         border-color: rgba(255, 255, 255, 0.08) !important;
         box-shadow:
             inset 0 1px 0 rgba(255, 255, 255, 0.04),

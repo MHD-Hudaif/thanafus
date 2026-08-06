@@ -306,7 +306,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     admin_redirect('/admin/event-manager/chest-numbers.php');
 }
 
-$stmt = $pdo->prepare("
+if (isset($_GET['limit'])) {
+    $perPage = max(5, min(5000, (int)$_GET['limit']));
+    $_SESSION['chest_numbers_limit'] = $perPage;
+} else {
+    $perPage = isset($_SESSION['chest_numbers_limit']) ? $_SESSION['chest_numbers_limit'] : 15;
+}
+$page = max(1, (int)($_GET['page'] ?? 1));
+
+$searchWhere = "";
+$queryParams = [$activeEventId];
+
+if ($search !== '') {
+    $searchWhere = " AND (
+        s.display_name LIKE ? OR 
+        s.full_name LIKE ? OR 
+        mtm.chest_number LIKE ? OR 
+        t.team_name LIKE ? OR 
+        c.name LIKE ? OR 
+        ct.name LIKE ?
+    )";
+    $term = '%' . $search . '%';
+    $queryParams = array_merge($queryParams, [$term, $term, $term, $term, $term, $term]);
+}
+
+// 1. Total Count Query
+$countStmt = $pdo->prepare("
+    SELECT COUNT(*) 
+    FROM musabaqa_team_members mtm
+    JOIN musabaqa_teams t ON t.id = mtm.team_id
+    JOIN " . DB_MAIN_NAME . ".students s ON s.id = mtm.student_id
+    LEFT JOIN " . DB_MAIN_NAME . ".classes c ON c.id = s.class_id
+    LEFT JOIN " . DB_MAIN_NAME . ".class_types ct ON ct.id = c.class_type_id
+    WHERE mtm.event_id = ?
+      AND mtm.status = 'active'
+      {$searchWhere}
+");
+$countStmt->execute($queryParams);
+$totalMembers = (int)$countStmt->fetchColumn();
+
+$totalPages = max(1, (int)ceil($totalMembers / $perPage));
+if ($page > $totalPages) $page = $totalPages;
+$offset = ($page - 1) * $perPage;
+
+// 2. Fast Paginated Data Query
+$dataStmt = $pdo->prepare("
     SELECT
         mtm.id,
         mtm.chest_number,
@@ -323,41 +367,23 @@ $stmt = $pdo->prepare("
     LEFT JOIN " . DB_MAIN_NAME . ".class_types ct ON ct.id = c.class_type_id
     WHERE mtm.event_id = ?
       AND mtm.status = 'active'
+      {$searchWhere}
     ORDER BY NULLIF(mtm.chest_number, '') IS NULL ASC,
              CAST(mtm.chest_number AS UNSIGNED) ASC,
              CAST(t.number_prefix AS UNSIGNED) ASC,
              t.id ASC,
              display_name ASC
+    LIMIT {$perPage} OFFSET {$offset}
 ");
-$stmt->execute([$activeEventId]);
-$members = [];
-foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $member) {
+$dataStmt->execute($queryParams);
+
+$paginatedMembers = [];
+foreach ($dataStmt->fetchAll(PDO::FETCH_ASSOC) as $member) {
     $member['category'] = id_card_category_label($member['class_type_name'] ?? null, (int)($member['class_type_id'] ?? 0));
-    if (
-        $search !== ''
-        && stripos((string)($member['display_name'] ?? ''), $search) === false
-        && stripos((string)($member['chest_number'] ?? ''), $search) === false
-        && stripos((string)($member['team_name'] ?? ''), $search) === false
-        && stripos((string)($member['section'] ?? ''), $search) === false
-        && stripos((string)($member['category'] ?? ''), $search) === false
-    ) {
-        continue;
-    }
-    $members[] = $member;
+    $paginatedMembers[] = $member;
 }
 
 $flash = admin_take_flash();
-$totalMembers = count($members);
-
-if (isset($_GET['limit'])) {
-    $perPage = max(5, min(5000, (int)$_GET['limit']));
-    $_SESSION['chest_numbers_limit'] = $perPage;
-} else {
-    $perPage = isset($_SESSION['chest_numbers_limit']) ? $_SESSION['chest_numbers_limit'] : 15;
-}
-$page = max(1, (int)($_GET['page'] ?? 1));
-$offset = ($page - 1) * $perPage;
-$paginatedMembers = array_slice($members, $offset, $perPage);
 
 if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
     ob_start();
@@ -392,15 +418,23 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
     exit;
 }
 
-$assignedCount = 0;
-$missingCount = 0;
-foreach ($members as $member) {
-    if (trim((string)($member['chest_number'] ?? '')) === '') {
-        $missingCount++;
-    } else {
-        $assignedCount++;
-    }
-}
+// 3. Fast Stats Counters & Modal Dropdown List
+$assignedStmt = $pdo->prepare("SELECT COUNT(*) FROM musabaqa_team_members WHERE event_id = ? AND status = 'active' AND chest_number IS NOT NULL AND chest_number != ''");
+$assignedStmt->execute([$activeEventId]);
+$assignedCount = (int)$assignedStmt->fetchColumn();
+$missingCount = max(0, $totalMembers - $assignedCount);
+
+// Lightweight list for modal select dropdown
+$modalStmt = $pdo->prepare("
+    SELECT mtm.id, mtm.chest_number, t.team_name, COALESCE(NULLIF(s.display_name, ''), s.full_name) AS display_name
+    FROM musabaqa_team_members mtm
+    JOIN musabaqa_teams t ON t.id = mtm.team_id
+    JOIN " . DB_MAIN_NAME . ".students s ON s.id = mtm.student_id
+    WHERE mtm.event_id = ? AND mtm.status = 'active'
+    ORDER BY display_name ASC
+");
+$modalStmt->execute([$activeEventId]);
+$members = $modalStmt->fetchAll(PDO::FETCH_ASSOC);
 
 require_once __DIR__ . '/../../includes/header.php';
 require_once __DIR__ . '/../../includes/sidebar.php';

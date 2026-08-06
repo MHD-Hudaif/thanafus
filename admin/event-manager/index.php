@@ -22,11 +22,13 @@ require_once __DIR__ . '/../../includes/sidebar.php';
             <h1><i class="fa-solid fa-calendar-gear" style="color:#6366f1;"></i> Event & Team Manager</h1>
             <p>Access Event Settings, Programs, Schedule, Teams, Members, and Chest Numbers</p>
         </div>
+        <?php if (is_admin()): ?>
         <div>
-            <a href="<?= app_url('/admin/events.php') ?>" class="btn btn-secondary btn-md">
-                <i class="fa-solid fa-calendar-days mr-1"></i> Musabaqa Selection
+            <a href="<?= app_url('/admin/index.php') ?>" class="btn btn-secondary btn-md">
+                <i class="fa-solid fa-calendar-days mr-1"></i> All Events
             </a>
         </div>
+        <?php endif; ?>
     </div>
 
     <?php if (!$activeEvent): ?>

@@ -15,6 +15,8 @@
     display: flex;
     flex-direction: column;
     gap: 24px;
+    contain: layout style;
+    transform: translateZ(0);
 }
 
 /* Top Navigation Bar */
