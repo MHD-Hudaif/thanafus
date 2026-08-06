@@ -920,32 +920,40 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                 <button class="btn btn-success btn-md" type="submit">Save Program</button>
             </div>
 
-            <!-- TEACHER SELECT SUB-MODAL INSIDE THE FORM -->
-            <div class="modal-overlay" id="teacherSelectModal" style="z-index: 1100;">
-                <div class="modal-box" style="max-width: 500px;">
-                    <div class="modal-header">
-                        <div class="modal-title">Select Incharge Teachers</div>
-                        <button class="modal-close" type="button" data-close="teacherSelectModal"><i class="fa-solid fa-xmark"></i></button>
-                    </div>
-                    <div class="modal-body" style="padding: 20px;">
-                        <div style="display: flex; flex-direction: column; gap: 10px; max-height: 300px; overflow-y: auto; padding-right: 5px;">
-                            <?php foreach ($teachers as $teacher): ?>
-                                <label class="section-toggle-card" style="display: flex; width: 100%;">
-                                    <input type="checkbox" name="responsible_teacher_ids[]" value="<?= (int)$teacher['id'] ?>" class="responsible-teacher-chk" onchange="updateSelectedTeachersDisplay()">
-                                    <div class="card-inner" style="display: flex; width: 100%; justify-content: flex-start; box-sizing: border-box;">
-                                        <i class="fa-solid fa-circle-check check-icon"></i>
-                                        <span class="teacher-name-span"><?= e($teacher['full_name']) ?></span>
-                                    </div>
-                                </label>
-                            <?php endforeach; ?>
-                        </div>
-                    </div>
-                    <div class="modal-footer" style="padding: 15px 20px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 10px;">
-                        <button class="btn btn-secondary btn-md" type="button" data-close="teacherSelectModal">Done</button>
-                    </div>
-                </div>
-            </div>
         </form>
+    </div>
+</div>
+
+<!-- TEACHER SELECT SUB-MODAL (INDEPENDENT STANDALONE MODAL OVERLAY) -->
+<div class="modal-overlay" id="teacherSelectModal" style="z-index: 2000;">
+    <div class="modal-box modal-md" style="max-width: 500px; width: 95%; border-radius: 14px; overflow: hidden; border: 1px solid rgba(255,255,255,0.08); background: #0e1726; box-shadow: 0 25px 50px rgba(0,0,0,0.6);">
+        <div class="modal-header" style="padding: 16px 20px; background: rgba(255,255,255,0.02); border-bottom: 1px solid rgba(255,255,255,0.06); display: flex; align-items: center; justify-content: space-between;">
+            <div class="modal-title" style="font-size: 16px; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 8px;">
+                <i class="fa-solid fa-user-check" style="color: #6366f1;"></i>
+                <span>Select Incharge Teachers</span>
+            </div>
+            <button class="modal-close" type="button" data-close="teacherSelectModal" style="background: none; border: none; color: var(--muted); font-size: 16px; cursor: pointer;"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="modal-body" style="padding: 20px;">
+            <div style="display: flex; flex-direction: column; gap: 10px; max-height: 320px; overflow-y: auto; padding-right: 5px;">
+                <?php if (empty($teachers)): ?>
+                    <div style="color: var(--muted); font-size: 13px; text-align: center; padding: 20px 0;">No active teachers found.</div>
+                <?php else: ?>
+                    <?php foreach ($teachers as $teacher): ?>
+                        <label class="section-toggle-card" style="display: flex; width: 100%; cursor: pointer;">
+                            <input type="checkbox" form="programForm" name="responsible_teacher_ids[]" value="<?= (int)$teacher['id'] ?>" class="responsible-teacher-chk" onchange="updateSelectedTeachersDisplay()">
+                            <div class="card-inner" style="display: flex; width: 100%; justify-content: flex-start; box-sizing: border-box; gap: 10px; align-items: center;">
+                                <i class="fa-solid fa-circle-check check-icon"></i>
+                                <span class="teacher-name-span" style="font-weight: 600; font-size: 13.5px;"><?= e($teacher['full_name']) ?></span>
+                            </div>
+                        </label>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </div>
+        </div>
+        <div class="modal-footer" style="padding: 14px 20px; border-top: 1px solid rgba(255,255,255,0.06); background: rgba(255,255,255,0.015); display: flex; justify-content: flex-end; gap: 10px;">
+            <button class="btn btn-primary btn-md" type="button" data-close="teacherSelectModal" style="padding: 8px 20px; font-size: 13px; font-weight: 600; border-radius: 8px;">Done</button>
+        </div>
     </div>
 </div>
 

@@ -342,7 +342,7 @@ foreach ($allBreaks as $break) {
 
 $stmt = $pdo->prepare("
     SELECT mp.id, mp.title, mp.program_type, mp.class_type_id, ct.name AS class_type_name,
-           t.full_name AS responsible_teacher_name, mp.allowed_sections
+           t.full_name AS responsible_teacher_name, mp.allowed_sections, mp.location
     FROM musabaqa_programs mp
     LEFT JOIN " . DB_MAIN_NAME . ".class_types ct ON ct.id = mp.class_type_id
     LEFT JOIN " . DB_MAIN_NAME . ".teachers t ON t.id = mp.responsible_teacher_id
@@ -424,173 +424,282 @@ require_once __DIR__ . '/../../includes/sidebar.php';
         </form>
     </div>
 
-    <div style="width: 100%;">
-        <!-- Interactive search/filter panel inside the timeline container -->
-        <div class="panel mb-6" style="padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; background: rgba(255,255,255,0.015); border-color: rgba(255,255,255,0.03);">
-            <div class="dashboard-heading" style="margin: 0; font-size: 15px;">Live Timeline Filter</div>
-            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-                <div style="position: relative; display: flex; align-items: center;">
+    <!-- MAIN TWO-COLUMN LAYOUT: LEFT STAGE TABS/TIMELINE + RIGHT UNSCHEDULED SIDEBAR -->
+    <div class="schedule-main-container" style="display: flex; gap: 24px; width: 100%; align-items: flex-start;">
+        
+        <!-- LEFT COLUMN: STAGE TABS & TIMELINE -->
+        <div class="schedule-left-column" style="flex: 1; min-width: 0;">
+            
+            <!-- STAGE TABS BAR -->
+            <div class="stage-tabs-bar" style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 12px; flex-wrap: wrap;">
+                <?php foreach ($stageTypes as $idx => $stage): ?>
+                    <?php 
+                    $stId = (int)$stage['id'];
+                    $stCount = count($programsByStage[$stId] ?? []);
+                    ?>
+                    <button type="button" class="stage-tab-btn <?= $idx === 0 ? 'active' : '' ?>" data-stage-tab="<?= $stId ?>" style="padding: 10px 18px; border-radius: 10px; font-weight: 700; font-size: 13.5px; border: 1px solid rgba(255,255,255,0.08); background: <?= $idx === 0 ? 'linear-gradient(135deg, rgba(99,102,241,0.2), rgba(168,85,247,0.2))' : 'rgba(255,255,255,0.02)' ?>; color: <?= $idx === 0 ? '#fff' : 'var(--muted)' ?>; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; gap: 8px;">
+                        <i class="fa-solid fa-map-pin" style="color: var(--accent);"></i>
+                        <span><?= e($stage['name']) ?></span>
+                        <span class="badge badge-neutral" style="font-size: 11px; padding: 2px 7px; border-radius: 99px;"><?= $stCount ?></span>
+                    </button>
+                <?php endforeach; ?>
+                
+                <button type="button" class="stage-tab-btn" data-stage-tab="all" style="padding: 10px 18px; border-radius: 10px; font-weight: 700; font-size: 13.5px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.02); color: var(--muted); cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; gap: 8px;">
+                    <i class="fa-solid fa-layer-group" style="color: #f59e0b;"></i>
+                    <span>All Stages</span>
+                </button>
+            </div>
+
+            <!-- LIVE TIMELINE FILTER BAR -->
+            <div class="panel mb-6" style="padding: 14px 18px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; background: rgba(255,255,255,0.015); border-color: rgba(255,255,255,0.03);">
+                <div style="position: relative; display: flex; align-items: center; flex: 1; min-width: 180px;">
                     <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 12px; color: var(--muted); font-size: 13px;"></i>
-                    <input type="text" id="timelineSearch" placeholder="Search scheduled..." class="form-input" style="padding-left: 34px; height: 38px; font-size: 13px; width: 220px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; color: #fff;">
+                    <input type="text" id="timelineSearch" placeholder="Search scheduled..." class="form-input" style="padding-left: 34px; height: 36px; font-size: 13px; width: 100%; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; color: #fff;">
                 </div>
-                <select id="timelineSectionFilter" class="form-input" style="height: 38px; font-size: 13px; width: 160px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; color: #fff; padding: 0 10px;">
-                    <option value="all">All Sections</option>
+                <select id="timelineSectionFilter" class="form-input" style="height: 36px; font-size: 13px; width: 160px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; color: #fff; padding: 0 10px;">
+                    <option value="all">All Divisions</option>
                     <option value="senior">Senior</option>
                     <option value="junior">Junior</option>
                     <option value="subjunior">Sub Junior</option>
-                    <option value="general">General / Other</option>
+                    <option value="general">General / Open</option>
                 </select>
             </div>
-        </div>
 
-        <div style="display: flex; flex-direction: column; gap: 24px;">
-            <?php foreach ($stageTypes as $stage): ?>
-                <?php 
-                $stageId = (int)$stage['id'];
-                $stageProgs = $programsByStage[$stageId] ?? [];
-                $stageBreakMap = $breakMapByStage[$stageId] ?? [];
-                ?>
-                <div class="panel" style="padding: 24px; background: rgba(255,255,255,0.01); border-color: rgba(255,255,255,0.04);">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 12px;">
-                        <div class="dashboard-heading" style="margin: 0; font-size: 16px; display: flex; align-items: center; gap: 8px;">
-                            <i class="fa-solid fa-map-pin" style="color: var(--accent);"></i>
-                            <?= e($stage['name']) ?>
-                            <span style="font-size: 12px; color: var(--muted); font-weight: 500;">(<?= count($stageProgs) ?> Scheduled)</span>
+            <!-- STAGE PANELS -->
+            <div class="stage-panels-container" style="display: flex; flex-direction: column; gap: 24px;">
+                <?php foreach ($stageTypes as $idx => $stage): ?>
+                    <?php 
+                    $stageId = (int)$stage['id'];
+                    $stageProgs = $programsByStage[$stageId] ?? [];
+                    $stageBreakMap = $breakMapByStage[$stageId] ?? [];
+                    $lastProg = !empty($stageProgs) ? end($stageProgs) : null;
+                    $lastEndAt = $lastProg ? $lastProg['end_at'] : '';
+                    ?>
+                    <div class="stage-panel-item panel" data-stage-id="<?= $stageId ?>" data-last-end-at="<?= e($lastEndAt) ?>" style="padding: 24px; background: rgba(255,255,255,0.01); border: 2px dashed rgba(255,255,255,0.06); transition: all 0.2s ease; <?= $idx !== 0 ? 'display: none;' : '' ?>">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 12px;">
+                            <div class="dashboard-heading" style="margin: 0; font-size: 16px; display: flex; align-items: center; gap: 8px;">
+                                <i class="fa-solid fa-map-pin" style="color: var(--accent);"></i>
+                                <?= e($stage['name']) ?>
+                                <span style="font-size: 12px; color: var(--muted); font-weight: 500;">(<?= count($stageProgs) ?> Scheduled)</span>
+                            </div>
+                            <div style="font-size: 11.5px; color: var(--muted); font-style: italic;">
+                                <i class="fa-solid fa-hand-pointer mr-1"></i> Drag unscheduled programs here
+                            </div>
                         </div>
-                    </div>
 
-                    <?php if (empty($stageProgs)): ?>
-                        <div class="empty-state" style="padding: 40px 20px;">
-                            <div class="empty-icon" style="font-size: 32px;"><i class="fa-solid fa-calendar-xmark"></i></div>
-                            <div class="empty-title" style="font-size: 14px;">No Scheduled Programs</div>
-                            <div class="empty-subtitle" style="font-size: 12px;">Use the Unscheduled list to schedule programs.</div>
-                        </div>
-                    <?php else: ?>
-                        <div class="grid gap-4" style="position: relative; padding-left: 10px;">
-                            <?php foreach ($stageProgs as $index => $program): ?>
-                                <?php
-                                $secNames = [];
-                                if (!empty($program['allowed_sections'])) {
-                                    $secIds = array_filter(array_map('intval', explode(',', $program['allowed_sections'])));
-                                    foreach ($secIds as $sid) {
-                                        if (isset($classTypesMap[$sid])) {
-                                            $classTier = admin_class_type_tier_from_name($classTypesMap[$sid]);
-                                            $label = $classTier ? admin_class_type_tier_label($classTier) : $classTypesMap[$sid];
-                                            if ($label && !in_array($label, $secNames, true)) {
-                                                $secNames[] = $label;
+                        <?php if (empty($stageProgs)): ?>
+                            <div class="empty-state stage-drop-zone" style="padding: 40px 20px; border: 2px dashed rgba(255,255,255,0.08); border-radius: 12px; text-align: center;">
+                                <div class="empty-icon" style="font-size: 32px; color: var(--muted);"><i class="fa-solid fa-calendar-xmark"></i></div>
+                                <div class="empty-title" style="font-size: 14px; margin-top: 8px;">No Scheduled Programs for <?= e($stage['name']) ?></div>
+                                <div class="empty-subtitle" style="font-size: 12px; color: var(--muted);">Drag an unscheduled program card from the right sidebar and drop it here to schedule.</div>
+                            </div>
+                        <?php else: ?>
+                            <div class="grid gap-4 stage-drop-zone" style="position: relative; padding-left: 10px;">
+                                <?php foreach ($stageProgs as $index => $program): ?>
+                                    <?php
+                                    $secNames = [];
+                                    if (!empty($program['allowed_sections'])) {
+                                        $secIds = array_filter(array_map('intval', explode(',', $program['allowed_sections'])));
+                                        foreach ($secIds as $sid) {
+                                            if (isset($classTypesMap[$sid])) {
+                                                $classTier = admin_class_type_tier_from_name($classTypesMap[$sid]);
+                                                $label = $classTier ? admin_class_type_tier_label($classTier) : $classTypesMap[$sid];
+                                                if ($label && !in_array($label, $secNames, true)) {
+                                                    $secNames[] = $label;
+                                                }
                                             }
                                         }
                                     }
-                                }
-                                $sectionDisplay = implode(' & ', $secNames);
-                                if ($sectionDisplay === '') {
+                                    $sectionDisplay = implode(' & ', $secNames);
+                                    if ($sectionDisplay === '') {
+                                        $classTier = admin_class_type_tier_from_name($program['class_type_name'] ?? '');
+                                        $sectionDisplay = $classTier ? admin_class_type_tier_label($classTier) : ($program['class_type_name'] ?? '—');
+                                    }
+
                                     $classTier = admin_class_type_tier_from_name($program['class_type_name'] ?? '');
-                                    $sectionDisplay = $classTier ? admin_class_type_tier_label($classTier) : ($program['class_type_name'] ?? '—');
-                                }
-
-                                $classTier = admin_class_type_tier_from_name($program['class_type_name'] ?? '');
-                                $allowedCount = !empty($program['allowed_sections']) ? count(explode(',', $program['allowed_sections'])) : 0;
-                                $itemSection = ($allowedCount > 1 || !$classTier) ? 'general' : $classTier;
-                                ?>
-                                <div class="timeline-item-container timeline-row" data-title="<?= e($program['title']) ?>" data-location="<?= e($program['location'] ?? '') ?>" data-section="<?= e($itemSection) ?>">
-                                    <div class="panel" style="padding: 14px 16px; border-left: 4px solid <?= $classTier ? ($classTier === 'senior' ? '#a78bfa' : ($classTier === 'junior' ? '#38bdf8' : '#34d399')) : '#94a3b8' ?>; background: rgba(255,255,255,0.015); border-color: rgba(255,255,255,0.03);">
-                                        <div style="display: flex; flex-direction: column; gap: 10px;">
-                                            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;">
-                                                <div>
-                                                    <div class="dashboard-heading" style="font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 2px;"><?= e($program['title']) ?></div>
-                                                    <div class="page-subtitle" style="margin-top: 4px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
-                                                        <span class="badge <?= admin_class_type_badge_class($classTier) ?>" style="font-size: 9px; padding: 1px 5px;">
-                                                            <?= e($sectionDisplay) ?>
-                                                        </span>
-                                                        <?php if (!empty($program['location'])): ?>
-                                                            <span style="color: var(--accent); font-size: 11px;"><i class="fa-solid fa-location-dot"></i> <?= e($program['location']) ?></span>
-                                                        <?php endif; ?>
-                                                        <?php if (!empty($program['responsible_teacher_name'])): ?>
-                                                            <span style="color: var(--muted); font-size: 11px;"><i class="fa-solid fa-chalkboard-user"></i> <?= e($program['responsible_teacher_name']) ?></span>
-                                                        <?php endif; ?>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255,255,255,0.04); padding-top: 8px; margin-top: 4px;">
-                                                <span class="badge badge-info" style="font-size: 10.5px; font-weight: 800; padding: 3px 6px; border-radius: 6px;">
-                                                    <i class="fa-regular fa-clock mr-1"></i>
-                                                    <?= e(date('h:i A', strtotime($program['start_at']))) ?> - <?= e(date('h:i A', strtotime($program['end_at']))) ?>
-                                                </span>
-                                                <div class="flex gap-2">
-                                                    <button class="btn btn-secondary btn-sm" type="button" data-edit-schedule-btn='<?= e(json_encode($program, JSON_HEX_APOS | JSON_HEX_QUOT)) ?>' title="Edit Schedule" style="padding: 4px 6px; font-size: 10px;"><i class="fa-solid fa-pen"></i></button>
-                                                    
-                                                    <form method="POST" style="display: inline;" onsubmit="return confirm('Are you sure you want to unschedule this program?');">
-                                                        <?= admin_csrf_field() ?>
-                                                        <input type="hidden" name="action" value="unschedule_program">
-                                                        <input type="hidden" name="stage_type_id" value="<?= $stageId ?>">
-                                                        <input type="hidden" name="program_id" value="<?= (int)$program['id'] ?>">
-                                                        <button class="btn btn-danger btn-sm" type="submit" title="Unschedule" style="padding: 4px 6px; font-size: 10px;"><i class="fa-solid fa-calendar-minus"></i></button>
-                                                    </form>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <?php if (isset($stageProgs[$index + 1])): ?>
-                                    <?php
-                                    $next = $stageProgs[$index + 1];
-                                    $gapStart = new DateTime((string)$program['end_at']);
-                                    $gapEnd = new DateTime((string)$next['start_at']);
-                                    $hasGap = $gapStart < $gapEnd;
-                                    $gapStartSql = $gapStart->format('Y-m-d H:i:s');
-                                    $gapEndSql = $gapEnd->format('Y-m-d H:i:s');
-                                    $break = $stageBreakMap[$gapStartSql . '|' . $gapEndSql] ?? null;
+                                    $allowedCount = !empty($program['allowed_sections']) ? count(explode(',', $program['allowed_sections'])) : 0;
+                                    $itemSection = ($allowedCount > 1 || !$classTier) ? 'general' : $classTier;
                                     ?>
-                                    <?php if ($hasGap && $break): ?>
-                                        <div class="timeline-gap-container timeline-row" style="margin: 8px 0; padding-left: 20px; border-left: 2px dashed rgba(250,204,21,.3); position: relative;">
-                                            <div class="panel" style="border-color: rgba(250,204,21,.2); padding: 8px 10px; background: rgba(250,204,21,.03);">
-                                                <div class="flex-between">
+                                    <div class="timeline-item-container timeline-row" data-title="<?= e($program['title']) ?>" data-location="<?= e($program['location'] ?? '') ?>" data-section="<?= e($itemSection) ?>">
+                                        <div class="panel" style="padding: 14px 16px; border-left: 4px solid <?= $classTier ? ($classTier === 'senior' ? '#a78bfa' : ($classTier === 'junior' ? '#38bdf8' : '#34d399')) : '#94a3b8' ?>; background: rgba(255,255,255,0.015); border-color: rgba(255,255,255,0.03);">
+                                            <div style="display: flex; flex-direction: column; gap: 10px;">
+                                                <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;">
                                                     <div>
-                                                        <div class="dashboard-heading" style="font-size: 12.5px; margin: 0;"><i class="fa-solid fa-mug-hot mr-2" style="color: #facc15;"></i> <?= e($break['name']) ?></div>
-                                                        <div class="page-subtitle" style="font-size: 10.5px;"><?= e($break['description'] ?: 'Break') ?></div>
+                                                        <div class="dashboard-heading" style="font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 2px;"><?= e($program['title']) ?></div>
+                                                        <div class="page-subtitle" style="margin-top: 4px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                                                            <span class="badge <?= admin_class_type_badge_class($classTier) ?>" style="font-size: 9px; padding: 1px 5px;">
+                                                                <?= e($sectionDisplay) ?>
+                                                            </span>
+                                                            <?php if (!empty($program['location'])): ?>
+                                                                <span style="color: var(--accent); font-size: 11px;"><i class="fa-solid fa-location-dot"></i> <?= e($program['location']) ?></span>
+                                                            <?php endif; ?>
+                                                            <?php if (!empty($program['responsible_teacher_name'])): ?>
+                                                                <span style="color: var(--muted); font-size: 11px;"><i class="fa-solid fa-chalkboard-user"></i> <?= e($program['responsible_teacher_name']) ?></span>
+                                                            <?php endif; ?>
+                                                        </div>
                                                     </div>
-                                                    <div class="flex gap-2 flex-wrap">
-                                                        <span class="badge badge-warning" style="font-size: 9.5px; padding: 1.5px 5px;"><?= e(date('h:i A', strtotime($break['start_datetime']))) ?> - <?= e(date('h:i A', strtotime($break['end_datetime']))) ?></span>
-                                                        <form method="POST">
+                                                </div>
+                                                <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255,255,255,0.04); padding-top: 8px; margin-top: 4px;">
+                                                    <span class="badge badge-info" style="font-size: 10.5px; font-weight: 800; padding: 3px 6px; border-radius: 6px;">
+                                                        <i class="fa-regular fa-clock mr-1"></i>
+                                                        <?= e(date('h:i A', strtotime($program['start_at']))) ?> - <?= e(date('h:i A', strtotime($program['end_at']))) ?>
+                                                    </span>
+                                                    <div class="flex gap-2">
+                                                        <button class="btn btn-secondary btn-sm" type="button" data-edit-schedule-btn='<?= e(json_encode($program, JSON_HEX_APOS | JSON_HEX_QUOT)) ?>' title="Edit Schedule" style="padding: 4px 6px; font-size: 10px;"><i class="fa-solid fa-pen"></i></button>
+                                                        
+                                                        <form method="POST" style="display: inline;" onsubmit="return confirm('Are you sure you want to unschedule this program?');">
                                                             <?= admin_csrf_field() ?>
-                                                            <input type="hidden" name="action" value="delete_break">
+                                                            <input type="hidden" name="action" value="unschedule_program">
                                                             <input type="hidden" name="stage_type_id" value="<?= $stageId ?>">
-                                                            <input type="hidden" name="break_id" value="<?= (int)$break['id'] ?>">
-                                                            <button class="btn btn-danger btn-sm" type="submit" style="padding: 3px 5px; font-size: 9.5px;"><i class="fa-solid fa-trash"></i></button>
+                                                            <input type="hidden" name="program_id" value="<?= (int)$program['id'] ?>">
+                                                            <button class="btn btn-danger btn-sm" type="submit" title="Unschedule" style="padding: 4px 6px; font-size: 10px;"><i class="fa-solid fa-calendar-minus"></i></button>
                                                         </form>
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
-                                    <?php elseif ($hasGap): ?>
-                                        <div class="timeline-gap-container timeline-row" style="margin: 8px 0; padding-left: 20px; border-left: 2px dashed rgba(255,255,255,0.1); position: relative;">
-                                            <div class="flex-between panel" style="padding: 6px 10px; background: rgba(255,255,255,0.01); border-color: rgba(255,255,255,0.04);">
-                                                <div>
-                                                    <div class="page-subtitle" style="font-size: 11px; margin: 0; color: var(--muted);"><i class="fa-solid fa-hourglass-half mr-2"></i> Gap: <?= e(date('h:i A', strtotime($gapStartSql))) ?> - <?= e(date('h:i A', strtotime($gapEndSql))) ?></div>
+                                    </div>
+
+                                    <?php if (isset($stageProgs[$index + 1])): ?>
+                                        <?php
+                                        $next = $stageProgs[$index + 1];
+                                        $gapStart = new DateTime((string)$program['end_at']);
+                                        $gapEnd = new DateTime((string)$next['start_at']);
+                                        $hasGap = $gapStart < $gapEnd;
+                                        $gapStartSql = $gapStart->format('Y-m-d H:i:s');
+                                        $gapEndSql = $gapEnd->format('Y-m-d H:i:s');
+                                        $break = $stageBreakMap[$gapStartSql . '|' . $gapEndSql] ?? null;
+                                        ?>
+                                        <?php if ($hasGap && $break): ?>
+                                            <div class="timeline-gap-container timeline-row" style="margin: 8px 0; padding-left: 20px; border-left: 2px dashed rgba(250,204,21,.3); position: relative;">
+                                                <div class="panel" style="border-color: rgba(250,204,21,.2); padding: 8px 10px; background: rgba(250,204,21,.03);">
+                                                    <div class="flex-between">
+                                                        <div>
+                                                            <div class="dashboard-heading" style="font-size: 12.5px; margin: 0;"><i class="fa-solid fa-mug-hot mr-2" style="color: #facc15;"></i> <?= e($break['name']) ?></div>
+                                                            <div class="page-subtitle" style="font-size: 10.5px;"><?= e($break['description'] ?: 'Break') ?></div>
+                                                        </div>
+                                                        <div class="flex gap-2 flex-wrap">
+                                                            <span class="badge badge-warning" style="font-size: 9.5px; padding: 1.5px 5px;"><?= e(date('h:i A', strtotime($break['start_datetime']))) ?> - <?= e(date('h:i A', strtotime($break['end_datetime']))) ?></span>
+                                                            <form method="POST">
+                                                                <?= admin_csrf_field() ?>
+                                                                <input type="hidden" name="action" value="delete_break">
+                                                                <input type="hidden" name="stage_type_id" value="<?= $stageId ?>">
+                                                                <input type="hidden" name="break_id" value="<?= (int)$break['id'] ?>">
+                                                                <button class="btn btn-danger btn-sm" type="submit" style="padding: 3px 5px; font-size: 9.5px;"><i class="fa-solid fa-trash"></i></button>
+                                                            </form>
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                                <button
-                                                    class="btn btn-success btn-sm"
-                                                    type="button"
-                                                    data-open-break
-                                                    data-stage-id="<?= $stageId ?>"
-                                                    data-previous-program="<?= (int)$program['id'] ?>"
-                                                    data-next-program="<?= (int)$next['id'] ?>"
-                                                    data-gap-label="<?= e(date('h:i A', strtotime($gapStartSql)) . ' - ' . date('h:i A', strtotime($gapEndSql))) ?>"
-                                                    style="padding: 3px 6px; font-size: 10px;"
-                                                >
-                                                    <i class="fa-solid fa-plus"></i> Break
-                                                </button>
                                             </div>
-                                        </div>
+                                        <?php elseif ($hasGap): ?>
+                                            <div class="timeline-gap-container timeline-row" style="margin: 8px 0; padding-left: 20px; border-left: 2px dashed rgba(255,255,255,0.1); position: relative;">
+                                                <div class="flex-between panel" style="padding: 6px 10px; background: rgba(255,255,255,0.01); border-color: rgba(255,255,255,0.04);">
+                                                    <div>
+                                                        <div class="page-subtitle" style="font-size: 11px; margin: 0; color: var(--muted);"><i class="fa-solid fa-hourglass-half mr-2"></i> Gap: <?= e(date('h:i A', strtotime($gapStartSql))) ?> - <?= e(date('h:i A', strtotime($gapEndSql))) ?></div>
+                                                    </div>
+                                                    <button
+                                                        class="btn btn-success btn-sm"
+                                                        type="button"
+                                                        data-open-break
+                                                        data-stage-id="<?= $stageId ?>"
+                                                        data-previous-program="<?= (int)$program['id'] ?>"
+                                                        data-next-program="<?= (int)$next['id'] ?>"
+                                                        data-gap-label="<?= e(date('h:i A', strtotime($gapStartSql)) . ' - ' . date('h:i A', strtotime($gapEndSql))) ?>"
+                                                        style="padding: 3px 6px; font-size: 10px;"
+                                                    >
+                                                        <i class="fa-solid fa-plus"></i> Break
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        <?php endif; ?>
                                     <?php endif; ?>
-                                <?php endif; ?>
-                            <?php endforeach; ?>
-                        </div>
-                    <?php endif; ?>
-                </div>
-            <?php endforeach; ?>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                <?php endforeach; ?>
+            </div>
         </div>
+
+        <!-- RIGHT SIDEBAR: DRAGGABLE UNSCHEDULED PROGRAMS PANEL -->
+        <aside class="unscheduled-sidebar-panel panel" style="width: 330px; flex: 0 0 330px; position: sticky; top: 20px; max-height: calc(100vh - 40px); max-height: calc(100dvh - 40px); display: flex; flex-direction: column; padding: 18px; border-color: rgba(255,255,255,0.06); background: #0e1726; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 10px;">
+                <div style="font-size: 14.5px; font-weight: 800; color: #fff; display: flex; align-items: center; gap: 8px;">
+                    <i class="fa-solid fa-clock" style="color: var(--warning);"></i>
+                    <span>Unscheduled Programs</span>
+                </div>
+                <span class="badge badge-neutral" style="font-size: 11px; font-weight: 700; border-radius: 99px;"><?= count($unscheduledPrograms) ?></span>
+            </div>
+
+            <div style="position: relative; display: flex; align-items: center; margin-bottom: 12px;">
+                <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 10px; color: var(--muted); font-size: 12px;"></i>
+                <input type="text" id="sidebarUnscheduledSearch" placeholder="Search unscheduled..." class="form-input" style="padding-left: 30px; height: 34px; font-size: 12px; width: 100%; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; color: #fff;">
+            </div>
+
+            <div style="font-size: 11px; color: var(--muted); margin-bottom: 10px; font-style: italic;">
+                <i class="fa-solid fa-grip-vertical mr-1"></i> Drag card to any stage timeline to schedule
+            </div>
+
+            <div class="unscheduled-sidebar-content" style="display: flex; flex-direction: column; gap: 10px; overflow-y: auto; flex: 1; padding-right: 4px;">
+                <?php foreach ($tiers as $tierKey => $tierLabel): ?>
+                    <?php $tierProgs = $unscheduledGrouped[$tierKey] ?? []; ?>
+                    <div class="accordion-item sidebar-accordion-item" data-tier="<?= $tierKey ?>">
+                        <button class="accordion-header" type="button" style="width: 100%; text-align: left; padding: 10px 12px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; color: #fff; font-weight: 700; font-size: 12.5px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: all 0.2s;">
+                            <span><?= e($tierLabel) ?> <span style="font-size: 11px; color: var(--muted); margin-left: 4px;">(<?= count($tierProgs) ?>)</span></span>
+                            <i class="fa-solid fa-chevron-down accordion-icon" style="font-size: 10px; transition: transform 0.2s;"></i>
+                        </button>
+                        <div class="accordion-content" style="max-height: 0; overflow: hidden; transition: max-height 0.25s ease-out;">
+                            <div style="padding: 8px 2px 0 2px; display: flex; flex-direction: column; gap: 8px;">
+                                <?php if (empty($tierProgs)): ?>
+                                    <div style="font-size: 12px; color: var(--muted); text-align: center; padding: 10px; background: rgba(0,0,0,0.05); border-radius: 6px;">No programs</div>
+                                <?php else: ?>
+                                    <?php foreach ($tierProgs as $prog): ?>
+                                        <?php
+                                        $secNames = [];
+                                        if (!empty($prog['allowed_sections'])) {
+                                            $secIds = array_filter(array_map('intval', explode(',', $prog['allowed_sections'])));
+                                            foreach ($secIds as $sid) {
+                                                if (isset($classTypesMap[$sid])) {
+                                                    $classTier = admin_class_type_tier_from_name($classTypesMap[$sid]);
+                                                    $label = $classTier ? admin_class_type_tier_label($classTier) : $classTypesMap[$sid];
+                                                    if ($label && !in_array($label, $secNames, true)) {
+                                                        $secNames[] = $label;
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        $sectionDisplay = implode(' & ', $secNames);
+                                        if ($sectionDisplay === '') {
+                                            $classTier = admin_class_type_tier_from_name($prog['class_type_name'] ?? '');
+                                            $sectionDisplay = $classTier ? admin_class_type_tier_label($classTier) : ($prog['class_type_name'] ?? '—');
+                                        }
+                                        $classTier = admin_class_type_tier_from_name($prog['class_type_name'] ?? '');
+                                        ?>
+                                        <div class="unscheduled-card panel draggable-program-card" draggable="true" data-title="<?= e($prog['title']) ?>" data-program-json='<?= e(json_encode($prog, JSON_HEX_APOS | JSON_HEX_QUOT)) ?>' style="padding: 10px 12px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; cursor: grab; display: flex; flex-direction: column; gap: 8px; transition: all 0.2s ease;">
+                                            <div style="display: flex; align-items: flex-start; gap: 8px;">
+                                                <i class="fa-solid fa-grip-vertical" style="color: var(--muted); font-size: 13px; margin-top: 2px;"></i>
+                                                <div style="min-width: 0; flex: 1;">
+                                                    <strong style="display: block; font-size: 13px; line-height: 1.3; color: #fff;" title="<?= e($prog['title']) ?>"><?= e($prog['title']) ?></strong>
+                                                    <span class="page-subtitle" style="font-size: 10.5px; margin-top: 4px; display: inline-block;">
+                                                        <span class="badge <?= admin_class_type_badge_class($classTier) ?>" style="font-size: 9px; padding: 1px 5px;">
+                                                            <?= e($sectionDisplay) ?>
+                                                        </span>
+                                                        <?php if (!empty($prog['responsible_teacher_name'])): ?>
+                                                            · <span style="color: var(--muted);"><i class="fa-solid fa-chalkboard-user"></i> <?= e($prog['responsible_teacher_name']) ?></span>
+                                                        <?php endif; ?>
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <button class="btn btn-success btn-sm" type="button" data-schedule-btn='<?= e(json_encode($prog, JSON_HEX_APOS | JSON_HEX_QUOT)) ?>' style="width: 100%; justify-content: center; font-size: 11px; padding: 4px 8px; border-radius: 6px;"><i class="fa-solid fa-calendar-plus mr-1"></i> Schedule</button>
+                                        </div>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        </aside>
     </div>
 </div>
 
@@ -661,7 +770,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                             $sectionDisplay = $classTier ? admin_class_type_tier_label($classTier) : ($prog['class_type_name'] ?? '—');
                                         }
                                         ?>
-                                        <option value="<?= (int)$prog['id'] ?>"><?= e($prog['title']) ?> (<?= e($sectionDisplay) ?>)</option>
+                                        <option value="<?= (int)$prog['id'] ?>" data-location="<?= e($prog['location'] ?? '') ?>"><?= e($prog['title']) ?> (<?= e($sectionDisplay) ?>)</option>
                                     <?php endforeach; ?>
                                 </optgroup>
                             <?php endif; ?>
@@ -694,7 +803,14 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                 </div>
                 <div class="input-group">
                     <label>Duration (Minutes)</label>
-                    <input type="number" name="duration_minutes" id="scheduleDurationMinutes" min="1" placeholder="e.g. 60" class="form-input">
+                    <input type="number" name="duration_minutes" id="scheduleDurationMinutes" min="1" placeholder="e.g. 30" class="form-input" value="30">
+                    <div style="display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap;">
+                        <button type="button" class="btn btn-secondary btn-xs duration-preset-btn" data-mins="15">15m</button>
+                        <button type="button" class="btn btn-secondary btn-xs duration-preset-btn" data-mins="30">30m</button>
+                        <button type="button" class="btn btn-secondary btn-xs duration-preset-btn" data-mins="45">45m</button>
+                        <button type="button" class="btn btn-secondary btn-xs duration-preset-btn" data-mins="60">60m</button>
+                        <button type="button" class="btn btn-secondary btn-xs duration-preset-btn" data-mins="90">90m</button>
+                    </div>
                 </div>
                 <div class="input-group full-width">
                     <label>End Date & Time</label>
@@ -742,35 +858,6 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                         <div class="unscheduled-card panel" data-title="<?= e($prog['title']) ?>" style="padding: 10px 12px; background: rgba(255,255,255,0.01); border-color: rgba(255,255,255,0.04); display: flex; flex-direction: column; gap: 8px;">
                                             <div style="min-width: 0; flex: 1;">
                                                 <strong style="display: block; font-size: 13px; line-height: 1.3;" title="<?= e($prog['title']) ?>"><?= e($prog['title']) ?></strong>
-                                                <span class="page-subtitle" style="font-size: 11px; margin-top: 4px; display: inline-block;">
-                                                    <?php
-                                                    $secNames = [];
-                                                    if (!empty($prog['allowed_sections'])) {
-                                                        $secIds = array_filter(array_map('intval', explode(',', $prog['allowed_sections'])));
-                                                        foreach ($secIds as $sid) {
-                                                            if (isset($classTypesMap[$sid])) {
-                                                                $classTier = admin_class_type_tier_from_name($classTypesMap[$sid]);
-                                                                $label = $classTier ? admin_class_type_tier_label($classTier) : $classTypesMap[$sid];
-                                                                if ($label && !in_array($label, $secNames, true)) {
-                                                                    $secNames[] = $label;
-                                                                }
-                                                            }
-                                                        }
-                                                    }
-                                                    $sectionDisplay = implode(' & ', $secNames);
-                                                    if ($sectionDisplay === '') {
-                                                        $classTier = admin_class_type_tier_from_name($prog['class_type_name'] ?? '');
-                                                        $sectionDisplay = $classTier ? admin_class_type_tier_label($classTier) : ($prog['class_type_name'] ?? '—');
-                                                    }
-                                                    $classTier = admin_class_type_tier_from_name($prog['class_type_name'] ?? '');
-                                                    ?>
-                                                    <span class="badge <?= admin_class_type_badge_class($classTier) ?>" style="font-size: 9.5px; padding: 2px 6px;">
-                                                        <?= e($sectionDisplay) ?>
-                                                    </span>
-                                                    <?php if (!empty($prog['responsible_teacher_name'])): ?>
-                                                        · <span style="color: var(--muted);"><i class="fa-solid fa-chalkboard-user"></i> <?= e($prog['responsible_teacher_name']) ?></span>
-                                                    <?php endif; ?>
-                                                </span>
                                             </div>
                                             <button class="btn btn-success btn-sm" type="button" data-schedule-btn='<?= e(json_encode($prog, JSON_HEX_APOS | JSON_HEX_QUOT)) ?>' style="width: 100%; justify-content: center; font-size: 11.5px; padding: 6px 10px;"><i class="fa-solid fa-calendar-plus mr-1"></i> Schedule</button>
                                         </div>
@@ -832,34 +919,58 @@ require_once __DIR__ . '/../../includes/sidebar.php';
     z-index: 1;
 }
 
-/* Specific connector dot colors for divisions */
-.timeline-item-container[data-section="senior"]::after {
-    border-color: #a78bfa;
-}
-.timeline-item-container[data-section="junior"]::after {
-    border-color: #38bdf8;
-}
-.timeline-item-container[data-section="subjunior"]::after {
-    border-color: #34d399;
-}
-.timeline-item-container[data-section="general"]::after {
-    border-color: #94a3b8;
+.timeline-item-container[data-section="senior"]::after { border-color: #a78bfa; }
+.timeline-item-container[data-section="junior"]::after { border-color: #38bdf8; }
+.timeline-item-container[data-section="subjunior"]::after { border-color: #34d399; }
+.timeline-item-container[data-section="general"]::after { border-color: #94a3b8; }
+
+#scheduleProgramSelect optgroup { background: #0f172a; color: #94a3b8; font-weight: 700; }
+#scheduleProgramSelect option { background: #0f172a; color: #fff; font-weight: 400; }
+
+.draggable-program-card:hover {
+    border-color: rgba(99,102,241,0.5) !important;
+    background: rgba(99,102,241,0.08) !important;
 }
 
-/* Custom styles for select dropdown list options in dark mode */
-#scheduleProgramSelect optgroup {
-    background: #0f172a;
-    color: #94a3b8;
-    font-weight: 700;
-}
-#scheduleProgramSelect option {
-    background: #0f172a;
-    color: #fff;
-    font-weight: 400;
+@media (max-width: 900px) {
+    .schedule-main-container {
+        flex-direction: column !important;
+    }
+    .unscheduled-sidebar-panel {
+        width: 100% !important;
+        flex: auto !important;
+        position: static !important;
+        max-height: none !important;
+    }
 }
 </style>
 
 <script>
+// Stage Tabs Switching
+document.querySelectorAll('.stage-tab-btn').forEach(tabBtn => {
+    tabBtn.addEventListener('click', () => {
+        document.querySelectorAll('.stage-tab-btn').forEach(b => {
+            b.classList.remove('active');
+            b.style.background = 'rgba(255,255,255,0.02)';
+            b.style.color = 'var(--muted)';
+            b.style.borderColor = 'rgba(255,255,255,0.08)';
+        });
+        tabBtn.classList.add('active');
+        tabBtn.style.background = 'linear-gradient(135deg, rgba(99,102,241,0.2), rgba(168,85,247,0.2))';
+        tabBtn.style.color = '#fff';
+        tabBtn.style.borderColor = 'rgba(99,102,241,0.5)';
+
+        const targetStage = tabBtn.dataset.stageTab;
+        document.querySelectorAll('.stage-panel-item').forEach(panel => {
+            if (targetStage === 'all' || panel.dataset.stageId === targetStage) {
+                panel.style.display = '';
+            } else {
+                panel.style.display = 'none';
+            }
+        });
+    });
+});
+
 // Accordion Toggles
 document.querySelectorAll('.accordion-header').forEach(header => {
     header.addEventListener('click', () => {
@@ -870,22 +981,21 @@ document.querySelectorAll('.accordion-header').forEach(header => {
         
         if (isOpen) {
             content.style.maxHeight = content.scrollHeight + 'px';
-            icon.style.transform = 'rotate(180deg)';
+            if (icon) icon.style.transform = 'rotate(180deg)';
         } else {
             content.style.maxHeight = '0';
-            icon.style.transform = 'rotate(0deg)';
+            if (icon) icon.style.transform = 'rotate(0deg)';
         }
     });
 });
 
-// Client-side Unscheduled programs search & auto-open accordions
-const unscheduledSearchInput = document.getElementById('unscheduledSearchInput');
-unscheduledSearchInput?.addEventListener('input', () => {
-    const query = unscheduledSearchInput.value.toLowerCase().trim();
-    
-    document.querySelectorAll('.accordion-item').forEach(item => {
+// Sidebar Unscheduled Search
+const sidebarUnscheduledSearch = document.getElementById('sidebarUnscheduledSearch');
+sidebarUnscheduledSearch?.addEventListener('input', () => {
+    const query = sidebarUnscheduledSearch.value.toLowerCase().trim();
+    document.querySelectorAll('.sidebar-accordion-item').forEach(item => {
         let matchCount = 0;
-        const cards = item.querySelectorAll('.unscheduled-card');
+        const cards = item.querySelectorAll('.draggable-program-card');
         const content = item.querySelector('.accordion-content');
         const icon = item.querySelector('.accordion-icon');
         
@@ -902,7 +1012,7 @@ unscheduledSearchInput?.addEventListener('input', () => {
         if (query !== '' && matchCount > 0) {
             item.classList.add('is-open');
             content.style.maxHeight = content.scrollHeight + 'px';
-            icon.style.transform = 'rotate(180deg)';
+            if (icon) icon.style.transform = 'rotate(180deg)';
             item.style.display = '';
         } else if (query !== '' && matchCount === 0) {
             item.style.display = 'none';
@@ -910,10 +1020,113 @@ unscheduledSearchInput?.addEventListener('input', () => {
             item.style.display = '';
             item.classList.remove('is-open');
             content.style.maxHeight = '0';
-            icon.style.transform = 'rotate(0deg)';
+            if (icon) icon.style.transform = 'rotate(0deg)';
         }
     });
 });
+
+// HTML5 Drag and Drop for Unscheduled Programs
+document.querySelectorAll('.draggable-program-card[draggable="true"]').forEach(card => {
+    card.addEventListener('dragstart', (e) => {
+        e.dataTransfer.setData('text/plain', card.dataset.programJson);
+        card.style.opacity = '0.5';
+    });
+    card.addEventListener('dragend', () => {
+        card.style.opacity = '1';
+    });
+});
+
+document.querySelectorAll('.stage-panel-item').forEach(stagePanel => {
+    stagePanel.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        stagePanel.style.borderColor = 'rgba(99,102,241,0.6)';
+        stagePanel.style.background = 'rgba(99,102,241,0.05)';
+    });
+    stagePanel.addEventListener('dragleave', () => {
+        stagePanel.style.borderColor = 'rgba(255,255,255,0.06)';
+        stagePanel.style.background = 'rgba(255,255,255,0.01)';
+    });
+    stagePanel.addEventListener('drop', (e) => {
+        e.preventDefault();
+        stagePanel.style.borderColor = 'rgba(255,255,255,0.06)';
+        stagePanel.style.background = 'rgba(255,255,255,0.01)';
+        try {
+            const p = JSON.parse(e.dataTransfer.getData('text/plain'));
+            setModalCreateMode();
+            
+            const selectEl = document.getElementById('scheduleProgramSelect');
+            selectEl.value = p.id;
+            if (p.location) {
+                document.getElementById('scheduleLocation').value = p.location;
+            }
+            
+            const stageId = stagePanel.dataset.stageId;
+            if (stageId) {
+                document.getElementById('scheduleStageTypeId').value = stageId;
+            }
+            
+            const lastEndAt = stagePanel.dataset.lastEndAt;
+            if (lastEndAt) {
+                document.getElementById('scheduleStartTime').value = toLocalDatetime(lastEndAt);
+            } else {
+                document.getElementById('scheduleStartTime').value = formatLocalDatetime(new Date());
+            }
+            
+            document.getElementById('scheduleDurationMinutes').value = '30';
+            updateScheduleEndTime();
+            
+            openModal('scheduleModal');
+        } catch(err) {}
+    });
+});
+
+// Duration Presets & End Time Calculation
+document.querySelectorAll('.duration-preset-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.getElementById('scheduleDurationMinutes').value = btn.dataset.mins;
+        updateScheduleEndTime();
+    });
+});
+
+function formatLocalDatetime(date) {
+    const tzoffset = date.getTimezoneOffset() * 60000;
+    const localISOTime = (new Date(date.getTime() - tzoffset)).toISOString().slice(0, 16);
+    return localISOTime;
+}
+
+function toLocalDatetime(dbDate) {
+    if (!dbDate) return '';
+    const date = new Date(dbDate.replace(' ', 'T'));
+    if (isNaN(date.getTime())) return '';
+    return formatLocalDatetime(date);
+}
+
+function updateScheduleEndTime() {
+    const startVal = document.getElementById('scheduleStartTime').value;
+    const duration = Number(document.getElementById('scheduleDurationMinutes').value);
+    if (!startVal || !duration || duration <= 0) return;
+    const startDate = new Date(startVal);
+    if (isNaN(startDate.getTime())) return;
+    startDate.setMinutes(startDate.getMinutes() + duration);
+    document.getElementById('scheduleEndTime').value = formatLocalDatetime(startDate);
+}
+
+function updateScheduleDurationFromEnd() {
+    const startVal = document.getElementById('scheduleStartTime').value;
+    const endVal = document.getElementById('scheduleEndTime').value;
+    if (!startVal || !endVal) return;
+    const startDate = new Date(startVal);
+    const endDate = new Date(endVal);
+    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) return;
+    const diffMins = Math.round((endDate - startDate) / 60000);
+    if (diffMins > 0) {
+        document.getElementById('scheduleDurationMinutes').value = diffMins;
+    }
+}
+
+document.getElementById('scheduleStartTime')?.addEventListener('change', updateScheduleEndTime);
+document.getElementById('scheduleDurationMinutes')?.addEventListener('input', updateScheduleEndTime);
+document.getElementById('scheduleEndTime')?.addEventListener('change', updateScheduleDurationFromEnd);
 
 // Client-side Timeline search and filter
 const timelineSearch = document.getElementById('timelineSearch');
@@ -941,7 +1154,6 @@ function filterTimeline() {
         }
     });
     
-    // Hide all gaps/breaks if any filter is active, otherwise show them
     timelineGaps.forEach(gap => {
         gap.style.display = isFiltering ? 'none' : '';
     });
@@ -964,65 +1176,44 @@ document.querySelectorAll('[data-open-break]').forEach(button => button.addEvent
     openModal('breakModal');
 }));
 
-function formatLocalDatetime(date) {
-    const tzoffset = date.getTimezoneOffset() * 60000;
-    const localISOTime = (new Date(date.getTime() - tzoffset)).toISOString().slice(0, 16);
-    return localISOTime;
-}
-
-function toLocalDatetime(dbDate) {
-    if (!dbDate) return '';
-    const date = new Date(dbDate.replace(' ', 'T'));
-    if (isNaN(date.getTime())) return '';
-    return formatLocalDatetime(date);
-}
-
-function updateScheduleEndTime() {
-    const startVal = document.getElementById('scheduleStartTime').value;
-    const duration = Number(document.getElementById('scheduleDurationMinutes').value);
-    if (!startVal || !duration || duration <= 0) return;
-    const startDate = new Date(startVal);
-    if (isNaN(startDate.getTime())) return;
-    startDate.setMinutes(startDate.getMinutes() + duration);
-    document.getElementById('scheduleEndTime').value = formatLocalDatetime(startDate);
-}
-
-document.getElementById('scheduleStartTime')?.addEventListener('change', updateScheduleEndTime);
-document.getElementById('scheduleDurationMinutes')?.addEventListener('input', updateScheduleEndTime);
+// Auto-fill location when selecting a program in dropdown
+document.getElementById('scheduleProgramSelect')?.addEventListener('change', (e) => {
+    const opt = e.target.options[e.target.selectedIndex];
+    if (opt && opt.dataset && opt.dataset.location !== undefined) {
+        document.getElementById('scheduleLocation').value = opt.dataset.location;
+    }
+});
 
 // Modal Form configurations (Toggles select dropdown vs static display)
 function setModalCreateMode() {
     document.getElementById('scheduleForm').reset();
     document.getElementById('scheduleModalTitle').textContent = 'Schedule Program';
     
-    // Show select dropdown and enable it
     document.getElementById('modalProgramSelectGroup').style.display = '';
     const selectEl = document.getElementById('scheduleProgramSelect');
     selectEl.disabled = false;
     selectEl.required = true;
     selectEl.name = 'program_id';
     
-    // Hide static block and disable hidden input
     document.getElementById('modalProgramStaticGroup').style.display = 'none';
     const hiddenEl = document.getElementById('scheduleProgramId');
     hiddenEl.disabled = true;
     hiddenEl.name = 'program_id_hidden';
     
     document.getElementById('scheduleStageTypeId').value = '<?= $stageTypes ? (int)$stageTypes[0]['id'] : '' ?>';
+    document.getElementById('scheduleLocation').value = '';
 }
 
 function setModalEditMode(p) {
     document.getElementById('scheduleForm').reset();
     document.getElementById('scheduleModalTitle').textContent = 'Edit Schedule';
     
-    // Hide select dropdown and disable it
     document.getElementById('modalProgramSelectGroup').style.display = 'none';
     const selectEl = document.getElementById('scheduleProgramSelect');
     selectEl.disabled = true;
     selectEl.required = false;
     selectEl.name = 'program_id_disabled';
     
-    // Show static block and enable hidden input
     document.getElementById('modalProgramStaticGroup').style.display = '';
     document.getElementById('scheduleProgramTitle').textContent = p.title;
     const hiddenEl = document.getElementById('scheduleProgramId');
@@ -1046,6 +1237,18 @@ function setModalEditMode(p) {
 // 1. Click main button
 document.getElementById('scheduleNewProgramBtn')?.addEventListener('click', () => {
     setModalCreateMode();
+    const selectEl = document.getElementById('scheduleProgramSelect');
+    if (selectEl.options.length > 1) {
+        const firstOpt = selectEl.options[1]; // First actual program option
+        if (firstOpt && firstOpt.dataset && firstOpt.dataset.location) {
+            document.getElementById('scheduleLocation').value = firstOpt.dataset.location;
+        }
+    }
+    if (!document.getElementById('scheduleStartTime').value) {
+        document.getElementById('scheduleStartTime').value = formatLocalDatetime(new Date());
+        document.getElementById('scheduleDurationMinutes').value = 30;
+        updateScheduleEndTime();
+    }
     openModal('scheduleModal');
 });
 
@@ -1057,12 +1260,20 @@ document.getElementById('openUnscheduledModalBtn')?.addEventListener('click', ()
 // 2. Click Schedule card action button
 document.querySelectorAll('[data-schedule-btn]').forEach(btn => btn.addEventListener('click', () => {
     const p = JSON.parse(btn.dataset.scheduleBtn);
-    closeModal('unscheduledProgramsModal'); // Close unscheduled programs list modal
+    closeModal('unscheduledProgramsModal');
     setModalCreateMode();
     
-    // Pre-select the program in the dropdown
     const selectEl = document.getElementById('scheduleProgramSelect');
     selectEl.value = p.id;
+    if (p.location) {
+        document.getElementById('scheduleLocation').value = p.location;
+    }
+    
+    if (!document.getElementById('scheduleStartTime').value) {
+        document.getElementById('scheduleStartTime').value = formatLocalDatetime(new Date());
+        document.getElementById('scheduleDurationMinutes').value = 30;
+        updateScheduleEndTime();
+    }
     
     openModal('scheduleModal');
 }));
