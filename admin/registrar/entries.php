@@ -239,22 +239,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             throw new RuntimeException('Please select a team.');
                         }
 
+                        // Load team name
+                        $stmtTeam = $pdo->prepare("SELECT team_name FROM musabaqa_teams WHERE id = ? LIMIT 1");
+                        $stmtTeam->execute([$teamId]);
+                        $teamRow = $stmtTeam->fetch(PDO::FETCH_ASSOC);
+                        $teamName = $teamRow ? $teamRow['team_name'] : 'Team';
+
                         $entryName = trim((string)($_POST['entry_name'] ?? ''));
                         if ($entryName === '') {
-                            throw new RuntimeException('Entry name is required.');
+                            $entryName = $program['title'] . ' - ' . $teamName;
                         }
 
                         // Check team limit for group program
                         $tCntStmt = $pdo->prepare("SELECT COUNT(*) FROM musabaqa_program_entries WHERE program_id = ? AND team_id = ? AND event_id = ?");
                         $tCntStmt->execute([$programId, $teamId, $activeEventId]);
-                        if ((int)$tCntStmt->fetchColumn() >= $perTeamLimit) {
+                        $currentTeamEntries = (int)$tCntStmt->fetchColumn();
+                        if ($currentTeamEntries >= $perTeamLimit) {
                             throw new RuntimeException("This team has reached its maximum limit of {$perTeamLimit} entries for this program.");
                         }
 
                         $dup = $pdo->prepare('SELECT id FROM musabaqa_program_entries WHERE event_id = ? AND program_id = ? AND team_id = ? AND entry_name = ? LIMIT 1');
                         $dup->execute([$activeEventId, $programId, $teamId, $entryName]);
                         if ($dup->fetchColumn()) {
-                            throw new RuntimeException('This team already has an entry with that name.');
+                            $altName = $entryName . ' (' . ($currentTeamEntries + 1) . ')';
+                            $dupAlt = $pdo->prepare('SELECT id FROM musabaqa_program_entries WHERE event_id = ? AND program_id = ? AND team_id = ? AND entry_name = ? LIMIT 1');
+                            $dupAlt->execute([$activeEventId, $programId, $teamId, $altName]);
+                            if (!$dupAlt->fetchColumn()) {
+                                $entryName = $altName;
+                            } else {
+                                throw new RuntimeException('This team already has an entry named "' . $entryName . '".');
+                            }
                         }
 
                         $teamMemberIds = [];
@@ -652,7 +666,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
 
         <?php
             $sessionIdFilter = (int)($_GET['session_id'] ?? 0);
-            $programGroupBy  = trim((string)($_GET['program_group_by'] ?? 'division'));
+            $programGroupBy  = trim((string)($_GET['program_group_by'] ?? 'session'));
 
             // Filter programs
             $filteredPrograms = $programs;
@@ -822,11 +836,11 @@ require_once __DIR__ . '/../../includes/sidebar.php';
 
                 <div class="form-actions" style="grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 6px;">
                     <div style="display: flex; align-items: center; background: rgba(255,255,255,0.04); padding: 3px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08);">
-                        <a href="<?= app_url('/admin/registrar/entries.php?view=programs&program_group_by=division' . ($sessionIdFilter !== 0 ? '&session_id=' . $sessionIdFilter : '') . ($classFilter !== 'all' ? '&class=' . urlencode($classFilter) : '') . ($typeFilter !== 'all' ? '&type=' . urlencode($typeFilter) : '') . ($search !== '' ? '&search=' . urlencode($search) : '')) ?>" class="btn btn-xs <?= $programGroupBy !== 'session' ? 'btn-primary' : 'btn-secondary' ?>" style="font-size:11.5px; padding: 5px 12px; border-radius: 6px;">
-                            <i class="fa-solid fa-layer-group mr-1"></i> By Class Division
-                        </a>
                         <a href="<?= app_url('/admin/registrar/entries.php?view=programs&program_group_by=session' . ($sessionIdFilter !== 0 ? '&session_id=' . $sessionIdFilter : '') . ($classFilter !== 'all' ? '&class=' . urlencode($classFilter) : '') . ($typeFilter !== 'all' ? '&type=' . urlencode($typeFilter) : '') . ($search !== '' ? '&search=' . urlencode($search) : '')) ?>" class="btn btn-xs <?= $programGroupBy === 'session' ? 'btn-primary' : 'btn-secondary' ?>" style="font-size:11.5px; padding: 5px 12px; border-radius: 6px;">
                             <i class="fa-solid fa-clock mr-1"></i> By Schedule Session
+                        </a>
+                        <a href="<?= app_url('/admin/registrar/entries.php?view=programs&program_group_by=division' . ($sessionIdFilter !== 0 ? '&session_id=' . $sessionIdFilter : '') . ($classFilter !== 'all' ? '&class=' . urlencode($classFilter) : '') . ($typeFilter !== 'all' ? '&type=' . urlencode($typeFilter) : '') . ($search !== '' ? '&search=' . urlencode($search) : '')) ?>" class="btn btn-xs <?= $programGroupBy !== 'session' ? 'btn-primary' : 'btn-secondary' ?>" style="font-size:11.5px; padding: 5px 12px; border-radius: 6px;">
+                            <i class="fa-solid fa-layer-group mr-1"></i> By Class Division
                         </a>
                     </div>
 
@@ -851,8 +865,8 @@ require_once __DIR__ . '/../../includes/sidebar.php';
         ?>
 
         <?php if (!$hasAnyPrograms): ?>
-            <div class="empty-state">
-                <div class="empty-icon"><i class="fa-solid fa-layer-group"></i></div>
+            <div class="empty-state" style="padding: 40px; text-align: center;">
+                <div class="empty-icon"><i class="fa-solid fa-folder-open" style="font-size: 36px; color: var(--muted);"></i></div>
                 <div class="empty-title">No Programs Found</div>
                 <div class="empty-subtitle">No programs match the selected filter criteria.</div>
             </div>
@@ -880,10 +894,10 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                             <thead>
                                 <tr>
                                     <th>Program</th>
-                                    <th>Type</th>
-                                    <th>Stage</th>
-                                    <th>Section</th>
-                                    <th>Limit / Registered</th>
+                                    <th>Type & Stage</th>
+                                    <th>Schedule Session</th>
+                                    <th>Class Division</th>
+                                    <th>Registered / Limit</th>
                                     <th style="text-align: right; width: 220px;">Actions</th>
                                 </tr>
                             </thead>
@@ -923,13 +937,17 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                             <span class="badge <?= strtolower((string)$prog['program_type']) === 'individual' ? 'badge-info' : 'badge-neutral' ?>">
                                                 <?= e(ucfirst($prog['program_type'])) ?>
                                             </span>
+                                            <div class="muted" style="font-size: 11.5px; margin-top: 3px;">
+                                                <?= e($prog['stage_type_name'] ?: '-') ?>
+                                            </div>
                                         </td>
                                         <td>
-                                            <?= e($prog['stage_type_name'] ?: '-') ?>
                                             <?php if (!empty($prog['schedule_section_name'])): ?>
-                                                <div class="muted" style="font-size: 11.5px; margin-top: 2.5px;">
-                                                    <i class="fa-solid fa-clock" style="margin-right: 4px; color: var(--accent);"></i> <?= e($prog['schedule_section_name']) ?>
-                                                </div>
+                                                <span class="badge badge-success" style="font-weight: 700; background: rgba(52, 211, 153, 0.12); color: #34d399; border: 1px solid rgba(52, 211, 153, 0.25);">
+                                                    <i class="fa-solid fa-clock mr-1"></i> <?= e($prog['schedule_section_name']) ?>
+                                                </span>
+                                            <?php else: ?>
+                                                <span class="muted" style="font-size: 12px; font-weight: 500;">Unassigned</span>
                                             <?php endif; ?>
                                         </td>
                                         <td>
@@ -1174,7 +1192,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                     <select name="program_id" class="form-input" style="height: 38px; font-size: 13px; max-width: 260px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; color: #fff;" onchange="this.form.submit()">
                         <?php foreach ($programs as $prog): ?>
                             <option value="<?= (int)$prog['id'] ?>" <?= $selectedProgramId === (int)$prog['id'] ? 'selected' : '' ?>>
-                                <?= e($prog['title']) ?> (<?= (int)$prog['current_entries'] ?> entries)
+                                <?= e($prog['title']) ?><?= !empty($prog['schedule_section_name']) ? ' [' . e($prog['schedule_section_name']) . ']' : '' ?> (<?= (int)$prog['current_entries'] ?> entries)
                             </option>
                         <?php endforeach; ?>
                     </select>
@@ -1282,7 +1300,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                             </div>
                                         <?php else: ?>
                                             <label class="student-card-selection" style="<?= $isTeamFull ? 'opacity: 0.45; cursor: not-allowed;' : '' ?>">
-                                                <input type="checkbox" name="team_member_ids[]" value="<?= $mId ?>" class="member-checkbox" data-team-id="<?= $tId ?>" <?= $isTeamFull ? 'disabled' : '' ?> style="display:none;">
+                                                <input type="checkbox" name="team_member_ids[]" value="<?= $mId ?>" class="member-checkbox" data-team-id="<?= $tId ?>" <?= $isTeamFull ? 'disabled data-server-disabled="true"' : '' ?> style="display:none;">
                                                 <span class="student-avatar-badge">
                                                     <span class="badge-text-chest">#<?= e($m['chest_number'] ?: mb_substr((string)$m['full_name'], 0, 1)) ?></span>
                                                     <i class="fa-solid fa-check badge-icon-check"></i>
@@ -1324,7 +1342,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.06);">
                                     <strong style="font-size: 16px; color: #fff;"><?= e($teamGroup['name']) ?></strong>
                                     <span class="badge" style="background: rgba(255,255,255,0.06); color: #fff;">
-                                        <?= $tAssigned ?> / <?= $perTeamLimit ?> Assigned
+                                        <span class="team-assigned-count" data-team-id="<?= (int)$teamGroup['id'] ?>"><?= $tAssigned ?></span> / <?= $perTeamLimit ?> Assigned
                                     </span>
                                 </div>
 
@@ -1356,7 +1374,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                             </div>
                                         <?php else: ?>
                                             <label class="student-card-selection" style="<?= $isTeamFull ? 'opacity: 0.45; cursor: not-allowed;' : '' ?>">
-                                                <input type="checkbox" name="team_member_ids[]" value="<?= $mId ?>" class="member-checkbox" data-team-id="<?= $tId ?>" <?= $isTeamFull ? 'disabled' : '' ?> style="display:none;">
+                                                <input type="checkbox" name="team_member_ids[]" value="<?= $mId ?>" class="member-checkbox" data-team-id="<?= $tId ?>" <?= $isTeamFull ? 'disabled data-server-disabled="true"' : '' ?> style="display:none;">
                                                 <span class="student-avatar-badge">
                                                     <span class="badge-text-chest">#<?= e($m['chest_number'] ?: mb_substr((string)$m['full_name'], 0, 1)) ?></span>
                                                     <i class="fa-solid fa-check badge-icon-check"></i>
@@ -1394,20 +1412,238 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                 </form>
             <?php endforeach; ?>
 
+        <?php else: ?>
+            <!-- GROUP PROGRAM ENTRY CREATION & ASSIGNMENT WORKSPACE -->
+            <div style="display: flex; flex-direction: column; gap: 24px;">
+                <?php foreach ($teamsGrouped as $teamKey => $teamGroup): ?>
+                    <?php
+                        $teamId = (int)$teamGroup['id'];
+                        $tAssigned = (int)($teamAssignedCounts[$teamId] ?? 0);
+                        $isTeamFull = $tAssigned >= $perTeamLimit;
+                        $defaultGroupEntryName = $activeProgram['title'] . ' - ' . $teamGroup['name'];
+                        if ($tAssigned > 0) {
+                            $defaultGroupEntryName .= ' (' . ($tAssigned + 1) . ')';
+                        }
+
+                        // Existing entries for this team
+                        $teamEntries = array_values(array_filter($currentEntries, static fn($e) => (int)$e['team_id'] === $teamId));
+                    ?>
+
+                    <div class="panel" style="padding: 22px; background: rgba(15,23,42,0.65); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; border-left: 5px solid <?= e($teamGroup['color']) ?>;">
+                        <div class="flex-between mb-4" style="border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 12px; flex-wrap: wrap; gap: 10px;">
+                            <div>
+                                <h3 style="margin: 0; color: #fff; font-size: 17px; font-weight: 800; display: flex; align-items: center; gap: 8px;">
+                                    <span class="team-color-dot" style="background: <?= e($teamGroup['color']) ?>; width: 12px; height: 12px; border-radius: 50%;"></span>
+                                    <?= e($teamGroup['name']) ?>
+                                </h3>
+                                <div class="muted" style="font-size: 12.5px; margin-top: 3px;">
+                                    <?= count($teamGroup['members']) ?> Eligible Members · Auto Name: <strong style="color: #60a5fa;"><?= e($defaultGroupEntryName) ?></strong>
+                                </div>
+                            </div>
+                            <div>
+                                <span class="badge <?= $isTeamFull ? 'badge-warning' : 'badge-success' ?>" style="font-weight: 700; font-size: 12px; padding: 6px 12px;">
+                                    <?= $tAssigned ?> / <?= $perTeamLimit ?> Entries Registered
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Registered Group Entries for this Team -->
+                        <?php if (!empty($teamEntries)): ?>
+                            <div class="mb-4" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; padding: 14px;">
+                                <div style="font-size: 12.5px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px;">
+                                    <i class="fa-solid fa-list-check mr-1" style="color: #34d399;"></i> Registered Entries for <?= e($teamGroup['name']) ?>:
+                                </div>
+                                <div style="display: flex; flex-direction: column; gap: 8px;">
+                                    <?php foreach ($teamEntries as $tEntry): ?>
+                                        <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(15,23,42,0.8); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 10px 14px; flex-wrap: wrap; gap: 8px;">
+                                            <div>
+                                                <strong style="color: #fff; font-size: 14px;"><?= e($tEntry['entry_name']) ?></strong>
+                                                <?php if (!empty($tEntry['member_names'])): ?>
+                                                    <div style="font-size: 12px; color: #94a3b8; margin-top: 2px;">
+                                                        <i class="fa-solid fa-users mr-1"></i> <?= e($tEntry['member_names']) ?>
+                                                    </div>
+                                                <?php endif; ?>
+                                            </div>
+                                            <div class="flex gap-2 align-center">
+                                                <span class="badge badge-neutral"><?= count($tEntry['member_ids']) ?> member(s)</span>
+                                                <button type="submit" form="undoForm_<?= (int)$tEntry['id'] ?>" class="btn btn-xs btn-danger" style="font-weight: 700;">
+                                                    <i class="fa-solid fa-rotate-left mr-1"></i> Undo Entry
+                                                </button>
+                                            </div>
+                                        </div>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
+                        <?php endif; ?>
+
+                        <!-- Create Group Entry Form -->
+                        <?php if (!$isTeamFull): ?>
+                            <form method="POST">
+                                <?= admin_csrf_field() ?>
+                                <input type="hidden" name="action" value="create_entry">
+                                <input type="hidden" name="program_id" value="<?= (int)$activeProgram['id'] ?>">
+                                <input type="hidden" name="team_id" value="<?= $teamId ?>">
+
+                                <div class="grid gap-4 mb-4" style="grid-template-columns: minmax(260px, 1fr) 2fr; align-items: flex-start;">
+                                    <div>
+                                        <label style="font-weight: 700; font-size: 13px; color: #fff; display: block; margin-bottom: 6px;">
+                                            Entry Name <span style="color: #60a5fa; font-weight: 500;">(Program - Team)</span>
+                                        </label>
+                                        <input type="text" name="entry_name" class="form-input" value="<?= e($defaultGroupEntryName) ?>" placeholder="<?= e($defaultGroupEntryName) ?>" required style="height: 42px; font-weight: 600; background: rgba(15,23,42,0.8); border: 1px solid rgba(99,102,241,0.3); border-radius: 8px; color: #fff; width: 100%;">
+                                        <div class="muted" style="font-size: 11.5px; margin-top: 4px;">
+                                            Automatically formatted as <strong>Program Name - Team Name</strong>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label style="font-weight: 700; font-size: 13px; color: #fff; display: block; margin-bottom: 6px;">
+                                            Select Participants for this Group Entry
+                                        </label>
+                                        <div class="grid gap-2" style="grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); max-height: 260px; overflow-y: auto; padding-right: 4px;">
+                                            <?php foreach ($teamGroup['members'] as $m): ?>
+                                                <?php
+                                                    $mId = (int)$m['team_member_id'];
+                                                    $isAssigned = isset($assignedMemberMap[$mId]);
+                                                ?>
+                                                <?php if ($isAssigned): ?>
+                                                    <div style="padding: 8px 12px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; opacity: 0.6; display: flex; align-items: center; justify-content: space-between;">
+                                                        <span style="font-size: 12.5px; color: #cbd5e1; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                                            <?= e($m['full_name']) ?>
+                                                        </span>
+                                                        <span style="font-size: 10.5px; color: #34d399; font-weight: 700;"><i class="fa-solid fa-check"></i> Assigned</span>
+                                                    </div>
+                                                <?php else: ?>
+                                                    <label class="student-card-selection" style="padding: 8px 12px; margin: 0; cursor: pointer;">
+                                                        <input type="checkbox" name="team_member_ids[]" value="<?= $mId ?>" class="member-checkbox" style="display:none;">
+                                                        <span class="student-avatar-badge" style="width: 28px; height: 28px; font-size: 11px;">
+                                                            <span class="badge-text-chest">#<?= e($m['chest_number'] ?: mb_substr((string)$m['full_name'], 0, 1)) ?></span>
+                                                            <i class="fa-solid fa-check badge-icon-check" style="font-size: 10px;"></i>
+                                                        </span>
+                                                        <div style="flex: 1; min-width: 0;">
+                                                            <strong style="color: #fff; font-size: 12.5px; font-weight: 600; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                                                <?= e($m['full_name']) ?>
+                                                            </strong>
+                                                            <div style="font-size: 10.5px; color: var(--muted);">
+                                                                <?= e($m['class_name'] ?: 'General') ?>
+                                                            </div>
+                                                        </div>
+                                                    </label>
+                                                <?php endif; ?>
+                                            <?php endforeach; ?>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div style="display: flex; justify-content: flex-end; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 12px;">
+                                    <button type="submit" class="btn btn-glow-success btn-md">
+                                        <i class="fa-solid fa-plus mr-1"></i> Create Group Entry for <?= e($teamGroup['name']) ?>
+                                    </button>
+                                </div>
+                            </form>
+                        <?php else: ?>
+                            <div style="font-size: 13px; color: #f87171; font-weight: 600; padding: 10px 14px; background: rgba(239, 68, 68, 0.1); border-radius: 8px; border: 1px solid rgba(239, 68, 68, 0.2);">
+                                <i class="fa-solid fa-lock mr-1"></i> Maximum entry limit (<?= $perTeamLimit ?>) reached for <?= e($teamGroup['name']) ?>.
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+
+            <!-- Hidden Undo Forms for Group Entries -->
+            <?php foreach ($currentEntries as $entry): ?>
+                <form method="POST" id="undoForm_<?= (int)$entry['id'] ?>" style="display:none;" onsubmit="return confirm('Undo registration for this group entry?');">
+                    <?= admin_csrf_field() ?>
+                    <input type="hidden" name="action" value="delete_entry">
+                    <input type="hidden" name="entry_id" value="<?= (int)$entry['id'] ?>">
+                    <input type="hidden" name="program_id" value="<?= (int)$activeProgram['id'] ?>">
+                </form>
+            <?php endforeach; ?>
         <?php endif; ?>
     <?php endif; ?>
 </div>
 
 <script>
+window.TEAM_LIMIT_CONFIG = {
+    perTeamLimit: <?= (int)$perTeamLimit ?>,
+    teamAssignedCounts: <?= json_encode(array_map('intval', $teamAssignedCounts ?? [])) ?>
+};
+
 document.addEventListener('DOMContentLoaded', () => {
     const checkboxes = document.querySelectorAll('.member-checkbox');
     const saveBtn = document.getElementById('saveBatchEntriesBtn');
     const countText = document.getElementById('selectedCountText');
 
+    const config = window.TEAM_LIMIT_CONFIG || { perTeamLimit: 10, teamAssignedCounts: {} };
+    const perTeamLimit = config.perTeamLimit;
+    const assignedCounts = config.teamAssignedCounts || {};
+
+    // Mark initial server-disabled checkboxes so JS never re-enables them
+    checkboxes.forEach(cb => {
+        if (cb.disabled) {
+            cb.dataset.serverDisabled = 'true';
+        }
+    });
+
+    function updateTeamSelectionLimits() {
+        // Count checked boxes per team
+        const checkedByTeam = {};
+        const allTeamIds = new Set();
+
+        checkboxes.forEach(cb => {
+            const teamId = cb.getAttribute('data-team-id');
+            if (teamId) {
+                allTeamIds.add(teamId);
+                if (cb.checked) {
+                    checkedByTeam[teamId] = (checkedByTeam[teamId] || 0) + 1;
+                }
+            }
+        });
+
+        // Enforce limit per team
+        allTeamIds.forEach(teamId => {
+            const alreadySaved = parseInt(assignedCounts[teamId] || 0, 10);
+            const selectedNow = checkedByTeam[teamId] || 0;
+            const availableSlots = Math.max(0, perTeamLimit - alreadySaved);
+            const teamLimitReached = selectedNow >= availableSlots;
+
+            // Update team header badge if present
+            const badgeCountEl = document.querySelector(`.team-assigned-count[data-team-id="${teamId}"]`);
+            if (badgeCountEl) {
+                badgeCountEl.textContent = (alreadySaved + selectedNow);
+            }
+
+            const teamCbs = document.querySelectorAll(`.member-checkbox[data-team-id="${teamId}"]`);
+            teamCbs.forEach(cb => {
+                if (cb.dataset.serverDisabled === 'true') {
+                    return;
+                }
+
+                const card = cb.closest('.student-card-selection');
+                if (!cb.checked) {
+                    if (teamLimitReached) {
+                        cb.disabled = true;
+                        if (card) {
+                            card.style.opacity = '0.45';
+                            card.style.cursor = 'not-allowed';
+                        }
+                    } else {
+                        cb.disabled = false;
+                        if (card) {
+                            card.style.opacity = '1';
+                            card.style.cursor = 'pointer';
+                        }
+                    }
+                }
+            });
+        });
+    }
+
     function updateCount() {
         const checked = document.querySelectorAll('.member-checkbox:checked');
         if (countText) countText.textContent = checked.length;
         if (saveBtn) saveBtn.disabled = checked.length === 0;
+
+        updateTeamSelectionLimits();
     }
 
     checkboxes.forEach(cb => {
@@ -1420,6 +1656,9 @@ document.addEventListener('DOMContentLoaded', () => {
             updateCount();
         });
     });
+
+    // Run initial state update
+    updateCount();
 });
 </script>
 
