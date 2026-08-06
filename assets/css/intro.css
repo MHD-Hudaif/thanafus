@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@600;700;800;900&family=Amiri:wght@700&family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
 
 :root {
     --bg-dark: #fcfaf6; /* Luxury Cream Background */
@@ -74,38 +74,46 @@ header {
     position: fixed;
     top: 0;
     left: 0;
-    z-index: 100;
-    background: rgba(252, 250, 246, 0.8); /* Cream frosted glass */
-    backdrop-filter: blur(12px);
+    z-index: 1000;
+    background: rgba(252, 250, 246, 0.92);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
     border-bottom: 1px solid var(--card-border);
 }
 
 .nav-container {
-    max-width: 1200px;
+    max-width: 1240px;
     margin: 0 auto;
-    padding: 1.25rem 2rem;
+    padding: 0.85rem 1.5rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 1rem;
 }
 
 .logo-link {
+    display: flex;
+    align-items: center;
     text-decoration: none;
+    flex-shrink: 0;
 }
 
 .nav-menu {
     display: flex;
     align-items: center;
-    gap: 2.5rem;
+    gap: 1.75rem;
     list-style: none;
+    margin: 0;
+    padding: 0;
 }
 
 .nav-link {
     color: var(--text-secondary);
     text-decoration: none;
-    font-weight: 550;
-    font-size: 0.95rem;
-    transition: var(--transition);
+    font-weight: 600;
+    font-size: 0.9rem;
+    white-space: nowrap;
+    transition: color 0.15s ease;
 }
 
 .nav-link:hover, .nav-link.active {
@@ -113,30 +121,50 @@ header {
 }
 
 .btn-login {
-    background: rgba(27, 67, 50, 0.05);
-    border: 1px solid rgba(27, 67, 50, 0.1);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(27, 67, 50, 0.08);
+    border: 1px solid rgba(27, 67, 50, 0.15);
     color: var(--brand-blue);
-    padding: 0.6rem 1.5rem;
+    padding: 0.55rem 1.35rem;
     border-radius: 50px;
     text-decoration: none;
-    font-weight: 600;
-    font-size: 0.9rem;
-    transition: var(--transition);
+    font-weight: 700;
+    font-size: 0.85rem;
+    white-space: nowrap;
+    transition: all 0.2s ease;
 }
 
 .btn-login:hover {
     background: var(--brand-blue);
     color: #ffffff;
-    box-shadow: 0 8px 20px rgba(27, 67, 50, 0.15);
-    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(27, 67, 50, 0.2);
+    transform: translateY(-1px);
 }
 
 .mobile-login-item {
-    display: none;
+    display: none !important;
 }
 
 .menu-toggle-btn {
     display: none;
+}
+
+@media (min-width: 992px) {
+    .desktop-login-btn {
+        display: inline-flex !important;
+    }
+}
+
+@media (max-width: 991px) {
+    .mobile-login-item {
+        display: block !important;
+        margin-top: 0.5rem;
+    }
+    .desktop-login-btn {
+        display: none !important;
+    }
 }
 
 /* Hero Section */
@@ -1192,7 +1220,8 @@ footer {
     color: var(--brand-gold);
     cursor: pointer;
     border-bottom: 1.5px dotted var(--brand-gold);
-    transition: color 0.2s ease;
+    transition: color 0.2s ease, border-color 0.2s ease;
+    vertical-align: baseline;
 }
 
 .term-toggle:hover {
@@ -1202,13 +1231,18 @@ footer {
 
 .term-toggle .ara {
     display: none;
-    font-family: 'Amiri', 'Traditional Arabic', serif;
-    font-size: 1em;
-    font-weight: 700;
+    font-family: 'Cairo', 'Amiri', 'Traditional Arabic', sans-serif;
+    font-size: 1.08em;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: 0;
+    vertical-align: baseline;
+    direction: rtl;
 }
 
 .term-toggle .eng {
     display: inline-block;
+    vertical-align: baseline;
 }
 
 .term-toggle:hover .eng {
@@ -1217,11 +1251,11 @@ footer {
 
 .term-toggle:hover .ara {
     display: inline-block;
-    animation: termFadeIn 0.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    animation: termFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 @keyframes termFadeIn {
-    from { opacity: 0; transform: scale(0.95); }
+    from { opacity: 0; transform: scale(0.96); }
     to { opacity: 1; transform: scale(1); }
 }
 

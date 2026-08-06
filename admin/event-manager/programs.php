@@ -660,6 +660,58 @@ require_once __DIR__ . '/../../includes/sidebar.php';
     <?php endif; ?>
 </div>
 
+<style>
+/* The create/edit form is intentionally long. Keep it inside the viewport and
+   scroll the form itself instead of allowing the dialog to extend off-screen. */
+#programModal {
+    padding: 16px !important;
+    overflow: hidden !important;
+}
+
+#programModal > .modal-box {
+    width: min(920px, 100%) !important;
+    height: min(850px, calc(100vh - 32px));
+    height: min(850px, calc(100dvh - 32px));
+    max-height: calc(100vh - 32px) !important;
+    max-height: calc(100dvh - 32px) !important;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden !important;
+}
+
+#programModal > .modal-box > .modal-header {
+    flex: 0 0 auto;
+}
+
+#programModal #programForm {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-right: 6px;
+}
+
+#programModal #programForm .form-actions {
+    position: sticky;
+    bottom: 0;
+    margin-bottom: 0;
+    padding-top: 16px;
+    background: var(--surface, #0f172a);
+}
+
+@media (max-width: 640px) {
+    #programModal {
+        padding: 10px !important;
+    }
+
+    #programModal > .modal-box {
+        height: calc(100dvh - 20px);
+        max-height: calc(100dvh - 20px) !important;
+        padding: 16px;
+    }
+}
+</style>
+
 <div class="modal-overlay" id="programModal">
     <div class="modal-box modal-lg">
         <div class="modal-header">

@@ -20,6 +20,7 @@
     let pageScriptController = null;
     let pageScriptScopeSequence = 0;
     let cursorGlowsInitialized = false;
+    let modalStateObserver = null;
 
     function escapeHtml(value) {
         return String(value ?? '')
@@ -287,6 +288,25 @@
                 }
             });
         });
+    }
+
+    function syncModalScrollLock() {
+        const hasOpenModal = Boolean(document.querySelector('.modal-overlay.active, .chat-modal-overlay.active'));
+        document.documentElement.classList.toggle('modal-scroll-locked', hasOpenModal);
+        document.body.classList.toggle('modal-open', hasOpenModal);
+    }
+
+    function initModalScrollLock() {
+        if (modalStateObserver) return;
+
+        modalStateObserver = new MutationObserver(syncModalScrollLock);
+        modalStateObserver.observe(document.body, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ['class']
+        });
+        syncModalScrollLock();
     }
 
     /* =====================================================
@@ -886,6 +906,7 @@
         initCursorGlows();
         initSidebarToggle();
         initModals();
+        initModalScrollLock();
         initAlerts();
         initRouter();
         initAjaxPaginationControls();
@@ -1182,6 +1203,7 @@
         const modal = document.getElementById(id);
         if (!modal) return;
         modal.classList.add('active');
+        syncModalScrollLock();
         gsap.fromTo(
             modal.querySelector('.modal-box'),
             { y: 50, opacity: 0, scale: 0.95 },
@@ -1192,6 +1214,7 @@
     window.closeModal = function (id) {
         const modal = document.getElementById(id);
         if (modal) modal.classList.remove('active');
+        syncModalScrollLock();
     };
 
 

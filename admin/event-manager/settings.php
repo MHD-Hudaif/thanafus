@@ -22,6 +22,7 @@ function get_musabaqa_settings($pdo) {
         'first_place_points' => 10,
         'second_place_points' => 7,
         'third_place_points' => 5,
+        'tied_rank_mode' => 'shared_full',
         'active_sections' => [],
         'section_limits' => []
     ];
@@ -145,6 +146,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $firstPlacePoints = max(0, min(1000, (int)($_POST['first_place_points'] ?? 10)));
         $secondPlacePoints = max(0, min(1000, (int)($_POST['second_place_points'] ?? 7)));
         $thirdPlacePoints = max(0, min(1000, (int)($_POST['third_place_points'] ?? 5)));
+        $tiedRankMode = in_array($_POST['tied_rank_mode'] ?? 'shared_full', ['shared_full', 'shared_split', 'shared_sequential', 'tie_breaker'], true)
+            ? $_POST['tied_rank_mode']
+            : 'shared_full';
         
         $settings = [
             'default_judges_count' => $defaultJudgesCount,
@@ -153,6 +157,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'first_place_points' => $firstPlacePoints,
             'second_place_points' => $secondPlacePoints,
             'third_place_points' => $thirdPlacePoints,
+            'tied_rank_mode' => $tiedRankMode,
             'active_sections' => $activeSections,
             'section_limits' => $sectionLimits
         ];
@@ -546,6 +551,74 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                         <input type="number" name="third_place_points" id="thirdPlacePoints" value="<?= (int)($settings['third_place_points'] ?? 5) ?>" min="0" max="1000" required>
                         <button type="button" class="stepper-btn btn-step-up" data-target="thirdPlacePoints"><i class="fa-solid fa-plus"></i></button>
                     </div>
+                </div>
+            </div>
+
+            <!-- Tied Ranks & Point Distribution Policy -->
+            <div style="margin-top: 24px; padding-top: 20px; border-top: 1px solid rgba(255, 255, 255, 0.08);">
+                <div style="margin-bottom: 16px;">
+                    <strong style="font-size: 16px; color: #fff; display: flex; align-items: center; gap: 8px;">
+                        <i class="fa-solid fa-code-fork" style="color: #14b8a6;"></i>
+                        Tied Ranks & Point Distribution Policy
+                    </strong>
+                    <span style="font-size: 13px; color: var(--muted); display: block; margin-top: 4px;">Select what happens when two or more participants achieve the exact same total score.</span>
+                </div>
+
+                <?php $currentTiedMode = $settings['tied_rank_mode'] ?? 'shared_full'; ?>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px;">
+
+                    <!-- Mode 1: Shared Rank & Full Points -->
+                    <label class="tied-mode-card <?= $currentTiedMode === 'shared_full' ? 'is-selected' : '' ?>" style="display: flex; flex-direction: column; gap: 10px; padding: 18px; background: rgba(15, 23, 42, 0.6); border: 1px solid <?= $currentTiedMode === 'shared_full' ? 'rgba(20, 184, 166, 0.5)' : 'rgba(255, 255, 255, 0.08)' ?>; border-radius: 14px; cursor: pointer; transition: all 0.2s ease;">
+                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                            <span style="font-size: 14.5px; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 8px;">
+                                <i class="fa-solid fa-handshake" style="color: #34d399;"></i> Shared Rank & Full Points
+                            </span>
+                            <input type="radio" name="tied_rank_mode" value="shared_full" <?= $currentTiedMode === 'shared_full' ? 'checked' : '' ?> style="width: 18px; height: 18px; accent-color: #14b8a6;">
+                        </div>
+                        <p style="font-size: 12px; color: var(--muted); margin: 0; line-height: 1.5;">
+                            Tied participants receive the same rank (e.g. 1st Rank), and both teams receive full rank points (10 pts each). Next participant gets 3rd Rank.
+                        </p>
+                    </label>
+
+                    <!-- Mode 2: Shared Rank & Split Points -->
+                    <label class="tied-mode-card <?= $currentTiedMode === 'shared_split' ? 'is-selected' : '' ?>" style="display: flex; flex-direction: column; gap: 10px; padding: 18px; background: rgba(15, 23, 42, 0.6); border: 1px solid <?= $currentTiedMode === 'shared_split' ? 'rgba(20, 184, 166, 0.5)' : 'rgba(255, 255, 255, 0.08)' ?>; border-radius: 14px; cursor: pointer; transition: all 0.2s ease;">
+                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                            <span style="font-size: 14.5px; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 8px;">
+                                <i class="fa-solid fa-calculator" style="color: #38bdf8;"></i> Shared Rank & Split Points
+                            </span>
+                            <input type="radio" name="tied_rank_mode" value="shared_split" <?= $currentTiedMode === 'shared_split' ? 'checked' : '' ?> style="width: 18px; height: 18px; accent-color: #14b8a6;">
+                        </div>
+                        <p style="font-size: 12px; color: var(--muted); margin: 0; line-height: 1.5;">
+                            Tied participants receive 1st Rank, but 1st (10 pts) + 2nd (7 pts) place points are combined and split equally (8.5 pts each).
+                        </p>
+                    </label>
+
+                    <!-- Mode 3: Shared Sequential Ranks -->
+                    <label class="tied-mode-card <?= $currentTiedMode === 'shared_sequential' ? 'is-selected' : '' ?>" style="display: flex; flex-direction: column; gap: 10px; padding: 18px; background: rgba(15, 23, 42, 0.6); border: 1px solid <?= $currentTiedMode === 'shared_sequential' ? 'rgba(20, 184, 166, 0.5)' : 'rgba(255, 255, 255, 0.08)' ?>; border-radius: 14px; cursor: pointer; transition: all 0.2s ease;">
+                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                            <span style="font-size: 14.5px; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 8px;">
+                                <i class="fa-solid fa-list-ol" style="color: #fbbf24;"></i> Shared Sequential Ranks
+                            </span>
+                            <input type="radio" name="tied_rank_mode" value="shared_sequential" <?= $currentTiedMode === 'shared_sequential' ? 'checked' : '' ?> style="width: 18px; height: 18px; accent-color: #14b8a6;">
+                        </div>
+                        <p style="font-size: 12px; color: var(--muted); margin: 0; line-height: 1.5;">
+                            Tied participants receive 1st Rank (10 pts each), and the next participant receives 2nd Rank (7 pts) without skipping.
+                        </p>
+                    </label>
+
+                    <!-- Mode 4: Break Ties by Highest Judge Mark -->
+                    <label class="tied-mode-card <?= $currentTiedMode === 'tie_breaker' ? 'is-selected' : '' ?>" style="display: flex; flex-direction: column; gap: 10px; padding: 18px; background: rgba(15, 23, 42, 0.6); border: 1px solid <?= $currentTiedMode === 'tie_breaker' ? 'rgba(20, 184, 166, 0.5)' : 'rgba(255, 255, 255, 0.08)' ?>; border-radius: 14px; cursor: pointer; transition: all 0.25s ease;">
+                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                            <span style="font-size: 14.5px; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 8px;">
+                                <i class="fa-solid fa-scale-balanced" style="color: #f472b6;"></i> Strict Judge Tie-Breaker
+                            </span>
+                            <input type="radio" name="tied_rank_mode" value="tie_breaker" <?= $currentTiedMode === 'tie_breaker' ? 'checked' : '' ?> style="width: 18px; height: 18px; accent-color: #14b8a6;">
+                        </div>
+                        <p style="font-size: 12px; color: var(--muted); margin: 0; line-height: 1.5;">
+                            Compares individual judge breakdown scores to break ties and assign distinct 1st, 2nd, and 3rd rank places.
+                        </p>
+                    </label>
+
                 </div>
             </div>
         </div>

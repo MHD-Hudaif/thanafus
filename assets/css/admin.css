@@ -3936,6 +3936,33 @@ body.layout-sidebar-enabled .page-nav-group,
     }
 }
 
+/* Shared modal layout: dialogs stay centered in the viewport and only the dialog may scroll. */
+html.modal-scroll-locked,
+body.modal-open {
+    overflow: hidden !important;
+    overscroll-behavior: none;
+}
+
+.modal-overlay {
+    position: fixed !important;
+    inset: 0 !important;
+    display: none;
+    align-items: center !important;
+    justify-content: center !important;
+    box-sizing: border-box;
+    overflow-y: auto;
+}
+
+.modal-overlay.active {
+    display: flex !important;
+}
+
+.modal-overlay > .modal-box,
+.modal-overlay > .modal {
+    align-self: center !important;
+    max-height: calc(100dvh - 40px);
+}
+
 /* GPU Optimization: Remove heavy backdrop blurs on mobile and low-power displays to prevent lag */
 @media (max-width: 920px) {
     .event-top-nav,

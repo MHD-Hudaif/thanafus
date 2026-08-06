@@ -295,6 +295,14 @@ function admin_recalculate_program_status(PDO $pdo, int $programId): void
 
 function admin_recalculate_program_results(PDO $pdo, int $eventId, int $programId): void
 {
+    $settings = admin_get_settings($pdo);
+    $tiedMode = $settings['tied_rank_mode'] ?? 'shared_full';
+
+    $orderClause = "ms.total_mark DESC, mpe.entry_number ASC, mpe.id ASC";
+    if ($tiedMode === 'tie_breaker') {
+        $orderClause = "ms.total_mark DESC, ms.mark_breakdown DESC, mpe.entry_number ASC, mpe.id ASC";
+    }
+
     $stmt = $pdo->prepare("
         SELECT
             mpe.id,
@@ -311,16 +319,11 @@ function admin_recalculate_program_results(PDO $pdo, int $eventId, int $programI
            AND ms.status = 'approved'
         WHERE mpe.event_id = ?
           AND mpe.program_id = ?
-        ORDER BY ms.total_mark DESC, mpe.entry_number ASC, mpe.id ASC
+        ORDER BY {$orderClause}
     ");
     $stmt->execute([$eventId, $programId]);
     $entries = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    $rank = 0;
-    $previousScore = null;
-    $position = 0;
-
-    $settings = admin_get_settings($pdo);
     $firstPoints = (int)($settings['first_place_points'] ?? 10);
     $secondPoints = (int)($settings['second_place_points'] ?? 7);
     $thirdPoints = (int)($settings['third_place_points'] ?? 5);
@@ -349,24 +352,74 @@ function admin_recalculate_program_results(PDO $pdo, int $eventId, int $programI
         WHERE id = ? AND event_id = ? AND program_id = ?
     ");
 
+    $approvedEntries = [];
     foreach ($entries as $entry) {
         if (($entry['approval_status'] ?? '') !== 'approved' || $entry['total_mark'] === null) {
             $status = empty($entry['total_mark']) ? 'approved' : 'scoring';
             $update->execute([0, null, 0, $status, (int)$entry['id'], $eventId, $programId]);
-            continue;
+        } else {
+            $approvedEntries[] = $entry;
         }
+    }
 
-        $position++;
-        $score = (float)$entry['total_mark'];
-        if ($previousScore === null || $score < $previousScore) {
-            $rank = $position;
-        }
-        $previousScore = $score;
+    if (!$approvedEntries) {
+        admin_recalculate_program_status($pdo, $programId);
+        return;
+    }
 
-        $teamScore = isset($pointConfig[$rank]) ? $pointConfig[$rank] : 0;
+    $scoreGroups = [];
+    foreach ($approvedEntries as $entry) {
+        $scoreKey = (string)(float)$entry['total_mark'];
+        $scoreGroups[$scoreKey][] = $entry;
+    }
+
+    $position = 1;
+    $seqRank = 1;
+
+    foreach ($scoreGroups as $scoreStr => $groupEntries) {
+        $count = count($groupEntries);
+        $score = (float)$scoreStr;
         $finalScore = $onlyTeamMarks ? 0 : $score;
 
-        $update->execute([$finalScore, $rank, $teamScore, 'completed', (int)$entry['id'], $eventId, $programId]);
+        if ($tiedMode === 'shared_split') {
+            $sumPoints = 0;
+            for ($i = 0; $i < $count; $i++) {
+                $pos = $position + $i;
+                $sumPoints += isset($pointConfig[$pos]) ? $pointConfig[$pos] : 0;
+            }
+            $teamScore = round($sumPoints / $count, 2);
+            $rank = $position;
+
+            foreach ($groupEntries as $e) {
+                $update->execute([$finalScore, $rank, $teamScore, 'completed', (int)$e['id'], $eventId, $programId]);
+            }
+            $position += $count;
+        } elseif ($tiedMode === 'shared_sequential') {
+            $rank = $seqRank;
+            $teamScore = isset($pointConfig[$rank]) ? $pointConfig[$rank] : 0;
+
+            foreach ($groupEntries as $e) {
+                $update->execute([$finalScore, $rank, $teamScore, 'completed', (int)$e['id'], $eventId, $programId]);
+            }
+            $position += $count;
+            $seqRank++;
+        } elseif ($tiedMode === 'tie_breaker') {
+            foreach ($groupEntries as $e) {
+                $rank = $position;
+                $teamScore = isset($pointConfig[$rank]) ? $pointConfig[$rank] : 0;
+                $update->execute([$finalScore, $rank, $teamScore, 'completed', (int)$e['id'], $eventId, $programId]);
+                $position++;
+            }
+        } else {
+            // shared_full
+            $rank = $position;
+            $teamScore = isset($pointConfig[$rank]) ? $pointConfig[$rank] : 0;
+
+            foreach ($groupEntries as $e) {
+                $update->execute([$finalScore, $rank, $teamScore, 'completed', (int)$e['id'], $eventId, $programId]);
+            }
+            $position += $count;
+        }
     }
 
     admin_recalculate_program_status($pdo, $programId);
@@ -867,6 +920,7 @@ function admin_get_settings(PDO $pdo): array
         'first_place_points' => 10,
         'second_place_points' => 7,
         'third_place_points' => 5,
+        'tied_rank_mode' => 'shared_full',
         'active_sections' => [],
         'section_limits' => []
     ];

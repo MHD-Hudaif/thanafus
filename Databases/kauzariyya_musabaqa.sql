@@ -732,7 +732,7 @@ ALTER TABLE `musabaqa_member_scores`
 -- Constraints for table `musabaqa_programs`
 --
 ALTER TABLE `musabaqa_programs`
-  ADD CONSTRAINT `fk_program_class_type` FOREIGN KEY (`class_type_id`) REFERENCES `kauzariyya`.`class_types` (`id`),
+  ADD CONSTRAINT `fk_program_class_type` FOREIGN KEY (`class_type_id`) REFERENCES `kauzariyya`.`class_types` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
   ADD CONSTRAINT `fk_program_event` FOREIGN KEY (`event_id`) REFERENCES `musabaqa_events` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `fk_program_stage` FOREIGN KEY (`stage_type_id`) REFERENCES `musabaqa_stage_types` (`id`);
 

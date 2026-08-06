@@ -64,24 +64,6 @@ try {
     <link rel="stylesheet" href="<?= asset_url('css/intro.css') ?>">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <!-- Tailwind CSS Play CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        brandBlue: '#1b3a4b',
-                        brandGreen: '#1b4332',
-                        brandGold: '#ca8a04',
-                        brandCream: '#fcfaf6',
-                        cardBorder: 'rgba(0, 0, 0, 0.05)',
-                    }
-                }
-            }
-        }
-    </script>
 
     <!-- Smooth Scrolling Lenis CDN -->
     <script src="https://unpkg.com/@studio-freight/lenis@1.0.34/dist/lenis.min.js"></script>
@@ -97,22 +79,22 @@ try {
     <!-- Header Navigation -->
     <header>
         <div class="nav-container">
-            <a href="#" class="logo-link" style="display: flex; align-items: center; gap: 10px;">
-                <img src="<?= asset_url('kauzariyya-brand-icon.png') ?>" alt="Kauzariyya" style="height: 38px;">
+            <a href="<?= app_url('/') ?>" class="logo-link">
+                <img src="<?= asset_url('images/kauzariyya-logo.png') ?>" alt="Al-Jamiathul Kauzariyya" style="height: 40px; width: auto; object-fit: contain;">
             </a>
             
             <ul class="nav-menu">
-                <li><a href="home.php" class="nav-link">Live Dashboard</a></li>
+                <li><a href="<?= app_url('/home.php') ?>" class="nav-link"><i class="fa-solid fa-chart-line" style="margin-right: 5px; color: #166534;"></i> Live Dashboard</a></li>
                 <li><a href="#about" class="nav-link">Articles</a></li>
                 <li><a href="#categories" class="nav-link">Categories</a></li>
                 <li><a href="#scoring" class="nav-link">Scoring</a></li>
                 <li><a href="#scholars" class="nav-link">Working Committee</a></li>
                 <li><a href="#stages" class="nav-link">Stages</a></li>
                 <li><a href="#location" class="nav-link">Location</a></li>
-                <li class="mobile-login-item"><a href="admin.php" class="btn-login">Portal Login</a></li>
+                <li class="mobile-login-item"><a href="<?= app_url('/admin/event-manager/programs') ?>" class="btn-login">Portal Login</a></li>
             </ul>
             
-            <a href="admin.php" class="btn-login">Portal Login</a>
+            <a href="<?= app_url('/admin/event-manager/programs') ?>" class="btn-login desktop-login-btn">Portal Login</a>
 
             <!-- Mobile Menu Toggle Button -->
             <button class="menu-toggle-btn" aria-expanded="false" aria-label="Toggle navigation">
@@ -128,7 +110,7 @@ try {
         <div class="hero-content">
             <div class="hero-subtitle">Annual Arts Fest</div>
             <div class="hero-logo-wrap reveal-3d" style="max-width: 320px; width: 100%; margin: 0.5rem 0 1.5rem; display: flex; justify-content: center;">
-                <img src="<?= asset_url('thanafus-logo.png') ?>" alt="Thanafus Logo" style="width: 100%; height: auto;">
+                <img src="<?= asset_url('images/thanafus-logo.png') ?>" alt="Thanafus Logo" style="width: 100%; height: auto;">
             </div>
             <h1 class="hero-title" style="font-size: clamp(2rem, 5vw, 3.6rem); margin-top: 0.25rem;"><?= htmlspecialchars($eventTitle) ?></h1>
             <p class="hero-description" style="min-height: 80px;">
@@ -136,26 +118,23 @@ try {
                 <span id="typewriter-text" style="color: var(--brand-blue); font-weight: 700; display: inline-block;"></span>
             </p>
             
-            <!-- Countdown module (Glassmorphic) -->
-            <div class="countdown-container glass-timer rounded-3xl p-6 shadow-2xl border border-white/40 flex justify-center gap-4 max-w-lg mx-auto mb-8" id="countdown" data-target-date="<?= htmlspecialchars($eventStart) ?>">
-                <div class="countdown-box flex flex-col items-center">
-                    <div class="countdown-value text-3xl md:text-4xl font-extrabold text-brandGreen" id="days-val">00</div>
-                    <div class="countdown-label text-[10px] uppercase tracking-widest text-brandGreen/60 mt-1 font-bold">Days</div>
+            <!-- Countdown module -->
+            <div class="countdown-container glass-timer" id="countdown" data-target-date="<?= htmlspecialchars($eventStart) ?>">
+                <div class="countdown-box">
+                    <div class="countdown-value" id="days-val">00</div>
+                    <div class="countdown-label">Days</div>
                 </div>
-                <div class="h-8 w-px bg-brandGreen/20 self-center"></div>
-                <div class="countdown-box flex flex-col items-center">
-                    <div class="countdown-value text-3xl md:text-4xl font-extrabold text-brandGreen" id="hours-val">00</div>
-                    <div class="countdown-label text-[10px] uppercase tracking-widest text-brandGreen/60 mt-1 font-bold">Hours</div>
+                <div class="countdown-box">
+                    <div class="countdown-value" id="hours-val">00</div>
+                    <div class="countdown-label">Hours</div>
                 </div>
-                <div class="h-8 w-px bg-brandGreen/20 self-center"></div>
-                <div class="countdown-box flex flex-col items-center">
-                    <div class="countdown-value text-3xl md:text-4xl font-extrabold text-brandGreen" id="minutes-val">00</div>
-                    <div class="countdown-label text-[10px] uppercase tracking-widest text-brandGreen/60 mt-1 font-bold">Mins</div>
+                <div class="countdown-box">
+                    <div class="countdown-value" id="minutes-val">00</div>
+                    <div class="countdown-label">Mins</div>
                 </div>
-                <div class="h-8 w-px bg-brandGreen/20 self-center"></div>
-                <div class="countdown-box flex flex-col items-center">
-                    <div class="countdown-value text-3xl md:text-4xl font-extrabold text-brandGreen" id="seconds-val">00</div>
-                    <div class="countdown-label text-[10px] uppercase tracking-widest text-brandGreen/60 mt-1 font-bold">Secs</div>
+                <div class="countdown-box">
+                    <div class="countdown-value" id="seconds-val">00</div>
+                    <div class="countdown-label">Secs</div>
                 </div>
             </div>
 
