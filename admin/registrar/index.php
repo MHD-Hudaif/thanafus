@@ -61,7 +61,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                    SELECT CONCAT(" (", GROUP_CONCAT(COALESCE(NULLIF(s.display_name, ""), s.full_name) SEPARATOR ", "), ")")
                                    FROM musabaqa_entry_members em
                                    JOIN musabaqa_team_members tm ON tm.id = em.team_member_id
-                                   JOIN " . DB_MAIN_NAME . ".students s ON s.id = tm.student_id
+                                   JOIN ' . DB_MAIN_NAME . '.students s ON s.id = tm.student_id
                                    WHERE em.entry_id = e.id
                                ), "")
                            )
@@ -71,7 +71,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                    SELECT GROUP_CONCAT(COALESCE(NULLIF(s.display_name, ""), s.full_name) SEPARATOR ", ")
                                    FROM musabaqa_entry_members em
                                    JOIN musabaqa_team_members tm ON tm.id = em.team_member_id
-                                   JOIN " . DB_MAIN_NAME . ".students s ON s.id = tm.student_id
+                                   JOIN ' . DB_MAIN_NAME . '.students s ON s.id = tm.student_id
                                    WHERE em.entry_id = e.id
                                ),
                                t.team_name
