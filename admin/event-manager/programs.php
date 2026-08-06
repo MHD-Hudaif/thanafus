@@ -530,49 +530,82 @@ require_once __DIR__ . '/../../includes/sidebar.php';
         </div>
     <?php else: ?>
         <?php
-        // Group the programs by tier
-        $tiers = [
-            'senior' => 'Senior',
-            'junior' => 'Junior',
-            'subjunior' => 'Sub Junior',
-            'general' => 'General / Other'
-        ];
-
         $classTypesMap = [];
         foreach ($classTypes as $type) {
             $classTypesMap[(int)$type['id']] = $type['name'];
         }
 
-        $grouped = [
-            'subjunior' => [],
-            'junior' => [],
-            'senior' => [],
-            'general' => []
+        $tierNames = [
+            'subjunior' => 'Sub Junior Division',
+            'junior'    => 'Junior Division',
+            'senior'    => 'Senior Division',
+            'general'   => 'General / Open Division'
         ];
 
+        $panels = [];
+
+        // 1. Grouped Programs (Single Panel)
+        $panels['group'] = [
+            'title' => 'Group Programs',
+            'icon'  => 'fa-people-group',
+            'color' => '#818cf8',
+            'programs' => []
+        ];
+
+        // 2. Off-Stage Programs (Single Panel)
+        $panels['offstage'] = [
+            'title' => 'Off-Stage Programs',
+            'icon'  => 'fa-pen-ruler',
+            'color' => '#f59e0b',
+            'programs' => []
+        ];
+
+        // 3. Individual Normal Stage Programs (Separated by Division)
+        foreach ($tierNames as $tierKey => $tierLabel) {
+            $panels['normal_' . $tierKey] = [
+                'title' => "{$tierLabel} (Normal Stage)",
+                'icon'  => 'fa-layer-group',
+                'color' => '#34d399',
+                'programs' => []
+            ];
+        }
+
         foreach ($programs as $program) {
-            $classTier = admin_class_type_tier_from_name($program['class_type_name'] ?? '');
-            
-            // If the program allows multiple sections, it's considered General/Multi-Section
-            $allowedCount = !empty($program['allowed_sections']) ? count(explode(',', $program['allowed_sections'])) : 0;
-            
-            if ($allowedCount > 1 || !$classTier) {
-                $grouped['general'][] = $program;
-            } else {
-                $grouped[$classTier][] = $program;
+            $isGroup = strtolower((string)$program['program_type']) === 'group';
+            $isOffStage = str_contains(strtolower((string)($program['stage_type_name'] ?? '')), 'off');
+
+            if ($isGroup) {
+                $panels['group']['programs'][] = $program;
+                continue;
             }
+
+            if ($isOffStage) {
+                $panels['offstage']['programs'][] = $program;
+                continue;
+            }
+
+            $classTier = admin_class_type_tier_from_name($program['class_type_name'] ?? '');
+            $allowedCount = !empty($program['allowed_sections']) ? count(explode(',', $program['allowed_sections'])) : 0;
+
+            if ($allowedCount > 1 || !$classTier) {
+                $tierKey = 'general';
+            } else {
+                $tierKey = $classTier;
+            }
+
+            $panels['normal_' . $tierKey]['programs'][] = $program;
         }
         ?>
 
-        <?php foreach ($tiers as $tierKey => $tierLabel): ?>
-            <?php $tierPrograms = $grouped[$tierKey] ?? []; ?>
+        <?php foreach ($panels as $panelKey => $panel): ?>
+            <?php $tierPrograms = $panel['programs']; ?>
             <?php if (!$tierPrograms) continue; ?>
 
             <div class="panel mb-6" style="border: 1px solid rgba(255,255,255,0.04); border-radius: 12px; overflow: hidden; padding: 0;">
                 <div style="background: rgba(255,255,255,0.015); padding: 14px 20px; border-bottom: 1px solid rgba(255,255,255,0.04); display: flex; justify-content: space-between; align-items: center;">
                     <h3 style="font-size: 15px; font-weight: 800; color: #fff; margin: 0; display: flex; align-items: center; gap: 8px;">
-                        <i class="fa-solid fa-layer-group" style="color: #facc15;"></i>
-                        <?= e($tierLabel) ?> Division
+                        <i class="fa-solid <?= $panel['icon'] ?>" style="color: <?= $panel['color'] ?>;"></i>
+                        <?= e($panel['title']) ?>
                     </h3>
                     <span style="font-size: 11.5px; font-weight: 700; padding: 3px 10px; border-radius: 99px; background: rgba(255,255,255,0.04); color: var(--muted); border: 1px solid rgba(255,255,255,0.02);">
                         <?= count($tierPrograms) ?> <?= count($tierPrograms) === 1 ? 'Program' : 'Programs' ?>
