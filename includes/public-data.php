@@ -271,8 +271,8 @@ function working_committee(): array
             $stmt = $pdo->prepare("
                 SELECT tt.id, tt.role, t.id as teacher_id, t.full_name, t.place, t.specialisation, u.profile_photo
                 FROM musabaqa_team_teachers tt
-                JOIN " . DB_PREFIX . "teachers t ON t.id = tt.teacher_id
-                LEFT JOIN " . DB_PREFIX . "users u ON u.id = t.user_id
+                JOIN " . DB_MAIN_NAME . ".teachers t ON t.id = tt.teacher_id
+                LEFT JOIN " . DB_MAIN_NAME . ".users u ON u.id = t.user_id
                 WHERE tt.event_id = ? AND t.status = 'active'
                 ORDER BY tt.id ASC
             ");

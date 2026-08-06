@@ -144,7 +144,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // 8. Recalculate event team totals to undo any team marks contributed by this program
             admin_recalculate_team_totals($pdo, $activeEventId);
 
-            admin_log_activity($pdo, (int)$user['id'], $activeEventId, 'delete_program', 'musabaqa_programs', $programId, 'Deleted program and reset all associated entries, marks, and leaderboard totals.');
+            admin_log_activity($pdo, (int)($_SESSION['user_id'] ?? 0), $activeEventId, 'delete_program', 'musabaqa_programs', $programId, 'Deleted program and reset all associated entries, marks, and leaderboard totals.');
 
             $pdo->commit();
 

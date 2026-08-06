@@ -35,7 +35,7 @@ try {
         throw new Exception('Invalid security token.');
     }
 
-    $teamId = isset($_POST['team_id']) && $_POST['team_id'] !== '' ? (int)$POST['team_id'] : null;
+    $teamId = isset($_POST['team_id']) && $_POST['team_id'] !== '' ? (int)$_POST['team_id'] : null;
 
     if ($action === 'upload_background') {
         if (!isset($_FILES['background']) || $_FILES['background']['error'] !== UPLOAD_ERR_OK) {
