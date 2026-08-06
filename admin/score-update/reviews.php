@@ -5,7 +5,8 @@ require_once __DIR__ . '/../../includes/admin-helpers.php';
 require_login();
 
 $pdo = $GLOBALS['musabaqa_pdo'];
-$activeEventId = (int)($_SESSION['active_event_id'] ?? 0);
+$activeEvent = admin_require_active_event($pdo);
+$activeEventId = (int)$activeEvent['id'];
 
 // POST Actions (Delete, Archive, Approve)
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {

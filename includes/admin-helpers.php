@@ -192,22 +192,26 @@ function admin_require_active_event(PDO $pdo): array
 
     $selectedEventId = (int)($_SESSION['selected_event_id'] ?? $_SESSION['active_event_id'] ?? 0);
 
-    if ($selectedEventId <= 0) {
-        admin_redirect('/admin/dashboard.php');
+    if ($selectedEventId > 0) {
+        $stmt = $pdo->prepare('SELECT * FROM musabaqa_events WHERE id = ? LIMIT 1');
+        $stmt->execute([$selectedEventId]);
+        $event = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($event) {
+            $_SESSION['selected_event_id'] = (int)$event['id'];
+            return $event;
+        }
     }
 
-    $stmt = $pdo->prepare('SELECT * FROM musabaqa_events WHERE id = ? LIMIT 1');
-    $stmt->execute([$selectedEventId]);
-    $event = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    if (!$event) {
-        unset($_SESSION['selected_event_id']);
-        admin_redirect('/admin/dashboard.php');
+    if (function_exists('get_active_musabaqa')) {
+        $event = get_active_musabaqa();
+        if ($event) {
+            $_SESSION['selected_event_id'] = (int)$event['id'];
+            return $event;
+        }
     }
 
-    $_SESSION['selected_event_id'] = (int)$event['id'];
-
-    return $event;
+    unset($_SESSION['selected_event_id']);
+    admin_redirect('/admin/index.php');
 }
 
 function admin_normalize_slug(string $value): string

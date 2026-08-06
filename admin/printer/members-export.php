@@ -111,7 +111,7 @@ if ($activeEvent) {
     $activeEventId = (int)$activeEvent['id'];
     $stmt = $pdo->prepare("
         SELECT t.*,
-               (SELECT COUNT(*) FROM musabaqa_team_members WHERE team_id = t.id AND status = 'active') as member_count
+               (SELECT COUNT(*) FROM musabaqa_team_members WHERE team_id = t.id AND event_id = t.event_id AND status = 'active') as member_count
         FROM musabaqa_teams t
         WHERE t.event_id = ?
         ORDER BY CAST(t.number_prefix AS UNSIGNED) ASC, t.id ASC

@@ -6,7 +6,7 @@ require_once __DIR__ . '/../../includes/event-guard.php';
 require_login();
 $_SESSION['active_workspace'] = 'score-update';
 
-$activeEvent = get_active_musabaqa();
+$activeEvent = admin_require_active_event($GLOBALS['musabaqa_pdo']);
 
 require_once __DIR__ . '/../../includes/header.php';
 require_once __DIR__ . '/../../includes/sidebar.php';

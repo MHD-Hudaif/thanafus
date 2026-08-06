@@ -358,7 +358,7 @@ if ($activeEvent) {
     $activeEventId = (int)$activeEvent['id'];
     $stmt = $pdo->prepare("
         SELECT p.*, ct.name AS class_type_name,
-               (SELECT COUNT(*) FROM musabaqa_program_entries WHERE program_id = p.id) AS entry_count
+               (SELECT COUNT(*) FROM musabaqa_program_entries WHERE program_id = p.id AND event_id = p.event_id) AS entry_count
         FROM musabaqa_programs p
         LEFT JOIN " . DB_MAIN_NAME . ".class_types ct ON ct.id = p.class_type_id
         LEFT JOIN musabaqa_schedule_sections mss ON mss.id = p.section_id

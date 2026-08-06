@@ -17,6 +17,7 @@ $event = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if ($event) {
     $_SESSION['selected_event_id'] = $id;
+    $_SESSION['active_event_id'] = $id;
     unset($_SESSION['active_team_id']);
 }
 

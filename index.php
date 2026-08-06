@@ -89,7 +89,6 @@ try {
                 <li><a href="<?= app_url('/home.php') ?>" class="nav-link"><i class="fa-solid fa-chart-line" style="margin-right: 5px; color: #166534;"></i> Live Dashboard</a></li>
                 <li><a href="#about" class="nav-link">Articles</a></li>
                 <li><a href="#categories" class="nav-link">Categories</a></li>
-                <li><a href="#scoring" class="nav-link">Scoring</a></li>
                 <li><a href="#scholars" class="nav-link">Working Committee</a></li>
                 <li><a href="#stages" class="nav-link">Stages</a></li>
                 <li><a href="#location" class="nav-link">Location</a></li>
@@ -304,59 +303,6 @@ try {
         </div>
     </section>
 
-    <!-- Scoring Matrix Section -->
-    <section class="scoring-section" id="scoring">
-        <div class="section-header reveal-3d">
-            <span class="section-tag">Regulations</span>
-            <h2 class="section-title">Points Matrix & Scoring</h2>
-            <p class="section-desc">Points allocation determines individual achievements and the final team standings. Scoring is split based on individual or group participation.</p>
-        </div>
-
-        <div class="scoring-table-container reveal-3d">
-            <table class="scoring-table">
-                <thead>
-                    <tr>
-                        <th>Competition Level</th>
-                        <th>1st Place</th>
-                        <th>2nd Place</th>
-                        <th>3rd Place</th>
-                        <th>A Grade (Non-Placing)</th>
-                        <th>B Grade</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td><strong>Individual Contests</strong></td>
-                        <td><span class="badge yellow">10 Pts</span></td>
-                        <td><span class="badge green">7 Pts</span></td>
-                        <td><span class="badge blue">5 Pts</span></td>
-                        <td><span class="badge grey">3 Pts</span></td>
-                        <td><span class="badge dim">1 Pt</span></td>
-                    </tr>
-                    <tr>
-                        <td><strong>Group Contests</strong></td>
-                        <td><span class="badge yellow">15 Pts</span></td>
-                        <td><span class="badge green">10 Pts</span></td>
-                        <td><span class="badge blue">7 Pts</span></td>
-                        <td><span class="badge grey">—</span></td>
-                        <td><span class="badge dim">—</span></td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-
-        <div class="scoring-rules reveal-3d">
-            <div class="rule-box">
-                <h4><i class="fa-solid fa-award"></i> Leaderboard Standings</h4>
-                <p>Team scores are automatically aggregated based on grade submissions. In case of a tie for the championship, the team with the higher number of First Place finishes is crowned the winner.</p>
-            </div>
-            <div class="rule-box">
-                <h4><i class="fa-solid fa-crown"></i> Kalathilakam Trophy</h4>
-                <p>The prestigious individual champion trophy is awarded to the student who secures the highest overall score in individual events, encouraging dedicated preparation and excellence.</p>
-            </div>
-        </div>
-    </section>
-
     <!-- Working Committee Section -->
     <section class="scholars" id="scholars">
         <div class="section-header reveal-3d">
@@ -411,6 +357,15 @@ try {
                     <h3 class="stage-title" style="font-size: 1.4rem; font-weight: 700; color: var(--color-primary);"><?= htmlspecialchars($venue['name']) ?></h3>
                     <div class="stage-subtitle"><?= $venue['count'] ?> Program<?= $venue['count'] === 1 ? '' : 's' ?> Scheduled</div>
                     <div class="stage-divider-line"></div>
+                    <?php
+                    $desc = 'Active competition venue.';
+                    if ($venue['name'] === 'Darul Quran') {
+                        $desc = 'Central venue for Quran recitation, memorization, and public speaking programs.';
+                    } elseif ($venue['name'] === 'Kauzariyya Library') {
+                        $desc = 'Focused environment reserved for written contests, calligraphy assessments, and research essays.';
+                    }
+                    ?>
+                    <p class="stage-desc-text" style="font-size: 0.9rem; color: #64748b; margin-bottom: 16px; font-style: italic; line-height: 1.4;"><?= $desc ?></p>
                     
                     <?php if ($venue['next_program']): ?>
                         <?php if ($venue['next_program_status'] === 'scoring'): ?>

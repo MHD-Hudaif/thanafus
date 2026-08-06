@@ -6,7 +6,25 @@ require_once __DIR__ . '/../config/database.php';
 
 function get_active_musabaqa(): ?array {
     $pdo = $GLOBALS['musabaqa_pdo'];
+
+    if (!empty($_SESSION['selected_event_id'])) {
+        $selectedId = (int)$_SESSION['selected_event_id'];
+        $stmt = $pdo->prepare("SELECT * FROM musabaqa_events WHERE id = ? LIMIT 1");
+        $stmt->execute([$selectedId]);
+        $event = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($event) {
+            return $event;
+        }
+    }
+
     $stmt = $pdo->prepare("SELECT * FROM musabaqa_events WHERE status = 'active' ORDER BY id DESC LIMIT 1");
+    $stmt->execute();
+    $event = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($event) {
+        return $event;
+    }
+
+    $stmt = $pdo->prepare("SELECT * FROM musabaqa_events ORDER BY id DESC LIMIT 1");
     $stmt->execute();
     $event = $stmt->fetch(PDO::FETCH_ASSOC);
     return $event ?: null;

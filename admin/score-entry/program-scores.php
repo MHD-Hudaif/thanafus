@@ -82,7 +82,7 @@ if ($programId <= 0) {
                mss.id AS schedule_section_id, mss.name AS schedule_section_name,
                mss.start_time AS schedule_section_start, mss.end_time AS schedule_section_end,
                mss.section_date AS schedule_section_date, mss.sort_order AS schedule_section_sort,
-               (SELECT COUNT(*) FROM musabaqa_program_entries WHERE program_id = p.id) AS entry_count
+               (SELECT COUNT(*) FROM musabaqa_program_entries WHERE program_id = p.id AND event_id = p.event_id) AS entry_count
         FROM musabaqa_programs p
         LEFT JOIN " . DB_MAIN_NAME . ".class_types ct ON ct.id = p.class_type_id
         LEFT JOIN musabaqa_schedule_sections mss ON mss.id = p.section_id

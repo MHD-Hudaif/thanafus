@@ -273,7 +273,7 @@ function working_committee(): array
                 FROM musabaqa_team_teachers tt
                 JOIN " . DB_MAIN_NAME . ".teachers t ON t.id = tt.teacher_id
                 LEFT JOIN " . DB_MAIN_NAME . ".users u ON u.id = t.user_id
-                WHERE tt.event_id = ? AND t.status = 'active'
+                WHERE tt.event_id = ? AND tt.team_id = 0 AND t.status = 'active'
                 ORDER BY tt.id ASC
             ");
             $stmt->execute([$eventId]);
@@ -283,12 +283,25 @@ function working_committee(): array
                 $items = [];
                 foreach ($rows as $r) {
                     $roleName = ucwords(str_replace('_', ' ', $r['role'] ?: ($r['specialisation'] ?: 'Working Committee')));
+                    
+                    // Map official photos from daruliftakauzariyya.com
+                    $image = '';
+                    if (!empty($r['profile_photo'])) {
+                        $image = $r['profile_photo'];
+                    } elseif (stripos($r['full_name'], 'Ilyas') !== false) {
+                        $image = 'https://daruliftakauzariyya.com/team-photos/Usthad-Ilyas.png';
+                    } elseif (stripos($r['full_name'], 'Abid') !== false) {
+                        $image = 'https://daruliftakauzariyya.com/team-photos/Abid.png';
+                    } else {
+                        $image = 'https://ui-avatars.com/api/?name=' . urlencode($r['full_name']) . '&background=1b4332&color=fff&size=512';
+                    }
+
                     $items[] = [
                         'id' => (int)$r['id'],
                         'name' => $r['full_name'],
                         'role' => $roleName,
                         'place' => $r['place'] ?: '',
-                        'image' => !empty($r['profile_photo']) ? $r['profile_photo'] : 'https://ui-avatars.com/api/?name=' . urlencode($r['full_name']) . '&background=1b4332&color=fff&size=512',
+                        'image' => $image,
                     ];
                 }
                 return $items;

@@ -200,9 +200,14 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
                     <div class="event-meta-item"><span>End</span><strong><?= e($event['end_date'] ?: '-') ?></strong></div>
                 </div>
                 <div class="event-actions">
-                    <a class="btn btn-success btn-sm" href="<?= app_url('/admin/utilities/set-selected-event.php') ?>?id=<?= (int)$event['id'] ?>">
+                    <a class="btn btn-success btn-sm" href="<?= app_url('/admin/utilities/set-selected-event.php') ?>?id=<?= (int)$event['id'] ?>" title="Open and manage this event in Admin Panel">
                         <i class="fa-solid fa-door-open"></i> Open
                     </a>
+                    <?php if (!$isActive): ?>
+                        <a class="btn btn-secondary btn-sm" href="<?= app_url('/admin/utilities/set-active-event.php') ?>?id=<?= (int)$event['id'] ?>" title="Set as live event for TV & Home pages">
+                            <i class="fa-solid fa-tower-broadcast"></i> Make Live
+                        </a>
+                    <?php endif; ?>
                     <button class="btn btn-secondary btn-sm" data-edit-event='<?= e(json_encode($event, JSON_HEX_APOS | JSON_HEX_QUOT)) ?>'>
                         <i class="fa-solid fa-pen"></i> Edit
                     </button>
@@ -295,9 +300,14 @@ require_once __DIR__ . '/../includes/sidebar.php';
                         <div class="event-meta-item"><span>End</span><strong><?= e($event['end_date'] ?: '-') ?></strong></div>
                     </div>
                     <div class="event-actions">
-                        <a class="btn btn-success btn-sm" href="<?= app_url('/admin/utilities/set-selected-event.php') ?>?id=<?= (int)$event['id'] ?>">
+                        <a class="btn btn-success btn-sm" href="<?= app_url('/admin/utilities/set-selected-event.php') ?>?id=<?= (int)$event['id'] ?>" title="Open and manage this event in Admin Panel">
                             <i class="fa-solid fa-door-open"></i> Open
                         </a>
+                        <?php if (!$isActive): ?>
+                            <a class="btn btn-secondary btn-sm" href="<?= app_url('/admin/utilities/set-active-event.php') ?>?id=<?= (int)$event['id'] ?>" title="Set as live event for TV & Home pages">
+                                <i class="fa-solid fa-tower-broadcast"></i> Make Live
+                            </a>
+                        <?php endif; ?>
                         <button class="btn btn-secondary btn-sm" data-edit-event='<?= e(json_encode($event, JSON_HEX_APOS | JSON_HEX_QUOT)) ?>'>
                             <i class="fa-solid fa-pen"></i> Edit
                         </button>
