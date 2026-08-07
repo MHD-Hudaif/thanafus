@@ -52,11 +52,7 @@ function admin_flash(string $type, string $message): void
 function admin_take_flash(): ?array
 {
     $flash = $_SESSION['admin_flash'] ?? null;
-    if ($flash !== null) {
-        unset($_SESSION['admin_flash']);
-        session_commit();
-        session_start();
-    }
+    unset($_SESSION['admin_flash']);
 
     return is_array($flash) ? $flash : null;
 }
