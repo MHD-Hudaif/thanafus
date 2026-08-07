@@ -9,20 +9,41 @@ $isLocalhost = in_array($_SERVER['HTTP_HOST'] ?? '', ['localhost', '127.0.0.1'],
                || str_ends_with($_SERVER['HTTP_HOST'] ?? '', '.local') 
                || env('APP_ENV') === 'development';
 
+$localPort = 3307;
+$isLocalMysqlRunning = false;
 if ($isLocalhost) {
+    // 150ms timeout is more than enough to test local socket
+    $fp = @fsockopen('127.0.0.1', $localPort, $errno, $errstr, 0.15);
+    if ($fp) {
+        $isLocalMysqlRunning = true;
+        fclose($fp);
+    }
+}
+
+if ($isLocalhost && $isLocalMysqlRunning) {
     // Localhost Development Credentials (using port 3307 to avoid service conflicts)
-    $DB_HOST = '127.0.0.1;port=3307';
+    $DB_HOST = "127.0.0.1;port={$localPort}";
     $DB_USER = 'root';
     $DB_PASS = 'abd527-157';
     $dashboard_db_name = 'kauzariyya';
     $musabaqa_db_name = 'kauzariyya_musabaqa';
 } else {
-    // Production (Bluehost) Credentials from .env
-    $DB_HOST = env('DB_HOST', 'localhost');
-    $DB_USER = env('DB_USERNAME', 'ensplpmy_hudaif');
-    $DB_PASS = env('DB_PASSWORD', 'abd527-157');
-    $dashboard_db_name = env('DB_DATABASE', 'ensplpmy_kauzariyya_dashboard');
-    $musabaqa_db_name = env('MUSABAQA_DB_DATABASE', 'ensplpmy_kauzariyya_musabaqa');
+    // Production (Bluehost) or Localhost with MySQL down (fallback to Bluehost)
+    if ($isLocalhost) {
+        // Fallback connection to remote Bluehost database from local environment
+        $DB_HOST = '162.214.80.164';
+        $DB_USER = 'ensplpmy_hudaif';
+        $DB_PASS = 'abd527-157';
+        $dashboard_db_name = 'ensplpmy_kauzariyya_dashboard';
+        $musabaqa_db_name = 'ensplpmy_kauzariyya_musabaqa';
+    } else {
+        // Actual Bluehost Production environment
+        $DB_HOST = env('DB_HOST', 'localhost');
+        $DB_USER = env('DB_USERNAME', 'ensplpmy_hudaif');
+        $DB_PASS = env('DB_PASSWORD', 'abd527-157');
+        $dashboard_db_name = env('DB_DATABASE', 'ensplpmy_kauzariyya_dashboard');
+        $musabaqa_db_name = env('MUSABAQA_DB_DATABASE', 'ensplpmy_kauzariyya_musabaqa');
+    }
 }
 
 /*
@@ -117,7 +138,7 @@ if (!class_exists('LazyPDO')) {
     }
 }
 
-function create_pdo_connection(string $dsn, string $user, string $pass, string $host = ''): PDO {
+function create_pdo_connection(string $dsn, string $user, string $pass): PDO {
     $options = [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
@@ -125,36 +146,14 @@ function create_pdo_connection(string $dsn, string $user, string $pass, string $
         PDO::MYSQL_ATTR_INIT_COMMAND => "SET SESSION sql_mode='NO_ENGINE_SUBSTITUTION'",
     ];
 
-    try {
-        return new PDO($dsn, $user, $pass, $options);
-    } catch (PDOException $e) {
-        // If local connection fails on localhost/127.0.0.1, try falling back to Bluehost remote DB
-        if (str_contains($host, 'localhost') || str_contains($host, '127.0.0.1')) {
-            $remoteHost = '162.214.80.164';
-            $remoteUser = 'ensplpmy_hudaif';
-            $remotePass = 'abd527-157';
-            
-            // Swap to remote DSN and production database names
-            $remoteDsn = preg_replace('/host=[^;]+/', 'host=' . $remoteHost, $dsn);
-            $remoteDsn = preg_replace('/port=[^;]+;?/', '', $remoteDsn); // strip port to connect to default remote port 3306
-            $remoteDsn = str_replace('dbname=kauzariyya_musabaqa', 'dbname=ensplpmy_kauzariyya_musabaqa', $remoteDsn);
-            $remoteDsn = str_replace('dbname=kauzariyya', 'dbname=ensplpmy_kauzariyya_dashboard', $remoteDsn);
-            
-            try {
-                return new PDO($remoteDsn, $remoteUser, $remotePass, $options);
-            } catch (PDOException $remoteEx) {
-                // If remote fallback fails, let it throw the original local exception
-            }
-        }
-        throw $e;
-    }
+    return new PDO($dsn, $user, $pass, $options);
 }
 
 function get_dashboard_pdo(): PDO {
-    global $dashboard_dsn, $DB_USER, $DB_PASS, $DB_HOST;
+    global $dashboard_dsn, $DB_USER, $DB_PASS;
     static $pdo = null;
     if ($pdo === null) {
-        $pdo = create_pdo_connection($dashboard_dsn, $DB_USER, $DB_PASS, $DB_HOST);
+        $pdo = create_pdo_connection($dashboard_dsn, $DB_USER, $DB_PASS);
     }
     return $pdo;
 }
@@ -178,10 +177,10 @@ $musabaqa_pass = $DB_PASS;
 $musabaqa_dsn = "mysql:host={$musabaqa_host};dbname={$musabaqa_db_name};charset={$DB_CHARSET}";
 
 function get_musabaqa_pdo(): PDO {
-    global $musabaqa_dsn, $musabaqa_user, $musabaqa_pass, $musabaqa_host;
+    global $musabaqa_dsn, $musabaqa_user, $musabaqa_pass;
     static $pdo = null;
     if ($pdo === null) {
-        $pdo = create_pdo_connection($musabaqa_dsn, $musabaqa_user, $musabaqa_pass, $musabaqa_host);
+        $pdo = create_pdo_connection($musabaqa_dsn, $musabaqa_user, $musabaqa_pass);
     }
     return $pdo;
 }
