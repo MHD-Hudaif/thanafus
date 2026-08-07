@@ -2,10 +2,28 @@
 
 require_once __DIR__ . '/env.php';
 
-$DB_HOST = env('DB_HOST', '127.0.0.1');
-$DB_USER = env('DB_USERNAME', 'root');
-$DB_PASS = env('DB_PASSWORD', '');
 $DB_CHARSET = env('DB_CHARSET', 'utf8mb4');
+
+// Auto-detect environment (localhost/Laragon vs. Production Bluehost)
+$isLocalhost = in_array($_SERVER['HTTP_HOST'] ?? '', ['localhost', '127.0.0.1'], true) 
+               || str_ends_with($_SERVER['HTTP_HOST'] ?? '', '.local') 
+               || env('APP_ENV') === 'development';
+
+if ($isLocalhost) {
+    // Localhost Development Credentials (using port 3307 to avoid service conflicts)
+    $DB_HOST = '127.0.0.1;port=3307';
+    $DB_USER = 'root';
+    $DB_PASS = 'abd527-157';
+    $dashboard_db_name = 'kauzariyya';
+    $musabaqa_db_name = 'kauzariyya_musabaqa';
+} else {
+    // Production (Bluehost) Credentials from .env
+    $DB_HOST = env('DB_HOST', 'localhost');
+    $DB_USER = env('DB_USERNAME', 'ensplpmy_hudaif');
+    $DB_PASS = env('DB_PASSWORD', 'abd527-157');
+    $dashboard_db_name = env('DB_DATABASE', 'ensplpmy_kauzariyya_dashboard');
+    $musabaqa_db_name = env('MUSABAQA_DB_DATABASE', 'ensplpmy_kauzariyya_musabaqa');
+}
 
 /*
 |--------------------------------------------------------------------------
@@ -13,17 +31,14 @@ $DB_CHARSET = env('DB_CHARSET', 'utf8mb4');
 |--------------------------------------------------------------------------
 */
 
-$dashboard_db_name = env('DB_DATABASE', 'kauzariyya');
 if (!defined('DB_MAIN_NAME')) {
     define('DB_MAIN_NAME', $dashboard_db_name);
 }
-$musabaqa_db_name = env('MUSABAQA_DB_DATABASE', 'kauzariyya_musabaqa');
 if (!defined('DB_MUSABAQA_NAME')) {
     define('DB_MUSABAQA_NAME', $musabaqa_db_name);
 }
 
-$dashboard_dsn =
-"mysql:host={$DB_HOST};dbname={$dashboard_db_name};charset={$DB_CHARSET}";
+$dashboard_dsn = "mysql:host={$DB_HOST};dbname={$dashboard_db_name};charset={$DB_CHARSET}";
 
 if (!class_exists('LazyPDO')) {
     class LazyPDO extends PDO {
@@ -113,12 +128,21 @@ function create_pdo_connection(string $dsn, string $user, string $pass, string $
     try {
         return new PDO($dsn, $user, $pass, $options);
     } catch (PDOException $e) {
-        if (($host === 'localhost' || $host === '127.0.0.1') && str_contains($user, 'ensplpmy')) {
-            $remoteDsn = str_replace(['host=localhost', 'host=127.0.0.1'], 'host=162.214.80.164', $dsn);
+        // If local connection fails on localhost/127.0.0.1, try falling back to Bluehost remote DB
+        if (str_contains($host, 'localhost') || str_contains($host, '127.0.0.1')) {
+            $remoteHost = '162.214.80.164';
+            $remoteUser = 'ensplpmy_hudaif';
+            $remotePass = 'abd527-157';
+            
+            // Swap to remote DSN and production database names
+            $remoteDsn = preg_replace('/host=[^;]+/', 'host=' . $remoteHost, $dsn);
+            $remoteDsn = str_replace('dbname=kauzariyya_musabaqa', 'dbname=ensplpmy_kauzariyya_musabaqa', $remoteDsn);
+            $remoteDsn = str_replace('dbname=kauzariyya', 'dbname=ensplpmy_kauzariyya_dashboard', $remoteDsn);
+            
             try {
-                return new PDO($remoteDsn, $user, $pass, $options);
+                return new PDO($remoteDsn, $remoteUser, $remotePass, $options);
             } catch (PDOException $remoteEx) {
-                // fall through
+                // If remote fallback fails, let it throw the original local exception
             }
         }
         throw $e;
@@ -146,12 +170,11 @@ $dashboard_pdo = new LazyPDO(function() {
 |--------------------------------------------------------------------------
 */
 
-$musabaqa_host = env('MUSABAQA_DB_HOST', $DB_HOST);
-$musabaqa_user = env('MUSABAQA_DB_USERNAME', $DB_USER);
-$musabaqa_pass = env('MUSABAQA_DB_PASSWORD', $DB_PASS);
+$musabaqa_host = $DB_HOST;
+$musabaqa_user = $DB_USER;
+$musabaqa_pass = $DB_PASS;
 
-$musabaqa_dsn =
-"mysql:host={$musabaqa_host};dbname=" . env('MUSABAQA_DB_DATABASE', 'kauzariyya_musabaqa') . ";charset={$DB_CHARSET}";
+$musabaqa_dsn = "mysql:host={$musabaqa_host};dbname={$musabaqa_db_name};charset={$DB_CHARSET}";
 
 function get_musabaqa_pdo(): PDO {
     global $musabaqa_dsn, $musabaqa_user, $musabaqa_pass, $musabaqa_host;

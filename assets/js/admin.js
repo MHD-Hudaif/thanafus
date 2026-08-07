@@ -1411,6 +1411,11 @@
             }
             initAlertsAndToasts();
         });
+
+        // Clean up alerts and toasts before saving history to prevent stale popups on refresh/back/forward
+        document.addEventListener('htmx:beforeHistorySave', () => {
+            document.querySelectorAll('.alert, .toast-notification, #toastContainer').forEach(el => el.remove());
+        });
     }
 
     document.addEventListener('DOMContentLoaded', () => {

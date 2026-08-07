@@ -52,7 +52,11 @@ function admin_flash(string $type, string $message): void
 function admin_take_flash(): ?array
 {
     $flash = $_SESSION['admin_flash'] ?? null;
-    unset($_SESSION['admin_flash']);
+    if ($flash !== null) {
+        unset($_SESSION['admin_flash']);
+        session_commit();
+        session_start();
+    }
 
     return is_array($flash) ? $flash : null;
 }
@@ -793,7 +797,8 @@ function admin_revoke_program_approval(PDO $pdo, int $eventId, int $programId, i
             UPDATE musabaqa_program_entries
             SET final_score = 0,
                 final_rank = NULL,
-                status = 'approved'
+                team_score = 0,
+                status = 'scoring'
             WHERE event_id = ?
               AND program_id = ?
         ")->execute([$eventId, $programId]);

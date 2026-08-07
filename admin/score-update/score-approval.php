@@ -367,7 +367,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
                                 <button class="btn btn-success btn-sm" type="submit"><i class="fa-solid fa-check"></i> Approve</button>
                             </form>
                         <?php elseif ($program['approval_status'] === 'approved'): ?>
-                            <button class="btn btn-danger btn-sm" type="button" data-reject-id="<?= (int)$program['id'] ?>" data-reject-name="<?= e($program['title']) ?>" data-reject-action="revoke_approved">Reject Approval</button>
+                            <button class="btn btn-warning btn-sm" type="button" data-reject-id="<?= (int)$program['id'] ?>" data-reject-name="<?= e($program['title']) ?>" data-reject-action="revoke_approved"><i class="fa-solid fa-rotate-left"></i> Undo Approval</button>
                         <?php endif; ?>
                     </div>
                 </td>
@@ -811,20 +811,20 @@ document.addEventListener('click', (e) => {
 
         document.getElementById('rejectProgramId').value = btn.dataset.rejectId;
         document.getElementById('rejectApprovalAction').value = isRevoke ? 'revoke_approved' : 'reject';
-        document.getElementById('rejectModalTitle').textContent = isRevoke ? 'Reject Approved Scores' : 'Reject Program';
+        document.getElementById('rejectModalTitle').textContent = isRevoke ? 'Undo Program Approval' : 'Reject Program';
         const msgEl = document.getElementById('rejectModalMessage');
         const nameEl = document.getElementById('rejectProgramName');
         nameEl.textContent = programName;
         msgEl.replaceChildren(
-            document.createTextNode(isRevoke ? 'Reject approval for ' : 'Reject '),
+            document.createTextNode(isRevoke ? 'Undo approval for ' : 'Reject '),
             nameEl,
             document.createTextNode(
                 isRevoke
-                    ? '? This removes finalized marks from score sheets, system scores, member scores, entry ranks, and team totals. Score sheets will become editable again.'
+                    ? '? This removes finalized ranks, team points, and system scores. The entered marks on the score sheets will stay saved but become editable for the score entryer.'
                     : '? Score sheets will become editable again.'
             )
         );
-        document.getElementById('rejectModalSubmit').textContent = isRevoke ? 'Reject Approval' : 'Reject';
+        document.getElementById('rejectModalSubmit').textContent = isRevoke ? 'Undo Approval' : 'Reject';
 
        window.openModal('rejectModal');
     }

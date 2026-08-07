@@ -1186,11 +1186,24 @@
         if (!data) return;
 
         const settings = data.settings || {};
+        const wasAuto = state.mode === 'auto';
+        const wasPlaying = state.is_playing;
 
         // Sync playback state
         if (typeof settings.is_playing === 'boolean') state.is_playing = settings.is_playing;
         if (settings.mode) state.mode = settings.mode;
-        if (settings.theme) state.theme = settings.theme;
+        if (settings.refresh_interval) state.refresh_interval = settings.refresh_interval;
+
+        // Sync theme
+        if (settings.theme) {
+            state.theme = settings.theme;
+            Array.from(document.body.classList).forEach(cls => {
+                if (cls.startsWith('theme-')) {
+                    document.body.classList.remove(cls);
+                }
+            });
+            document.body.classList.add(`theme-${settings.theme}`);
+        }
 
         // Rebuild slides map and ordered rotation from settings
         const slidesMap = settings.slides || {};
@@ -1228,10 +1241,32 @@
         if (data.leaderboard) renderLeaderboard(data.leaderboard);
         if (data.current)     renderCurrent(data.current);
         if (data.schedule)    renderSchedule(data.schedule);
+
+        // Control slideshow flow based on mode settings
+        if (state.mode === 'manual') {
+            stopSlideTimer();
+            if (settings.active_slide && state.activeSlide !== settings.active_slide) {
+                setActiveSlide(settings.active_slide);
+            }
+        } else if (state.mode === 'auto') {
+            if (!wasAuto || (state.is_playing && !wasPlaying)) {
+                startRotation();
+            }
+        }
     }
 
     function startRefreshLoop() {
-        // Disabled automatic settings/data polling refresh loop
+        if (state.timers.refresh) {
+            clearTimeout(state.timers.refresh);
+            state.timers.refresh = null;
+        }
+
+        const interval = state.refresh_interval || (TV_BOOT.initial?.settings?.refresh_interval) || 5000;
+
+        state.timers.refresh = setTimeout(async () => {
+            await syncSettings();
+            startRefreshLoop();
+        }, interval);
     }
 
     function stopSlideTimer() {
@@ -1398,8 +1433,13 @@
             if (document.hidden) {
                 stopSlideTimer();
                 stopScheduleTimer();
+                if (state.timers.refresh) {
+                    clearTimeout(state.timers.refresh);
+                    state.timers.refresh = null;
+                }
             } else {
                 syncSettings().then(() => {
+                    startRefreshLoop();
                     if (state.mode === 'auto' && !state.isCelebrating) {
                         if (state.activeSlide === 'schedule') {
                             startSchedulePlayback();
