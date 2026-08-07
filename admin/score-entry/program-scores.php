@@ -75,6 +75,78 @@ function program_scores_entry_locked(array $program, ?array $sheet): bool
     return in_array((string)($sheet['status'] ?? ''), ['submitted', 'approved'], true);
 }
 
+function program_scores_render_row(array $entry, array $categories, int $judgesCount, array $scoresMap, bool $scoresLocked, bool $disableScores, int $orderIndex): string
+{
+    $entryId = (int)$entry['id'];
+    $hasSheet = !empty($entry['score_sheet_id']);
+    
+    ob_start();
+    ?>
+    <tr data-entry-row="<?= $entryId ?>">
+        <td><strong><?= $orderIndex ?></strong></td>
+        <td><strong><?= e($entry['chest_number'] ?: '-') ?></strong></td>
+        <td><?= e($entry['entry_name'] ?: 'Unnamed Entry') ?></td>
+        <td>
+            <span class="team-color-pill" style="background: <?= e($entry['team_color'] ?? '#64748b') ?>22; color: #fff; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; border: 1px solid <?= e($entry['team_color'] ?? '#64748b') ?>44;">
+                <?= e($entry['team_name']) ?>
+            </span>
+        </td>
+        
+        <?php if ($disableScores): ?>
+            <td class="score-input-cell" style="text-align: center;">
+                <select class="score-grid-rank-select form-control input-sm"
+                        data-entry-id="<?= $entryId ?>"
+                        style="width: 130px; background: rgba(15,23,42,0.8); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 4px 6px; border-radius: 6px; display: inline-block;"
+                        <?= $scoresLocked ? 'disabled' : '' ?>>
+                    <option value="0">None</option>
+                    <option value="1" <?= (int)($entry['final_rank'] ?? 0) === 1 ? 'selected' : '' ?>>1st Place</option>
+                    <option value="2" <?= (int)($entry['final_rank'] ?? 0) === 2 ? 'selected' : '' ?>>2nd Place</option>
+                    <option value="3" <?= (int)($entry['final_rank'] ?? 0) === 3 ? 'selected' : '' ?>>3rd Place</option>
+                </select>
+            </td>
+        <?php else: ?>
+            <?php for ($j = 1; $j <= $judgesCount; $j++): ?>
+                <?php foreach ($categories as $cat): ?>
+                    <?php
+                        $catId = (int)$cat['id'];
+                        $val = isset($scoresMap[$entryId][$j][$catId]) ? (float)$scoresMap[$entryId][$j][$catId] : '';
+                    ?>
+                    <td class="score-input-cell" style="text-align: center;">
+                        <input type="number" 
+                               step="0.01" 
+                               min="0" 
+                               max="<?= (float)$cat['max_marks'] ?>" 
+                               class="score-grid-input form-control input-sm" 
+                               data-entry-id="<?= $entryId ?>" 
+                               data-judge="<?= $j ?>" 
+                               data-category-id="<?= $catId ?>" 
+                               data-max="<?= (float)$cat['max_marks'] ?>"
+                               value="<?= $val !== '' ? number_format($val, 2) : '' ?>" 
+                               style="width: 75px; text-align: center; background: rgba(15,23,42,0.8); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 4px 6px; border-radius: 6px; display: inline-block;"
+                               <?= $scoresLocked ? 'disabled' : '' ?>>
+                    </td>
+                <?php endforeach; ?>
+            <?php endfor; ?>
+        <?php endif; ?>
+        
+        <td class="row-total-score" id="total-score-<?= $entryId ?>" style="font-weight: 700; color: #34d399; font-size: 14px; text-align: center; vertical-align: middle;">
+            <?= $hasSheet ? number_format((float)$entry['final_total'], 2) : '0.00' ?>
+        </td>
+        
+        <td class="row-save-status" id="save-status-<?= $entryId ?>" style="text-align: center; vertical-align: middle;">
+            <?php if ($scoresLocked): ?>
+                <i class="fa-solid fa-lock text-muted" title="Locked"></i>
+            <?php elseif ($hasSheet): ?>
+                <i class="fa-solid fa-circle-check text-success" title="Saved"></i>
+            <?php else: ?>
+                <i class="fa-solid fa-circle-minus text-warning" title="Not Scored"></i>
+            <?php endif; ?>
+        </td>
+    </tr>
+    <?php
+    return ob_get_clean();
+}
+
 if ($programId <= 0) {
     // Render Program Selector dashboard for score sheets / score entry selection
     $stmt = $pdo->prepare("
@@ -785,7 +857,13 @@ if (isset($_GET['action']) && $_GET['action'] === 'score_data') {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $isAjax = isset($_POST['ajax']) || (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest');
     if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
+        if ($isAjax) {
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode(['success' => false, 'message' => 'Invalid security token.']);
+            exit;
+        }
         admin_flash('error', 'Invalid security token.');
         program_scores_redirect($programId);
     }
@@ -956,6 +1034,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             });
 
             admin_flash('success', 'Placement rank saved.');
+            if ($isAjax) {
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode(['success' => true, 'message' => 'Placement rank saved.', 'final_total' => number_format($finalTotal, 2)]);
+                exit;
+            }
             program_scores_redirect($programId);
             exit;
         }
@@ -1053,6 +1136,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             admin_log_activity($pdo, $currentUserId, $activeEventId, $logType, 'musabaqa_score_sheets', $scoreSheetId, $logText);
         });
 
+        if ($isAjax) {
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode(['success' => true, 'message' => 'Score sheet saved.', 'final_total' => number_format((float)$finalTotal, 2)]);
+            exit;
+        }
+
         $saveAndNext = !empty($_POST['save_and_next']);
 
         if ($saveAndNext) {
@@ -1084,6 +1173,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             admin_flash('success', 'Score sheet saved.');
         }
     } catch (Throwable $e) {
+        if ($isAjax) {
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode(['success' => false, 'message' => $e->getMessage() ?: 'Unable to save score sheet.']);
+            exit;
+        }
         admin_flash('error', $e->getMessage() ?: 'Unable to save score sheet.');
     }
 
@@ -1136,6 +1230,20 @@ foreach ($rawEntries as $entry) {
 
 $totalEntries = count($entries);
 
+$scoresMap = [];
+if ($programId > 0) {
+    $stmtCS = $pdo->prepare("
+        SELECT ss.entry_id, cs.judge_no, cs.category_id, cs.score
+        FROM musabaqa_category_scores cs
+        JOIN musabaqa_score_sheets ss ON ss.id = cs.score_sheet_id
+        WHERE ss.program_id = ?
+    ");
+    $stmtCS->execute([$programId]);
+    foreach ($stmtCS->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $scoresMap[(int)$row['entry_id']][(int)$row['judge_no']][(int)$row['category_id']] = (float)$row['score'];
+    }
+}
+
 if (isset($_GET['limit'])) {
     $perPage = max(5, min(5000, (int)$_GET['limit']));
     $_SESSION['program_scores_limit'] = $perPage;
@@ -1151,29 +1259,17 @@ $scoresLocked = in_array((string)$program['approval_status'], ['submitted', 'app
 $categoriesEditable = program_scores_categories_editable($program);
 $canSubmit = $readyForSubmission && !$scoresLocked && $categoriesValid;
 
+$judgesCount = (int)($program['judges_count'] ?? 2);
+
 if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
     ob_start();
     if (!$paginatedEntries) {
-        echo '<tr><td colspan="7" class="empty-state-row" style="text-align: center; padding: 30px; color: var(--muted);"><div class="empty-title">No Entries Found</div></td></tr>';
+        $colspan = !empty($program['disable_scores']) ? 7 : (6 + count($categories) * $judgesCount);
+        echo '<tr><td colspan="' . $colspan . '" class="empty-state-row" style="text-align: center; padding: 30px; color: var(--muted);"><div class="empty-title">No Entries Found</div></td></tr>';
     } else {
         $orderIndex = $offset + 1;
         foreach ($paginatedEntries as $entry) {
-            $hasSheet = !empty($entry['score_sheet_id']);
-            ?>
-            <tr>
-                <td><strong><?= $orderIndex++ ?></strong></td>
-                <td><strong><?= e($entry['chest_number'] ?: '-') ?></strong></td>
-                <td><?= e($entry['entry_name'] ?: 'Unnamed Entry') ?></td>
-                <td><span class="team-color-pill" style="background: <?= e($entry['team_color'] ?? '#64748b') ?>22;"><?= e($entry['team_name']) ?></span></td>
-                <td><span class="badge <?= program_scores_badge($entry['status']) ?>"><?= e(ucfirst((string)$entry['status'])) ?></span></td>
-                <td><?= $hasSheet ? e(number_format((float)$entry['final_total'], 2)) : '<span class="badge badge-neutral">Missing</span>' ?></td>
-                <td>
-                    <button class="btn btn-secondary btn-sm" type="button" data-score-entry="<?= (int)$entry['id'] ?>" <?= ($categoriesValid || !empty($program['disable_scores'])) ? '' : 'disabled' ?>>
-                        <i class="fa-solid fa-pen-to-square"></i> <?= $hasSheet ? ($scoresLocked ? 'View' : 'Edit') : 'Score' ?>
-                    </button>
-                </td>
-            </tr>
-            <?php
+            echo program_scores_render_row($entry, $categories, $judgesCount, $scoresMap, $scoresLocked, !empty($program['disable_scores']), $orderIndex++);
         }
     }
     $tbodyHtml = ob_get_clean();
@@ -1319,36 +1415,49 @@ require_once __DIR__ . '/../../includes/sidebar.php';
     <?php if (!$entries): ?>
         <div class="empty-state"><div class="empty-icon"><i class="fa-solid fa-list-check"></i></div><div class="empty-title">No Entries Found</div><div class="empty-subtitle"><?= $entrySearch !== '' ? 'No entries match your search.' : 'Add entries to this program before scoring.' ?></div></div>
     <?php else: ?>
-        <div class="table-wrapper">
-            <table class="table">
+        <div class="table-wrapper" style="overflow-x: auto;">
+            <table class="table table-glass">
                 <thead>
-                    <tr>
-                        <th style="width: 80px;">Order</th>
-                        <th>Chest Number</th>
-                        <th>Entry Name</th>
-                        <th>Team</th>
-                        <th>Status</th>
-                        <th>Final Score</th>
-                        <th>Actions</th>
-                    </tr>
+                    <?php if (!empty($program['disable_scores'])): ?>
+                        <tr>
+                            <th style="width: 60px;">Order</th>
+                            <th style="width: 100px;">Chest #</th>
+                            <th>Entry Name</th>
+                            <th>Team</th>
+                            <th style="width: 160px; text-align: center;">Placement Rank</th>
+                            <th style="width: 100px; text-align: center;">Final Score</th>
+                            <th style="width: 80px; text-align: center;">Status</th>
+                        </tr>
+                    <?php else: ?>
+                        <tr>
+                            <th rowspan="2" style="width: 60px; vertical-align: middle;">Order</th>
+                            <th rowspan="2" style="width: 100px; vertical-align: middle;">Chest #</th>
+                            <th rowspan="2" style="vertical-align: middle;">Entry Name</th>
+                            <th rowspan="2" style="vertical-align: middle;">Team</th>
+                            <?php for ($j = 1; $j <= $judgesCount; $j++): ?>
+                                <th colspan="<?= count($categories) ?>" style="text-align: center; background: rgba(255,255,255,0.02); border-bottom: 1px solid rgba(255,255,255,0.08); font-weight: 700; color: #fff;">
+                                    Judge <?= $j ?>
+                                </th>
+                            <?php endfor; ?>
+                            <th rowspan="2" style="width: 100px; text-align: center; vertical-align: middle;">Final Score</th>
+                            <th rowspan="2" style="width: 80px; text-align: center; vertical-align: middle;">Status</th>
+                        </tr>
+                        <tr>
+                            <?php for ($j = 1; $j <= $judgesCount; $j++): ?>
+                                <?php foreach ($categories as $cat): ?>
+                                    <th style="text-align: center; font-size: 11px; font-weight: 600; padding: 8px 4px; min-width: 85px;">
+                                        <?= e($cat['name']) ?><br>
+                                        <small style="color: var(--muted); font-size: 9px;">(Max <?= (int)$cat['max_marks'] ?>)</small>
+                                    </th>
+                                <?php endforeach; ?>
+                            <?php endfor; ?>
+                        </tr>
+                    <?php endif; ?>
                 </thead>
                 <tbody id="table-body">
                     <?php $orderIndex = $offset + 1; ?>
                     <?php foreach ($paginatedEntries as $entry): ?>
-                        <?php $hasSheet = !empty($entry['score_sheet_id']); ?>
-                        <tr>
-                            <td><strong><?= $orderIndex++ ?></strong></td>
-                            <td><strong><?= e($entry['chest_number'] ?: '-') ?></strong></td>
-                            <td><?= e($entry['entry_name'] ?: 'Unnamed Entry') ?></td>
-                            <td><span class="team-color-pill" style="background: <?= e($entry['team_color'] ?? '#64748b') ?>22;"><?= e($entry['team_name']) ?></span></td>
-                            <td><span class="badge <?= program_scores_badge($entry['status']) ?>"><?= e(ucfirst((string)$entry['status'])) ?></span></td>
-                            <td><?= $hasSheet ? e(number_format((float)$entry['final_total'], 2)) : '<span class="badge badge-neutral">Missing</span>' ?></td>
-                            <td>
-                                <button class="btn btn-secondary btn-sm" type="button" data-score-entry="<?= (int)$entry['id'] ?>" <?= ($categoriesValid || !empty($program['disable_scores'])) ? '' : 'disabled' ?>>
-                                    <i class="fa-solid fa-pen-to-square"></i> <?= $hasSheet ? ($scoresLocked ? 'View' : 'Edit') : 'Score' ?>
-                                </button>
-                            </td>
-                        </tr>
+                        <?= program_scores_render_row($entry, $categories, $judgesCount, $scoresMap, $scoresLocked, !empty($program['disable_scores']), $orderIndex++) ?>
                     <?php endforeach; ?>
                 </tbody>
             </table>
@@ -1358,201 +1467,209 @@ require_once __DIR__ . '/../../includes/sidebar.php';
         </div>
     <?php endif; ?>
 
+<style>
+.score-grid-input {
+    transition: all 0.15s ease-in-out;
+}
+.score-grid-input:focus {
+    background: rgba(255, 255, 255, 0.08) !important;
+    border-color: var(--accent) !important;
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.25) !important;
+    outline: none;
+}
+.score-input-cell {
+    padding: 6px 4px !important;
+}
+.score-grid-rank-select:focus {
+    border-color: var(--accent) !important;
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.25) !important;
+    outline: none;
+}
+</style>
 
 <script>
-const PROGRAM_SCORE_URL = <?= json_encode(app_url('/admin/score-entry/program-scores.php?program_id=' . $programId), JSON_UNESCAPED_SLASHES) ?>;
-const CATEGORIES_EDITABLE = <?= json_encode($categoriesEditable) ?>;
+const CSRF_TOKEN = <?= json_encode(admin_csrf_value()) ?>;
+const PROGRAM_ID = <?= (int)$programId ?>;
+const SCORES_LOCKED = <?= json_encode($scoresLocked) ?>;
 
-function escapeHtml(value){return String(value ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;')}
-function formatNumber(value){const n = Number(value); return Number.isFinite(n) ? n.toFixed(2) : '0.00'}
+// Dynamic calculations on input
+document.addEventListener('input', (e) => {
+    if (e.target.classList.contains('score-grid-input')) {
+        const input = e.target;
+        const entryId = input.dataset.entryId;
+        const maxVal = parseFloat(input.dataset.max);
+        const val = parseFloat(input.value || 0);
 
-function calculateTotals() {
-    const totals = {};
-    document.querySelectorAll('[data-judge-score]').forEach(input => {
-        const judge = input.dataset.judgeScore;
-        totals[judge] = (totals[judge] || 0) + Number(input.value || 0);
+        // Client-side validation check
+        if (val < 0 || val > maxVal) {
+            input.style.borderColor = '#f87171'; // Red highlight
+            input.style.boxShadow = '0 0 0 2px rgba(239, 68, 68, 0.2)';
+        } else {
+            input.style.borderColor = 'rgba(255,255,255,0.1)';
+            input.style.boxShadow = 'none';
+        }
+
+        // Recalculate row total
+        recalculateRowTotal(entryId);
+    }
+});
+
+// Autosave on blur or change
+document.addEventListener('change', (e) => {
+    if (e.target.classList.contains('score-grid-input') || e.target.classList.contains('score-grid-rank-select')) {
+        const entryId = e.target.dataset.entryId;
+        saveRowScore(entryId);
+    }
+});
+
+function recalculateRowTotal(entryId) {
+    const row = document.querySelector(`tr[data-entry-row="${entryId}"]`);
+    if (!row) return;
+
+    let sum = 0.0;
+    row.querySelectorAll('.score-grid-input').forEach(input => {
+        sum += parseFloat(input.value || 0);
     });
-    document.querySelectorAll('[data-judge-total]').forEach(el => {
-        el.textContent = formatNumber(totals[el.dataset.judgeTotal] || 0);
-    });
-    const sum = Object.values(totals).reduce((a, b) => a + b, 0);
-    document.getElementById('finalTotal').textContent = formatNumber(sum);
+
+    const totalEl = document.getElementById(`total-score-${entryId}`);
+    if (totalEl) {
+        totalEl.textContent = sum.toFixed(2);
+    }
 }
 
-function renderJudgeBlock(judgeNo, categories, scores, locked) {
-    let html = `<div class="panel"><div class="dashboard-heading">Judge ${judgeNo}</div><div class="score-category-stack mt-4">`;
-    categories.forEach(category => {
-        const value = scores?.[judgeNo]?.[category.id] ?? '';
-        html += `
-            <div class="input-group">
-                <label>${escapeHtml(category.name)} <span class="muted">/ ${formatNumber(category.max_marks)}</span></label>
-                <input type="number"
-                       name="scores[${judgeNo}][${escapeHtml(category.id)}]"
-                       min="0"
-                       max="${escapeHtml(category.max_marks)}"
-                       step="0.01"
-                       value="${escapeHtml(value)}"
-                       data-judge-score="${judgeNo}"
-                       ${locked ? 'readonly' : 'required'}>
-            </div>`;
-    });
-    html += `</div><div class="flex-between mt-4"><strong>Judge ${judgeNo} subtotal</strong><span class="badge badge-neutral" data-judge-total="${judgeNo}">0.00</span></div></div>`;
-    return html;
-}
+async function saveRowScore(entryId) {
+    if (SCORES_LOCKED) return;
 
-async function openScoreModal(entryId) {
-    window.openModal('scorePanel');
-    document.getElementById('judgeScoreBlocks').innerHTML = '<div class="panel">Loading...</div>';
-    document.getElementById('saveScoreButton').disabled = true;
+    const row = document.querySelector(`tr[data-entry-row="${entryId}"]`);
+    if (!row) return;
+
+    // Show saving status
+    const statusEl = document.getElementById(`save-status-${entryId}`);
+    if (statusEl) {
+        statusEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-warning" title="Saving..."></i>';
+    }
+
+    const formData = new FormData();
+    formData.append('csrf_token', CSRF_TOKEN);
+    formData.append('action', 'save_score_sheet');
+    formData.append('program_id', PROGRAM_ID);
+    formData.append('entry_id', entryId);
+    formData.append('ajax', '1');
+
+    const rankSelect = row.querySelector('.score-grid-rank-select');
+    if (rankSelect) {
+        formData.append('placement_rank', rankSelect.value);
+    } else {
+        row.querySelectorAll('.score-grid-input').forEach(input => {
+            const judge = input.dataset.judge;
+            const catId = input.dataset.categoryId;
+            formData.append(`scores[${judge}][${catId}]`, input.value);
+        });
+    }
 
     try {
-        const response = await fetch(`${PROGRAM_SCORE_URL}&action=score_data&entry_id=${encodeURIComponent(entryId)}`, {cache: 'no-store'});
+        const response = await fetch(window.location.href, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        });
         const data = await response.json();
-        if (!data.success) throw new Error(data.message || 'Unable to load score sheet.');
-
-        document.getElementById('scoreEntryId').value = data.entry.id || '';
-        document.getElementById('scorePanelTitle').textContent = data.locked ? 'View Score Sheet' : 'Score Entry';
-        
-        const posBadge = document.getElementById('scoreEntryPositionBadge');
-        if (posBadge) {
-            posBadge.textContent = data.entry_position ? `Entry ${data.entry_position}` : '';
-            posBadge.style.display = data.entry_position ? 'inline-block' : 'none';
-        }
-
-        const prevBtn = document.getElementById('prevEntryBtn');
-        if (prevBtn) {
-            if (data.prev_entry_id) {
-                prevBtn.style.display = 'inline-flex';
-                prevBtn.setAttribute('data-prev-id', data.prev_entry_id);
-            } else {
-                prevBtn.style.display = 'none';
+        if (data.success) {
+            if (statusEl) {
+                statusEl.innerHTML = '<i class="fa-solid fa-circle-check text-success" title="Saved"></i>';
             }
-        }
-
-        const nextBtn = document.getElementById('nextEntryBtn');
-        if (nextBtn) {
-            if (data.next_entry_id) {
-                nextBtn.style.display = 'inline-flex';
-                nextBtn.setAttribute('data-next-id', data.next_entry_id);
-            } else {
-                nextBtn.style.display = 'none';
+            // Update final total from server response
+            const totalEl = document.getElementById(`total-score-${entryId}`);
+            if (totalEl && data.final_total) {
+                totalEl.textContent = data.final_total;
             }
-        }
-
-        const subtitleEl = document.getElementById('scorePanelSubtitle');
-        if (subtitleEl) {
-            subtitleEl.innerHTML = escapeHtml(data.program.title || '');
-            if (data.program.only_team_marks === 1 || data.program.only_team_marks === '1') {
-                subtitleEl.innerHTML += `
-                    <span class="badge badge-info" style="font-size: 11px; margin-left: 8px; background: rgba(14, 165, 233, 0.15); color: #0ea5e9; border: 1px solid rgba(14, 165, 233, 0.3); padding: 2px 8px; border-radius: 9999px; display: inline-flex; align-items: center; gap: 4px; vertical-align: middle;">
-                        <i class="fa-solid fa-people-group"></i> Only Team Marks (No Indiv. Marks)
-                    </span>`;
-            }
-        }
-        document.getElementById('panelEntryName').value = data.entry.entry_name || 'Unnamed Entry';
-        document.getElementById('panelTeamName').value = data.entry.team_name || '';
-        document.getElementById('panelEntryNumber').value = data.entry.chest_number || data.entry.entry_number || '';
-        
-        if (data.program.disable_scores === 1 || data.program.disable_scores === '1') {
-            const currentTotal = data.sheet ? Number(data.sheet.final_total) : 0;
-            let currentRank = 0;
-            if (currentTotal === 100) currentRank = 1;
-            else if (currentTotal === 90) currentRank = 2;
-            else if (currentTotal === 80) currentRank = 3;
-
-            let blocksHtml = `
-                <div class="panel" style="grid-column: span 2; width: 100%;">
-                    <div class="dashboard-heading">Rank Selection</div>
-                    <div class="input-group mt-4">
-                        <label>Select Placement Rank</label>
-                        <select name="placement_rank" id="placementRankSelect" class="form-select" style="width: 100%; padding: 10px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface-2); color: var(--text);" ${data.locked ? 'disabled' : ''}>
-                            <option value="0" ${currentRank === 0 ? 'selected' : ''}>-- No Rank --</option>
-                            <option value="1" ${currentRank === 1 ? 'selected' : ''}>1st Place</option>
-                            <option value="2" ${currentRank === 2 ? 'selected' : ''}>2nd Place</option>
-                            <option value="3" ${currentRank === 3 ? 'selected' : ''}>3rd Place</option>
-                        </select>
-                    </div>
-                </div>
-            `;
-            document.getElementById('judgeScoreBlocks').innerHTML = blocksHtml;
-            document.getElementById('finalTotal').textContent = currentRank > 0 ? (currentRank === 1 ? '1st Place' : (currentRank === 2 ? '2nd Place' : '3rd Place')) : 'No Rank';
             
-            document.getElementById('placementRankSelect').addEventListener('change', function() {
-                const val = Number(this.value);
-                document.getElementById('finalTotal').textContent = val > 0 ? (val === 1 ? '1st Place' : (val === 2 ? '2nd Place' : '3rd Place')) : 'No Rank';
-            });
-
-            document.getElementById('saveScoreButton').style.display = data.locked ? 'none' : '';
-            document.getElementById('saveScoreButton').disabled = !!data.locked;
-            const saveNextBtn = document.getElementById('saveAndNextButton');
-            if (saveNextBtn) {
-                saveNextBtn.style.display = data.locked ? 'none' : '';
-                saveNextBtn.disabled = !!data.locked;
-            }
+            checkProgramCompletion();
         } else {
-            const judgesCount = Number(data.program.judges_count || 2);
-            let blocksHtml = '';
-            for (let j = 1; j <= judgesCount; j++) {
-                blocksHtml += renderJudgeBlock(j, data.categories || [], data.scores || {}, data.locked);
-            }
-            document.getElementById('judgeScoreBlocks').innerHTML = blocksHtml;
-            
-            document.getElementById('saveScoreButton').style.display = data.locked ? 'none' : '';
-            document.getElementById('saveScoreButton').disabled = !!data.locked;
-            const saveNextBtn = document.getElementById('saveAndNextButton');
-            if (saveNextBtn) {
-                saveNextBtn.style.display = data.locked ? 'none' : '';
-                saveNextBtn.disabled = !!data.locked;
-            }
-            document.querySelectorAll('[data-judge-score]').forEach(input => input.addEventListener('input', calculateTotals));
-            calculateTotals();
+            throw new Error(data.message || 'Error saving score');
         }
-    } catch (error) {
-        document.getElementById('judgeScoreBlocks').innerHTML = `<div class="alert alert-error">${escapeHtml(error.message)}</div>`;
+    } catch (err) {
+        if (statusEl) {
+            statusEl.innerHTML = '<i class="fa-solid fa-circle-exclamation text-danger" title="' + escapeHtml(err.message) + '"></i>';
+        }
     }
 }
 
-document.addEventListener('click', (e) => {
-    const btn = e.target.closest('[data-score-entry]');
-    if (btn) {
-        openScoreModal(btn.dataset.scoreEntry);
-    }
-});
-document.getElementById('prevEntryBtn')?.addEventListener('click', () => {
-    const prevId = document.getElementById('prevEntryBtn').getAttribute('data-prev-id');
-    if (prevId) openScoreModal(prevId);
-});
-document.getElementById('nextEntryBtn')?.addEventListener('click', () => {
-    const nextId = document.getElementById('nextEntryBtn').getAttribute('data-next-id');
-    if (nextId) openScoreModal(nextId);
-});
-document.getElementById('closeScorePanel')?.addEventListener('click', () => window.closeModal('scorePanel'));
-document.getElementById('cancelScorePanel')?.addEventListener('click', () => window.closeModal('scorePanel'));
-document.getElementById('scorePanel')?.addEventListener('click', (e) => {
-    if (e.target === document.getElementById('scorePanel')) {
-        window.closeModal('scorePanel');
-    }
-});
+function escapeHtml(str) {
+    return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
 
-// Keyboard shortcut: Ctrl + Enter to Save & Next
-document.getElementById('scoreForm')?.addEventListener('keydown', e => {
-    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+function checkProgramCompletion() {
+    let allScored = true;
+    document.querySelectorAll('.row-save-status').forEach(el => {
+        if (el.querySelector('.text-warning') || el.querySelector('.text-danger') || el.querySelector('.fa-circle-minus')) {
+            allScored = false;
+        }
+    });
+
+    const submitBtn = document.getElementById('sendApprovalButton');
+    if (submitBtn) {
+        if (allScored) {
+            submitBtn.removeAttribute('disabled');
+            submitBtn.classList.add('ready-submit');
+        } else {
+            submitBtn.setAttribute('disabled', 'disabled');
+            submitBtn.classList.remove('ready-submit');
+        }
+    }
+}
+
+// Arrow and Enter key cell navigation (Excel-like)
+document.addEventListener('keydown', (e) => {
+    if (!e.target.classList.contains('score-grid-input')) return;
+
+    const input = e.target;
+    const row = input.closest('tr');
+    const tbody = row.closest('tbody');
+    const inputsInRow = Array.from(row.querySelectorAll('.score-grid-input'));
+    const inputColIndex = inputsInRow.indexOf(input);
+    const rows = Array.from(tbody.querySelectorAll('tr[data-entry-row]'));
+    const rowIndex = rows.indexOf(row);
+
+    if (e.key === 'ArrowDown' || e.key === 'Enter') {
         e.preventDefault();
-        const saveNextBtn = document.getElementById('saveAndNextButton');
-        if (saveNextBtn && !saveNextBtn.disabled && saveNextBtn.style.display !== 'none') {
-            saveNextBtn.click();
-        } else {
-            document.getElementById('saveScoreButton')?.click();
+        if (rowIndex < rows.length - 1) {
+            const nextRowInputs = rows[rowIndex + 1].querySelectorAll('.score-grid-input');
+            if (nextRowInputs[inputColIndex]) {
+                nextRowInputs[inputColIndex].focus();
+                nextRowInputs[inputColIndex].select();
+            }
+        }
+    } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (rowIndex > 0) {
+            const prevRowInputs = rows[rowIndex - 1].querySelectorAll('.score-grid-input');
+            if (prevRowInputs[inputColIndex]) {
+                prevRowInputs[inputColIndex].focus();
+                prevRowInputs[inputColIndex].select();
+            }
+        }
+    } else if (e.key === 'ArrowRight' && input.selectionEnd === input.value.length) {
+        if (inputColIndex < inputsInRow.length - 1) {
+            inputsInRow[inputColIndex + 1].focus();
+            inputsInRow[inputColIndex + 1].select();
+        }
+    } else if (e.key === 'ArrowLeft' && input.selectionStart === 0) {
+        if (inputColIndex > 0) {
+            inputsInRow[inputColIndex - 1].focus();
+            inputsInRow[inputColIndex - 1].select();
         }
     }
 });
 
-// Auto-open modal on page load if open_entry_id URL parameter present
-const urlParams = new URLSearchParams(window.location.search);
-const openEntryId = urlParams.get('open_entry_id');
-if (openEntryId) {
-    openScoreModal(openEntryId);
-}
+// Auto-select text on focus to make overwriting fast
+document.addEventListener('focusin', (e) => {
+    if (e.target.classList.contains('score-grid-input')) {
+        e.target.select();
+    }
+});
 
 if (document.getElementById('programReadyAlert')) {
     setTimeout(() => {

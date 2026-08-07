@@ -140,17 +140,39 @@
        ===================================================== */
     function initSidebarToggle() {
         const mobileMenuBtn = document.getElementById('eventMobileMenuBtn');
-        const navMenu = document.getElementById('eventNavMenu');
+        const sidebar = document.getElementById('adminVerticalSidebar');
 
+        if (mobileMenuBtn && sidebar) {
+            // Check if backdrop exists, otherwise create it
+            let backdrop = document.querySelector('.sidebar-backdrop');
+            if (!backdrop) {
+                backdrop = document.createElement('div');
+                backdrop.className = 'sidebar-backdrop';
+                document.body.appendChild(backdrop);
+            }
 
+            const toggleSidebar = (isOpen) => {
+                sidebar.classList.toggle('mobile-open', isOpen);
+                mobileMenuBtn.classList.toggle('is-open', isOpen);
+                mobileMenuBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+                backdrop.classList.toggle('show', isOpen);
+            };
 
-        if (mobileMenuBtn && navMenu) {
             mobileMenuBtn.addEventListener('click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                const isOpen = navMenu.classList.toggle('is-open');
-                mobileMenuBtn.classList.toggle('is-open', isOpen);
-                mobileMenuBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+                const isOpen = !sidebar.classList.contains('mobile-open');
+                toggleSidebar(isOpen);
+            });
+
+            // Close when backdrop is clicked
+            backdrop.addEventListener('click', () => {
+                toggleSidebar(false);
+            });
+
+            // Close when navigating via AJAX
+            window.addEventListener('admin:content-swapped', () => {
+                toggleSidebar(false);
             });
         }
     }    /* =====================================================
@@ -523,7 +545,7 @@
         if (anchor.hasAttribute('download')) return false;
 
         const url = anchor.href;
-        if (url.includes('/live-display/')) return false;
+        if (url.includes('/live-display/') && !url.includes('/admin/live-display/')) return false;
         if (url.includes('/auth/')) return false;
         if (url.includes('/utilities/')) return false;
         if (!isAdminUrl(url)) return false;
@@ -623,8 +645,41 @@
                 const contentClone = newContent.cloneNode(true);
                 contentClone.querySelectorAll('.sidebar-vertical, .sidebar, .nav-container-wrapper, .event-top-nav').forEach(el => el.remove());
 
+                // Gather previously injected styles to remove later
+                const oldStyles = Array.from(document.querySelectorAll('style[data-ajax-injected]'));
+
+                // Inject new page-specific external stylesheets first
+                doc.querySelectorAll('link[rel="stylesheet"]').forEach(link => {
+                    const href = link.getAttribute('href');
+                    if (href && !document.querySelector('link[rel="stylesheet"][href="' + href.replace(/"/g, '\\"') + '"]')) {
+                        document.head.appendChild(link.cloneNode(true));
+                    }
+                });
+
+                // Inject new inline style elements so they are active prior to DOM insertion
+                doc.querySelectorAll('style').forEach(style => {
+                    const s = document.createElement('style');
+                    s.setAttribute('data-ajax-injected', 'true');
+                    s.textContent = style.textContent;
+                    document.head.appendChild(s);
+                });
+
+                // Inject new page-specific external scripts
+                doc.querySelectorAll('script[src]').forEach(script => {
+                    const src = script.getAttribute('src');
+                    if (src && !document.querySelector('script[src="' + src.replace(/"/g, '\\"') + '"]')) {
+                        const s = document.createElement('script');
+                        s.src = src;
+                        document.head.appendChild(s);
+                    }
+                });
+
+                // Swap the DOM content
                 mainContent.innerHTML = contentClone.innerHTML;
                 mainContent.className = contentClone.className;
+
+                // Clean up old styles now that the DOM has been populated with styles applied
+                oldStyles.forEach(el => el.remove());
 
                 // Remove any accidental duplicate sidebars or nav containers outside main-content
                 const sidebars = document.querySelectorAll('.sidebar-vertical');
@@ -633,9 +688,6 @@
                         sidebars[i].remove();
                     }
                 }
-
-                // Clear previously injected AJAX inline styles to avoid conflicts
-                document.querySelectorAll('style[data-ajax-injected]').forEach(el => el.remove());
 
                 // Dynamically update horizontal navigation header links if present in response
                 const newNavHeader = doc.querySelector('.event-top-nav, #eventTopNav, .sliding-nav-header');
@@ -650,32 +702,6 @@
                 if (newSidebar && currentSidebar) {
                     currentSidebar.innerHTML = newSidebar.innerHTML;
                 }
-
-                // Inject inline style elements from the response so they parse immediately
-                doc.querySelectorAll('style').forEach(style => {
-                    const s = document.createElement('style');
-                    s.setAttribute('data-ajax-injected', 'true');
-                    s.textContent = style.textContent;
-                    document.head.appendChild(s);
-                });
-
-                // Inject page-specific external stylesheets
-                doc.querySelectorAll('link[rel="stylesheet"]').forEach(link => {
-                    const href = link.getAttribute('href');
-                    if (href && !document.querySelector('link[rel="stylesheet"][href="' + href.replace(/"/g, '\\"') + '"]')) {
-                        document.head.appendChild(link.cloneNode(true));
-                    }
-                });
-
-                // Inject page-specific external scripts
-                doc.querySelectorAll('script[src]').forEach(script => {
-                    const src = script.getAttribute('src');
-                    if (src && !document.querySelector('script[src="' + src.replace(/"/g, '\\"') + '"]')) {
-                        const s = document.createElement('script');
-                        s.src = src;
-                        document.head.appendChild(s);
-                    }
-                });
 
                 /*
                  * Some PHP pages emit their initializer, pagination helper or
@@ -1551,29 +1577,6 @@
         initAlertsAndToasts();
     });
 
-    // Global event delegation for workspace header navigation toggle button
-    document.addEventListener('click', (e) => {
-        const toggleBtn = e.target.closest('#sidebarWorkspaceToggleBtn, .workspace-toggle-btn');
-        const topNav = document.getElementById('eventTopNav');
-        if (toggleBtn && topNav) {
-            e.preventDefault();
-            e.stopPropagation();
-            const isOpen = topNav.classList.toggle('is-workspace-mode');
-            toggleBtn.classList.toggle('open', isOpen);
-            toggleBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-            return;
-        }
-
-        if (topNav && topNav.classList.contains('is-workspace-mode')) {
-            if (!topNav.contains(e.target)) {
-                topNav.classList.remove('is-workspace-mode');
-                const btn = document.getElementById('sidebarWorkspaceToggleBtn');
-                if (btn) {
-                    btn.classList.remove('open');
-                    btn.setAttribute('aria-expanded', 'false');
-                }
-            }
-        }
     });
 
 })();

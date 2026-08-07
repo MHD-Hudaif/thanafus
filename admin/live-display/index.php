@@ -96,6 +96,16 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                 <div class="panel">
                     <h3 class="mb-4"><i class="fa-solid fa-compass mr-2" style="color: var(--accent);"></i> Quick Navigation</h3>
                     <div class="dashboard-list">
+                        <a href="<?= app_url('/admin/live-display/remote.php') ?>" class="sidebar-action-btn">
+                            <div class="sidebar-action-icon" style="background: rgba(236, 72, 153, 0.15); color: #ec4899;">
+                                <i class="fa-solid fa-hand-pointer"></i>
+                            </div>
+                            <div class="sidebar-action-info">
+                                <div class="sidebar-action-title">Live Remote Switcher</div>
+                                <div class="sidebar-action-subtitle">Switch active slides on air</div>
+                            </div>
+                        </a>
+
                         <a href="<?= app_url('/live-display/dashboard.php') ?>" class="sidebar-action-btn" target="_blank">
                             <div class="sidebar-action-icon" style="background: rgba(139, 92, 246, 0.15); color: var(--accent);">
                                 <i class="fa-solid fa-tower-broadcast"></i>

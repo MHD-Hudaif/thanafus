@@ -1,14 +1,11 @@
 <?php
+declare(strict_types=1);
 
 require_once __DIR__ . '/admin-helpers.php';
 $user = $user ?? current_user();
+$pdo = $GLOBALS['musabaqa_pdo'];
 
-/*
-|--------------------------------------------------------------------------
-| ACTIVE CONTEXT
-|--------------------------------------------------------------------------
-*/
-
+/* Active Context */
 $activeEventId = $_SESSION['selected_event_id'] ?? $_SESSION['active_event_id'] ?? null;
 if (!$activeEventId && function_exists('get_active_musabaqa')) {
     $ev = get_active_musabaqa();
@@ -16,308 +13,318 @@ if (!$activeEventId && function_exists('get_active_musabaqa')) {
 }
 $activeTeamId  = $_SESSION['active_team_id'] ?? null;
 
-/*
-|--------------------------------------------------------------------------
-| ACTIVE PAGE DETECTION & WORKSPACE ROUTING
-|--------------------------------------------------------------------------
-*/
+/* Fetch Active Event Details */
+$activeEvent = null;
+if ($activeEventId > 0) {
+    $stmt = $pdo->prepare('SELECT * FROM musabaqa_events WHERE id = ? LIMIT 1');
+    $stmt->execute([$activeEventId]);
+    $activeEvent = $stmt->fetch(PDO::FETCH_ASSOC);
+}
 
+/* Active Page Detection */
 $currentPath = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH);
 $requestUri  = $_SERVER['REQUEST_URI'] ?? '';
 
 if (!function_exists('admin_sidebar_is_active')) {
-function admin_sidebar_is_active($path) {
-    global $currentPath, $requestUri;
-    if (str_contains($path, '?') || str_contains($path, '=')) {
-        return str_contains($requestUri, $path) ? 'active' : '';
+    function admin_sidebar_is_active(string $path): string {
+        global $currentPath, $requestUri;
+        if (str_contains($path, '?') || str_contains($path, '=')) {
+            return str_contains($requestUri, $path) ? 'active' : '';
+        }
+        return str_contains($currentPath, $path) ? 'active' : '';
     }
-    return str_contains($currentPath, $path) ? 'active' : '';
-}
 }
 
 // Auto-detect workspace based on path
-$activeSpace = $_SESSION['active_workspace'] ?? 'event-manager';
-
-if (str_contains($currentPath, '/admin/printer/') || str_contains($currentPath, '/admin/id-cards-search.php') || str_contains($currentPath, '/admin/logs.php') || str_contains($currentPath, '/admin/event/id-cards')) {
+$activeSpace = 'event-manager';
+if (str_contains($currentPath, '/admin/printer/')) {
     $activeSpace = 'printer';
-} elseif (str_contains($currentPath, '/admin/registrar/') || str_contains($currentPath, '/admin/entries.php') || str_contains($currentPath, '/admin/add-entry.php') || str_contains($currentPath, '/admin/event/program-entries.php')) {
+} elseif (str_contains($currentPath, '/admin/registrar/')) {
     $activeSpace = 'registrar';
-} elseif (str_contains($currentPath, '/admin/live-display/') || str_contains($currentPath, '/admin/event/control-live-display.php') || str_contains($currentPath, '/admin/event/control-tv.php')) {
+} elseif (str_contains($currentPath, '/admin/live-display/')) {
     $activeSpace = 'live-display';
-} elseif (str_contains($currentPath, '/admin/score-entry/') || str_contains($currentPath, '/admin/score-entry.php') || str_contains($currentPath, '/admin/event/upload-scores.php')) {
+} elseif (str_contains($currentPath, '/admin/score-entry/')) {
     $activeSpace = 'score-entry';
-} elseif (str_contains($currentPath, '/admin/score-update/') || str_contains($currentPath, '/admin/score-approval.php') || str_contains($currentPath, '/admin/reviews.php')) {
+} elseif (str_contains($currentPath, '/admin/score-update/')) {
     $activeSpace = 'score-update';
-} elseif (str_contains($currentPath, '/admin/event-manager/') || str_contains($currentPath, '/admin/settings.php') || str_contains($currentPath, '/admin/programs.php') || str_contains($currentPath, '/admin/schedule.php') || str_contains($currentPath, '/admin/teams.php') || str_contains($currentPath, '/admin/members.php') || str_contains($currentPath, '/admin/chest-numbers.php') || str_contains($currentPath, '/admin/analytics.php')) {
-    $activeSpace = 'event-manager';
+}
+$_SESSION['active_workspace'] = $activeSpace;
+
+/* Badges Calculations */
+$pendingApprovalsCount = 0;
+if (is_admin()) {
+    try {
+        $pendingApprovalsCount = (int)$pdo->query("SELECT COUNT(*) FROM users WHERE status = 'pending'")->fetchColumn();
+    } catch (Throwable $e) {}
 }
 
-$_SESSION['active_workspace'] = $activeSpace;
+$isTvLive = false;
+$activeEventTitle = 'Kauzariyya Musabaqa';
+if ($activeEventId) {
+    try {
+        $activeEventTitle = $activeEvent['title'] ?? 'No active event';
+        $settKey = 'live_display.event.' . $activeEventId . '.settings';
+        $settValueStmt = $pdo->prepare('SELECT setting_value FROM musabaqa_settings WHERE setting_key = ? LIMIT 1');
+        $settValueStmt->execute([$settKey]);
+        $settJson = $settValueStmt->fetchColumn();
+        if ($settJson) {
+            $settDecoded = json_decode($settJson, true);
+            $isTvLive = (($settDecoded['mode'] ?? 'auto') === 'manual');
+        }
+    } catch (Throwable $e) {}
+}
 ?>
 
-<!-- DESKTOP VERTICAL SIDEBAR LAYOUT -->
-<aside class="sidebar-vertical">
-    <!-- Brand: Toggles Workspace Header Navigation -->
-    <button type="button" class="sidebar-vertical-brand workspace-toggle-btn" id="sidebarWorkspaceToggleBtn" aria-expanded="false" title="Click to open Workspace Navigation header" style="background:none; border:none; padding:0; cursor:pointer; text-align:left; font-family:inherit; width:100%;">
+<!-- Load Lucide SVG Icons library -->
+<script src="https://unpkg.com/lucide@latest"></script>
+
+<!-- Load Sidebar CSS & JS dynamically -->
+<link rel="stylesheet" href="<?= asset_url('css/sidebar.css') ?>?v=<?= filemtime(__DIR__ . '/../assets/css/sidebar.css') ?>">
+<script src="<?= asset_url('js/sidebar.js') ?>?v=<?= filemtime(__DIR__ . '/../assets/js/sidebar.js') ?>" defer></script>
+
+<!-- DESKTOP FLOATING VERTICAL SIDEBAR LAYOUT -->
+<aside class="sidebar-vertical" id="adminVerticalSidebar">
+    
+    <!-- Brand Info -->
+    <div class="sidebar-vertical-brand">
         <div class="sidebar-logo-icon">
             <img src="<?= asset_url('images/green-v-logo.svg') ?>" alt="Logo" class="sidebar-logo-img">
         </div>
         <div class="sidebar-brand-info">
             <span class="sidebar-brand-name">Kauzariyya</span>
-            <span class="sidebar-brand-tag"><?= ucwords(str_replace('-', ' ', $activeSpace)) ?></span>
+            <span class="sidebar-brand-tag">Event Hub</span>
         </div>
+    </div>
+
+    <!-- Collapse Toggle Trigger Button -->
+    <button class="sidebar-collapse-trigger" aria-label="Collapse Navigation Menu" title="Toggle Sidebar Expand/Collapse">
+        <i data-lucide="chevron-left"></i>
     </button>
+
+    <!-- Search Launcher Command Launcher -->
+    <div class="sidebar-search-launcher-container">
+        <button class="sidebar-search-launcher" id="sidebarSearchLauncher" title="Search pages... (Ctrl+K)">
+            <i data-lucide="search"></i>
+            <span>Search...</span>
+            <span class="sidebar-search-shortcut">⌘K</span>
+        </button>
+    </div>
     
-    <!-- Workspace Menu Links -->
+    <!-- Collapsible Workspaces Menu -->
     <nav class="sidebar-vertical-menu">
-        <?php if ($activeSpace === 'event-manager' || $activeSpace === 'team-manager'): ?>
-            <?php
-            $hasActiveTeam = (int)($_GET['team'] ?? $_SESSION['active_team_id'] ?? 0) > 0;
-            ?>
-            <a href="<?= app_url('/admin/event-manager/index.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('/admin/event-manager/index.php') ?>">
-                <i class="fa-solid fa-circle-info"></i> <span>Overview</span>
-            </a>
-            <a href="<?= app_url('/admin/event-manager/user-approvals.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('user-approvals') ?>">
-                <i class="fa-solid fa-user-check"></i> <span>User Approvals</span>
-            </a>
-            <a href="<?= app_url('/admin/event-manager/teams.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('teams') ?>">
-                <i class="fa-solid fa-people-group"></i> <span>Teams</span>
-            </a>
-            <a href="<?= app_url('/admin/event-manager/members.php?team=' . (int)($_GET['team'] ?? $_SESSION['active_team_id'] ?? 0)) ?>" class="sidebar-vertical-link members-link <?= admin_sidebar_is_active('members') ?> <?= !$hasActiveTeam ? 'hidden-link' : 'slide-in-link' ?>" id="sidebarMembersLink">
-                <i class="fa-solid fa-user-plus"></i> <span>Members</span>
-            </a>
-            <a href="<?= app_url('/admin/event-manager/chest-numbers.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('chest-numbers') ?>">
-                <i class="fa-solid fa-id-badge"></i> <span>Chest Numbers</span>
-            </a>
-            <a href="<?= app_url('/admin/event-manager/programs.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('programs') ?>">
-                <i class="fa-solid fa-list-check"></i> <span>Programs</span>
-            </a>
-            <a href="<?= app_url('/admin/event-manager/sections.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('sections') ?>">
-                <i class="fa-solid fa-layer-group"></i> <span>Schedule Sessions</span>
-            </a>
-            <a href="<?= app_url('/admin/event-manager/schedule.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('schedule') ?>">
-                <i class="fa-solid fa-calendar-days"></i> <span>Schedule</span>
-            </a>
-            <a href="<?= app_url('/admin/event-manager/progress.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('progress') ?>">
-                <i class="fa-solid fa-square-poll-vertical"></i> <span>Marks & Progress</span>
-            </a>
-            <a href="<?= app_url('/admin/event-manager/analytics.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('analytics') ?>">
-                <i class="fa-solid fa-chart-line"></i> <span>Analytics</span>
-            </a>
-            <a href="<?= app_url('/admin/event-manager/settings.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('settings') ?>">
-                <i class="fa-solid fa-sliders"></i> <span>Settings</span>
-            </a>
 
-        <?php elseif ($activeSpace === 'printer'): ?>
-            <a href="<?= app_url('/admin/printer/index.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('/admin/printer/index.php') ?>">
-                <i class="fa-solid fa-circle-info"></i> <span>Overview</span>
-            </a>
-            <a href="<?= app_url('/admin/printer/id-cards-search.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('id-cards-search') ?>">
-                <i class="fa-solid fa-address-card"></i> <span>ID Cards</span>
-            </a>
-            <a href="<?= app_url('/admin/printer/chest-numbers.php') ?>" class="sidebar-vertical-link <?= str_contains($currentPath, 'chest-numbers') ? 'active' : '' ?>">
-                <i class="fa-solid fa-id-badge"></i> <span>Chest Numbers</span>
-            </a>
-            <a href="<?= app_url('/admin/printer/members-export.php') ?>" class="sidebar-vertical-link <?= str_contains($currentPath, 'members-export') ? 'active' : '' ?>">
-                <i class="fa-solid fa-file-csv"></i> <span>CSV Export</span>
-            </a>
-            <a href="<?= app_url('/admin/printer/score-sheets.php') ?>" class="sidebar-vertical-link <?= str_contains($currentPath, 'score-sheets') ? 'active' : '' ?>">
-                <i class="fa-solid fa-file-pdf"></i> <span>Score Sheets</span>
-            </a>
-            <a href="<?= app_url('/admin/printer/mc-sheets.php') ?>" class="sidebar-vertical-link <?= str_contains($currentPath, 'mc-sheets') ? 'active' : '' ?>">
-                <i class="fa-solid fa-microphone"></i> <span>MC Sheets</span>
-            </a>
+        <!-- WORKSPACE 1: COMPETITION -->
+        <div class="sidebar-group" id="group_competition">
+            <div class="sidebar-group-header">
+                <span>🏆 Competition</span>
+                <i data-lucide="chevron-down" class="chevron-icon"></i>
+            </div>
+            <div class="sidebar-group-content">
+                <a href="<?= app_url('/admin/event-manager/index.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('/admin/event-manager/index.php') ?>">
+                    <i data-lucide="layout-dashboard" class="sidebar-icon"></i>
+                    <span class="sidebar-label">Overview</span>
+                </a>
+                <a href="<?= app_url('/admin/event-manager/programs.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('programs.php') ?>">
+                    <i data-lucide="list-todo" class="sidebar-icon"></i>
+                    <span class="sidebar-label">Programs</span>
+                </a>
+                <a href="<?= app_url('/admin/event-manager/schedule.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('schedule.php') ?>">
+                    <i data-lucide="calendar" class="sidebar-icon"></i>
+                    <span class="sidebar-label">Schedule Grid</span>
+                </a>
+                <a href="<?= app_url('/admin/event-manager/sections.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('sections.php') ?>">
+                    <i data-lucide="layers" class="sidebar-icon"></i>
+                    <span class="sidebar-label">Schedule Sessions</span>
+                </a>
+                <a href="<?= app_url('/admin/event-manager/teams.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('teams.php') ?>">
+                    <i data-lucide="users" class="sidebar-icon"></i>
+                    <span class="sidebar-label">Teams Directory</span>
+                </a>
+                <?php 
+                $hasActiveTeam = (int)($_GET['team'] ?? $_SESSION['active_team_id'] ?? 0) > 0;
+                ?>
+                <a href="<?= app_url('/admin/event-manager/members.php?team=' . (int)($_GET['team'] ?? $_SESSION['active_team_id'] ?? 0)) ?>" class="sidebar-vertical-link members-link <?= admin_sidebar_is_active('members.php') ?> <?= !$hasActiveTeam ? 'hidden-link' : 'slide-in-link' ?>" id="sidebarMembersLink">
+                    <i data-lucide="user-plus" class="sidebar-icon"></i>
+                    <span class="sidebar-label">Members Registry</span>
+                </a>
+                <a href="<?= app_url('/admin/event-manager/chest-numbers.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('chest-numbers.php') ?>">
+                    <i data-lucide="credit-card" class="sidebar-icon"></i>
+                    <span class="sidebar-label">Chest Numbers</span>
+                </a>
+                <a href="<?= app_url('/admin/registrar/add-entry.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('add-entry.php') ?>">
+                    <i data-lucide="user-check" class="sidebar-icon"></i>
+                    <span class="sidebar-label">Register Participant</span>
+                </a>
+            </div>
+        </div>
 
-        <?php elseif ($activeSpace === 'registrar'): ?>
-            <?php
-            $activeProgramId = (int)($_GET['program_id'] ?? $_SESSION['active_program_id'] ?? 0);
-            $hasActiveProgram = $activeProgramId > 0;
-            ?>
-            <a href="<?= app_url('/admin/registrar/index.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('/admin/registrar/index.php') ?>">
-                <i class="fa-solid fa-circle-info"></i> <span>Overview</span>
-            </a>
-            <a href="<?= app_url('/admin/registrar/entries.php?view=programs') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('view=programs') ?>">
-                <i class="fa-solid fa-list-check"></i> <span>All Programs</span>
-            </a>
-            <a href="<?= app_url('/admin/registrar/entries.php?program_id=' . $activeProgramId) ?>" class="sidebar-vertical-link program-entries-link <?= str_contains($currentPath, 'entries.php') && $hasActiveProgram ? 'active' : '' ?> <?= !$hasActiveProgram ? 'hidden-link' : 'slide-in-link' ?>" id="sidebarProgramEntriesLink">
-                <i class="fa-solid fa-rectangle-list"></i> <span>Program Entries</span>
-            </a>
-            <a href="<?= app_url('/admin/registrar/add-entry.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('add-entry.php') ?>">
-                <i class="fa-solid fa-user-plus"></i> <span>Register</span>
-            </a>
+        <!-- WORKSPACE 2: SCORING -->
+        <div class="sidebar-group" id="group_scoring">
+            <div class="sidebar-group-header">
+                <span>🎯 Scoring</span>
+                <i data-lucide="chevron-down" class="chevron-icon"></i>
+            </div>
+            <div class="sidebar-group-content">
+                <a href="<?= app_url('/admin/score-entry/score-entry.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('score-entry.php') ?>">
+                    <i data-lucide="edit-3" class="sidebar-icon"></i>
+                    <span class="sidebar-label">Quick Score Entry</span>
+                </a>
+                <a href="<?= app_url('/admin/score-entry/program-scores.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('program-scores.php') ?>">
+                    <i data-lucide="file-text" class="sidebar-icon"></i>
+                    <span class="sidebar-label">Score Sheets</span>
+                </a>
+                <?php if (is_admin()): ?>
+                <a href="<?= app_url('/admin/score-update/score-approval.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('score-approval.php') ?>">
+                    <i data-lucide="check-circle-2" class="sidebar-icon"></i>
+                    <span class="sidebar-label">Approve Standings</span>
+                </a>
+                <?php endif; ?>
+                <a href="<?= app_url('/admin/score-update/approval-marks.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('approval-marks.php') ?>">
+                    <i data-lucide="trophy" class="sidebar-icon"></i>
+                    <span class="sidebar-label">Final Rankings</span>
+                </a>
+                <a href="<?= app_url('/admin/score-update/reviews.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('reviews.php') ?>">
+                    <i data-lucide="clipboard-check" class="sidebar-icon"></i>
+                    <span class="sidebar-label">Audit Reviews</span>
+                </a>
+            </div>
+        </div>
 
-        <?php elseif ($activeSpace === 'live-display'): ?>
-            <a href="<?= app_url('/admin/live-display/index.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('/admin/live-display/index.php') ?>">
-                <i class="fa-solid fa-circle-info"></i> <span>Overview</span>
-            </a>
-            <a href="<?= app_url('/admin/live-display/control-live-display.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('control-live-display') ?>">
-                <i class="fa-solid fa-gears"></i> <span>Display Control</span>
-            </a>
-            <a href="<?= app_url('/live-display/dashboard.php') ?>" class="sidebar-vertical-link" target="_blank">
-                <i class="fa-solid fa-tower-broadcast"></i> <span>Live Feed</span>
-            </a>
-            <a href="<?= app_url('/scoreboard.php') ?>" class="sidebar-vertical-link" target="_blank">
-                <i class="fa-solid fa-display"></i> <span>Scoreboard</span>
-            </a>
+        <!-- WORKSPACE 3: LIVE BROADCAST -->
+        <div class="sidebar-group" id="group_broadcast">
+            <div class="sidebar-group-header">
+                <span>📺 Broadcast</span>
+                <i data-lucide="chevron-down" class="chevron-icon"></i>
+            </div>
+            <div class="sidebar-group-content">
+                <a href="<?= app_url('/admin/live-display/remote.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('remote.php') ?>">
+                    <i data-lucide="toggle-left" class="sidebar-icon"></i>
+                    <span class="sidebar-label">Live Switcher (Remote)</span>
+                    <?php if ($isTvLive): ?>
+                        <span class="sidebar-badge sidebar-badge-live">LIVE</span>
+                    <?php endif; ?>
+                </a>
+                <a href="<?= app_url('/admin/live-display/control-live-display.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('control-live-display.php') ?>">
+                    <i data-lucide="settings-2" class="sidebar-icon"></i>
+                    <span class="sidebar-label">Loop Settings</span>
+                </a>
+                <a href="<?= app_url('/live-display/dashboard.php') ?>" class="sidebar-vertical-link" target="_blank" data-ajax-ignore>
+                    <i data-lucide="tv" class="sidebar-icon"></i>
+                    <span class="sidebar-label">Live Feed / TV</span>
+                </a>
+                <a href="<?= app_url('/scoreboard.php') ?>" class="sidebar-vertical-link" target="_blank" data-ajax-ignore>
+                    <i data-lucide="monitor" class="sidebar-icon"></i>
+                    <span class="sidebar-label">Public Scoreboard</span>
+                </a>
+            </div>
+        </div>
 
-        <?php elseif ($activeSpace === 'score-entry'): ?>
-            <a href="<?= app_url('/admin/score-entry/index.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('/admin/score-entry/index.php') ?>">
-                <i class="fa-solid fa-circle-info"></i> <span>Overview</span>
-            </a>
-            <a href="<?= app_url('/admin/score-entry/score-entry.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('score-entry.php') ?>">
-                <i class="fa-solid fa-calculator"></i> <span>Score Entry</span>
-            </a>
-            <a href="<?= app_url('/admin/score-entry/program-scores.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('program-scores.php') ?>">
-                <i class="fa-solid fa-file-lines"></i> <span>Score Sheets</span>
-            </a>
+        <!-- WORKSPACE 4: PRINT & EXPORTS -->
+        <div class="sidebar-group" id="group_printer">
+            <div class="sidebar-group-header">
+                <span>🖨️ Print &amp; Export</span>
+                <i data-lucide="chevron-down" class="chevron-icon"></i>
+            </div>
+            <div class="sidebar-group-content">
+                <a href="<?= app_url('/admin/printer/id-cards-search.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('id-cards-search.php') ?>">
+                    <i data-lucide="printer" class="sidebar-icon"></i>
+                    <span class="sidebar-label">Print ID Cards</span>
+                </a>
+                <a href="<?= app_url('/admin/printer/chest-numbers.php') ?>" class="sidebar-vertical-link <?= str_contains($currentPath, '/printer/chest-numbers.php') ? 'active' : '' ?>">
+                    <i data-lucide="printer" class="sidebar-icon"></i>
+                    <span class="sidebar-label">Print Chest Numbers</span>
+                </a>
+                <a href="<?= app_url('/admin/printer/score-sheets.php') ?>" class="sidebar-vertical-link <?= str_contains($currentPath, '/printer/score-sheets.php') ? 'active' : '' ?>">
+                    <i data-lucide="printer" class="sidebar-icon"></i>
+                    <span class="sidebar-label">Print Score Sheets</span>
+                </a>
+                <a href="<?= app_url('/admin/printer/mc-sheets.php') ?>" class="sidebar-vertical-link <?= str_contains($currentPath, '/printer/mc-sheets.php') ? 'active' : '' ?>">
+                    <i data-lucide="printer" class="sidebar-icon"></i>
+                    <span class="sidebar-label">Print MC Sheets</span>
+                </a>
+                <a href="<?= app_url('/admin/printer/members-export.php') ?>" class="sidebar-vertical-link <?= str_contains($currentPath, '/printer/members-export.php') ? 'active' : '' ?>">
+                    <i data-lucide="download" class="sidebar-icon"></i>
+                    <span class="sidebar-label">CSV Export</span>
+                </a>
+                <a href="<?= app_url('/admin/event-manager/progress.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('progress.php') ?>">
+                    <i data-lucide="bar-chart-3" class="sidebar-icon"></i>
+                    <span class="sidebar-label">Marks &amp; Progress</span>
+                </a>
+            </div>
+        </div>
 
-        <?php elseif ($activeSpace === 'score-update'): ?>
-            <a href="<?= app_url('/admin/score-update/index.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('/admin/score-update/index.php') ?>">
-                <i class="fa-solid fa-circle-info"></i> <span>Overview</span>
-            </a>
-            <a href="<?= app_url('/admin/score-update/score-approval.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('score-approval.php') ?>">
-                <i class="fa-solid fa-circle-check"></i> <span>Approve Scores</span>
-            </a>
-            <a href="<?= app_url('/admin/score-update/approval-marks.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('approval-marks.php') ?>">
-                <i class="fa-solid fa-award"></i> <span>Approval Marks</span>
-            </a>
-            <a href="<?= app_url('/admin/score-update/reviews.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('reviews.php') ?>">
-                <i class="fa-solid fa-magnifying-glass-chart"></i> <span>Audit Reviews</span>
-            </a>
-        <?php endif; ?>
+        <!-- WORKSPACE 5: SYSTEM -->
+        <div class="sidebar-group" id="group_system">
+            <div class="sidebar-group-header">
+                <span>⚙️ System</span>
+                <i data-lucide="chevron-down" class="chevron-icon"></i>
+            </div>
+            <div class="sidebar-group-content">
+                <?php if (is_admin()): ?>
+                <a href="<?= app_url('/admin/event-manager/user-approvals.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('user-approvals.php') ?>">
+                    <i data-lucide="shield-alert" class="sidebar-icon"></i>
+                    <span class="sidebar-label">User Approvals</span>
+                    <?php if ($pendingApprovalsCount > 0): ?>
+                        <span class="sidebar-badge sidebar-badge-count"><?= $pendingApprovalsCount ?></span>
+                    <?php endif; ?>
+                </a>
+                <a href="<?= app_url('/admin/event-manager/settings.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('settings.php') ?>">
+                    <i data-lucide="sliders" class="sidebar-icon"></i>
+                    <span class="sidebar-label">System Settings</span>
+                </a>
+                <?php endif; ?>
+            </div>
+        </div>
+
     </nav>
     
-    <!-- Footer -->
-    <div class="sidebar-vertical-footer">
-        <div class="sidebar-user-avatar">
-            <img src="<?=
-                !empty($user['profile_photo'])
-                    ? avatar_url($user['profile_photo'])
-                    : 'https://ui-avatars.com/api/?name=' . urlencode($user['full_name'] ?? $user['username']) . '&background=0d1420&color=8b5cf6&bold=true'
-            ?>" alt="Profile">
+    <!-- Fixed Footer Panel -->
+    <div class="sidebar-footer">
+        
+        <!-- Active Event details -->
+        <div class="sidebar-event-panel">
+            <div class="sidebar-event-icon">
+                <i data-lucide="trophy"></i>
+            </div>
+            <div class="sidebar-event-info">
+                <span class="sidebar-event-title"><?= e($activeEventTitle) ?></span>
+                <span class="sidebar-event-status">Active Broadcast</span>
+            </div>
         </div>
-        <div class="sidebar-user-details">
-            <span class="sidebar-user-name"><?= e($user['full_name'] ?? $user['username']) ?></span>
-            <span class="sidebar-user-role"><?= is_admin() ? 'Super Admin' : 'Staff' ?></span>
+
+        <!-- Authenticated User profile -->
+        <div class="sidebar-user-panel">
+            <div class="sidebar-user-avatar">
+                <img src="<?=
+                    !empty($user['profile_photo'])
+                        ? avatar_url($user['profile_photo'])
+                        : 'https://ui-avatars.com/api/?name=' . urlencode($user['full_name'] ?? $user['username']) . '&background=0b0f19&color=10b981&bold=true'
+                ?>" alt="Profile">
+            </div>
+            <div class="sidebar-user-info">
+                <span class="sidebar-user-name"><?= e($user['full_name'] ?? $user['username']) ?></span>
+                <span class="sidebar-user-role"><?= is_admin() ? 'Super Admin' : 'Staff' ?></span>
+            </div>
+            <a href="<?= app_url('/auth/logout') ?>" class="sidebar-logout-btn" title="Logout" data-ajax-ignore>
+                <i data-lucide="log-out" style="width: 15px; height: 15px;"></i>
+            </a>
         </div>
-        <a href="<?= app_url('/auth/logout') ?>" class="sidebar-logout-btn" title="Logout" data-ajax-ignore>
-            <i class="fa-solid fa-right-from-bracket"></i>
-        </a>
+
     </div>
 </aside>
 
-
-
-<!-- TOP BAR: CORNERED HEADER NAV -->
-<header class="event-top-nav" id="eventTopNav">
-    <?php if (!admin_is_ajax()): ?>
-    <div class="event-nav-left mobile-only-flex">
-        <!-- Mobile Menu Toggle -->
-        <button type="button" class="event-mobile-menu" id="eventMobileMenuBtn" aria-label="Open navigation menu">
-            <i class="fa-solid fa-bars"></i>
-        </button>
-    </div>
-    <?php endif; ?>
-
-    <!-- Active Workspace Header Navigation (Page Links vs. Workspace Navigation Links) -->
-    <nav class="event-nav-menu" id="eventNavMenu" aria-label="Event workspace navigation">
-        <!-- Workspace Navigation Links (Toggled by Sidebar Top Logo) -->
-        <div class="event-nav-group workspace-nav-group" id="headerWorkspaceNavGroup">
-            <a href="<?= app_url('/admin/event-manager/index.php') ?>" class="nav-item-link <?= $activeSpace === 'event-manager' ? 'active' : '' ?>">
-                <i class="fa-solid fa-square-poll-vertical" style="color:#818cf8;"></i> <span>Event Manager</span>
-            </a>
-            <a href="<?= app_url('/admin/registrar/index.php') ?>" class="nav-item-link <?= $activeSpace === 'registrar' ? 'active' : '' ?>">
-                <i class="fa-solid fa-id-card" style="color:#f59e0b;"></i> <span>Registrar</span>
-            </a>
-            <a href="<?= app_url('/admin/printer/index.php') ?>" class="nav-item-link <?= $activeSpace === 'printer' ? 'active' : '' ?>">
-                <i class="fa-solid fa-print" style="color:#3b82f6;"></i> <span>Printer</span>
-            </a>
-            <a href="<?= app_url('/admin/live-display/index.php') ?>" class="nav-item-link <?= $activeSpace === 'live-display' ? 'active' : '' ?>">
-                <i class="fa-solid fa-display" style="color:#ec4899;"></i> <span>Live Display</span>
-            </a>
-            <a href="<?= app_url('/admin/score-entry/index.php') ?>" class="nav-item-link <?= $activeSpace === 'score-entry' ? 'active' : '' ?>">
-                <i class="fa-solid fa-pen-to-square" style="color:#a855f7;"></i> <span>Score Entry</span>
-            </a>
-            <a href="<?= app_url('/admin/score-update/index.php') ?>" class="nav-item-link <?= $activeSpace === 'score-update' ? 'active' : '' ?>">
-                <i class="fa-solid fa-circle-check" style="color:#10b981;"></i> <span>Score Update</span>
-            </a>
+<!-- COMMAND PALETTE SEARCH MODAL OVERLAY -->
+<div class="sidebar-command-overlay" id="sidebarCommandPalette">
+    <div class="sidebar-command-box">
+        <!-- Search Input Row -->
+        <div class="sidebar-command-search-row">
+            <i data-lucide="search"></i>
+            <input type="text" class="sidebar-command-input" id="sidebarCommandInput" placeholder="Search pages, menus, settings..." autocomplete="off">
+            <button class="sidebar-command-close" id="sidebarCommandClose">ESC</button>
         </div>
-    </nav>
-
-    <!-- User Info & Logout -->
-    <div class="event-nav-right">
-        <div class="event-user-box">
-            <span class="event-avatar"><?= mb_strtoupper(mb_substr((string)($user['full_name'] ?? $user['username'] ?? 'U'), 0, 1)) ?></span>
-            <span class="event-user-details">
-                <strong><?= e($user['full_name'] ?? $user['username'] ?? 'User') ?></strong>
-                <small><?= is_admin() ? 'Super Admin' : 'Staff' ?></small>
-            </span>
-        </div>
-        <a class="event-nav-icon" href="<?= app_url('/index.php') ?>" aria-label="Back to home" title="Back to home">
-            <i class="fa-solid fa-house"></i>
-        </a>
-        <?php if (is_admin()): ?>
-            <a class="event-nav-icon" href="<?= app_url('/admin/index.php') ?>" aria-label="Event Selection" title="Musabaqa Event Selection">
-                <i class="fa-solid fa-calendar-days" style="color:#34d399;"></i>
-            </a>
-        <?php endif; ?>
-        <a class="event-logout" href="<?= app_url('/auth/logout') ?>" aria-label="Logout" title="Logout" data-ajax-ignore>
-            <i class="fa-solid fa-right-from-bracket"></i>
-        </a>
-    </div>
-</header>
-
-<!-- GLOBAL CHAT MODAL OVERLAY -->
-<div class="chat-modal-overlay" id="globalChatModal" aria-hidden="true">
-    <div class="chat-modal-container">
-        <!-- Chat Header -->
-        <div class="chat-header-bar">
-            <div class="chat-header-info">
-                <i class="fa-solid fa-comments text-primary"></i>
-                <h3 id="chatActiveRoomName">Global Lounge</h3>
-            </div>
-            <button type="button" class="chat-close-btn" id="closeChatModalBtn">
-                <i class="fa-solid fa-xmark"></i>
-            </button>
-        </div>
-
-        <!-- Chat Main Area -->
-        <div class="chat-main-body">
-            <!-- Left User Sidebar -->
-            <div class="chat-user-sidebar">
-                <div class="chat-user-item active" id="chatRoomGlobal" data-room-type="global">
-                    <div class="chat-item-avatar global-avatar">
-                        <i class="fa-solid fa-users"></i>
-                    </div>
-                    <div class="chat-item-details">
-                        <span class="chat-item-name">Global Lounge</span>
-                        <span class="chat-item-status">Public Room</span>
-                    </div>
-                </div>
-                <div class="chat-user-divider">Direct Messages</div>
-                <div class="chat-users-list" id="chatUsersListContainer">
-                    <!-- Loaded dynamically via JS -->
-                </div>
-            </div>
-
-            <!-- Right Message Feed -->
-            <div class="chat-feed-pane">
-                <div class="chat-messages-container" id="chatMessagesFeed">
-                    <!-- Messages loaded dynamically -->
-                </div>
-                <form id="chatMessageForm" class="chat-input-area" autocomplete="off" data-ajax-ignore>
-                    <?= admin_csrf_field() ?>
-                    <input type="hidden" id="chatActiveReceiverId" name="receiver_id" value="">
-                    <input type="text" id="chatInputMessage" name="message" placeholder="Type a message..." required>
-                    <button type="submit" class="chat-send-btn">
-                        <i class="fa-solid fa-paper-plane"></i>
-                    </button>
-                </form>
-            </div>
+        <!-- Results List -->
+        <div class="sidebar-command-results" id="sidebarCommandResults">
+            <!-- Populated dynamically via JS -->
         </div>
     </div>
 </div>
-
-
-
-

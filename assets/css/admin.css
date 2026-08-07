@@ -4097,3 +4097,343 @@ body.modal-open {
     }
 }
 
+/* =====================================================
+   UNIFIED RESOURCE-BASED SIDEBAR STYLING
+   ===================================================== */
+
+/* Hide horizontal workspace selector links on desktop header */
+@media (min-width: 921px) {
+    .event-top-nav .event-nav-menu {
+        display: none !important;
+    }
+    
+    /* Make vertical menu scrollable if it has many links */
+    .sidebar-vertical-menu {
+        overflow-y: auto;
+        overflow-x: hidden;
+        flex-grow: 1;
+        padding-right: 4px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+    
+    .sidebar-vertical-menu::-webkit-scrollbar {
+        width: 4px;
+    }
+    .sidebar-vertical-menu::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.15);
+        border-radius: 4px;
+    }
+    .sidebar-vertical-menu::-webkit-scrollbar-track {
+        background: transparent;
+    }
+}
+
+/* Sidebar Section Container */
+.sidebar-nav-section {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+/* Sidebar Section Headers */
+.sidebar-section-header {
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: rgba(255, 255, 255, 0.38);
+    padding: 0 12px;
+    margin-bottom: 6px;
+    user-select: none;
+}
+
+/* Sidebar Links */
+.sidebar-vertical-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px !important;
+    font-size: 13.5px !important;
+    font-weight: 700 !important;
+    color: rgba(255, 255, 255, 0.7) !important;
+    text-decoration: none;
+    border-radius: 10px;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid transparent;
+    position: relative;
+}
+
+.sidebar-vertical-link i {
+    font-size: 14px;
+    width: 20px;
+    text-align: center;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar-vertical-link:hover {
+    background: rgba(255, 255, 255, 0.05) !important;
+    color: #ffffff !important;
+    padding-left: 18px !important;
+}
+
+.sidebar-vertical-link:hover i {
+    transform: scale(1.15);
+}
+
+.sidebar-vertical-link.active {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(4, 120, 87, 0.03)) !important;
+    border-color: rgba(52, 211, 153, 0.15) !important;
+    color: #34d399 !important;
+    box-shadow: 0 4px 16px rgba(16, 185, 129, 0.08);
+    padding-left: 18px !important;
+}
+
+.sidebar-vertical-link.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 20%;
+    height: 60%;
+    width: 3.5px;
+    background: #10b981;
+    border-radius: 0 4px 4px 0;
+    box-shadow: 0 0 10px #10b981;
+    transition: all 0.25s ease;
+}
+
+/* Mobile Sidebar Drawer Integration */
+@media (max-width: 920px) {
+    .sidebar-vertical {
+        display: flex !important;
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        bottom: 0 !important;
+        height: 100vh !important;
+        width: 290px !important;
+        transform: translateX(-100%) !important;
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        z-index: 100015 !important;
+        background: #090d14 !important;
+        border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
+    }
+    
+    .sidebar-vertical.mobile-open {
+        transform: translateX(0) !important;
+        box-shadow: 20px 0 60px rgba(0, 0, 0, 0.7) !important;
+    }
+
+    /* Add a backdrop overlay when sidebar is open */
+    .sidebar-backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+        z-index: 100010;
+        display: none;
+    }
+    .sidebar-backdrop.show {
+        display: block;
+    }
+}
+
+/* =====================================================
+   ANTIGRAVITY SETTINGS PANEL STYLING
+   ===================================================== */
+
+/* Settings Split Grid Layout */
+.agy-settings-layout {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    gap: 32px;
+    margin-top: 28px;
+    align-items: start;
+}
+
+.settings-sub-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+    padding-right: 20px;
+}
+
+.settings-sub-tab-btn {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: transparent;
+    border: none;
+    color: rgba(226, 232, 240, 0.6) !important;
+    font-size: 13.5px;
+    font-weight: 700;
+    font-family: inherit;
+    text-align: left;
+    cursor: pointer;
+    border-radius: 10px;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    outline: none;
+    width: 100%;
+}
+
+.settings-sub-tab-btn i {
+    font-size: 14px;
+    width: 18px;
+    text-align: center;
+}
+
+.settings-sub-tab-btn:hover {
+    background: rgba(255, 255, 255, 0.04);
+    color: #ffffff !important;
+}
+
+.settings-sub-tab-btn.active {
+    background: rgba(20, 184, 166, 0.1) !important;
+    color: #34d399 !important;
+    font-weight: 800;
+}
+
+.settings-details-pane {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+/* Modern iOS-style Toggle Switch */
+.agy-switch {
+    position: relative;
+    display: inline-block;
+    width: 46px;
+    height: 24px;
+    flex-shrink: 0;
+}
+
+.agy-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.agy-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(255, 255, 255, 0.08);
+    transition: .3s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 34px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.agy-slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 2px;
+    bottom: 2px;
+    background-color: #94a3b8;
+    transition: .3s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 50%;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+input:checked + .agy-slider {
+    background-color: rgba(16, 185, 129, 0.2);
+    border-color: rgba(52, 211, 153, 0.35);
+}
+
+input:checked + .agy-slider:before {
+    transform: translateX(22px);
+    background-color: #10b981;
+}
+
+/* Tied Rank Cards */
+.tied-rank-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 20px;
+    background: rgba(15, 23, 42, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 16px;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    user-select: none;
+}
+
+.tied-rank-card:hover {
+    background: rgba(255, 255, 255, 0.02);
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+.tied-rank-card.is-active {
+    background: rgba(20, 184, 166, 0.05);
+    border-color: rgba(20, 184, 166, 0.4);
+}
+
+.tied-rank-card input[type="radio"] {
+    width: 20px;
+    height: 20px;
+    accent-color: #14b8a6;
+    margin-top: 2px;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.tied-rank-card-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.tied-rank-card-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #ffffff;
+}
+
+.tied-rank-card-desc {
+    font-size: 12.5px;
+    color: var(--muted);
+    line-height: 1.5;
+}
+
+/* Mobile Media Query for Settings Page */
+@media (max-width: 768px) {
+    .agy-settings-layout {
+        grid-template-columns: 1fr;
+        gap: 24px;
+    }
+    
+    .settings-sub-sidebar {
+        flex-direction: row;
+        overflow-x: auto;
+        border-right: none;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        padding-right: 0;
+        padding-bottom: 12px;
+        scrollbar-width: none;
+    }
+    
+    .settings-sub-sidebar::-webkit-scrollbar {
+        display: none;
+    }
+    
+    .settings-sub-tab-btn {
+        width: auto;
+        white-space: nowrap;
+        padding: 10px 14px;
+    }
+}
+
+
