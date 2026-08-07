@@ -136,6 +136,7 @@ function create_pdo_connection(string $dsn, string $user, string $pass, string $
             
             // Swap to remote DSN and production database names
             $remoteDsn = preg_replace('/host=[^;]+/', 'host=' . $remoteHost, $dsn);
+            $remoteDsn = preg_replace('/port=[^;]+;?/', '', $remoteDsn); // strip port to connect to default remote port 3306
             $remoteDsn = str_replace('dbname=kauzariyya_musabaqa', 'dbname=ensplpmy_kauzariyya_musabaqa', $remoteDsn);
             $remoteDsn = str_replace('dbname=kauzariyya', 'dbname=ensplpmy_kauzariyya_dashboard', $remoteDsn);
             

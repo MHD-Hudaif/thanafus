@@ -201,6 +201,25 @@ try {
         'ALTER TABLE musabaqa_team_members ADD INDEX idx_event_student_team (event_id, student_id, team_id)'
     );
 
+    // 10. Update users table schema for pending approvals and OTP codes
+    $dashboard_users_cols = $dashboard_pdo->query("SHOW COLUMNS FROM users")->fetchAll(PDO::FETCH_COLUMN);
+    
+    // Update status enum to allow 'pending' if it doesn't already allow it
+    $statusCol = $dashboard_pdo->query("SHOW COLUMNS FROM users LIKE 'status'")->fetch(PDO::FETCH_ASSOC);
+    if ($statusCol && !str_contains($statusCol['Type'], 'pending')) {
+        $dashboard_pdo->exec("ALTER TABLE users MODIFY COLUMN status ENUM('active','inactive','suspended','pending') DEFAULT 'pending'");
+        echo "Updated status column in users to include 'pending'.\n";
+    }
+    
+    if (!in_array('otp_code', $dashboard_users_cols, true)) {
+        $dashboard_pdo->exec("ALTER TABLE users ADD COLUMN otp_code VARCHAR(10) NULL AFTER profile_photo");
+        echo "Added otp_code column to users table.\n";
+    }
+    if (!in_array('otp_expires_at', $dashboard_users_cols, true)) {
+        $dashboard_pdo->exec("ALTER TABLE users ADD COLUMN otp_expires_at DATETIME NULL AFTER otp_code");
+        echo "Added otp_expires_at column to users table.\n";
+    }
+
     echo "Migration completed successfully!\n";
 } catch (Throwable $e) {
     echo "Migration error: " . $e->getMessage() . "\n";
