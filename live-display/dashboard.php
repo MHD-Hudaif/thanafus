@@ -8,10 +8,10 @@ $pdo = $GLOBALS['musabaqa_pdo'];
 
 // Ensure components table exists without running DDL on every request
 try {
-    $existingKeys = $pdo->query("SELECT DISTINCT slide_key FROM musabaqa_tv_components WHERE event_id IS NULL")->fetchAll(PDO::FETCH_COLUMN);
+    $existingKeys = $pdo->query("SELECT DISTINCT slide_key FROM musabaqa_live_display_components WHERE event_id IS NULL")->fetchAll(PDO::FETCH_COLUMN);
 } catch (Throwable $e) {
     $pdo->exec("
-        CREATE TABLE IF NOT EXISTS musabaqa_tv_components (
+        CREATE TABLE IF NOT EXISTS musabaqa_live_display_components (
             id INT AUTO_INCREMENT PRIMARY KEY,
             event_id INT NULL,
             slide_key VARCHAR(50) NOT NULL,
@@ -34,12 +34,12 @@ $defaultSlides = [
 ];
 
 $insertStmt = $pdo->prepare("
-    INSERT IGNORE INTO musabaqa_tv_components (event_id, slide_key, title, duration, is_enabled, sort_order)
+    INSERT IGNORE INTO musabaqa_live_display_components (event_id, slide_key, title, duration, is_enabled, sort_order)
     VALUES (NULL, ?, ?, ?, 1, ?)
 ");
 
 $updateSortStmt = $pdo->prepare("
-    UPDATE musabaqa_tv_components 
+    UPDATE musabaqa_live_display_components 
     SET sort_order = ? 
     WHERE slide_key = ? AND event_id IS NULL
 ");
@@ -62,13 +62,13 @@ if ($activeEventId > 0) {
     
     // Copy defaults for the active event (only copying missing slide keys)
     $pdo->prepare("
-        INSERT INTO musabaqa_tv_components (event_id, slide_key, title, duration, is_enabled, sort_order)
+        INSERT INTO musabaqa_live_display_components (event_id, slide_key, title, duration, is_enabled, sort_order)
         SELECT ?, slide_key, title, duration, is_enabled, sort_order
-        FROM musabaqa_tv_components g
+        FROM musabaqa_live_display_components g
         WHERE g.event_id IS NULL
           AND NOT EXISTS (
               SELECT 1 
-              FROM musabaqa_tv_components e 
+              FROM musabaqa_live_display_components e 
               WHERE e.event_id = ? 
                 AND e.slide_key = g.slide_key
           )
@@ -79,7 +79,7 @@ if ($activeEventId > 0) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
         admin_flash('error', 'Invalid security token.');
-        admin_redirect('/tv/dashboard.php');
+        admin_redirect('/live-display/dashboard.php');
     }
 
     $slides = $_POST['slides'] ?? [];
@@ -102,14 +102,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 if ($activeEventId > 0) {
                     $stmt = $pdo->prepare("
-                        UPDATE musabaqa_tv_components 
+                        UPDATE musabaqa_live_display_components 
                         SET title = ?, duration = ?, is_enabled = ?, sort_order = ?, style = ?
                         WHERE event_id = ? AND slide_key = ?
                     ");
                     $stmt->execute([$title, $duration, $isEnabled, $sortOrder, $style, $activeEventId, $key]);
                 } else {
                     $stmt = $pdo->prepare("
-                        UPDATE musabaqa_tv_components 
+                        UPDATE musabaqa_live_display_components 
                         SET title = ?, duration = ?, is_enabled = ?, sort_order = ?, style = ?
                         WHERE event_id IS NULL AND slide_key = ?
                     ");
@@ -121,16 +121,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } catch (Throwable $e) {
         admin_flash('error', 'Failed to save settings: ' . $e->getMessage());
     }
-    admin_redirect('/tv/dashboard.php');
+    admin_redirect('/live-display/dashboard.php');
 }
 
 // Retrieve Slide Configs
 if ($activeEventId > 0) {
-    $stmt = $pdo->prepare("SELECT * FROM musabaqa_tv_components WHERE event_id = ? ORDER BY sort_order ASC");
+    $stmt = $pdo->prepare("SELECT * FROM musabaqa_live_display_components WHERE event_id = ? ORDER BY sort_order ASC");
     $stmt->execute([$activeEventId]);
     $components = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } else {
-    $stmt = $pdo->prepare("SELECT * FROM musabaqa_tv_components WHERE event_id IS NULL ORDER BY sort_order ASC");
+    $stmt = $pdo->prepare("SELECT * FROM musabaqa_live_display_components WHERE event_id IS NULL ORDER BY sort_order ASC");
     $stmt->execute();
     $components = $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
@@ -326,7 +326,7 @@ body.dark .tv-stat-card {
             <div class="page-subtitle">Configure screen slide ordering and durations</div>
         </div>
         <div class="flex gap-3">
-            <a href="<?= APP_URL ?>/tv/index.php" target="_blank" class="btn btn-primary btn-md" data-ajax-ignore>
+            <a href="<?= APP_URL ?>/live-display/index.php" target="_blank" class="btn btn-primary btn-md" data-ajax-ignore>
                 <i class="fa-solid fa-square-rss"></i> Launch Live Display
             </a>
         </div>
@@ -424,12 +424,12 @@ body.dark .tv-stat-card {
                                             <div style="display: flex; gap: 8px; justify-content: center; align-items: center;">
                                                 <button type="button" 
                                                         class="btn btn-secondary btn-sm preview-slide-btn" 
-                                                        data-url="<?= APP_URL ?>/tv/<?= e($c['slide_key']) ?>.php"
+                                                        data-url="<?= APP_URL ?>/live-display/<?= e($c['slide_key']) ?>.php"
                                                         style="min-height: 28px; padding: 4px 8px; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;"
                                                         title="Preview in Frame">
                                                     <i class="fa-solid fa-eye"></i> Preview
                                                 </button>
-                                                <a href="<?= APP_URL ?>/tv/<?= e($c['slide_key']) ?>.php" 
+                                                <a href="<?= APP_URL ?>/live-display/<?= e($c['slide_key']) ?>.php" 
                                                    target="_blank" 
                                                    class="btn btn-primary btn-sm" 
                                                    style="min-height: 28px; padding: 4px 8px; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;"
@@ -499,7 +499,7 @@ body.dark .tv-stat-card {
                 <div class="tv-frame-container">
                     <div class="tv-bezel">
                         <div class="tv-screen">
-                            <iframe id="tvPreviewIframe" src="<?= APP_URL ?>/tv/index.php" frameborder="0"></iframe>
+                            <iframe id="tvPreviewIframe" src="<?= APP_URL ?>/live-display/index.php" frameborder="0"></iframe>
                         </div>
                     </div>
                     <div class="tv-stand"></div>
@@ -507,13 +507,13 @@ body.dark .tv-stat-card {
                 </div>
                 
                 <div class="flex justify-center gap-3 mt-4">
-                    <button class="btn btn-secondary btn-sm" onclick="document.getElementById('tvPreviewIframe').src = '<?= APP_URL ?>/tv/index.php';">
+                    <button class="btn btn-secondary btn-sm" onclick="document.getElementById('tvPreviewIframe').src = '<?= APP_URL ?>/live-display/index.php';">
                         <i class="fa-solid fa-arrows-spin"></i> Loop All Slides
                     </button>
                     <button class="btn btn-secondary btn-sm" onclick="document.getElementById('tvPreviewIframe').src = document.getElementById('tvPreviewIframe').src;">
                         <i class="fa-solid fa-arrows-rotate"></i> Refresh
                     </button>
-                    <a href="<?= APP_URL ?>/tv/index.php" target="_blank" class="btn btn-primary btn-sm" data-ajax-ignore>
+                    <a href="<?= APP_URL ?>/live-display/index.php" target="_blank" class="btn btn-primary btn-sm" data-ajax-ignore>
                         <i class="fa-solid fa-expand"></i> Fullscreen Loop
                     </a>
                 </div>
@@ -655,4 +655,5 @@ body.dark .tv-stat-card {
 </script>
 
 <?php admin_close_page(); ?>
+
 

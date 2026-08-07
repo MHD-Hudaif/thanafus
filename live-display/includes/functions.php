@@ -11,16 +11,16 @@ if (!function_exists('e')) {
     }
 }
 
-if (!defined('TV_SETTINGS_GLOBAL_KEY')) {
-    define('TV_SETTINGS_GLOBAL_KEY', 'tv.global.settings');
+if (!defined('LIVE_DISPLAY_SETTINGS_GLOBAL_KEY')) {
+    define('LIVE_DISPLAY_SETTINGS_GLOBAL_KEY', 'live_display.global.settings');
 }
 
-function tv_pdo(): PDO
+function live_display_pdo(): PDO
 {
     return $GLOBALS['musabaqa_pdo'];
 }
 
-function tv_dashboard_pdo(): PDO
+function live_display_dashboard_pdo(): PDO
 {
     if (function_exists('get_dashboard_pdo')) {
         return get_dashboard_pdo();
@@ -28,7 +28,7 @@ function tv_dashboard_pdo(): PDO
     return $GLOBALS['dashboard_pdo'];
 }
 
-function tv_json(array $payload, int $status = 200): void
+function live_display_json(array $payload, int $status = 200): void
 {
     $json = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     $etag = '"' . md5($json) . '"';
@@ -48,25 +48,25 @@ function tv_json(array $payload, int $status = 200): void
     exit;
 }
 
-function tv_json_success(array $data = [], array $extra = []): void
+function live_display_json_success(array $data = [], array $extra = []): void
 {
-    tv_json(array_merge([
+    live_display_json(array_merge([
         'success' => true,
         'data' => $data,
         'timestamp' => time(),
     ], $extra));
 }
 
-function tv_json_error(string $message = 'TV display data is unavailable.', int $status = 500): void
+function live_display_json_error(string $message = 'TV display data is unavailable.', int $status = 500): void
 {
-    tv_json([
+    live_display_json([
         'success' => false,
         'message' => $message,
         'timestamp' => time(),
     ], $status);
 }
 
-function tv_log(Throwable $exception, string $context = 'TV'): void
+function live_display_log(Throwable $exception, string $context = 'TV'): void
 {
     error_log(sprintf(
         '[%s] %s in %s:%d',
@@ -77,7 +77,7 @@ function tv_log(Throwable $exception, string $context = 'TV'): void
     ));
 }
 
-function tv_table_exists(PDO $pdo, string $table): bool
+function live_display_table_exists(PDO $pdo, string $table): bool
 {
     static $cache = [];
 
@@ -96,22 +96,22 @@ function tv_table_exists(PDO $pdo, string $table): bool
     return $cache[$table] = ((int)$stmt->fetchColumn() > 0);
 }
 
-function tv_is_list_array(array $value): bool
+function live_display_is_list_array(array $value): bool
 {
     return $value === [] || array_keys($value) === range(0, count($value) - 1);
 }
 
-function tv_merge_settings(array $base, array $override): array
+function live_display_merge_settings(array $base, array $override): array
 {
     foreach ($override as $key => $value) {
         if (
             isset($base[$key])
             && is_array($base[$key])
             && is_array($value)
-            && !tv_is_list_array($base[$key])
-            && !tv_is_list_array($value)
+            && !live_display_is_list_array($base[$key])
+            && !live_display_is_list_array($value)
         ) {
-            $base[$key] = tv_merge_settings($base[$key], $value);
+            $base[$key] = live_display_merge_settings($base[$key], $value);
             continue;
         }
 
@@ -121,7 +121,7 @@ function tv_merge_settings(array $base, array $override): array
     return $base;
 }
 
-function tv_default_slides(): array
+function live_display_default_slides(): array
 {
     return [
         'intro' => [
@@ -155,7 +155,7 @@ function tv_default_slides(): array
     ];
 }
 
-function tv_default_settings(): array
+function live_display_default_settings(): array
 {
     return [
         'is_playing' => true,
@@ -163,7 +163,7 @@ function tv_default_settings(): array
         'active_slide' => 'intro',
         'theme' => 'emerald',
         'refresh_interval' => 5000,
-        'slides' => tv_default_slides(),
+        'slides' => live_display_default_slides(),
         'sponsors' => [],
         'quotes' => [
             'Indeed, with hardship comes ease.',
@@ -174,12 +174,12 @@ function tv_default_settings(): array
     ];
 }
 
-function tv_setting_key(int $eventId): string
+function live_display_setting_key(int $eventId): string
 {
-    return $eventId > 0 ? 'tv.event.' . $eventId . '.settings' : TV_SETTINGS_GLOBAL_KEY;
+    return $eventId > 0 ? 'live_display.event.' . $eventId . '.settings' : LIVE_DISPLAY_SETTINGS_GLOBAL_KEY;
 }
 
-function tv_decode_settings(?string $json): array
+function live_display_decode_settings(?string $json): array
 {
     if ($json === null || trim($json) === '') {
         return [];
@@ -190,30 +190,36 @@ function tv_decode_settings(?string $json): array
     return is_array($decoded) ? $decoded : [];
 }
 
-function tv_read_settings_row(PDO $pdo, string $key): array
+function live_display_read_settings_row(PDO $pdo, string $key): array
 {
     $stmt = $pdo->prepare('SELECT setting_value FROM musabaqa_settings WHERE setting_key = ? LIMIT 1');
     $stmt->execute([$key]);
 
-    return tv_decode_settings($stmt->fetchColumn() ?: null);
+    return live_display_decode_settings($stmt->fetchColumn() ?: null);
 }
 
-function tv_legacy_component_settings(PDO $pdo, int $eventId): array
+function live_display_legacy_component_settings(PDO $pdo, int $eventId): array
 {
-    if (!tv_table_exists($pdo, 'musabaqa_tv_components')) {
+    if (live_display_table_exists($pdo, 'musabaqa_live_display_components') && !live_display_table_exists($pdo, 'musabaqa_live_display_components')) {
+        try {
+            $pdo->exec("RENAME TABLE musabaqa_live_display_components TO musabaqa_live_display_components");
+        } catch (Throwable $e) {}
+    }
+
+    if (!live_display_table_exists($pdo, 'musabaqa_live_display_components')) {
         return [];
     }
 
     // Dynamic database column self-healing initialization
     try {
-        $pdo->exec("ALTER TABLE musabaqa_tv_components ADD COLUMN style VARCHAR(50) NOT NULL DEFAULT 'classic'");
+        $pdo->exec("ALTER TABLE musabaqa_live_display_components ADD COLUMN style VARCHAR(50) NOT NULL DEFAULT 'classic'");
     } catch (PDOException $e) {
         // Suppress error if column already exists
     }
 
     $params = [];
     if ($eventId > 0) {
-        $where = 'event_id = ? OR (event_id IS NULL AND NOT EXISTS (SELECT 1 FROM musabaqa_tv_components WHERE event_id = ?))';
+        $where = 'event_id = ? OR (event_id IS NULL AND NOT EXISTS (SELECT 1 FROM musabaqa_live_display_components WHERE event_id = ?))';
         $params = [$eventId, $eventId];
     } else {
         $where = 'event_id IS NULL';
@@ -221,7 +227,7 @@ function tv_legacy_component_settings(PDO $pdo, int $eventId): array
 
     $stmt = $pdo->prepare("
         SELECT slide_key, title, duration, is_enabled, sort_order, style
-        FROM musabaqa_tv_components
+        FROM musabaqa_live_display_components
         WHERE {$where}
         ORDER BY sort_order ASC, id ASC
     ");
@@ -243,10 +249,10 @@ function tv_legacy_component_settings(PDO $pdo, int $eventId): array
     return $slides ? ['slides' => $slides] : [];
 }
 
-function tv_normalize_settings(array $settings): array
+function live_display_normalize_settings(array $settings): array
 {
-    $defaults = tv_default_settings();
-    $settings = tv_merge_settings($defaults, $settings);
+    $defaults = live_display_default_settings();
+    $settings = live_display_merge_settings($defaults, $settings);
 
     $settings['mode'] = in_array((string)$settings['mode'], ['auto', 'manual'], true)
         ? (string)$settings['mode']
@@ -259,7 +265,7 @@ function tv_normalize_settings(array $settings): array
 
     $cleanSlides = [];
     foreach ($defaults['slides'] as $key => $slide) {
-        $cleanSlides[$key] = tv_merge_settings($slide, $settings['slides'][$key] ?? []);
+        $cleanSlides[$key] = live_display_merge_settings($slide, $settings['slides'][$key] ?? []);
         $cleanSlides[$key]['key'] = $key;
         $cleanSlides[$key]['duration'] = max(3000, min(120000, (int)$cleanSlides[$key]['duration']));
         $cleanSlides[$key]['enabled'] = (bool)$cleanSlides[$key]['enabled'];
@@ -297,23 +303,23 @@ function tv_normalize_settings(array $settings): array
     return $settings;
 }
 
-function tv_get_settings(?int $eventId = null): array
+function live_display_get_settings(?int $eventId = null): array
 {
-    $pdo = tv_pdo();
-    $eventId = $eventId ?? tv_active_event_id();
+    $pdo = live_display_pdo();
+    $eventId = $eventId ?? live_display_active_event_id();
 
-    $settings = tv_default_settings();
-    $settings = tv_merge_settings($settings, tv_legacy_component_settings($pdo, $eventId));
-    $settings = tv_merge_settings($settings, tv_read_settings_row($pdo, tv_setting_key($eventId)));
+    $settings = live_display_default_settings();
+    $settings = live_display_merge_settings($settings, live_display_legacy_component_settings($pdo, $eventId));
+    $settings = live_display_merge_settings($settings, live_display_read_settings_row($pdo, live_display_setting_key($eventId)));
 
-    return tv_normalize_settings($settings);
+    return live_display_normalize_settings($settings);
 }
 
-function tv_save_settings(int $eventId, array $settings): array
+function live_display_save_settings(int $eventId, array $settings): array
 {
-    $pdo = tv_pdo();
+    $pdo = live_display_pdo();
     $settings['updated_at'] = date(DATE_ATOM);
-    $settings = tv_normalize_settings($settings);
+    $settings = live_display_normalize_settings($settings);
 
     $stmt = $pdo->prepare("
         INSERT INTO musabaqa_settings (setting_key, setting_value)
@@ -323,14 +329,14 @@ function tv_save_settings(int $eventId, array $settings): array
             updated_at = CURRENT_TIMESTAMP
     ");
     $stmt->execute([
-        tv_setting_key($eventId),
+        live_display_setting_key($eventId),
         json_encode($settings, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
     ]);
 
     return $settings;
 }
 
-function tv_active_event(): ?array
+function live_display_active_event(): ?array
 {
     static $event = null;
     static $loaded = false;
@@ -340,7 +346,7 @@ function tv_active_event(): ?array
     }
 
     $loaded = true;
-    $pdo = tv_pdo();
+    $pdo = live_display_pdo();
 
     $stmt = $pdo->query("
         SELECT *
@@ -365,14 +371,14 @@ function tv_active_event(): ?array
     return $event;
 }
 
-function tv_active_event_id(): int
+function live_display_active_event_id(): int
 {
-    $event = tv_active_event();
+    $event = live_display_active_event();
 
     return $event ? (int)$event['id'] : 0;
 }
 
-function tv_event_payload(?array $event): array
+function live_display_event_payload(?array $event): array
 {
     return [
         'id' => $event ? (int)$event['id'] : 0,
@@ -386,7 +392,7 @@ function tv_event_payload(?array $event): array
     ];
 }
 
-function tv_format_datetime(?string $value, string $format): string
+function live_display_format_datetime(?string $value, string $format): string
 {
     if (!$value) {
         return '';
@@ -397,7 +403,7 @@ function tv_format_datetime(?string $value, string $format): string
     return $timestamp ? date($format, $timestamp) : '';
 }
 
-function tv_program_datetime_columns(PDO $pdo): array
+function live_display_program_datetime_columns(PDO $pdo): array
 {
     static $columns = null;
 
@@ -420,7 +426,7 @@ function tv_program_datetime_columns(PDO $pdo): array
     return $columns = [$start, $end];
 }
 
-function tv_color(?string $value, string $fallback = '#00ff88'): string
+function live_display_color(?string $value, string $fallback = '#00ff88'): string
 {
     $value = trim((string)$value);
 
@@ -452,15 +458,15 @@ function tv_color(?string $value, string $fallback = '#00ff88'): string
     return $fallback;
 }
 
-function tv_leaderboard(?int $eventId = null): array
+function live_display_leaderboard(?int $eventId = null): array
 {
-    $event = tv_active_event();
+    $event = live_display_active_event();
     $eventId = $eventId ?? (int)($event['id'] ?? 0);
     if ($eventId <= 0) {
         return [];
     }
 
-    $pdo = tv_pdo();
+    $pdo = live_display_pdo();
     $manualFirst = ($event['scoreboard_mode'] ?? 'system') === 'manual';
     $scoreExpr = $manualFirst
         ? 'COALESCE(manual_scores.score, t.total_score, approved_scores.total_score, 0)'
@@ -509,7 +515,7 @@ function tv_leaderboard(?int $eventId = null): array
             'rank' => $rank,
             'team_name' => $row['team_name'],
             'short_name' => $row['short_name'] ?: $row['team_name'],
-            'team_color' => tv_color($row['team_color'] ?? null),
+            'team_color' => live_display_color($row['team_color'] ?? null),
             'total_score' => round($score, 2),
             'logo_url' => '',
         ];
@@ -518,14 +524,14 @@ function tv_leaderboard(?int $eventId = null): array
     return $rows;
 }
 
-function tv_latest_score_update(?int $eventId = null): ?array
+function live_display_latest_score_update(?int $eventId = null): ?array
 {
-    $eventId = $eventId ?? tv_active_event_id();
+    $eventId = $eventId ?? live_display_active_event_id();
     if ($eventId <= 0) {
         return null;
     }
 
-    $pdo = tv_pdo();
+    $pdo = live_display_pdo();
     $stmt = $pdo->prepare("
         SELECT
             ms.id,
@@ -558,26 +564,26 @@ function tv_latest_score_update(?int $eventId = null): ?array
         'entry_name' => $row['entry_name'],
         'team_name' => $row['team_name'],
         'short_name' => $row['short_name'] ?: $row['team_name'],
-        'team_color' => tv_color($row['team_color'] ?? null),
+        'team_color' => live_display_color($row['team_color'] ?? null),
         'score' => round((float)$row['total_mark'], 2),
         'approved_time' => $row['approved_time'],
     ];
 }
 
-function tv_program_rows(int $eventId): array
+function live_display_program_rows(int $eventId): array
 {
     if ($eventId <= 0) {
         return [];
     }
 
-    $pdo = tv_pdo();
-    [$startColumn, $endColumn] = tv_program_datetime_columns($pdo);
+    $pdo = live_display_pdo();
+    [$startColumn, $endColumn] = live_display_program_datetime_columns($pdo);
 
     $stmt = $pdo->prepare("
         SELECT
             p.*,
-            p.{$startColumn} AS tv_start_time,
-            p.{$endColumn} AS tv_end_time,
+            p.{$startColumn} AS live_display_start_time,
+            p.{$endColumn} AS live_display_end_time,
             st.name AS stage_name,
             ct.name AS class_type_name,
             COUNT(DISTINCT pe.id) AS entry_count,
@@ -598,7 +604,7 @@ function tv_program_rows(int $eventId): array
     return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 }
 
-function tv_program_payload(array $row): array
+function live_display_program_payload(array $row): array
 {
     return [
         'id' => (int)$row['id'],
@@ -607,10 +613,10 @@ function tv_program_payload(array $row): array
         'category' => $row['class_type_name'] ?? 'All Classes',
         'stage' => $row['stage_name'] ?? 'Stage',
         'location' => $row['location'] ?? '',
-        'start_time' => $row['tv_start_time'] ?? $row['start_time'] ?? $row['start_datetime'] ?? null,
-        'end_time' => $row['tv_end_time'] ?? $row['end_time'] ?? $row['end_datetime'] ?? null,
-        'start_label' => tv_format_datetime($row['tv_start_time'] ?? $row['start_time'] ?? $row['start_datetime'] ?? null, 'h:i A'),
-        'end_label' => tv_format_datetime($row['tv_end_time'] ?? $row['end_time'] ?? $row['end_datetime'] ?? null, 'h:i A'),
+        'start_time' => $row['live_display_start_time'] ?? $row['start_time'] ?? $row['start_datetime'] ?? null,
+        'end_time' => $row['live_display_end_time'] ?? $row['end_time'] ?? $row['end_datetime'] ?? null,
+        'start_label' => live_display_format_datetime($row['live_display_start_time'] ?? $row['start_time'] ?? $row['start_datetime'] ?? null, 'h:i A'),
+        'end_label' => live_display_format_datetime($row['live_display_end_time'] ?? $row['end_time'] ?? $row['end_datetime'] ?? null, 'h:i A'),
         'status' => $row['status'] ?? 'active',
         'approval_status' => $row['approval_status'] ?? 'none',
         'entry_count' => (int)($row['entry_count'] ?? 0),
@@ -619,13 +625,13 @@ function tv_program_payload(array $row): array
     ];
 }
 
-function tv_program_entries(int $programId): array
+function live_display_program_entries(int $programId): array
 {
     if ($programId <= 0) {
         return [];
     }
 
-    $pdo = tv_pdo();
+    $pdo = live_display_pdo();
     $stmt = $pdo->prepare("
         SELECT
             pe.*,
@@ -649,9 +655,9 @@ function tv_program_entries(int $programId): array
     return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 }
 
-function tv_current_program(?int $eventId = null): array
+function live_display_current_program(?int $eventId = null): array
 {
-    $eventId = $eventId ?? tv_active_event_id();
+    $eventId = $eventId ?? live_display_active_event_id();
     $empty = [
         'is_break' => true,
         'program' => null,
@@ -666,13 +672,13 @@ function tv_current_program(?int $eventId = null): array
         return $empty;
     }
 
-    $programs = tv_program_rows($eventId);
+    $programs = live_display_program_rows($eventId);
     $now = time();
     $selected = null;
 
     foreach ($programs as $program) {
-        $startValue = $program['tv_start_time'] ?? $program['start_time'] ?? $program['start_datetime'] ?? null;
-        $endValue = $program['tv_end_time'] ?? $program['end_time'] ?? $program['end_datetime'] ?? null;
+        $startValue = $program['live_display_start_time'] ?? $program['start_time'] ?? $program['start_datetime'] ?? null;
+        $endValue = $program['live_display_end_time'] ?? $program['end_time'] ?? $program['end_datetime'] ?? null;
         $start = !empty($startValue) ? strtotime((string)$startValue) : null;
         $end = !empty($endValue) ? strtotime((string)$endValue) : null;
         if ($start && $end && $start <= $now && $end >= $now) {
@@ -703,7 +709,7 @@ function tv_current_program(?int $eventId = null): array
         return $empty;
     }
 
-    $entries = tv_program_entries((int)$selected['id']);
+    $entries = live_display_program_entries((int)$selected['id']);
     $currentIndex = null;
     foreach ($entries as $index => $entry) {
         if (($entry['status'] ?? '') !== 'completed') {
@@ -732,10 +738,10 @@ function tv_current_program(?int $eventId = null): array
             continue;
         }
         if (($program['status'] ?? '') !== 'completed') {
-            $startValue = $program['tv_start_time'] ?? $program['start_time'] ?? $program['start_datetime'] ?? null;
+            $startValue = $program['live_display_start_time'] ?? $program['start_time'] ?? $program['start_datetime'] ?? null;
             $start = !empty($startValue) ? strtotime((string)$startValue) : PHP_INT_MAX;
             if (!$nextProgram || $start < (int)($nextProgram['_sort'] ?? PHP_INT_MAX)) {
-                $nextProgram = tv_program_payload($program);
+                $nextProgram = live_display_program_payload($program);
                 $nextProgram['_sort'] = $start;
             }
         }
@@ -744,9 +750,9 @@ function tv_current_program(?int $eventId = null): array
         unset($nextProgram['_sort']);
     }
 
-    $pdo = tv_pdo();
+    $pdo = live_display_pdo();
     $judges = [];
-    if (tv_table_exists($pdo, 'musabaqa_judges')) {
+    if (live_display_table_exists($pdo, 'musabaqa_judges')) {
         $judgeRows = $pdo->query("
             SELECT name
             FROM musabaqa_judges
@@ -768,7 +774,7 @@ function tv_current_program(?int $eventId = null): array
             'number' => $entry['entry_number'],
             'team' => $entry['team_name'],
             'team_short' => $entry['short_name'] ?: $entry['team_name'],
-            'team_color' => tv_color($entry['team_color'] ?? null),
+            'team_color' => live_display_color($entry['team_color'] ?? null),
             'status' => $entry['status'] ?? 'approved',
             'score' => (float)($entry['final_score'] ?? 0),
         ];
@@ -776,7 +782,7 @@ function tv_current_program(?int $eventId = null): array
 
     return [
         'is_break' => false,
-        'program' => tv_program_payload($selected),
+        'program' => live_display_program_payload($selected),
         'performer' => $entryPayload($current),
         'next_performer' => $entryPayload($next),
         'next_program' => $nextProgram,
@@ -785,18 +791,18 @@ function tv_current_program(?int $eventId = null): array
     ];
 }
 
-function tv_schedule(?int $eventId = null, int $limit = 9): array
+function live_display_schedule(?int $eventId = null, int $limit = 9): array
 {
-    $eventId = $eventId ?? tv_active_event_id();
+    $eventId = $eventId ?? live_display_active_event_id();
     if ($eventId <= 0) {
         return ['timeline' => [], 'upcoming' => [], 'completed' => []];
     }
 
-    $pdo = tv_pdo();
-    $programs = array_map('tv_program_payload', tv_program_rows($eventId));
+    $pdo = live_display_pdo();
+    $programs = array_map('live_display_program_payload', live_display_program_rows($eventId));
     $breaks = [];
 
-    if (tv_table_exists($pdo, 'musabaqa_breaks')) {
+    if (live_display_table_exists($pdo, 'musabaqa_breaks')) {
         $stmt = $pdo->prepare("
             SELECT b.*, st.name AS stage_name
             FROM musabaqa_breaks b
@@ -813,8 +819,8 @@ function tv_schedule(?int $eventId = null, int $limit = 9): array
                 'stage' => $break['stage_name'] ?? 'Stage',
                 'start_time' => $break['start_datetime'],
                 'end_time' => $break['end_datetime'],
-                'start_label' => tv_format_datetime($break['start_datetime'] ?? null, 'h:i A'),
-                'end_label' => tv_format_datetime($break['end_datetime'] ?? null, 'h:i A'),
+                'start_label' => live_display_format_datetime($break['start_datetime'] ?? null, 'h:i A'),
+                'end_label' => live_display_format_datetime($break['end_datetime'] ?? null, 'h:i A'),
                 'status' => 'break',
                 'type' => 'break',
             ];
@@ -857,7 +863,7 @@ function tv_schedule(?int $eventId = null, int $limit = 9): array
 
     // Load active sections
     $sections = [];
-    if (tv_table_exists($pdo, 'musabaqa_schedule_sections')) {
+    if (live_display_table_exists($pdo, 'musabaqa_schedule_sections')) {
         $stmt = $pdo->prepare("
             SELECT *
             FROM musabaqa_schedule_sections
@@ -946,14 +952,14 @@ function tv_schedule(?int $eventId = null, int $limit = 9): array
     ];
 }
 
-function tv_winners(?int $eventId = null, int $limit = 8): array
+function live_display_winners(?int $eventId = null, int $limit = 8): array
 {
-    $eventId = $eventId ?? tv_active_event_id();
+    $eventId = $eventId ?? live_display_active_event_id();
     if ($eventId <= 0) {
         return [];
     }
 
-    $pdo = tv_pdo();
+    $pdo = live_display_pdo();
     $stmt = $pdo->prepare("
         SELECT
             p.*,
@@ -1010,7 +1016,7 @@ function tv_winners(?int $eventId = null, int $limit = 8): array
                 'number' => $winner['entry_number'],
                 'team' => $winner['team_name'],
                 'team_short' => $winner['short_name'] ?: $winner['team_name'],
-                'team_color' => tv_color($winner['team_color'] ?? null, '#d6b25e'),
+                'team_color' => live_display_color($winner['team_color'] ?? null, '#d6b25e'),
                 'score' => round((float)$winner['score'], 2),
                 'team_score' => (int)$winner['team_score'],
             ];
@@ -1034,13 +1040,13 @@ function tv_winners(?int $eventId = null, int $limit = 8): array
     return $programs;
 }
 
-function tv_announcements(?int $eventId = null, ?array $settings = null): array
+function live_display_announcements(?int $eventId = null, ?array $settings = null): array
 {
-    $eventId = $eventId ?? tv_active_event_id();
-    $settings = $settings ?? tv_get_settings($eventId);
+    $eventId = $eventId ?? live_display_active_event_id();
+    $settings = $settings ?? live_display_get_settings($eventId);
     $items = [];
 
-    $activeBreak = tv_active_break($eventId);
+    $activeBreak = live_display_active_break($eventId);
     if ($activeBreak) {
         $items[] = [
             'type' => 'break',
@@ -1072,22 +1078,22 @@ function tv_announcements(?int $eventId = null, ?array $settings = null): array
     return $items;
 }
 
-function tv_sponsors(?int $eventId = null, ?array $settings = null): array
+function live_display_sponsors(?int $eventId = null, ?array $settings = null): array
 {
-    $settings = $settings ?? tv_get_settings($eventId ?? tv_active_event_id());
+    $settings = $settings ?? live_display_get_settings($eventId ?? live_display_active_event_id());
     $sponsors = $settings['sponsors'];
 
     if (!$sponsors) {
         $sponsors = [
             [
                 'name' => 'Kauzariyya',
-                'logo_url' => tv_asset_url('kauzariyya-logo.png'),
+                'logo_url' => live_display_asset_url('kauzariyya-logo.png'),
                 'message' => 'Official event host',
                 'enabled' => true,
             ],
             [
                 'name' => 'Thanafus',
-                'logo_url' => tv_asset_url('thanafus-logo.png'),
+                'logo_url' => live_display_asset_url('thanafus-logo.png'),
                 'message' => 'Digital Musabaqa System',
                 'enabled' => true,
             ],
@@ -1097,13 +1103,13 @@ function tv_sponsors(?int $eventId = null, ?array $settings = null): array
     return array_values($sponsors);
 }
 
-function tv_active_break(int $eventId): ?array
+function live_display_active_break(int $eventId): ?array
 {
-    if ($eventId <= 0 || !tv_table_exists(tv_pdo(), 'musabaqa_breaks')) {
+    if ($eventId <= 0 || !live_display_table_exists(live_display_pdo(), 'musabaqa_breaks')) {
         return null;
     }
 
-    $stmt = tv_pdo()->prepare("
+    $stmt = live_display_pdo()->prepare("
         SELECT b.*, st.name AS stage_name
         FROM musabaqa_breaks b
         LEFT JOIN musabaqa_stage_types st ON st.id = b.stage_type_id
@@ -1119,26 +1125,26 @@ function tv_active_break(int $eventId): ?array
     return $break ?: null;
 }
 
-function tv_break_info(?int $eventId = null, ?array $settings = null): array
+function live_display_break_info(?int $eventId = null, ?array $settings = null): array
 {
-    $eventId = $eventId ?? tv_active_event_id();
-    $settings = $settings ?? tv_get_settings($eventId);
+    $eventId = $eventId ?? live_display_active_event_id();
+    $settings = $settings ?? live_display_get_settings($eventId);
     $quotes = (array)($settings['quotes'] ?? []);
     $quote = $quotes ? $quotes[(int)date('z') % count($quotes)] : 'وَفِي ذَٰلِكَ فَلْيَتَنَافَسِ الْمُتَنَافِسُونَ';
-    $schedule = tv_schedule($eventId, 1);
+    $schedule = live_display_schedule($eventId, 1);
 
     return [
         'clock' => date('h:i A'),
         'date' => date('l, d M Y'),
         'quote' => $quote,
-        'active_break' => tv_active_break($eventId),
+        'active_break' => live_display_active_break($eventId),
         'next_item' => $schedule['upcoming'][0] ?? null,
     ];
 }
 
-function tv_stats(?int $eventId = null): array
+function live_display_stats(?int $eventId = null): array
 {
-    $eventId = $eventId ?? tv_active_event_id();
+    $eventId = $eventId ?? live_display_active_event_id();
     if ($eventId <= 0) {
         return [
             'teams' => 0,
@@ -1148,7 +1154,7 @@ function tv_stats(?int $eventId = null): array
         ];
     }
 
-    $pdo = tv_pdo();
+    $pdo = live_display_pdo();
     $queries = [
         'teams' => 'SELECT COUNT(*) FROM musabaqa_teams WHERE event_id = ?',
         'programs' => 'SELECT COUNT(*) FROM musabaqa_programs WHERE event_id = ?',
@@ -1166,29 +1172,29 @@ function tv_stats(?int $eventId = null): array
     return $stats;
 }
 
-function tv_bootstrap_data(): array
+function live_display_bootstrap_data(): array
 {
-    $event = tv_active_event();
+    $event = live_display_active_event();
     $eventId = (int)($event['id'] ?? 0);
-    $settings = tv_get_settings($eventId);
+    $settings = live_display_get_settings($eventId);
 
     return [
-        'event' => tv_event_payload($event),
+        'event' => live_display_event_payload($event),
         'settings' => $settings,
-        'stats' => tv_stats($eventId),
-        'leaderboard' => tv_leaderboard($eventId),
-        'latest_score_update' => tv_latest_score_update($eventId),
-        'current' => tv_current_program($eventId),
-        'schedule' => tv_schedule($eventId),
-        'winners' => tv_winners($eventId),
-        'announcements' => tv_announcements($eventId, $settings),
-        'sponsors' => tv_sponsors($eventId, $settings),
-        'break' => tv_break_info($eventId, $settings),
+        'stats' => live_display_stats($eventId),
+        'leaderboard' => live_display_leaderboard($eventId),
+        'latest_score_update' => live_display_latest_score_update($eventId),
+        'current' => live_display_current_program($eventId),
+        'schedule' => live_display_schedule($eventId),
+        'winners' => live_display_winners($eventId),
+        'announcements' => live_display_announcements($eventId, $settings),
+        'sponsors' => live_display_sponsors($eventId, $settings),
+        'break' => live_display_break_info($eventId, $settings),
         'server_time' => date(DATE_ATOM),
     ];
 }
 
-function tv_sanitize_dashboard_settings(array $post, array $current): array
+function live_display_sanitize_dashboard_settings(array $post, array $current): array
 {
     $settings = $current;
     $settings['theme'] = (string)($post['theme'] ?? $settings['theme']);
@@ -1235,5 +1241,51 @@ function tv_sanitize_dashboard_settings(array $post, array $current): array
         $settings['quotes'] = array_values(array_map('trim', $quotes));
     }
 
-    return tv_normalize_settings($settings);
+    return live_display_normalize_settings($settings);
 }
+
+/* =====================================================
+   BACKWARD COMPATIBILITY ALIASES (tv_ -> live_display_)
+   ===================================================== */
+if (!defined('TV_SETTINGS_GLOBAL_KEY')) { define('TV_SETTINGS_GLOBAL_KEY', LIVE_DISPLAY_SETTINGS_GLOBAL_KEY); }
+
+if (!function_exists('tv_pdo')) { function tv_pdo(): PDO { return live_display_pdo(); } }
+if (!function_exists('tv_dashboard_pdo')) { function tv_dashboard_pdo(): PDO { return live_display_dashboard_pdo(); } }
+if (!function_exists('tv_json')) { function tv_json(array $p, int $s = 200): void { live_display_json($p, $s); } }
+if (!function_exists('tv_json_success')) { function tv_json_success(array $d = [], array $e = []): void { live_display_json_success($d, $e); } }
+if (!function_exists('tv_json_error')) { function tv_json_error(string $m = 'Live display data unavailable.', int $s = 500): void { live_display_json_error($m, $s); } }
+if (!function_exists('tv_log')) { function tv_log(Throwable $e, string $c = 'LiveDisplay'): void { live_display_log($e, $c); } }
+if (!function_exists('tv_table_exists')) { function tv_table_exists(PDO $p, string $t): bool { return live_display_table_exists($p, $t); } }
+if (!function_exists('tv_is_list_array')) { function tv_is_list_array(array $v): bool { return live_display_is_list_array($v); } }
+if (!function_exists('tv_merge_settings')) { function tv_merge_settings(array $b, array $o): array { return live_display_merge_settings($b, $o); } }
+if (!function_exists('tv_default_slides')) { function tv_default_slides(): array { return live_display_default_slides(); } }
+if (!function_exists('tv_default_settings')) { function tv_default_settings(): array { return live_display_default_settings(); } }
+if (!function_exists('tv_setting_key')) { function tv_setting_key(int $id): string { return live_display_setting_key($id); } }
+if (!function_exists('tv_decode_settings')) { function tv_decode_settings(?string $j): array { return live_display_decode_settings($j); } }
+if (!function_exists('tv_read_settings_row')) { function tv_read_settings_row(PDO $p, string $k): array { return live_display_read_settings_row($p, $k); } }
+if (!function_exists('tv_legacy_component_settings')) { function tv_legacy_component_settings(PDO $p, int $id): array { return live_display_legacy_component_settings($p, $id); } }
+if (!function_exists('tv_normalize_settings')) { function tv_normalize_settings(array $s): array { return live_display_normalize_settings($s); } }
+if (!function_exists('tv_get_settings')) { function tv_get_settings(?int $id = null): array { return live_display_get_settings($id); } }
+if (!function_exists('tv_save_settings')) { function tv_save_settings(int $id, array $s): array { return live_display_save_settings($id, $s); } }
+if (!function_exists('tv_active_event')) { function tv_active_event(): ?array { return live_display_active_event(); } }
+if (!function_exists('tv_active_event_id')) { function tv_active_event_id(): int { return live_display_active_event_id(); } }
+if (!function_exists('tv_event_payload')) { function tv_event_payload(?array $e): array { return live_display_event_payload($e); } }
+if (!function_exists('tv_format_datetime')) { function tv_format_datetime(?string $v, string $f): string { return live_display_format_datetime($v, $f); } }
+if (!function_exists('tv_program_datetime_columns')) { function tv_program_datetime_columns(PDO $p): array { return live_display_program_datetime_columns($p); } }
+if (!function_exists('tv_color')) { function tv_color(?string $v, string $fb = '#00ff88'): string { return live_display_color($v, $fb); } }
+if (!function_exists('tv_leaderboard')) { function tv_leaderboard(?int $id = null): array { return live_display_leaderboard($id); } }
+if (!function_exists('tv_latest_score_update')) { function tv_latest_score_update(?int $id = null): ?array { return live_display_latest_score_update($id); } }
+if (!function_exists('tv_program_rows')) { function tv_program_rows(int $id): array { return live_display_program_rows($id); } }
+if (!function_exists('tv_program_payload')) { function tv_program_payload(array $r): array { return live_display_program_payload($r); } }
+if (!function_exists('tv_program_entries')) { function tv_program_entries(int $id): array { return live_display_program_entries($id); } }
+if (!function_exists('tv_current_program')) { function tv_current_program(?int $id = null): array { return live_display_current_program($id); } }
+if (!function_exists('tv_schedule')) { function tv_schedule(?int $id = null, int $l = 9): array { return live_display_schedule($id, $l); } }
+if (!function_exists('tv_winners')) { function tv_winners(?int $id = null, int $l = 8): array { return live_display_winners($id, $l); } }
+if (!function_exists('tv_announcements')) { function tv_announcements(?int $id = null, ?array $s = null): array { return live_display_announcements($id, $s); } }
+if (!function_exists('tv_sponsors')) { function tv_sponsors(?int $id = null, ?array $s = null): array { return live_display_sponsors($id, $s); } }
+if (!function_exists('tv_active_break')) { function tv_active_break(int $id): ?array { return live_display_active_break($id); } }
+if (!function_exists('tv_break_info')) { function tv_break_info(?int $id = null, ?array $s = null): array { return live_display_break_info($id, $s); } }
+if (!function_exists('tv_stats')) { function tv_stats(?int $id = null): array { return live_display_stats($id); } }
+if (!function_exists('tv_bootstrap_data')) { function tv_bootstrap_data(): array { return live_display_bootstrap_data(); } }
+if (!function_exists('tv_sanitize_dashboard_settings')) { function tv_sanitize_dashboard_settings(array $p, array $c): array { return live_display_sanitize_dashboard_settings($p, $c); } }
+

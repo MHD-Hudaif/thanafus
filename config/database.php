@@ -9,22 +9,63 @@ $isLocalhost = in_array($_SERVER['HTTP_HOST'] ?? '', ['localhost', '127.0.0.1'],
                || str_ends_with($_SERVER['HTTP_HOST'] ?? '', '.local') 
                || env('APP_ENV') === 'development';
 
-$localPort = 3307;
+$localPort = 3306;
 $isLocalMysqlRunning = false;
+
 if ($isLocalhost) {
-    // 150ms timeout is more than enough to test local socket
-    $fp = @fsockopen('127.0.0.1', $localPort, $errno, $errstr, 0.15);
+    // 1. Try port 3306
+    $fp = @fsockopen('127.0.0.1', 3306, $errno, $errstr, 0.15);
     if ($fp) {
-        $isLocalMysqlRunning = true;
         fclose($fp);
+        try {
+            // Test if password-less root connection works on 3306
+            $test_pdo = new PDO("mysql:host=127.0.0.1;port=3306;charset=utf8mb4", 'root', '', [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_TIMEOUT => 1
+            ]);
+            $isLocalMysqlRunning = true;
+            $localPort = 3306;
+        } catch (PDOException $e) {
+            // Rejection on 3306 (e.g. conflicting service). Try Laragon default 3307
+            $fp2 = @fsockopen('127.0.0.1', 3307, $errno, $errstr, 0.15);
+            if ($fp2) {
+                fclose($fp2);
+                try {
+                    $test_pdo2 = new PDO("mysql:host=127.0.0.1;port=3307;charset=utf8mb4", 'root', '', [
+                        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                        PDO::ATTR_TIMEOUT => 1
+                    ]);
+                    $isLocalMysqlRunning = true;
+                    $localPort = 3307;
+                } catch (PDOException $e2) {
+                    $isLocalMysqlRunning = false;
+                }
+            }
+        }
+    } else {
+        // Port 3306 closed. Try port 3307
+        $fp2 = @fsockopen('127.0.0.1', 3307, $errno, $errstr, 0.15);
+        if ($fp2) {
+            fclose($fp2);
+            try {
+                $test_pdo2 = new PDO("mysql:host=127.0.0.1;port=3307;charset=utf8mb4", 'root', '', [
+                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                    PDO::ATTR_TIMEOUT => 1
+                ]);
+                $isLocalMysqlRunning = true;
+                $localPort = 3307;
+            } catch (PDOException $e2) {
+                $isLocalMysqlRunning = false;
+            }
+        }
     }
 }
 
 if ($isLocalhost && $isLocalMysqlRunning) {
-    // Localhost Development Credentials (using port 3307 to avoid service conflicts)
+    // Localhost Development Credentials
     $DB_HOST = "127.0.0.1;port={$localPort}";
     $DB_USER = 'root';
-    $DB_PASS = 'abd527-157';
+    $DB_PASS = '';
     $dashboard_db_name = 'kauzariyya';
     $musabaqa_db_name = 'kauzariyya_musabaqa';
 } else {

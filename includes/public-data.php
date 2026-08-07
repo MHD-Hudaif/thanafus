@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../config/bootstrap.php';
-require_once __DIR__ . '/../tv/includes/functions.php';
+require_once __DIR__ . '/../live-display/includes/functions.php';
 
 function teams(): array
 {
@@ -401,4 +401,5 @@ function venues_data(): array
         return [];
     }
 }
+
 

@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-define('TV_STAGE', true);
+define('LIVE_DISPLAY_STAGE', true);
 
 require_once __DIR__ . '/router.php';
 
@@ -15,3 +15,4 @@ foreach (array_keys(tv_page_map()) as $slideKey) {
 }
 
 require __DIR__ . '/includes/footer.php';
+

@@ -45,8 +45,8 @@ $currentPath = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH);
         <?php if (current_user_has_authority('upload-scores')): ?>
             <a href="<?= app_url('/admin/score-entry/score-entry.php') ?>" class="<?= str_contains($currentPath, 'score-entry.php') ? 'active' : '' ?>"><i class="fa-solid fa-pen-to-square"></i> Score Entry</a>
         <?php endif; ?>
-        <?php if (current_user_has_authority('control-tv')): ?>
-            <a href="<?= app_url('/admin/live-display/control-tv.php') ?>" class="<?= str_contains($currentPath, 'control-tv.php') ? 'active' : '' ?>"><i class="fa-solid fa-display"></i> Live Display</a>
+        <?php if (current_user_has_authority('control-live-display') || current_user_has_authority('control-tv')): ?>
+            <a href="<?= app_url('/admin/live-display/control-live-display.php') ?>" class="<?= str_contains($currentPath, 'control-live-display.php') || str_contains($currentPath, 'control-tv.php') ? 'active' : '' ?>"><i class="fa-solid fa-display"></i> Live Display</a>
         <?php endif; ?>
         <a href="<?= app_url('/home.php') ?>"><i class="fa-solid fa-house"></i> Home</a>
         <?php if (is_admin()): ?><a href="<?= app_url('/admin/event-manager/index.php') ?>"><i class="fa-solid fa-table-columns"></i> Admin</a><?php endif; ?>

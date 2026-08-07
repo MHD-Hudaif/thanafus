@@ -150,8 +150,12 @@ $viewProgramId = (int)($_GET['view'] ?? 0);
 $where = 'WHERE p.event_id = ?';
 $params = [$activeEventId];
 if ($statusFilter !== 'all' && in_array($statusFilter, ['none', 'submitted', 'rejected', 'approved'], true)) {
-    $where .= ' AND p.approval_status = ?';
-    $params[] = $statusFilter;
+    if ($statusFilter === 'submitted') {
+        $where .= " AND p.approval_status IN ('submitted', 'approved')";
+    } else {
+        $where .= ' AND p.approval_status = ?';
+        $params[] = $statusFilter;
+    }
 }
 if ($search !== '') {
     $where .= ' AND (p.title LIKE ? OR submitter.full_name LIKE ? OR submitter.username LIKE ?)';
@@ -569,7 +573,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                             <button class="btn btn-success btn-sm" type="submit"><i class="fa-solid fa-check"></i> Approve</button>
                                         </form>
                                     <?php elseif ($program['approval_status'] === 'approved'): ?>
-                                        <button class="btn btn-danger btn-sm" type="button" data-reject-id="<?= (int)$program['id'] ?>" data-reject-name="<?= e($program['title']) ?>" data-reject-action="revoke_approved">Reject Approval</button>
+                                        <button class="btn btn-warning btn-sm" type="button" data-reject-id="<?= (int)$program['id'] ?>" data-reject-name="<?= e($program['title']) ?>" data-reject-action="revoke_approved"><i class="fa-solid fa-rotate-left"></i> Undo Approval</button>
                                     <?php endif; ?>
                                 </div>
                             </td>
@@ -820,7 +824,7 @@ document.addEventListener('click', (e) => {
             nameEl,
             document.createTextNode(
                 isRevoke
-                    ? '? This removes finalized ranks, team points, and system scores. The entered marks on the score sheets will stay saved but become editable for the score entryer.'
+                    ? '? This removes finalized ranks, team points, and system scores. The program will return to the submitted state and remain locked for editing.'
                     : '? Score sheets will become editable again.'
             )
         );

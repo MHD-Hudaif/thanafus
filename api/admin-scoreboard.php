@@ -13,7 +13,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'OPTIONS') {
 }
 
 require_once __DIR__ . '/../includes/admin-helpers.php';
-require_once __DIR__ . '/../tv/includes/functions.php';
+require_once __DIR__ . '/../live-display/includes/functions.php';
 
 try {
     $pdo = $GLOBALS['musabaqa_pdo'];
@@ -147,3 +147,4 @@ try {
     http_response_code(500);
     echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
 }
+

@@ -96,7 +96,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                 <div class="panel">
                     <h3 class="mb-4"><i class="fa-solid fa-compass mr-2" style="color: var(--accent);"></i> Quick Navigation</h3>
                     <div class="dashboard-list">
-                        <a href="<?= app_url('/tv/dashboard.php') ?>" class="sidebar-action-btn" target="_blank">
+                        <a href="<?= app_url('/live-display/dashboard.php') ?>" class="sidebar-action-btn" target="_blank">
                             <div class="sidebar-action-icon" style="background: rgba(139, 92, 246, 0.15); color: var(--accent);">
                                 <i class="fa-solid fa-tower-broadcast"></i>
                             </div>
@@ -123,3 +123,4 @@ require_once __DIR__ . '/../../includes/sidebar.php';
 </div>
 
 <?php admin_close_page(); ?>
+

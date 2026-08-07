@@ -313,6 +313,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $activeEventId
             ]);
 
+            // Recalculate results for this program in case the points configuration was changed
+            admin_recalculate_program_results($pdo, $activeEventId, $programId);
+            admin_recalculate_team_totals($pdo, $activeEventId);
+
             admin_flash('success', 'Program updated successfully.');
         } else {
             $stmt = $pdo->prepare("
@@ -1026,27 +1030,19 @@ function addRankRow(rank, points = 0) {
     row.className = 'rank-row';
     row.style.cssText = 'display: flex; gap: 10px; align-items: center; margin-bottom: 4px;';
     
-    const isDefault = rank <= 3;
-    
     row.innerHTML = `
         <span style="font-size: 13px; min-width: 80px; font-weight:600; color:var(--muted);">Rank <span class="rank-index">${rank}</span>:</span>
         <input type="number" class="form-input rank-points-input" min="0" value="${points}" placeholder="Points" style="width: 100px; height: 32px; font-size: 13px;" required>
-        ${isDefault ? `
-            <span style="font-size: 11px; color: rgba(255,255,255,0.2); font-style:italic;">Default Slot</span>
-        ` : `
-            <button type="button" class="btn btn-danger btn-xs remove-rank-btn" style="padding: 4px 8px; height: 32px;" title="Remove Rank">
-                <i class="fa-solid fa-trash"></i>
-            </button>
-        `}
+        <button type="button" class="btn btn-danger btn-xs remove-rank-btn" style="padding: 4px 8px; height: 32px;" title="Remove Rank">
+            <i class="fa-solid fa-trash"></i>
+        </button>
     `;
     container.appendChild(row);
     
-    if (!isDefault) {
-        row.querySelector('.remove-rank-btn')?.addEventListener('click', () => {
-            row.remove();
-            reindexRanks();
-        });
-    }
+    row.querySelector('.remove-rank-btn')?.addEventListener('click', () => {
+        row.remove();
+        reindexRanks();
+    });
 }
 
 function reindexRanks() {

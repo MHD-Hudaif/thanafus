@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-if (!defined('TV_STAGE')) {
+if (!defined('LIVE_DISPLAY_STAGE')) {
     require_once dirname(__DIR__) . '/router.php';
     $event = tv_active_event();
     $settings = tv_get_settings((int)($event['id'] ?? 0));
@@ -21,8 +21,9 @@ if (!defined('TV_STAGE')) {
 ?>
 <div class="tv-floating-leaderboard" data-leaderboard></div>
 <?php
-if (!defined('TV_STAGE')) {
+if (!defined('LIVE_DISPLAY_STAGE')) {
     echo '</section>';
     require dirname(__DIR__) . '/includes/footer.php';
 }
 ?>
+

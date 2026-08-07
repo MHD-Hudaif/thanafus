@@ -32,22 +32,12 @@
     }
 
     /* =====================================================
-       LOADING BAR
+       LOADING BAR (Disabled)
        ===================================================== */
 
-    const loader = document.createElement('div');
-    loader.className = 'ajax-loader';
-    document.body.appendChild(loader);
-
-    function showLoader() {
-        loader.classList.remove('done');
-        loader.classList.add('active');
-    }
-
-    function hideLoader() {
-        loader.classList.add('done');
-        setTimeout(() => loader.classList.remove('active', 'done'), 400);
-    }
+    // Loader disabled per user request
+    function showLoader() {}
+    function hideLoader() {}
 
     /* =====================================================
        GSAP ANIMATIONS
@@ -452,60 +442,67 @@
         const currentPath = normPath(currentUrl.pathname);
         const currentQuery = currentUrl.searchParams;
 
-        const links = Array.from(document.querySelectorAll('.sidebar-link, .nav-item-link, .role-item-link, .sidebar-vertical-link'));
+        const updateLinkGroup = (groupSelector) => {
+            const links = Array.from(document.querySelectorAll(groupSelector));
+            if (!links.length) return;
 
-        let bestLink = null;
-        let bestScore = -1;
+            let bestLink = null;
+            let bestScore = -1;
 
-        links.forEach(link => {
-            if (!link.href) return;
-            let linkUrl;
-            try {
-                linkUrl = new URL(link.href, location.origin);
-            } catch {
-                return;
-            }
-
-            const linkPath = normPath(linkUrl.pathname);
-            const linkQuery = linkUrl.searchParams;
-
-            let score = -1;
-
-            if (currentPath === linkPath) {
-                score = 10;
-                let queryMatchCount = 0;
-                let queryMismatch = false;
-
-                linkQuery.forEach((val, key) => {
-                    if (currentQuery.get(key) === val) {
-                        queryMatchCount++;
-                    } else {
-                        queryMismatch = true;
-                    }
-                });
-
-                if (queryMismatch) {
-                    score = 0;
-                } else {
-                    score += queryMatchCount * 10;
+            links.forEach(link => {
+                if (!link.href) return;
+                let linkUrl;
+                try {
+                    linkUrl = new URL(link.href, location.origin);
+                } catch {
+                    return;
                 }
-            } else if (linkPath.endsWith('/index') && currentPath === normPath(linkPath.replace(/\/index$/, ''))) {
-                score = 8;
-            }
 
-            if (score > bestScore) {
-                bestScore = score;
-                bestLink = link;
-            }
-        });
+                const linkPath = normPath(linkUrl.pathname);
+                const linkQuery = linkUrl.searchParams;
 
-        links.forEach(link => {
-            if (bestLink && link === bestLink && bestScore > 0) {
-                link.classList.add('active');
-            } else {
-                link.classList.remove('active');
-            }
-        });
+                let score = -1;
+
+                if (currentPath === linkPath) {
+                    score = 10;
+                    let queryMatchCount = 0;
+                    let queryMismatch = false;
+
+                    linkQuery.forEach((val, key) => {
+                        if (currentQuery.get(key) === val) {
+                            queryMatchCount++;
+                        } else {
+                            queryMismatch = true;
+                        }
+                    });
+
+                    if (queryMismatch) {
+                        score = 0;
+                    } else {
+                        score += queryMatchCount * 10;
+                    }
+                } else if (linkPath.endsWith('/index') && currentPath === normPath(linkPath.replace(/\/index$/, ''))) {
+                    score = 8;
+                }
+
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestLink = link;
+                }
+            });
+
+            links.forEach(link => {
+                if (bestLink && link === bestLink && bestScore > 0) {
+                    link.classList.add('active');
+                } else {
+                    link.classList.remove('active');
+                }
+            });
+        };
+
+        // Update vertical sidebar links and top navigation links separately to avoid single-winner collision
+        updateLinkGroup('.sidebar-vertical .sidebar-vertical-link, .sidebar .sidebar-link');
+        updateLinkGroup('.event-top-nav .nav-item-link, .sliding-nav-header .nav-item-link');
     }
 
     /* =====================================================
@@ -526,7 +523,7 @@
         if (anchor.hasAttribute('download')) return false;
 
         const url = anchor.href;
-        if (url.includes('/tv/')) return false;
+        if (url.includes('/live-display/')) return false;
         if (url.includes('/auth/')) return false;
         if (url.includes('/utilities/')) return false;
         if (!isAdminUrl(url)) return false;
@@ -641,8 +638,8 @@
                 document.querySelectorAll('style[data-ajax-injected]').forEach(el => el.remove());
 
                 // Dynamically update horizontal navigation header links if present in response
-                const newNavHeader = doc.querySelector('.sliding-nav-header');
-                const currentNavHeader = document.querySelector('.sliding-nav-header');
+                const newNavHeader = doc.querySelector('.event-top-nav, #eventTopNav, .sliding-nav-header');
+                const currentNavHeader = document.querySelector('.event-top-nav, #eventTopNav, .sliding-nav-header');
                 if (newNavHeader && currentNavHeader) {
                     currentNavHeader.innerHTML = newNavHeader.innerHTML;
                 }
@@ -908,9 +905,10 @@
         initModals();
         initModalScrollLock();
         initAlerts();
-        // initRouter(); // Replaced by HTMX
-        // initAjaxPaginationControls(); // Replaced by HTMX
+        initRouter();
+        initAjaxPaginationControls();
         initAdminChat();
+        initRealTimeUpdates();
     });
 
     /* =====================================================
@@ -1198,6 +1196,107 @@
         chatUnreadInterval = setInterval(checkUnreadMessages, 8000);
     }
 
+    function initRealTimeUpdates() {
+        if (typeof EventSource === 'undefined') return;
+
+        const sseUrl = `${APP_URL}/admin/api/sse.php`;
+        let sse = new EventSource(sseUrl);
+
+        function silentSwapContent(html) {
+            const mainContent = document.querySelector('.main-content');
+            if (!mainContent) return;
+
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            let newContent = doc.querySelector('.main-content');
+
+            if (!newContent) {
+                const wrapper = doc.body;
+                if (wrapper) {
+                    newContent = wrapper.querySelector('.main-content') || wrapper;
+                }
+            }
+
+            if (!newContent) return;
+
+            // Clone fragment and remove duplicate sidebars
+            const contentClone = newContent.cloneNode(true);
+            contentClone.querySelectorAll('.sidebar-vertical, .sidebar, .nav-container-wrapper, .event-top-nav').forEach(el => el.remove());
+
+            // Clear previously injected AJAX inline styles to avoid conflicts
+            document.querySelectorAll('style[data-ajax-injected]').forEach(el => el.remove());
+
+            // Inject new inline style elements from the response
+            doc.querySelectorAll('style').forEach(style => {
+                const s = document.createElement('style');
+                s.setAttribute('data-ajax-injected', 'true');
+                s.textContent = style.textContent;
+                document.head.appendChild(s);
+            });
+
+            // Perform in-place HTML swap (without scroll reset or animations)
+            mainContent.innerHTML = contentClone.innerHTML;
+            mainContent.className = contentClone.className;
+
+            // Re-inject and execute inline scripts so that events/buttons continue working
+            executeInlineScripts(mainContent, pageScriptController?.signal);
+
+            // Re-initialize widgets silently
+            initModals();
+            initAlerts();
+            initCursorGlows();
+
+            // Dispatch content-swapped event so charts, tables etc. redraw
+            window.dispatchEvent(new CustomEvent('admin:content-swapped', {
+                detail: { url: window.location.href, container: mainContent }
+            }));
+        }
+
+        async function silentUpdate() {
+            try {
+                const resp = await fetch(window.location.href, {
+                    headers: AJAX_HEADER,
+                    credentials: 'same-origin'
+                });
+                if (!resp.ok) return;
+                const html = await resp.text();
+                silentSwapContent(html);
+            } catch (err) {
+                console.error('[SSE] Silent update failed:', err);
+            }
+        }
+
+        sse.onmessage = (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                if (data.action_type === 'leaderboard_update' || data.action_type === 'approve_program_scores') {
+                    // Check if current page is teams, progress, analytics, score-entry or score-update
+                    const currentPath = window.location.pathname;
+                    const isRelevantPage = currentPath.includes('/admin/event-manager/teams') ||
+                                           currentPath.includes('/admin/event-manager/progress') ||
+                                           currentPath.includes('/admin/event-manager/analytics') ||
+                                           currentPath.includes('/admin/score-entry') ||
+                                           currentPath.includes('/admin/score-update');
+
+                    if (isRelevantPage) {
+                        const activeTag = document.activeElement?.tagName;
+                        const isUserInteracting = activeTag === 'INPUT' || activeTag === 'TEXTAREA' || activeTag === 'SELECT' || document.querySelector('.modal-overlay.active');
+                        
+                        if (!isUserInteracting) {
+                            silentUpdate();
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error('[SSE] Failed to process message:', err);
+            }
+        };
+
+        sse.onerror = (err) => {
+            console.warn('[SSE] Connection error. Reconnecting...', err);
+        };
+    }
+
     /* Expose for pages that need to call openModal / closeModal */
     window.openModal = function (id) {
         const modal = document.getElementById(id);
@@ -1235,7 +1334,7 @@
             }
             const url = el.href || el.action;
             if (url) {
-                if (url.includes('/tv/') || url.includes('/auth/') || url.includes('/utilities/')) {
+                if (url.includes('/live-display/') || url.includes('/auth/') || url.includes('/utilities/')) {
                     evt.preventDefault();
                     return;
                 }
@@ -1283,6 +1382,28 @@
                 // Clear previously injected AJAX inline styles to avoid conflicts
                 document.querySelectorAll('style[data-ajax-injected]').forEach(el => el.remove());
                 
+                // Extract and update sidebar and top workspace navigation header if present in full server response
+                const responseHtml = evt.detail.xhr?.responseText || evt.detail.serverResponse;
+                if (responseHtml) {
+                    try {
+                        const doc = new DOMParser().parseFromString(responseHtml, 'text/html');
+                        
+                        const newSidebar = doc.querySelector('.sidebar-vertical');
+                        const currentSidebar = document.querySelector('.sidebar-vertical');
+                        if (newSidebar && currentSidebar) {
+                            currentSidebar.innerHTML = newSidebar.innerHTML;
+                        }
+
+                        const newTopNav = doc.querySelector('.event-top-nav, #eventTopNav');
+                        const currentTopNav = document.querySelector('.event-top-nav, #eventTopNav');
+                        if (newTopNav && currentTopNav) {
+                            currentTopNav.innerHTML = newTopNav.innerHTML;
+                        }
+                    } catch (e) {
+                        console.error('[HTMX Layout Update Error]', e);
+                    }
+                }
+
                 // Re-initialize UI widgets
                 initModals();
                 initAlerts();
@@ -1430,4 +1551,30 @@
         initAlertsAndToasts();
     });
 
+    // Global event delegation for workspace header navigation toggle button
+    document.addEventListener('click', (e) => {
+        const toggleBtn = e.target.closest('#sidebarWorkspaceToggleBtn, .workspace-toggle-btn');
+        const topNav = document.getElementById('eventTopNav');
+        if (toggleBtn && topNav) {
+            e.preventDefault();
+            e.stopPropagation();
+            const isOpen = topNav.classList.toggle('is-workspace-mode');
+            toggleBtn.classList.toggle('open', isOpen);
+            toggleBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+            return;
+        }
+
+        if (topNav && topNav.classList.contains('is-workspace-mode')) {
+            if (!topNav.contains(e.target)) {
+                topNav.classList.remove('is-workspace-mode');
+                const btn = document.getElementById('sidebarWorkspaceToggleBtn');
+                if (btn) {
+                    btn.classList.remove('open');
+                    btn.setAttribute('aria-expanded', 'false');
+                }
+            }
+        }
+    });
+
 })();
+

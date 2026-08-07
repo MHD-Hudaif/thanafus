@@ -32,12 +32,24 @@ $stmtSec = $pdo->prepare("SELECT * FROM musabaqa_schedule_sections WHERE event_i
 $stmtSec->execute([$activeEventId]);
 $scheduleSessions = $stmtSec->fetchAll(PDO::FETCH_ASSOC);
 
+$stageTypes = $pdo->query("SELECT id, name FROM musabaqa_stage_types ORDER BY id ASC")->fetchAll(PDO::FETCH_ASSOC);
+
+$stmtStageCounts = $pdo->prepare("
+    SELECT COALESCE(p.stage_type_id, 0) AS stage_id, COUNT(*) AS total
+    FROM musabaqa_programs p
+    WHERE p.event_id = ?
+    GROUP BY p.stage_type_id
+");
+$stmtStageCounts->execute([$activeEventId]);
+$stageCountsRaw = $stmtStageCounts->fetchAll(PDO::FETCH_KEY_PAIR);
+
 $flash = admin_take_flash();
 $search = trim((string)($_GET['search'] ?? ''));
 $statusFilter = trim((string)($_GET['status'] ?? 'all'));
 $approvalFilter = trim((string)($_GET['approval'] ?? 'all'));
 $classFilter = trim((string)($_GET['class'] ?? 'all'));
 $sessionIdFilter = (int)($_GET['session_id'] ?? 0);
+$stageIdFilter = trim((string)($_GET['stage_id'] ?? 'all'));
 $programGroupBy = trim((string)($_GET['program_group_by'] ?? 'session'));
 
 $where = 'WHERE p.event_id = ?';
@@ -63,6 +75,15 @@ if ($sessionIdFilter > 0) {
     $where .= ' AND p.section_id IS NULL';
 }
 
+if ($stageIdFilter !== 'all') {
+    if ($stageIdFilter === 'unassigned') {
+        $where .= ' AND (p.stage_type_id IS NULL OR p.stage_type_id = 0)';
+    } elseif (is_numeric($stageIdFilter) && (int)$stageIdFilter > 0) {
+        $where .= ' AND p.stage_type_id = ?';
+        $params[] = (int)$stageIdFilter;
+    }
+}
+
 [$classSql, $classParams] = admin_program_class_filter_sql($dashboardPdo, $classFilter, 'p');
 $where .= $classSql;
 array_push($params, ...$classParams);
@@ -71,6 +92,7 @@ $stmt = $pdo->prepare("
     SELECT
         p.*,
         ct.name AS class_type_name,
+        mst.name AS stage_type_name,
         mss.id AS schedule_section_id, mss.name AS schedule_section_name,
         mss.start_time AS schedule_section_start, mss.end_time AS schedule_section_end,
         mss.section_date AS schedule_section_date, mss.sort_order AS schedule_section_sort,
@@ -80,6 +102,7 @@ $stmt = $pdo->prepare("
         COALESCE(category_data.category_total, 0) AS category_total
     FROM musabaqa_programs p
     LEFT JOIN " . DB_MAIN_NAME . ".class_types ct ON ct.id = p.class_type_id
+    LEFT JOIN musabaqa_stage_types mst ON mst.id = p.stage_type_id
     LEFT JOIN musabaqa_schedule_sections mss ON mss.id = p.section_id
     LEFT JOIN musabaqa_program_entries pe ON pe.program_id = p.id
     LEFT JOIN musabaqa_score_sheets ss ON ss.entry_id = pe.id
@@ -89,7 +112,7 @@ $stmt = $pdo->prepare("
         GROUP BY program_id
     ) category_data ON category_data.program_id = p.id
     {$where}
-    GROUP BY p.id, ct.id, mss.id, category_data.category_count, category_data.category_total
+    GROUP BY p.id, ct.id, mst.id, mss.id, category_data.category_count, category_data.category_total
     ORDER BY 
         COALESCE(mss.section_date, '9999-12-31') ASC,
         COALESCE(mss.sort_order, 999) ASC,
@@ -126,8 +149,19 @@ require_once __DIR__ . '/../../includes/sidebar.php';
     <?php endif; ?>
 
     <div class="panel mb-6">
-        <form method="GET" class="form-grid" style="grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); align-items: flex-end;">
+        <form method="GET" class="form-grid" style="grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); align-items: flex-end;">
             <input type="hidden" name="program_group_by" value="<?= e($programGroupBy) ?>">
+
+            <div class="input-group">
+                <label>Stage / Venue</label>
+                <select name="stage_id" onchange="this.form.submit()">
+                    <option value="all">All Stages</option>
+                    <?php foreach ($stageTypes as $st): ?>
+                        <option value="<?= (int)$st['id'] ?>" <?= $stageIdFilter === (string)$st['id'] ? 'selected' : '' ?>><?= e($st['name']) ?></option>
+                    <?php endforeach; ?>
+                    <option value="unassigned" <?= $stageIdFilter === 'unassigned' ? 'selected' : '' ?>>Unassigned Stage</option>
+                </select>
+            </div>
 
             <div class="input-group">
                 <label>Schedule Session</label>
@@ -185,17 +219,20 @@ require_once __DIR__ . '/../../includes/sidebar.php';
             <div class="form-actions" style="grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 6px;">
                 <!-- Group By Mode Toggle Pills -->
                 <div style="display: flex; align-items: center; background: rgba(255,255,255,0.04); padding: 3px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08);">
-                    <a href="<?= app_url('/admin/score-entry/score-entry.php?program_group_by=session' . ($sessionIdFilter !== 0 ? '&session_id=' . $sessionIdFilter : '') . ($statusFilter !== 'all' ? '&status=' . urlencode($statusFilter) : '') . ($approvalFilter !== 'all' ? '&approval=' . urlencode($approvalFilter) : '') . ($classFilter !== 'all' ? '&class=' . urlencode($classFilter) : '') . ($search !== '' ? '&search=' . urlencode($search) : '')) ?>" class="btn btn-xs <?= $programGroupBy === 'session' ? 'btn-primary' : 'btn-secondary' ?>" style="font-size:11.5px; padding: 5px 12px; border-radius: 6px;" title="Group by Schedule Session">
+                    <a href="<?= app_url('/admin/score-entry/score-entry.php?program_group_by=session' . ($stageIdFilter !== 'all' ? '&stage_id=' . urlencode($stageIdFilter) : '') . ($sessionIdFilter !== 0 ? '&session_id=' . $sessionIdFilter : '') . ($statusFilter !== 'all' ? '&status=' . urlencode($statusFilter) : '') . ($approvalFilter !== 'all' ? '&approval=' . urlencode($approvalFilter) : '') . ($classFilter !== 'all' ? '&class=' . urlencode($classFilter) : '') . ($search !== '' ? '&search=' . urlencode($search) : '')) ?>" class="btn btn-xs <?= $programGroupBy === 'session' ? 'btn-primary' : 'btn-secondary' ?>" style="font-size:11.5px; padding: 5px 12px; border-radius: 6px;" title="Group by Schedule Session">
                         <i class="fa-solid fa-clock mr-1"></i> By Schedule Session
                     </a>
-                    <a href="<?= app_url('/admin/score-entry/score-entry.php?program_group_by=division' . ($sessionIdFilter !== 0 ? '&session_id=' . $sessionIdFilter : '') . ($statusFilter !== 'all' ? '&status=' . urlencode($statusFilter) : '') . ($approvalFilter !== 'all' ? '&approval=' . urlencode($approvalFilter) : '') . ($classFilter !== 'all' ? '&class=' . urlencode($classFilter) : '') . ($search !== '' ? '&search=' . urlencode($search) : '')) ?>" class="btn btn-xs <?= $programGroupBy === 'division' ? 'btn-primary' : 'btn-secondary' ?>" style="font-size:11.5px; padding: 5px 12px; border-radius: 6px;" title="Group by Class Division">
+                    <a href="<?= app_url('/admin/score-entry/score-entry.php?program_group_by=division' . ($stageIdFilter !== 'all' ? '&stage_id=' . urlencode($stageIdFilter) : '') . ($sessionIdFilter !== 0 ? '&session_id=' . $sessionIdFilter : '') . ($statusFilter !== 'all' ? '&status=' . urlencode($statusFilter) : '') . ($approvalFilter !== 'all' ? '&approval=' . urlencode($approvalFilter) : '') . ($classFilter !== 'all' ? '&class=' . urlencode($classFilter) : '') . ($search !== '' ? '&search=' . urlencode($search) : '')) ?>" class="btn btn-xs <?= $programGroupBy === 'division' ? 'btn-primary' : 'btn-secondary' ?>" style="font-size:11.5px; padding: 5px 12px; border-radius: 6px;" title="Group by Class Division">
                         <i class="fa-solid fa-layer-group mr-1"></i> By Class Division
+                    </a>
+                    <a href="<?= app_url('/admin/score-entry/score-entry.php?program_group_by=stage' . ($stageIdFilter !== 'all' ? '&stage_id=' . urlencode($stageIdFilter) : '') . ($sessionIdFilter !== 0 ? '&session_id=' . $sessionIdFilter : '') . ($statusFilter !== 'all' ? '&status=' . urlencode($statusFilter) : '') . ($approvalFilter !== 'all' ? '&approval=' . urlencode($approvalFilter) : '') . ($classFilter !== 'all' ? '&class=' . urlencode($classFilter) : '') . ($search !== '' ? '&search=' . urlencode($search) : '')) ?>" class="btn btn-xs <?= $programGroupBy === 'stage' ? 'btn-primary' : 'btn-secondary' ?>" style="font-size:11.5px; padding: 5px 12px; border-radius: 6px;" title="Group by Stage / Venue">
+                        <i class="fa-solid fa-map-pin mr-1"></i> By Stage
                     </a>
                 </div>
 
                 <div style="display: flex; gap: 8px;">
                     <button class="btn btn-secondary btn-md" type="submit"><i class="fa-solid fa-filter mr-1"></i> Filter</button>
-                    <?php if ($search !== '' || $statusFilter !== 'all' || $approvalFilter !== 'all' || $classFilter !== 'all' || $sessionIdFilter !== 0): ?>
+                    <?php if ($search !== '' || $statusFilter !== 'all' || $approvalFilter !== 'all' || $classFilter !== 'all' || $sessionIdFilter !== 0 || $stageIdFilter !== 'all'): ?>
                         <a href="<?= app_url('/admin/score-entry/score-entry.php') ?>" class="btn btn-secondary btn-md">Clear</a>
                     <?php endif; ?>
                 </div>
@@ -342,6 +379,11 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                 <tr style="<?= $isLocked ? 'opacity: 0.68;' : '' ?>">
                                     <td>
                                         <strong style="color: #fff; font-size: 14px;"><?= e($program['title']) ?></strong>
+                                        <?php if (!empty($program['stage_type_name'])): ?>
+                                            <span class="badge badge-info" style="font-size: 11px; margin-left: 4px;">
+                                                <i class="fa-solid fa-map-pin mr-1"></i><?= e($program['stage_type_name']) ?>
+                                            </span>
+                                        <?php endif; ?>
                                         <?php if (!empty($program['start_time'])): ?>
                                             <div style="font-size: 11.5px; color: #34d399; font-weight: 700; margin-top: 2px;">
                                                 <i class="fa-solid fa-clock mr-1"></i><?= date('h:i A', strtotime($program['start_time'])) ?>
@@ -406,7 +448,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                 </div>
             </div>
         <?php endforeach; ?>
-    <?php else: ?>
+    <?php elseif ($programGroupBy === 'division'): ?>
         <!-- GROUPED BY CLASS DIVISION -->
         <?php foreach ($tiers as $tierKey => $tierLabel): ?>
             <?php 
@@ -443,6 +485,127 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                         </thead>
                         <tbody>
                             <?php foreach ($tierPrograms as $program): ?>
+                                <?php
+                                $entryCount    = (int)$program['entry_count'];
+                                $scoredCount   = (int)$program['scored_count'];
+                                $categoryTotal = (float)$program['category_total'];
+                                $categoryValid = (int)$program['category_count'] > 0 && abs($categoryTotal - 100.0) <= 0.01;
+                                $isLocked      = !empty($program['scoring_locked']);
+                                $blockingTitle = $program['blocking_program_title'] ?? '';
+                                ?>
+                                <tr style="<?= $isLocked ? 'opacity: 0.68;' : '' ?>">
+                                    <td>
+                                        <strong style="color: #fff; font-size: 14px;"><?= e($program['title']) ?></strong>
+                                        <?php if (!empty($program['stage_type_name'])): ?>
+                                            <span class="badge badge-info" style="font-size: 11px; margin-left: 4px;">
+                                                <i class="fa-solid fa-map-pin mr-1"></i><?= e($program['stage_type_name']) ?>
+                                            </span>
+                                        <?php endif; ?>
+                                        <?php if (!empty($program['start_time'])): ?>
+                                            <div style="font-size: 11.5px; color: #34d399; font-weight: 700; margin-top: 2px;">
+                                                <i class="fa-solid fa-clock mr-1"></i><?= date('h:i A', strtotime($program['start_time'])) ?>
+                                                <?php if (!empty($program['end_time'])): ?>
+                                                    - <?= date('h:i A', strtotime($program['end_time'])) ?>
+                                                <?php endif; ?>
+                                            </div>
+                                        <?php else: ?>
+                                            <div class="muted"><?= e($program['location'] ?: '-') ?></div>
+                                        <?php endif; ?>
+
+                                        <?php if ($isLocked): ?>
+                                            <div style="font-size: 11px; color: #f87171; font-weight: 600; margin-top: 3px;">
+                                                <i class="fa-solid fa-lock mr-1"></i> Complete "<?= e($blockingTitle) ?>" first
+                                            </div>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td>
+                                        <?php if (!empty($program['schedule_section_name'])): ?>
+                                            <span class="badge badge-info" style="font-size: 11px;">
+                                                <i class="fa-solid fa-clock mr-1"></i> <?= e($program['schedule_section_name']) ?>
+                                            </span>
+                                        <?php else: ?>
+                                            <span style="color: var(--muted); font-size: 12px;">Unassigned</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td>
+                                        <?php $classTier = admin_class_type_tier_from_name($program['class_type_name'] ?? ''); ?>
+                                        <span class="badge <?= admin_class_type_badge_class($classTier) ?>">
+                                            <?= e(admin_class_type_display($program['class_type_name'] ?? null, (int)($program['class_type_id'] ?? 0))) ?>
+                                        </span>
+                                    </td>
+                                    <td><?= $entryCount ?></td>
+                                    <td>
+                                        <span class="badge <?= $scoredCount === $entryCount && $entryCount > 0 ? 'badge-success' : 'badge-neutral' ?>">
+                                            <?= $scoredCount ?> / <?= $entryCount ?>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge <?= $categoryValid ? 'badge-success' : 'badge-danger' ?>">
+                                            <?= (int)$program['category_count'] ?> · <?= number_format($categoryTotal, 2) ?>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <?php if ($isLocked): ?>
+                                            <span class="badge" style="background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.25);">
+                                                <i class="fa-solid fa-lock mr-1"></i> Locked
+                                            </span>
+                                        <?php else: ?>
+                                            <span class="badge <?= score_entry_status_badge($program['status']) ?>"><?= e(ucfirst((string)$program['status'])) ?></span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td><span class="badge <?= score_entry_approval_badge($program['approval_status']) ?>"><?= e(ucfirst((string)$program['approval_status'])) ?></span></td>
+                                    <td style="text-align: right;">
+                                        <div class="flex gap-2 flex-wrap" style="justify-content: flex-end;">
+                                            <?php if ($isLocked): ?>
+                                                <button class="btn btn-secondary btn-sm" disabled style="opacity: 0.45; cursor: not-allowed;" title="Complete scoring for &quot;<?= e($blockingTitle) ?>&quot; first">
+                                                    <i class="fa-solid fa-lock mr-1"></i> Locked
+                                                </button>
+                                            <?php else: ?>
+                                                <a class="btn btn-success btn-sm" href="<?= app_url('/admin/score-entry/program-scores.php') ?>?program_id=<?= (int)$program['id'] ?>">
+                                                    <i class="fa-solid fa-pen-to-square mr-1"></i> Score Entry
+                                                </a>
+                                            <?php endif; ?>
+                                        </div>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        <?php endforeach; ?>
+    <?php elseif ($programGroupBy === 'stage'): ?>
+        <!-- GROUPED BY STAGE / VENUE -->
+        <?php foreach ($groupedByStage as $stageKey => $stageGroup): ?>
+            <?php if (empty($stageGroup['programs'])) continue; ?>
+            <div class="panel mb-6" style="border: 1px solid rgba(255,255,255,0.06); border-radius: 14px; overflow: hidden; padding: 0; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(16px);">
+                <div style="background: rgba(255,255,255,0.03); padding: 16px 22px; border-bottom: 1px solid rgba(255,255,255,0.06); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                    <h3 style="font-size: 16px; font-weight: 800; color: #fff; margin: 0; display: flex; align-items: center; gap: 10px;">
+                        <i class="fa-solid fa-map-pin" style="color: #34d399;"></i>
+                        <?= e($stageGroup['name']) ?>
+                    </h3>
+                    <span style="font-size: 12px; font-weight: 700; padding: 4px 12px; border-radius: 999px; background: rgba(52,211,153,0.15); color: #34d399; border: 1px solid rgba(52,211,153,0.25);">
+                        <?= count($stageGroup['programs']) ?> <?= count($stageGroup['programs']) === 1 ? 'Program' : 'Programs' ?>
+                    </span>
+                </div>
+
+                <div class="table-wrapper" style="margin: 0; border: none; border-radius: 0;">
+                    <table class="table table-glass">
+                        <thead>
+                            <tr>
+                                <th>Program Title & Time</th>
+                                <th>Schedule Session</th>
+                                <th>Class</th>
+                                <th>Entries</th>
+                                <th>Scored</th>
+                                <th>Categories</th>
+                                <th>Status</th>
+                                <th>Approval</th>
+                                <th style="text-align: right;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($stageGroup['programs'] as $program): ?>
                                 <?php
                                 $entryCount    = (int)$program['entry_count'];
                                 $scoredCount   = (int)$program['scored_count'];

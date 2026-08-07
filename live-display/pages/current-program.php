@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-if (!defined('TV_STAGE')) {
+if (!defined('LIVE_DISPLAY_STAGE')) {
     require_once dirname(__DIR__) . '/router.php';
     $event = tv_active_event();
     $settings = tv_get_settings((int)($event['id'] ?? 0));
@@ -14,7 +14,7 @@ if (!defined('TV_STAGE')) {
     echo '<section class="tv-slide tv-slide--active" id="slide-current-program" data-slide="current-program" style="opacity: 1; visibility: visible; transform: scale(1);">';
 }
 ?>
-<?php if (!defined('TV_STAGE')): ?>
+<?php if (!defined('LIVE_DISPLAY_STAGE')): ?>
 <script>
 document.body.classList.add('tv-current-schedule-theme');
 document.querySelector('.tv-topbar')?.setAttribute('hidden', '');
@@ -568,8 +568,9 @@ body:has(#slide-current-program.tv-slide--active) .tv-topbar {
 })();
 </script>
 <?php
-if (!defined('TV_STAGE')) {
+if (!defined('LIVE_DISPLAY_STAGE')) {
     echo '</section>';
     require dirname(__DIR__) . '/includes/footer.php';
 }
 ?>
+

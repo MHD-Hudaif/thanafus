@@ -386,22 +386,27 @@ function admin_recalculate_program_results(PDO $pdo, int $eventId, int $programI
     $secondPoints = (int)($settings['second_place_points'] ?? 7);
     $thirdPoints = (int)($settings['third_place_points'] ?? 5);
 
-    $teamPoints = [];
+    $teamPoints = null;
     $onlyTeamMarks = 0;
     if ($entries) {
         $firstEntry = $entries[0];
         $onlyTeamMarks = (int)($firstEntry['only_team_marks'] ?? 0);
         if (!empty($firstEntry['team_points_config'])) {
-            $teamPoints = json_decode($firstEntry['team_points_config'], true) ?: [];
+            $teamPoints = json_decode($firstEntry['team_points_config'], true);
         }
     }
 
     $pointConfig = [];
-    $pointConfig[1] = isset($teamPoints[1]) ? (int)$teamPoints[1] : $firstPoints;
-    $pointConfig[2] = isset($teamPoints[2]) ? (int)$teamPoints[2] : $secondPoints;
-    $pointConfig[3] = isset($teamPoints[3]) ? (int)$teamPoints[3] : $thirdPoints;
-    foreach ($teamPoints as $r => $pts) {
-        $pointConfig[(int)$r] = (int)$pts;
+    if (is_array($teamPoints)) {
+        // If program has a custom point config, ONLY award points to ranks explicitly defined in it
+        foreach ($teamPoints as $r => $pts) {
+            $pointConfig[(int)$r] = (int)$pts;
+        }
+    } else {
+        // Fallback to event-wide default points
+        $pointConfig[1] = $firstPoints;
+        $pointConfig[2] = $secondPoints;
+        $pointConfig[3] = $thirdPoints;
     }
 
     $update = $pdo->prepare("
@@ -480,11 +485,11 @@ function admin_recalculate_program_results(PDO $pdo, int $eventId, int $programI
 
             $teamScore = 0;
             if ($idx === 0) {
-                $teamScore = $pointConfig[1];
+                $teamScore = $pointConfig[1] ?? 0;
             } elseif ($idx === 1) {
                 $c1 = $groupCounts[0];
                 if ($c1 === 1 || $c1 === 2) {
-                    $teamScore = $pointConfig[2];
+                    $teamScore = $pointConfig[2] ?? 0;
                 } else {
                     $teamScore = 0;
                 }
@@ -492,7 +497,7 @@ function admin_recalculate_program_results(PDO $pdo, int $eventId, int $programI
                 $c1 = $groupCounts[0];
                 $c2 = $groupCounts[1];
                 if ($c1 === 1 && $c2 === 1) {
-                    $teamScore = $pointConfig[3];
+                    $teamScore = $pointConfig[3] ?? 0;
                 } else {
                     $teamScore = 0;
                 }
@@ -775,7 +780,7 @@ function admin_revoke_program_approval(PDO $pdo, int $eventId, int $programId, i
 
         $pdo->prepare("
             UPDATE musabaqa_score_sheets
-            SET status = 'rejected'
+            SET status = 'submitted'
             WHERE program_id = ?
               AND status = 'approved'
         ")->execute([$programId]);
@@ -802,12 +807,12 @@ function admin_revoke_program_approval(PDO $pdo, int $eventId, int $programId, i
         $pdo->prepare("
             UPDATE musabaqa_programs
             SET status = 'scoring',
-                approval_status = 'rejected',
-                reviewed_by = ?,
-                reviewed_at = NOW()
+                approval_status = 'submitted',
+                reviewed_by = NULL,
+                reviewed_at = NULL
             WHERE id = ?
               AND event_id = ?
-        ")->execute([$userId, $programId, $eventId]);
+        ")->execute([$programId, $eventId]);
 
         admin_recalculate_team_totals($pdo, $eventId);
 
@@ -1206,8 +1211,8 @@ if (!function_exists('get_user_default_category_url')) {
         if (current_user_has_authority('upload-scores')) {
             return '/admin/score-entry/score-entry.php';
         }
-        if (current_user_has_authority('control-tv')) {
-            return '/admin/event/control-tv.php';
+        if (current_user_has_authority('control-live-display') || current_user_has_authority('control-tv')) {
+            return '/admin/live-display/control-live-display.php';
         }
 
         return '/';

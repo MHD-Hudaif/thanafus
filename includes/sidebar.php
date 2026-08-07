@@ -42,7 +42,7 @@ if (str_contains($currentPath, '/admin/printer/') || str_contains($currentPath, 
     $activeSpace = 'printer';
 } elseif (str_contains($currentPath, '/admin/registrar/') || str_contains($currentPath, '/admin/entries.php') || str_contains($currentPath, '/admin/add-entry.php') || str_contains($currentPath, '/admin/event/program-entries.php')) {
     $activeSpace = 'registrar';
-} elseif (str_contains($currentPath, '/admin/live-display/') || str_contains($currentPath, '/admin/event/control-tv.php')) {
+} elseif (str_contains($currentPath, '/admin/live-display/') || str_contains($currentPath, '/admin/event/control-live-display.php') || str_contains($currentPath, '/admin/event/control-tv.php')) {
     $activeSpace = 'live-display';
 } elseif (str_contains($currentPath, '/admin/score-entry/') || str_contains($currentPath, '/admin/score-entry.php') || str_contains($currentPath, '/admin/event/upload-scores.php')) {
     $activeSpace = 'score-entry';
@@ -150,11 +150,11 @@ $_SESSION['active_workspace'] = $activeSpace;
             <a href="<?= app_url('/admin/live-display/index.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('/admin/live-display/index.php') ?>">
                 <i class="fa-solid fa-circle-info"></i> <span>Overview</span>
             </a>
-            <a href="<?= app_url('/admin/live-display/control-tv.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('control-tv.php') ?>">
-                <i class="fa-solid fa-gears"></i> <span>TV Control</span>
+            <a href="<?= app_url('/admin/live-display/control-live-display.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('control-live-display') ?>">
+                <i class="fa-solid fa-gears"></i> <span>Display Control</span>
             </a>
-            <a href="<?= app_url('/tv/dashboard.php') ?>" class="sidebar-vertical-link" target="_blank">
-                <i class="fa-solid fa-tower-broadcast"></i> <span>TV Feed</span>
+            <a href="<?= app_url('/live-display/dashboard.php') ?>" class="sidebar-vertical-link" target="_blank">
+                <i class="fa-solid fa-tower-broadcast"></i> <span>Live Feed</span>
             </a>
             <a href="<?= app_url('/scoreboard.php') ?>" class="sidebar-vertical-link" target="_blank">
                 <i class="fa-solid fa-display"></i> <span>Scoreboard</span>
@@ -177,6 +177,9 @@ $_SESSION['active_workspace'] = $activeSpace;
             </a>
             <a href="<?= app_url('/admin/score-update/score-approval.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('score-approval.php') ?>">
                 <i class="fa-solid fa-circle-check"></i> <span>Approve Scores</span>
+            </a>
+            <a href="<?= app_url('/admin/score-update/approval-marks.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('approval-marks.php') ?>">
+                <i class="fa-solid fa-award"></i> <span>Approval Marks</span>
             </a>
             <a href="<?= app_url('/admin/score-update/reviews.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('reviews.php') ?>">
                 <i class="fa-solid fa-magnifying-glass-chart"></i> <span>Audit Reviews</span>
@@ -316,26 +319,5 @@ $_SESSION['active_workspace'] = $activeSpace;
 </div>
 
 
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-    const toggleBtn = document.getElementById('sidebarWorkspaceToggleBtn');
-    const topNav = document.getElementById('eventTopNav');
-    if (toggleBtn && topNav) {
-        toggleBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            const isOpen = topNav.classList.toggle('is-workspace-mode');
-            toggleBtn.classList.toggle('open', isOpen);
-            toggleBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-        });
 
-        document.addEventListener('click', (e) => {
-            if (!topNav.contains(e.target) && !toggleBtn.contains(e.target)) {
-                topNav.classList.remove('is-workspace-mode');
-                toggleBtn.classList.remove('open');
-                toggleBtn.setAttribute('aria-expanded', 'false');
-            }
-        });
-    }
-});
-</script>
+

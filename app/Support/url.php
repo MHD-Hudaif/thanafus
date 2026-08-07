@@ -115,12 +115,19 @@ if (!function_exists('asset_url')) {
     }
 }
 
-if (!function_exists('tv_asset_url')) {
-    function tv_asset_url(string $path = ''): string
+if (!function_exists('live_display_asset_url')) {
+    function live_display_asset_url(string $path = ''): string
     {
         $path = trim($path, '/');
 
-        return app_url('/tv/assets' . ($path === '' ? '' : '/' . $path));
+        return app_url('/live-display/assets' . ($path === '' ? '' : '/' . $path));
+    }
+}
+
+if (!function_exists('live_display_asset_url')) {
+    function live_display_asset_url(string $path = ''): string
+    {
+        return live_display_asset_url($path);
     }
 }
 
@@ -164,3 +171,4 @@ if (!function_exists('app_cookie_path')) {
         return '/' . trim($path, '/');
     }
 }
+

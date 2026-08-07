@@ -25,7 +25,7 @@ for ($i = 0; $i < ob_get_level(); $i++) {
 ob_implicit_flush(true);
 
 require_once __DIR__ . '/../includes/admin-helpers.php';
-require_once __DIR__ . '/../tv/includes/functions.php';
+require_once __DIR__ . '/../live-display/includes/functions.php';
 
 $pdo = $GLOBALS['musabaqa_pdo'];
 $lastHash = '';
@@ -101,3 +101,4 @@ while (time() - $startTime < 60) {
 }
 
 exit;
+

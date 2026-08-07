@@ -2345,6 +2345,11 @@ video {
         padding: 108px 36px 36px 36px !important;
     }
 
+    /* Ensure modals overlay the sidebar and center perfectly relative to the entire viewport */
+    .modal-overlay {
+        z-index: 200000 !important;
+    }
+
     /* Vertical Sidebar Container */
     .sidebar-vertical {
         display: flex;
@@ -3088,11 +3093,41 @@ video {
     color: #fca5a5;
 }
 
-@media(max-width: 960px) {
-    .event-top-nav {
+/* Prevent overlapping by ensuring flex items do not shrink below their content size */
+.event-user-box,
+.event-nav-icon,
+.event-logout {
+    flex-shrink: 0 !important;
+}
+
+/* Hide user details text on medium viewports to save space and prevent topnav crowding */
+@media (max-width: 1200px) {
+    body.layout-sidebar-enabled .event-user-details {
+        display: none !important;
+    }
+}
+@media (max-width: 920px) {
+    .event-user-details {
+        display: none !important;
+    }
+}
+
+/* Wrap top navigation bar layout when space is constrained */
+@media (max-width: 1100px) {
+    body.layout-sidebar-enabled .event-top-nav {
         flex-wrap: wrap;
     }
-    .event-nav-menu {
+    body.layout-sidebar-enabled .event-nav-menu {
+        order: 3;
+        flex: 1 0 100%;
+        justify-content: center;
+    }
+}
+@media (max-width: 960px) {
+    body:not(.layout-sidebar-enabled) .event-top-nav {
+        flex-wrap: wrap;
+    }
+    body:not(.layout-sidebar-enabled) .event-nav-menu {
         order: 3;
         flex: 1 0 100%;
         justify-content: center;
