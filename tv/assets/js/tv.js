@@ -614,6 +614,19 @@
             </div>
         `;
 
+        // ========== 3D WEBGL STAGE MOUNT ==========
+        const threeCanvas = container.querySelector('.three-stage-canvas');
+        if (threeCanvas && window.TVLeaderboard3D) {
+            const mounted = window.TVLeaderboard3D.mount(threeCanvas, podiumSlots.map((team, idx) => ({
+                name: team ? (team.team_name || team.short_name || 'Team') : '—',
+                score: team ? Number(team.total_score || 0) : 0,
+                color: team?.team_color || ['#38bdf8', '#f7c948', '#34d399', '#fb7185'][idx]
+            })));
+            if (mounted) {
+                container.classList.add('three-stage-ready');
+            }
+        }
+
         // ========== GSAP CINEMATIC ANIMATION SEQUENCE ==========
         setTimeout(() => {
             if (typeof gsap === 'undefined') return;
@@ -950,8 +963,10 @@
             return `--schedule-team-${index + 1}:${palette[index % palette.length]}`;
         }).join(';');
 
+        const isMinimalSchedule = (state.slides['schedule']?.style ?? 'minimal') === 'minimal';
+
         els.schedule.innerHTML = `
-            <div class="tv-schedule-cinema" style="${scheduleVars}">
+            <div class="tv-schedule-cinema ${isMinimalSchedule ? 'tv-schedule--minimal' : ''}" style="${scheduleVars}">
                 <div class="tv-schedule-light tv-schedule-light--gold"></div>
                 <div class="tv-schedule-light tv-schedule-light--cyan"></div>
                 <div class="tv-schedule-side tv-schedule-side--left">

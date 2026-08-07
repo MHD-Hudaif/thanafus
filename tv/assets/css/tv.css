@@ -1254,6 +1254,42 @@ body:has(#slide-schedule.tv-slide--active) .tv-topbar {
     font-size: 18px;
 }
 
+/* TV Minimal Schedule Mode */
+.tv-schedule--minimal {
+    background: radial-gradient(circle at top, rgba(22, 192, 141, 0.1) 0%, rgba(4, 16, 12, 0.95) 100%), #03070c !important;
+    padding: 30px 48px !important;
+}
+
+.tv-schedule--minimal .tv-schedule-side,
+.tv-schedule--minimal .tv-schedule-light,
+.tv-schedule--minimal::before,
+.tv-schedule--minimal::after {
+    display: none !important;
+}
+
+.tv-schedule--minimal .tv-schedule-board {
+    background: rgba(8, 20, 16, 0.85);
+    border: 1px solid rgba(22, 192, 141, 0.2);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+    border-radius: 20px;
+    backdrop-filter: blur(16px);
+}
+
+.tv-schedule--minimal .tv-schedule-row {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    transition: background 0.2s ease;
+}
+
+.tv-schedule--minimal .tv-schedule-row.is-live {
+    background: rgba(22, 192, 141, 0.14) !important;
+    border-left: 5px solid #16c08d;
+}
+
+.tv-schedule--minimal .tv-schedule-title-block h2 {
+    color: #16c08d;
+    letter-spacing: 0.15em;
+}
+
 @media (max-width: 1400px) {
     .tv-schedule-cinema {
         padding: 16px 24px 18px;

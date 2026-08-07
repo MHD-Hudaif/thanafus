@@ -388,18 +388,23 @@ body.dark .tv-stat-card {
                                                    required>
                                         </td>
                                         <td>
-                                            <?php if ($c['slide_key'] === 'leaderboard'): ?>
-                                                <select name="slides[<?= e($c['slide_key']) ?>][style]" class="form-control" style="width: 130px;">
-                                                    <option value="classic" <?= ($c['style'] ?? 'classic') === 'classic' ? 'selected' : '' ?>>Classic (Bars)</option>
-                                                    <option value="orbit" <?= ($c['style'] ?? 'classic') === 'orbit' ? 'selected' : '' ?>>Orbit (Radial)</option>
-                                                    <option value="podium" <?= ($c['style'] ?? 'classic') === 'podium' ? 'selected' : '' ?>>Podium (3D)</option>
-                                                    <option value="style2" <?= ($c['style'] ?? 'classic') === 'style2' ? 'selected' : '' ?>>Style 2 (Diamond 3D)</option>
-                                                    <option value="staggered" <?= ($c['style'] ?? 'classic') === 'staggered' ? 'selected' : '' ?>>Staggered</option>
-                                                </select>
-                                            <?php else: ?>
-                                                <input type="hidden" name="slides[<?= e($c['slide_key']) ?>][style]" value="classic">
-                                                <span class="text-muted text-xs">—</span>
-                                            <?php endif; ?>
+                                             <?php if ($c['slide_key'] === 'leaderboard'): ?>
+                                                 <select name="slides[<?= e($c['slide_key']) ?>][style]" class="form-control" style="width: 130px;">
+                                                     <option value="classic" <?= ($c['style'] ?? 'classic') === 'classic' ? 'selected' : '' ?>>Classic (Bars)</option>
+                                                     <option value="orbit" <?= ($c['style'] ?? 'classic') === 'orbit' ? 'selected' : '' ?>>Orbit (Radial)</option>
+                                                     <option value="podium" <?= ($c['style'] ?? 'classic') === 'podium' ? 'selected' : '' ?>>Podium (3D)</option>
+                                                     <option value="style2" <?= ($c['style'] ?? 'classic') === 'style2' ? 'selected' : '' ?>>Style 2 (Diamond 3D)</option>
+                                                     <option value="staggered" <?= ($c['style'] ?? 'classic') === 'staggered' ? 'selected' : '' ?>>Staggered</option>
+                                                 </select>
+                                             <?php elseif ($c['slide_key'] === 'schedule'): ?>
+                                                 <select name="slides[<?= e($c['slide_key']) ?>][style]" class="form-control" style="width: 130px;">
+                                                     <option value="minimal" <?= ($c['style'] ?? 'minimal') === 'minimal' ? 'selected' : '' ?>>Minimal</option>
+                                                     <option value="classic" <?= ($c['style'] ?? 'minimal') === 'classic' ? 'selected' : '' ?>>Classic Cinema</option>
+                                                 </select>
+                                             <?php else: ?>
+                                                 <input type="hidden" name="slides[<?= e($c['slide_key']) ?>][style]" value="classic">
+                                                 <span class="text-muted text-xs">—</span>
+                                             <?php endif; ?>
                                         </td>
                                         <td style="text-align: center;">
                                             <div class="slide-status-wrap">

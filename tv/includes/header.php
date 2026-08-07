@@ -18,6 +18,8 @@ $assetBase = tv_asset_url();
     <link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400;1,700&family=Cairo:wght@500;600;700;800;900&family=Inter:wght@500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="<?= e(tv_asset_url('css/tv.css')) ?>?v=<?= filemtime(app_path('tv/assets/css/tv.css')) ?>">
     <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" defer></script>
+    <script src="<?= e(tv_asset_url('js/leaderboard-3d.js')) ?>?v=<?= filemtime(app_path('tv/assets/js/leaderboard-3d.js')) ?>" defer></script>
     <style>
         .tv-app { animation: tv-page-in .5s ease both; }
         @keyframes tv-page-in {

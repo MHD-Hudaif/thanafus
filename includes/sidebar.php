@@ -315,30 +315,6 @@ $_SESSION['active_workspace'] = $activeSpace;
     </div>
 </div>
 
-<style>
-/* CSS transition for Members link to slide in */
-.sidebar-vertical-link.members-link, .nav-item-link.members-link {
-    transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease, width 0.4s cubic-bezier(0.4, 0, 0.2, 1), margin 0.4s ease, padding 0.4s ease !important;
-    overflow: hidden;
-}
-.sidebar-vertical-link.members-link.hidden-link, .nav-item-link.members-link.hidden-link {
-    max-height: 0 !important;
-    width: 0 !important;
-    opacity: 0 !important;
-    pointer-events: none !important;
-    margin: 0 !important;
-    padding-top: 0 !important;
-    padding-bottom: 0 !important;
-    padding-left: 0 !important;
-    padding-right: 0 !important;
-    border: none !important;
-}
-.sidebar-vertical-link.members-link.slide-in-link, .nav-item-link.members-link.slide-in-link {
-    max-height: 0;
-    width: 0;
-    opacity: 0;
-}
-</style>
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {

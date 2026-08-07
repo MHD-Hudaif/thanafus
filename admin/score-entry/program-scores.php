@@ -1359,36 +1359,6 @@ require_once __DIR__ . '/../../includes/sidebar.php';
     <?php endif; ?>
 
 
-<style>
-@keyframes submitPulse {
-    0% { box-shadow: 0 0 0 0 rgba(20, 184, 166, 0.7); transform: translateY(0); }
-    55% { box-shadow: 0 0 0 14px rgba(20, 184, 166, 0); transform: translateY(-1px); }
-    100% { box-shadow: 0 0 0 0 rgba(20, 184, 166, 0); transform: translateY(0); }
-}
-.ready-submit {
-    animation: submitPulse 1.2s ease-in-out 5;
-    outline: 2px solid rgba(20, 184, 166, 0.75);
-    outline-offset: 3px;
-}
-.score-category-stack {
-    display: grid;
-    gap: 12px;
-}
-body.modal-open {
-    overflow: hidden !important;
-}
-.modal-overlay {
-    z-index: 10000 !important;
-    align-items: flex-start !important;
-    overflow-y: auto !important;
-    padding-top: 5vh !important;
-    padding-bottom: 5vh !important;
-}
-.modal-box {
-    margin: 0 auto !important;
-}
-</style>
-
 <script>
 const PROGRAM_SCORE_URL = <?= json_encode(app_url('/admin/score-entry/program-scores.php?program_id=' . $programId), JSON_UNESCAPED_SLASHES) ?>;
 const CATEGORIES_EDITABLE = <?= json_encode($categoriesEditable) ?>;

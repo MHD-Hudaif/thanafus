@@ -2167,3 +2167,224 @@ body:not(.page-home) main {
     justify-self: start;
   }
 }
+
+/* ========== MINIMAL SCHEDULE STYLES ========== */
+.schedule-minimal-hero {
+  padding: 40px 0 20px;
+  text-align: center;
+}
+
+.schedule-minimal-hero .minimal-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 99px;
+  background: rgba(22, 192, 141, 0.12);
+  border: 1px solid rgba(22, 192, 141, 0.25);
+  color: #16c08d;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  margin-bottom: 12px;
+}
+
+.schedule-minimal-hero h1 {
+  font-size: clamp(28px, 5vw, 42px);
+  font-weight: 900;
+  color: #fff;
+  margin: 0 0 8px;
+  letter-spacing: -0.02em;
+}
+
+.schedule-minimal-hero p {
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 15px;
+  margin: 0;
+}
+
+.schedule-minimal-nav {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 30px;
+}
+
+.schedule-minimal-nav .minimal-tab {
+  padding: 10px 20px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.schedule-minimal-nav .minimal-tab:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.schedule-minimal-nav .minimal-tab.active {
+  background: #16c08d;
+  border-color: #16c08d;
+  color: #04100c;
+  box-shadow: 0 4px 20px rgba(22, 192, 141, 0.35);
+}
+
+.schedule-minimal-timeline {
+  max-width: 860px;
+  margin: 0 auto 60px;
+}
+
+.timeline-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.timeline-row {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 18px 24px;
+  border-radius: 16px;
+  background: rgba(12, 24, 20, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.timeline-row:hover {
+  transform: translateY(-2px);
+  border-color: rgba(22, 192, 141, 0.3);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+
+.timeline-row.status-live {
+  background: linear-gradient(90deg, rgba(22, 192, 141, 0.12) 0%, rgba(12, 24, 20, 0.8) 100%);
+  border-color: rgba(22, 192, 141, 0.4);
+  box-shadow: 0 0 25px rgba(22, 192, 141, 0.18);
+}
+
+.timeline-time {
+  min-width: 100px;
+  display: flex;
+  flex-direction: column;
+}
+
+.timeline-time .time-main {
+  font-size: 15px;
+  font-weight: 800;
+  color: #16c08d;
+}
+
+.timeline-time .time-duration {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.45);
+  font-weight: 600;
+}
+
+.timeline-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.25);
+  flex-shrink: 0;
+}
+
+.timeline-row.status-live .timeline-dot {
+  background: #16c08d;
+  box-shadow: 0 0 12px #16c08d;
+  animation: pulse-dot 1.5s infinite;
+}
+
+@keyframes pulse-dot {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.6); opacity: 0.5; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.timeline-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.timeline-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.timeline-title {
+  font-size: 16px;
+  font-weight: 800;
+  color: #fff;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.timeline-status {
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+}
+
+.timeline-status.status-live {
+  background: #16c08d;
+  color: #04100c;
+}
+
+.timeline-status.status-completed {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.timeline-status.status-upcoming {
+  background: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+}
+
+.timeline-meta {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.meta-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: 600;
+}
+
+@media (max-width: 640px) {
+  .timeline-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 16px;
+  }
+  .timeline-dot {
+    display: none;
+  }
+  .timeline-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+

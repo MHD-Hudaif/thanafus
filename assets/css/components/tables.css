@@ -32,3 +32,57 @@
 .table-glass tbody tr:hover {
     background: rgba(99, 102, 241, 0.05) !important;
 }
+
+/* =====================================================
+   CONSOLIDATED PAGE STYLES (Added dynamically)
+   ===================================================== */
+
+.col-12 { grid-column: span 12; }
+
+.col-8 { grid-column: span 8; }
+
+.col-6 { grid-column: span 6; }
+
+.col-4 { grid-column: span 4; }
+
+@media (max-width: 1024px) {
+    .col-8, .col-6, .col-4 { grid-column: span 12; }
+}
+
+.analytics-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+.analytics-table th, 
+.analytics-table td {
+    padding: 12px 14px;
+    text-align: left;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    font-size: 13.5px;
+}
+
+.analytics-table th {
+    color: var(--muted, #94a3b8);
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.analytics-table tr:last-child td {
+    border-bottom: none;
+}
+
+.poster-corner-tr-stripes {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 80px;
+    height: 80px;
+    background: repeating-linear-gradient(45deg, var(--poster-color, #8b5cf6), var(--poster-color, #8b5cf6) 6px, transparent 6px, transparent 14px);
+    z-index: 2;
+    pointer-events: none;
+}
+

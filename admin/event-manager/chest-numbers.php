@@ -508,21 +508,6 @@ require_once __DIR__ . '/../../includes/sidebar.php';
     <?php endif; ?>
 </div> <!-- Closes main-content -->
 
-<style>
-body.modal-open {
-    overflow: hidden !important;
-}
-.modal-overlay {
-    z-index: 10000 !important;
-    align-items: flex-start !important;
-    overflow-y: auto !important;
-    padding-top: 5vh !important;
-    padding-bottom: 5vh !important;
-}
-.modal-box {
-    margin: 0 auto !important;
-}
-</style>
 
 <div class="modal-overlay" id="manualEditModal">
     <div class="modal-box modal-md">

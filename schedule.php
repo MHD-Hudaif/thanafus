@@ -11,60 +11,74 @@ $firstKey = !empty($sessions) ? array_key_first($sessions) : '';
 require __DIR__ . '/includes/public-header.php';
 ?>
 
-<section class="schedule-head section-wrap reveal">
-  <div>
-    <p class="overline">One day · One stage</p>
-    <h1>Full program<br /><em>schedule.</em></h1>
-  </div>
-  <p>All program times in one place. Please arrive at the reporting desk at least 15 minutes before your program begins.</p>
+<section class="schedule-minimal-hero section-wrap">
+  <div class="minimal-badge"><i class="fa-solid fa-calendar-days"></i> Program Timeline</div>
+  <h1>Event Schedule</h1>
+  <p>Track all live and upcoming program sessions in real time.</p>
 </section>
 
-<div class="schedule-tabs" role="tablist">
+<div class="schedule-minimal-nav section-wrap" role="tablist">
+  <button type="button" class="minimal-tab active" data-session="all">All Sessions</button>
   <?php foreach ($sessions as $key => $label): ?>
-    <button type="button" class="<?= $key === $firstKey ? 'active' : '' ?>" data-session="<?= e($key) ?>"><?= e($label) ?></button>
+    <button type="button" class="minimal-tab" data-session="<?= e($key) ?>"><?= e($label) ?></button>
   <?php endforeach; ?>
 </div>
 
-<section class="schedule-grid section-wrap">
-  <?php 
-  $groupIndex = 0;
-  foreach ($sessions as $key => $label): 
-    $groupIndex++;
-    $sessionItems = array_values(array_filter($items, fn($item) => $item['session'] === $key));
-    $timeRange = '';
-    if (!empty($sessionItems)) {
-        $firstTime = $sessionItems[0]['start_time'];
-        $lastTime = $sessionItems[count($sessionItems) - 1]['start_time'];
-        $timeRange = $firstTime . ' - ' . $lastTime;
-    }
-  ?>
-    <article class="schedule-column reveal <?= $key === $firstKey ? 'mobile-active' : '' ?>" data-session-column="<?= e($key) ?>">
-      <header>
-        <span>0<?= e($groupIndex) ?></span>
-        <h2><?= e($label) ?></h2>
-        <small><?= e($timeRange) ?></small>
-      </header>
-      
-      <?php foreach ($sessionItems as $item): ?>
-        <div class="schedule-row <?= $item['status'] === 'live' ? 'live' : '' ?>">
-          <time><?= e($item['start_time']) ?></time>
-          <div>
-            <h3><?= e($item['title']) ?></h3>
-            <p><?= e($item['category']) ?></p>
+<section class="schedule-minimal-timeline section-wrap">
+  <div class="timeline-list">
+    <?php foreach ($items as $index => $item): 
+      $isLive = ($item['status'] ?? '') === 'live' || ($item['status'] ?? '') === 'scoring';
+      $isDone = ($item['status'] ?? '') === 'completed';
+      $statusClass = $isLive ? 'status-live' : ($isDone ? 'status-completed' : 'status-upcoming');
+      $statusLabel = $isLive ? 'LIVE NOW' : ($isDone ? 'COMPLETED' : 'UPCOMING');
+    ?>
+      <div class="timeline-row <?= $statusClass ?>" data-session-row="<?= e($item['session'] ?? 'morning') ?>">
+        <div class="timeline-time">
+          <span class="time-main"><?= e($item['start_time']) ?></span>
+          <span class="time-duration"><?= e($item['duration_minutes']) ?> mins</span>
+        </div>
+
+        <div class="timeline-dot"></div>
+
+        <div class="timeline-body">
+          <div class="timeline-head">
+            <h3 class="timeline-title"><?= e($item['title']) ?></h3>
+            <span class="timeline-status <?= $statusClass ?>"><?= $statusLabel ?></span>
           </div>
-          <small><?= e($item['duration_minutes']) ?> min</small>
+          <div class="timeline-meta">
+            <span class="meta-pill meta-category"><i class="fa-solid fa-layer-group"></i> <?= e($item['category'] ?? 'General') ?></span>
+            <?php if (!empty($item['stage'])): ?>
+              <span class="meta-pill meta-stage"><i class="fa-solid fa-location-dot"></i> <?= e($item['stage']) ?></span>
+            <?php endif; ?>
+          </div>
         </div>
-      <?php endforeach; ?>
-      
-      <?php if ($key === 'evening'): ?>
-        <div class="venue-card">
-          <strong>Main Auditorium</strong>
-          <p>All listed programs take place on Stage One unless announced otherwise.</p>
-        </div>
-      <?php endif; ?>
-    </article>
-  <?php endforeach; ?>
+      </div>
+    <?php endforeach; ?>
+  </div>
 </section>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const tabs = document.querySelectorAll('.minimal-tab');
+  const rows = document.querySelectorAll('[data-session-row]');
+
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      tabs.forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+
+      const targetSession = tab.getAttribute('data-session');
+      rows.forEach(row => {
+        if (targetSession === 'all' || row.getAttribute('data-session-row') === targetSession) {
+          row.style.display = 'flex';
+        } else {
+          row.style.display = 'none';
+        }
+      });
+    });
+  });
+});
+</script>
 
 <?php
 require __DIR__ . '/includes/public-footer.php';
