@@ -77,6 +77,9 @@ $_SESSION['active_workspace'] = $activeSpace;
             <a href="<?= app_url('/admin/event-manager/index.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('/admin/event-manager/index.php') ?>">
                 <i class="fa-solid fa-circle-info"></i> <span>Overview</span>
             </a>
+            <a href="<?= app_url('/admin/event-manager/user-approvals.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('user-approvals') ?>">
+                <i class="fa-solid fa-user-check"></i> <span>User Approvals</span>
+            </a>
             <a href="<?= app_url('/admin/event-manager/teams.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('teams') ?>">
                 <i class="fa-solid fa-people-group"></i> <span>Teams</span>
             </a>
