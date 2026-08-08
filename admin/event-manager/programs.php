@@ -42,6 +42,15 @@ $stageTypes = $pdo->query("SELECT id, name FROM musabaqa_stage_types ORDER BY id
 
 function programs_redirect(): void
 {
+    if (admin_is_ajax() || isset($_GET['ajax']) || (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')) {
+        header('Content-Type: application/json');
+        $flash = admin_take_flash();
+        echo json_encode([
+            'success' => ($flash['type'] ?? '') !== 'error',
+            'message' => $flash['message'] ?? 'Program updated successfully.'
+        ]);
+        exit;
+    }
     admin_redirect('/admin/event-manager/programs.php');
 }
 
@@ -247,6 +256,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $allowedSectionsStr = implode(',', array_map('intval', $allowedSectionsArr));
         // Keep class_type_id backward compatible
         $classTypeId = count($allowedSectionsArr) === 1 ? (int)$allowedSectionsArr[0] : null;
+        if ($classTypeId !== null && $classTypeId <= 0) {
+            $classTypeId = null;
+        }
         if ($classTypeId !== null) {
             $chkStmt = $dashboardPdo->prepare("SELECT id FROM class_types WHERE id = ? LIMIT 1");
             $chkStmt->execute([$classTypeId]);
@@ -523,6 +535,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
         </form>
     </div>
 
+    <div id="programsTableContainer">
     <?php if (!$programs): ?>
         <div class="empty-state">
             <div class="empty-icon"><i class="fa-solid fa-layer-group"></i></div>
@@ -707,6 +720,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
             </div>
         <?php endforeach; ?>
     <?php endif; ?>
+    </div>
 </div>
 
 
@@ -967,7 +981,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                 </div>
             </div>
         </div>
-        <form method="POST">
+        <form method="POST" id="deleteForm">
             <?= admin_csrf_field() ?>
             <input type="hidden" name="action" value="delete">
             <input type="hidden" name="program_id" id="deleteId">
@@ -1299,26 +1313,91 @@ document.getElementById('addRankBtn')?.addEventListener('click', () => {
     reindexRanks();
 });
 
-document.getElementById('programForm')?.addEventListener('submit', () => {
-    // Re-enable disabled controls so their values post to backend cleanly
-    const jCount = document.getElementById('judgesCount');
-    if (jCount) jCount.disabled = false;
-    const tMarks = document.getElementById('totalMarks');
-    if (tMarks) tMarks.disabled = false;
-    const rTeam = document.getElementById('redirectToTeam');
-    if (rTeam) rTeam.disabled = false;
-    const oTeam = document.getElementById('onlyTeamMarks');
-    if (oTeam) oTeam.disabled = false;
+function showAdminToast(message, isError = false) {
+    let toast = document.getElementById('adminToast');
+    if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'adminToast';
+        toast.style.cssText = 'position:fixed; bottom:24px; right:24px; padding:12px 24px; border-radius:12px; font-weight:700; font-size:14px; color:#fff; z-index:999999; box-shadow:0 10px 25px rgba(0,0,0,0.5); backdrop-filter:blur(8px); display:flex; align-items:center; gap:8px;';
+        document.body.appendChild(toast);
+    }
+    toast.style.background = isError ? 'rgba(239, 68, 68, 0.92)' : 'rgba(16, 185, 129, 0.92)';
+    toast.innerHTML = (isError ? '<i class="fa-solid fa-circle-xmark"></i> ' : '<i class="fa-solid fa-circle-check"></i> ') + message;
+    toast.style.display = 'flex';
+    setTimeout(() => { toast.style.display = 'none'; }, 3000);
+}
 
-    const config = {};
-    document.querySelectorAll('#ranksContainer .rank-row').forEach((row, idx) => {
-        const rankNo = idx + 1;
-        const val = parseInt(row.querySelector('.rank-points-input').value || '0', 10);
-        config[rankNo] = val;
+function refreshProgramsTable() {
+    fetch(window.location.href, {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(r => r.text())
+    .then(html => {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        const newContainer = doc.getElementById('programsTableContainer');
+        const currentContainer = document.getElementById('programsTableContainer');
+        if (newContainer && currentContainer) {
+            currentContainer.innerHTML = newContainer.innerHTML;
+        }
+    })
+    .catch(err => console.error('Error refreshing programs table:', err));
+}
+
+function attachZeroRefreshForm(formId, modalId) {
+    const form = document.getElementById(formId);
+    if (!form) return;
+
+    form.addEventListener('submit', (e) => {
+        e.preventDefault();
+
+        if (formId === 'programForm') {
+            const jCount = document.getElementById('judgesCount');
+            if (jCount) jCount.disabled = false;
+            const tMarks = document.getElementById('totalMarks');
+            if (tMarks) tMarks.disabled = false;
+            const rTeam = document.getElementById('redirectToTeam');
+            if (rTeam) rTeam.disabled = false;
+            const oTeam = document.getElementById('onlyTeamMarks');
+            if (oTeam) oTeam.disabled = false;
+
+            const config = {};
+            document.querySelectorAll('#ranksContainer .rank-row').forEach((row, idx) => {
+                const rankNo = idx + 1;
+                const val = parseInt(row.querySelector('.rank-points-input').value || '0', 10);
+                config[rankNo] = val;
+            });
+            const configEl = document.getElementById('teamPointsConfigInput');
+            if (configEl) configEl.value = JSON.stringify(config);
+        }
+
+        const formData = new FormData(form);
+
+        fetch(window.location.href, {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            body: formData
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                if (modalId) closeModal(modalId);
+                showAdminToast(data.message || 'Program updated successfully.');
+                refreshProgramsTable();
+            } else {
+                showAdminToast(data.message || 'Unable to save changes.', true);
+            }
+        })
+        .catch(err => {
+            console.error('Error submitting form:', err);
+            form.submit();
+        });
     });
-    const configEl = document.getElementById('teamPointsConfigInput');
-    if (configEl) configEl.value = JSON.stringify(config);
-});
+}
+
+attachZeroRefreshForm('programForm', 'programModal');
+attachZeroRefreshForm('categoryForm', 'categoryModal');
+attachZeroRefreshForm('deleteForm', 'deleteModal');
 
 function syncDisableScoresState() {
     const dScores = document.getElementById('disableScores');

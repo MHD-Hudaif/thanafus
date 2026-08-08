@@ -186,6 +186,7 @@ function admin_require_active_event(PDO $pdo): array
             $pdo->exec("ALTER TABLE musabaqa_programs MODIFY stage_type_id INT DEFAULT NULL");
             $pdo->exec("ALTER TABLE musabaqa_programs ADD COLUMN responsible_teacher_id INT UNSIGNED DEFAULT NULL");
             $pdo->exec("ALTER TABLE musabaqa_programs ADD COLUMN responsible_teacher_ids VARCHAR(255) DEFAULT NULL");
+            try { $pdo->exec("ALTER TABLE musabaqa_programs DROP FOREIGN KEY fk_program_class_type"); } catch (Throwable) {}
             $migrated = true;
         } catch (Throwable $e) {}
     }
