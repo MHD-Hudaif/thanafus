@@ -240,6 +240,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $defaultJudgesCount = max(1, min(10, (int)($_POST['default_judges_count'] ?? 2)));
+        $maxJudgesCount = max(1, min(10, (int)($_POST['max_judges_count'] ?? $defaultJudgesCount)));
         $defaultTotalMarks = max(1, min(1000, (int)($_POST['default_total_marks'] ?? 100)));
         $defaultEntriesLimit = max(1, min(1000, (int)($_POST['default_entries_limit'] ?? 10)));
         
@@ -267,8 +268,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ? $_POST['tied_rank_mode']
             : ($settings['tied_rank_mode'] ?? 'shared_full');
         
+        $judgePasskeys = [];
+        if (isset($_POST['judge_passkeys']) && is_array($_POST['judge_passkeys'])) {
+            foreach ($_POST['judge_passkeys'] as $jNo => $pin) {
+                $cleanPin = trim((string)$pin);
+                if ($cleanPin !== '') {
+                    $judgePasskeys[(int)$jNo] = $cleanPin;
+                }
+            }
+        }
+        if (empty($judgePasskeys)) {
+            $judgePasskeys = $settings['judge_passkeys'] ?? [1 => '1111', 2 => '2222', 3 => '3333', 4 => '4444', 5 => '5555'];
+        }
+
         $settings = [
             'default_judges_count' => $defaultJudgesCount,
+            'max_judges_count' => $maxJudgesCount,
             'default_total_marks' => $defaultTotalMarks,
             'default_entries_limit' => $defaultEntriesLimit,
             'first_place_points' => $firstPlacePoints,
@@ -276,7 +291,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'third_place_points' => $thirdPlacePoints,
             'tied_rank_mode' => $tiedRankMode,
             'active_sections' => $activeSections,
-            'section_limits' => $sectionLimits
+            'section_limits' => $sectionLimits,
+            'judge_passkeys' => $judgePasskeys
         ];
         
         save_musabaqa_settings($pdo, $settings);
@@ -347,6 +363,9 @@ require_once __DIR__ . '/../../includes/sidebar.php';
             </button>
             <button type="button" class="settings-sub-tab-btn" data-tab="bulk-modify">
                 <i class="fa-solid fa-toolbox"></i> <span>Bulk Operations</span>
+            </button>
+            <button type="button" class="settings-sub-tab-btn" data-tab="judge-passkeys">
+                <i class="fa-solid fa-key"></i> <span>Judge Passkeys</span>
             </button>
             <button type="button" class="settings-sub-tab-btn" data-tab="database">
                 <i class="fa-solid fa-database"></i> <span>Database &amp; Reset</span>
@@ -770,6 +789,33 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                 </form>
             </div>
 
+            <!-- SECTION: Judge Passkeys -->
+            <div class="settings-section-block mb-6" id="sectionJudgePasskeys" style="display: none; margin-bottom: 40px;">
+                <div class="panel-header" style="margin-bottom: 20px;">
+                    <h3 class="panel-title" style="font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 10px;">
+                        <i class="fa-solid fa-key" style="color: #14b8a6;"></i> 
+                        Judge Passkey PIN Configurations
+                    </h3>
+                    <p style="font-size: 13px; color: var(--muted); margin-top: 4px;">Set 4-digit security passkey PINs for each judge identity (Judge 1, Judge 2, Judge 3, etc.). Judges use these passkeys to unlock criteria mark entries on the Judges Marking Portal.</p>
+                </div>
+
+                <div class="grid grid-2 gap-4" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;">
+                    <?php 
+                    $currentPasskeys = $settings['judge_passkeys'] ?? [1 => '1111', 2 => '2222', 3 => '3333', 4 => '4444', 5 => '5555'];
+                    for ($j = 1; $j <= 5; $j++): 
+                        $pinVal = $currentPasskeys[$j] ?? ($j * 1111);
+                    ?>
+                        <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 18px; border-radius: 14px;">
+                            <label class="form-label" style="display: flex; align-items: center; justify-content: space-between; font-weight: 700; color: #fff; margin-bottom: 8px;">
+                                <span><i class="fa-solid fa-gavel mr-2" style="color: #14b8a6;"></i> Judge <?= $j ?> Passkey</span>
+                                <span class="badge badge-neutral" style="font-size: 10px;">PIN</span>
+                            </label>
+                            <input type="text" name="judge_passkeys[<?= $j ?>]" value="<?= e($pinVal) ?>" class="form-control" placeholder="1111" maxlength="8" style="background: rgba(15,23,42,0.8); border: 1px solid rgba(255,255,255,0.1); color: #34d399; font-weight: 700; font-size: 18px; letter-spacing: 3px; text-align: center;">
+                        </div>
+                    <?php endfor; ?>
+                </div>
+            </div>
+
             <!-- SECTION 7: Database & Reset Utilities -->
             <div class="settings-section-block mb-6" id="sectionDatabase" style="display: none; margin-bottom: 40px;">
                 <div class="panel-header" style="margin-bottom: 20px;">
@@ -936,6 +982,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const secActiveSections = document.getElementById('sectionActiveSections');
     const secLimits = document.getElementById('sectionLimits');
     const secBulkModify = document.getElementById('sectionBulkModify');
+    const secJudgePasskeys = document.getElementById('sectionJudgePasskeys');
     const secDatabase = document.getElementById('sectionDatabase');
     const stickyBar = document.getElementById('stickySettingsBar');
     const topSaveBtn = document.getElementById('topSaveSettingsBtn');
@@ -952,6 +999,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (secActiveSections) secActiveSections.style.display = (tab === 'sections') ? 'block' : 'none';
             if (secLimits) secLimits.style.display = (tab === 'limits') ? 'block' : 'none';
             if (secBulkModify) secBulkModify.style.display = (tab === 'bulk-modify') ? 'block' : 'none';
+            if (secJudgePasskeys) secJudgePasskeys.style.display = (tab === 'judge-passkeys') ? 'block' : 'none';
             if (secDatabase) secDatabase.style.display = (tab === 'database') ? 'block' : 'none';
 
             // Dynamically update browser URL parameter without reloading

@@ -2,13 +2,12 @@
 $pageTitle = 'Judges Score Sheet';
 
 require_once __DIR__ . '/../includes/admin-helpers.php';
-require_login();
 
 $_SESSION['active_workspace'] = 'judges';
 
 $pdo = $GLOBALS['musabaqa_pdo'];
 $activeEvent = admin_require_active_event($pdo);
-$activeEventId = (int)$activeEvent['id'];
+$activeEventId = (int)($activeEvent['id'] ?? 0);
 $currentUserId = (int)($_SESSION['user_id'] ?? 0);
 $programId = (int)($_GET['program_id'] ?? $_POST['program_id'] ?? 0);
 
@@ -16,6 +15,35 @@ function program_scores_redirect(int $programId): void
 {
     admin_redirect('/judges/program-scores.php', ['program_id' => $programId]);
 }
+
+// Passkey Action Handling (Auto-detects Judge from PIN)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
+    $postAction = (string)$_POST['action'];
+    if ($postAction === 'verify_judge_passkey') {
+        $passkey = trim((string)($_POST['passkey'] ?? ''));
+        $detectedNo = admin_detect_judge_by_passkey($pdo, $passkey);
+        if ($detectedNo !== null) {
+            $_SESSION['authenticated_judge_no'] = $detectedNo;
+            admin_flash('success', "Passkey verified! Welcome, Judge {$detectedNo}.");
+        } else {
+            $judgeNo = (int)($_POST['judge_no'] ?? 0);
+            if ($judgeNo > 0 && admin_verify_judge_passkey($pdo, $judgeNo, $passkey)) {
+                $_SESSION['authenticated_judge_no'] = $judgeNo;
+                admin_flash('success', "Passkey verified! Welcome, Judge {$judgeNo}.");
+            } else {
+                admin_flash('error', "Invalid Passkey PIN. Please try again.");
+            }
+        }
+        program_scores_redirect($programId);
+    } elseif ($postAction === 'lock_judge') {
+        unset($_SESSION['authenticated_judge_no']);
+        admin_flash('success', "Judge panel locked.");
+        program_scores_redirect($programId);
+    }
+}
+
+$activeJudgeNo = (int)($_SESSION['authenticated_judge_no'] ?? 0);
+$isAdminUser = is_admin();
 
 function program_scores_badge(?string $status): string
 {
@@ -77,17 +105,23 @@ function program_scores_entry_locked(array $program, ?array $sheet): bool
     return in_array((string)($sheet['status'] ?? ''), ['submitted', 'approved'], true);
 }
 
-function program_scores_render_row(array $entry, array $categories, int $judgesCount, array $scoresMap, bool $scoresLocked, bool $disableScores, int $orderIndex): string
+function program_scores_render_row(array $entry, array $categories, int $judgesCount, array $scoresMap, bool $scoresLocked, bool $disableScores, int $orderIndex, int $activeJudgeNo = 0, bool $isAdmin = false, int $liveEntryId = 0, bool $isGroupProgram = false): string
 {
     $entryId = (int)$entry['id'];
     $hasSheet = !empty($entry['score_sheet_id']);
+    $isOnStage = ($liveEntryId > 0 && $entryId === $liveEntryId);
     
     ob_start();
     ?>
-    <tr data-entry-row="<?= $entryId ?>">
+    <tr data-entry-row="<?= $entryId ?>" style="<?= $isOnStage ? 'background: rgba(16, 185, 129, 0.18); border-left: 4px solid #34d399;' : '' ?>">
         <td><strong><?= $orderIndex ?></strong></td>
-        <td><strong><?= e($entry['chest_number'] ?: '-') ?></strong></td>
-        <td><?= e($entry['entry_name'] ?: 'Unnamed Entry') ?></td>
+        <td>
+            <strong><?= e($isGroupProgram ? ($entry['team_name'] ?: '-') : ($entry['chest_number'] ?: '-')) ?></strong>
+            <?php if ($isOnStage): ?>
+                <span class="badge badge-success" style="font-size: 9px; padding: 2px 6px; margin-left: 4px;">🎤 ON STAGE</span>
+            <?php endif; ?>
+        </td>
+        <td><?= e($isGroupProgram ? ($entry['team_name'] ?: 'Unnamed Team') : ($entry['entry_name'] ?: 'Unnamed Entry')) ?></td>
         <td>
             <span class="team-color-pill" style="background: <?= e($entry['team_color'] ?? '#64748b') ?>22; color: #fff; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; border: 1px solid <?= e($entry['team_color'] ?? '#64748b') ?>44;">
                 <?= e($entry['team_name']) ?>
@@ -99,7 +133,7 @@ function program_scores_render_row(array $entry, array $categories, int $judgesC
                 <select class="score-grid-rank-select form-control input-sm"
                         data-entry-id="<?= $entryId ?>"
                         style="width: 130px; background: rgba(15,23,42,0.8); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 4px 6px; border-radius: 6px; display: inline-block;"
-                        <?= $scoresLocked ? 'disabled' : '' ?>>
+                        <?= ($scoresLocked || ($activeJudgeNo === 0 && !$isAdmin)) ? 'disabled' : '' ?>>
                     <option value="0">None</option>
                     <option value="1" <?= (int)($entry['final_rank'] ?? 0) === 1 ? 'selected' : '' ?>>1st Place</option>
                     <option value="2" <?= (int)($entry['final_rank'] ?? 0) === 2 ? 'selected' : '' ?>>2nd Place</option>
@@ -108,6 +142,14 @@ function program_scores_render_row(array $entry, array $categories, int $judgesC
             </td>
         <?php else: ?>
             <?php for ($j = 1; $j <= $judgesCount; $j++): ?>
+                <?php
+                    $isJudgeEditable = $isAdmin || ($activeJudgeNo > 0 && $activeJudgeNo === $j);
+                    $bgStyle = ($activeJudgeNo === $j) 
+                        ? 'background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.4); color: #fff;' 
+                        : ($isJudgeEditable 
+                            ? 'background: rgba(15,23,42,0.8); border: 1px solid rgba(255,255,255,0.1); color: #fff;' 
+                            : 'background: rgba(15,23,42,0.3); border: 1px solid rgba(255,255,255,0.05); color: #64748b; cursor: not-allowed;');
+                ?>
                 <?php foreach ($categories as $cat): ?>
                     <?php
                         $catId = (int)$cat['id'];
@@ -124,8 +166,9 @@ function program_scores_render_row(array $entry, array $categories, int $judgesC
                                data-category-id="<?= $catId ?>" 
                                data-max="<?= (float)$cat['max_marks'] ?>"
                                value="<?= $val !== '' ? number_format($val, 2) : '' ?>" 
-                               style="width: 75px; text-align: center; background: rgba(15,23,42,0.8); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 4px 6px; border-radius: 6px; display: inline-block;"
-                               <?= $scoresLocked ? 'disabled' : '' ?>>
+                               style="width: 75px; text-align: center; padding: 4px 6px; border-radius: 6px; display: inline-block; <?= $bgStyle ?>"
+                               <?= ($scoresLocked || !$isJudgeEditable) ? 'disabled' : '' ?>
+                               title="<?= !$isJudgeEditable ? ($activeJudgeNo > 0 ? 'Locked: Logged in as Judge ' . $activeJudgeNo : 'Passkey required to enter Judge ' . $j . ' marks') : 'Judge ' . $j . ' Marks' ?>">
                     </td>
                 <?php endforeach; ?>
             <?php endfor; ?>
@@ -150,107 +193,7 @@ function program_scores_render_row(array $entry, array $categories, int $judgesC
 }
 
 if ($programId <= 0) {
-    // Render Program Selector dashboard for score sheets / score entry selection
-    $stmt = $pdo->prepare("
-        SELECT p.*, ct.name AS class_type_name,
-               mss.id AS schedule_section_id, mss.name AS schedule_section_name,
-               mss.start_time AS schedule_section_start, mss.end_time AS schedule_section_end,
-               mss.section_date AS schedule_section_date, mss.sort_order AS schedule_section_sort,
-               (SELECT COUNT(*) FROM musabaqa_program_entries WHERE program_id = p.id AND event_id = p.event_id) AS entry_count
-        FROM musabaqa_programs p
-        LEFT JOIN " . DB_MAIN_NAME . ".class_types ct ON ct.id = p.class_type_id
-        LEFT JOIN musabaqa_schedule_sections mss ON mss.id = p.section_id
-        WHERE p.event_id = ?
-        ORDER BY 
-            COALESCE(mss.section_date, '9999-12-31') ASC,
-            COALESCE(mss.sort_order, 999) ASC,
-            COALESCE(mss.start_time, '23:59:59') ASC,
-            (p.start_time IS NULL) ASC,
-            p.start_time ASC,
-            p.title ASC
-    ");
-    $stmt->execute([$activeEventId]);
-    $programs = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-    require_once __DIR__ . '/../../includes/header.php';
-    require_once __DIR__ . '/../../includes/sidebar.php';
-    ?>
-    <div class="main-content">
-        <div class="topbar">
-            <div>
-                <div class="page-title"><i class="fa-solid fa-file-lines mr-2" style="color:var(--accent);"></i> Program Score Sheets</div>
-                <div class="page-subtitle">Select a program to print blank judging score sheets or record score sheets, ordered by time</div>
-            </div>
-        </div>
-
-        <div class="panel">
-            <h3 class="mb-4"><i class="fa-solid fa-list-check mr-2" style="color: var(--accent);"></i> Available Programs</h3>
-            <div class="table-wrapper">
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>Program Title & Time</th>
-                            <th>Schedule Session</th>
-                            <th>Class / Division</th>
-                            <th>Participants</th>
-                            <th style="text-align: right;">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php if (empty($programs)): ?>
-                            <tr>
-                                <td colspan="5" class="empty-state-row" style="text-align: center; padding: 30px; color: var(--muted);">No programs found for this event.</td>
-                            </tr>
-                        <?php else: ?>
-                            <?php foreach ($programs as $prog): ?>
-                                <tr>
-                                    <td>
-                                        <strong style="color: #fff; font-size: 14px;"><?= e($prog['title']) ?></strong>
-                                        <?php if (!empty($prog['start_time'])): ?>
-                                            <div style="font-size: 11.5px; color: #34d399; font-weight: 700; margin-top: 2px;">
-                                                <i class="fa-solid fa-clock mr-1"></i><?= date('h:i A', strtotime($prog['start_time'])) ?>
-                                                <?php if (!empty($prog['end_time'])): ?>
-                                                    - <?= date('h:i A', strtotime($prog['end_time'])) ?>
-                                                <?php endif; ?>
-                                            </div>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td>
-                                        <?php if (!empty($prog['schedule_section_name'])): ?>
-                                            <span class="badge badge-info" style="font-size: 11px;">
-                                                <i class="fa-solid fa-clock mr-1"></i> <?= e($prog['schedule_section_name']) ?>
-                                            </span>
-                                        <?php else: ?>
-                                            <span style="color: var(--muted); font-size: 12px;">Unassigned</span>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td>
-                                        <span class="badge badge-info">
-                                            <?= e(admin_class_type_display($prog['class_type_name'] ?? null, (int)($prog['class_type_id'] ?? 0))) ?>
-                                        </span>
-                                    </td>
-                                    <td><?= (int)$prog['entry_count'] ?> Entries</td>
-                                    <td style="text-align: right;">
-                                        <div class="flex gap-2" style="justify-content: flex-end;">
-                                            <a class="btn btn-primary btn-sm" href="<?= app_url('/admin/score-entry/program-scores.php?program_id=' . (int)$prog['id'] . '&mode=print') ?>" target="_blank">
-                                                <i class="fa-solid fa-print mr-1"></i> Print Blank Sheet
-                                            </a>
-                                            <a class="btn btn-success btn-sm" href="<?= app_url('/admin/score-entry/program-scores.php?program_id=' . (int)$prog['id']) ?>">
-                                                <i class="fa-solid fa-pen-to-square mr-1"></i> Score Entry
-                                            </a>
-                                        </div>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                        <?php endif; ?>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-    <?php
-    admin_close_page();
-    exit;
+    admin_redirect('/judges/index.php');
 }
 
 $program = program_scores_load_program($pdo, $activeEventId, $programId);
@@ -1262,6 +1205,9 @@ $categoriesEditable = program_scores_categories_editable($program);
 $canSubmit = $readyForSubmission && !$scoresLocked && $categoriesValid;
 
 $judgesCount = (int)($program['judges_count'] ?? 2);
+$liveStageControl = admin_get_live_stage_control($pdo);
+$liveStageEntryId = ($programId === (int)$liveStageControl['program_id']) ? (int)$liveStageControl['entry_id'] : 0;
+$isGroupProgram = ($program['program_type'] === 'group' || !empty($program['only_team_marks']));
 
 if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
     ob_start();
@@ -1271,7 +1217,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
     } else {
         $orderIndex = $offset + 1;
         foreach ($paginatedEntries as $entry) {
-            echo program_scores_render_row($entry, $categories, $judgesCount, $scoresMap, $scoresLocked, !empty($program['disable_scores']), $orderIndex++);
+            echo program_scores_render_row($entry, $categories, $judgesCount, $scoresMap, $scoresLocked, !empty($program['disable_scores']), $orderIndex++, $activeJudgeNo, $isAdminUser, $liveStageEntryId, $isGroupProgram);
         }
     }
     $tbodyHtml = ob_get_clean();
@@ -1286,8 +1232,17 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
 }
 
 require_once __DIR__ . '/../includes/header.php';
-require_once __DIR__ . '/../includes/sidebar.php';
 ?>
+
+<style>
+    .main-content {
+        margin-left: 0 !important;
+        width: 100% !important;
+        max-width: 1400px !important;
+        margin: 0 auto !important;
+        padding: 24px !important;
+    }
+</style>
 
 <div class="main-content">
     <div class="topbar">
@@ -1317,7 +1272,23 @@ require_once __DIR__ . '/../includes/sidebar.php';
                 <?php endif; ?>
             </div>
         </div>
-        <div class="flex gap-2 flex-wrap">
+        <div class="flex gap-2 flex-wrap" style="align-items: center;">
+            <?php if ($activeJudgeNo > 0): ?>
+                <span class="badge badge-success" style="font-size: 13px; padding: 6px 14px; background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 9999px;">
+                    <i class="fa-solid fa-user-check mr-1"></i> Judge <?= $activeJudgeNo ?> Active
+                </span>
+                <form method="POST" style="margin: 0;">
+                    <?= admin_csrf_field() ?>
+                    <input type="hidden" name="action" value="lock_judge">
+                    <button type="submit" class="btn btn-secondary btn-md" title="Lock session or switch judge identity">
+                        <i class="fa-solid fa-lock mr-1"></i> Switch Judge
+                    </button>
+                </form>
+            <?php else: ?>
+                <button type="button" class="btn btn-primary btn-md" onclick="document.getElementById('passkeyModal').style.display='flex'">
+                    <i class="fa-solid fa-key mr-1"></i> Passkey Login
+                </button>
+            <?php endif; ?>
             <a class="btn btn-secondary btn-md" href="<?= app_url('/judges/index.php') ?>"><i class="fa-solid fa-arrow-left"></i> Programs</a>
             <form method="POST">
                 <?= admin_csrf_field() ?>
@@ -1326,6 +1297,47 @@ require_once __DIR__ . '/../includes/sidebar.php';
                 <button class="btn btn-success btn-md <?= $canSubmit ? 'ready-submit' : '' ?>" id="sendApprovalButton" type="submit" <?= $canSubmit ? '' : 'disabled' ?>>
                     <i class="fa-solid fa-paper-plane"></i> Send For Approval
                 </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Passkey Authentication Modal -->
+    <div class="modal-overlay" id="passkeyModal" style="display: <?= ($activeJudgeNo === 0 && !$isAdminUser) ? 'flex' : 'none' ?>; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(12px); z-index: 9999; justify-content: center; align-items: center;">
+        <div class="modal-box" style="background: rgba(30, 41, 59, 0.95); border: 1px solid rgba(255, 255, 255, 0.12); padding: 28px; border-radius: 16px; width: 100%; max-width: 420px; box-shadow: 0 20px 40px rgba(0,0,0,0.5);">
+            <div style="text-align: center; margin-bottom: 20px;">
+                <div style="width: 54px; height: 54px; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); color: #34d399; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22px; margin: 0 auto 12px auto;">
+                    <i class="fa-solid fa-lock"></i>
+                </div>
+                <h3 style="margin: 0; font-size: 20px; color: #fff;">Judge Passkey Unlock</h3>
+                <p style="font-size: 13px; color: var(--muted); margin-top: 4px;">Enter your Judge Passkey PIN to unlock criteria mark entry for this program</p>
+            </div>
+
+            <form method="POST">
+                <?= admin_csrf_field() ?>
+                <input type="hidden" name="action" value="verify_judge_passkey">
+
+                <div style="margin-bottom: 16px;">
+                    <label class="form-label" style="font-size: 12px; color: var(--muted);">Select Judge Identity</label>
+                    <select name="judge_no" class="form-control" style="background: rgba(15,23,42,0.8); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 10px; font-size: 15px; border-radius: 8px;">
+                        <?php for ($j = 1; $j <= $judgesCount; $j++): ?>
+                            <option value="<?= $j ?>">⚖️ Judge <?= $j ?></option>
+                        <?php endfor; ?>
+                    </select>
+                </div>
+
+                <div style="margin-bottom: 24px;">
+                    <label class="form-label" style="font-size: 12px; color: var(--muted);">4-Digit Passkey PIN</label>
+                    <input type="password" name="passkey" class="form-control" placeholder="••••" maxlength="8" required autofocus style="background: rgba(15,23,42,0.8); border: 1px solid rgba(255,255,255,0.1); color: #fff; font-size: 22px; tracking: 4px; text-align: center; padding: 10px; border-radius: 8px;">
+                </div>
+
+                <div style="display: flex; gap: 10px;">
+                    <?php if ($activeJudgeNo > 0 || $isAdminUser): ?>
+                        <button type="button" class="btn btn-secondary flex-1" onclick="document.getElementById('passkeyModal').style.display='none'">Cancel</button>
+                    <?php endif; ?>
+                    <button type="submit" class="btn btn-primary flex-1" style="background: var(--accent); border: none; font-weight: 700; padding: 12px;">
+                        <i class="fa-solid fa-key mr-1"></i> Unlock Sheet
+                    </button>
+                </div>
             </form>
         </div>
     </div>
@@ -1459,7 +1471,7 @@ require_once __DIR__ . '/../includes/sidebar.php';
                 <tbody id="table-body">
                     <?php $orderIndex = $offset + 1; ?>
                     <?php foreach ($paginatedEntries as $entry): ?>
-                        <?= program_scores_render_row($entry, $categories, $judgesCount, $scoresMap, $scoresLocked, !empty($program['disable_scores']), $orderIndex++) ?>
+                        <?= program_scores_render_row($entry, $categories, $judgesCount, $scoresMap, $scoresLocked, !empty($program['disable_scores']), $orderIndex++, $activeJudgeNo, $isAdminUser, $liveStageEntryId, $isGroupProgram) ?>
                     <?php endforeach; ?>
                 </tbody>
             </table>
@@ -1678,6 +1690,32 @@ if (document.getElementById('programReadyAlert')) {
         document.getElementById('sendApprovalButton')?.scrollIntoView({behavior: 'smooth', block: 'center'});
     }, 350);
 }
+
+// Emcee Live Speaker Auto-Sync Polling
+let currentLiveEntryId = <?= (int)$liveStageEntryId ?>;
+setInterval(() => {
+    fetch('<?= app_url('/emcee/index.php?ajax_status=1') ?>')
+    .then(r => r.json())
+    .then(data => {
+        if (data.success && data.live_control) {
+            const newLiveEntryId = parseInt(data.live_control.entry_id, 10);
+            if (newLiveEntryId !== currentLiveEntryId) {
+                currentLiveEntryId = newLiveEntryId;
+                document.querySelectorAll('tr[data-entry-row]').forEach(tr => {
+                    const entryId = parseInt(tr.dataset.entryRow, 10);
+                    if (entryId === currentLiveEntryId) {
+                        tr.style.background = 'rgba(16, 185, 129, 0.18)';
+                        tr.style.borderLeft = '4px solid #34d399';
+                    } else {
+                        tr.style.background = '';
+                        tr.style.borderLeft = '';
+                    }
+                });
+            }
+        }
+    })
+    .catch(() => {});
+}, 3000);
 </script>
 </div>
 <?= admin_ajax_pagination_script() ?>

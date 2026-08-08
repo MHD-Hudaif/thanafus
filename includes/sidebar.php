@@ -210,6 +210,10 @@ if ($activeEventId) {
                 <i data-lucide="chevron-down" class="chevron-icon"></i>
             </div>
             <div class="sidebar-group-content">
+                <a href="<?= app_url('/admin/live-display/emcee-deck.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('emcee-deck.php') ?>">
+                    <i data-lucide="sparkles" class="sidebar-icon"></i>
+                    <span class="sidebar-label">Emcee Stage Deck</span>
+                </a>
                 <a href="<?= app_url('/admin/live-display/remote.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('remote.php') ?>">
                     <i data-lucide="toggle-left" class="sidebar-icon"></i>
                     <span class="sidebar-label">Live Switcher (Remote)</span>
@@ -220,6 +224,10 @@ if ($activeEventId) {
                 <a href="<?= app_url('/admin/live-display/control-live-display.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('control-live-display.php') ?>">
                     <i data-lucide="settings-2" class="sidebar-icon"></i>
                     <span class="sidebar-label">Loop Settings</span>
+                </a>
+                <a href="<?= app_url('/emcee/index.php') ?>" class="sidebar-vertical-link" target="_blank" data-ajax-ignore>
+                    <i data-lucide="mic" class="sidebar-icon"></i>
+                    <span class="sidebar-label">Emcee Stage Portal</span>
                 </a>
                 <a href="<?= app_url('/live-display/dashboard.php') ?>" class="sidebar-vertical-link" target="_blank" data-ajax-ignore>
                     <i data-lucide="tv" class="sidebar-icon"></i>

@@ -2,13 +2,15 @@
 
 require_once __DIR__ . '/admin-helpers.php';
 
-require_login();
+if (empty($skipLoginCheck)) {
+    require_login();
+}
 
 header('Cache-Control: no-cache, no-store, must-revalidate');
 header('Pragma: no-cache');
 header('Expires: 0');
 
-$user = current_user();
+$user = function_exists('current_user') ? (current_user() ?? []) : [];
 
 $isAjaxRequest = admin_is_ajax();
 

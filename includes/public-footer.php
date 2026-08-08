@@ -7,6 +7,7 @@
   <p>Knowledge &middot; Character &middot; Excellence</p>
   <p>Edathala, Aluva, Kerala</p>
 </footer>
+<?php require_once __DIR__ . '/command-palette.php'; ?>
 <script src="<?= asset_url('js/site.js') ?>" defer></script>
 </body>
 </html>

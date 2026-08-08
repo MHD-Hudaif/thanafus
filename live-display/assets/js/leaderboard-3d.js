@@ -352,6 +352,16 @@
                         console.warn('GLB processing notice:', e);
                     }
 
+                    // Enable AnimationMixer for Blender glTF animations
+                    if (gltf.animations && gltf.animations.length > 0) {
+                        const mixer = new THREE.AnimationMixer(glbModel);
+                        gltf.animations.forEach((clip) => {
+                            const action = mixer.clipAction(clip);
+                            action.play();
+                        });
+                        stage.mixer = mixer;
+                    }
+
                     scene.add(glbModel);
                     if (active) active.glbModel = glbModel;
                 }, undefined, (err) => console.warn('GLB load note:', err));
@@ -374,7 +384,12 @@
 
             const animate = () => {
                 if (active !== stage || !canvas.isConnected) return dispose();
+                const delta = clock.getDelta();
                 const elapsed = clock.getElapsedTime();
+
+                if (stage.mixer) {
+                    stage.mixer.update(delta);
+                }
 
                 // Slow Camera Orbit
                 camera.position.x = Math.sin(elapsed * 0.09) * 1.35;

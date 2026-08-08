@@ -1026,6 +1026,7 @@ function admin_get_settings(PDO $pdo): array
     
     $defaults = [
         'default_judges_count' => 2,
+        'max_judges_count' => 2,
         'default_total_marks' => 100,
         'default_entries_limit' => 10,
         'first_place_points' => 10,
@@ -1033,17 +1034,115 @@ function admin_get_settings(PDO $pdo): array
         'third_place_points' => 5,
         'tied_rank_mode' => 'shared_full',
         'active_sections' => [],
-        'section_limits' => []
+        'section_limits' => [],
+        'judge_passkeys' => [
+            1 => '1111',
+            2 => '2222',
+            3 => '3333',
+            4 => '4444',
+            5 => '5555'
+        ]
     ];
     
     if ($row) {
         $data = json_decode($row['setting_value'], true);
         if (is_array($data)) {
+            if (isset($data['judge_passkeys']) && is_array($data['judge_passkeys'])) {
+                $defaults['judge_passkeys'] = array_replace($defaults['judge_passkeys'], $data['judge_passkeys']);
+            }
             return array_merge($defaults, $data);
         }
     }
     
     return $defaults;
+}
+
+function admin_save_settings(PDO $pdo, array $settings): void
+{
+    $json = json_encode($settings, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    $stmt = $pdo->prepare("
+        INSERT INTO musabaqa_settings (setting_key, setting_value)
+        VALUES ('global_musabaqa_settings', ?)
+        ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)
+    ");
+    $stmt->execute([$json]);
+}
+
+function save_musabaqa_settings(PDO $pdo, array $settings): void
+{
+    admin_save_settings($pdo, $settings);
+}
+
+function admin_get_judge_passkey(PDO $pdo, int $judgeNo): string
+{
+    $settings = admin_get_settings($pdo);
+    $passkeys = $settings['judge_passkeys'] ?? [];
+    if (isset($passkeys[$judgeNo]) && trim((string)$passkeys[$judgeNo]) !== '') {
+        return trim((string)$passkeys[$judgeNo]);
+    }
+    return (string)($judgeNo * 1111);
+}
+
+function admin_verify_judge_passkey(PDO $pdo, int $judgeNo, string $inputPasskey): bool
+{
+    $expected = admin_get_judge_passkey($pdo, $judgeNo);
+    return trim($inputPasskey) === $expected;
+}
+
+function admin_detect_judge_by_passkey(PDO $pdo, string $passkey): ?int
+{
+    $cleanPasskey = trim($passkey);
+    if ($cleanPasskey === '') {
+        return null;
+    }
+
+    $settings = admin_get_settings($pdo);
+    $maxJudges = max(2, min(10, (int)($settings['max_judges_count'] ?? $settings['default_judges_count'] ?? 2)));
+
+    for ($j = 1; $j <= max(10, $maxJudges); $j++) {
+        $expected = admin_get_judge_passkey($pdo, $j);
+        if ($cleanPasskey === $expected) {
+            return $j;
+        }
+    }
+
+    return null;
+}
+
+function admin_set_live_stage_control(PDO $pdo, int $programId, int $entryId = 0): void
+{
+    $settings = admin_get_settings($pdo);
+    $settings['live_program_id'] = $programId;
+    $settings['live_entry_id'] = $entryId;
+    
+    if ($programId > 0) {
+        $eventId = (int)($_SESSION['selected_event_id'] ?? $_SESSION['active_event_id'] ?? 0);
+        if ($eventId > 0) {
+            $pdo->prepare("UPDATE musabaqa_programs SET status = 'active' WHERE event_id = ? AND status = 'scoring'")->execute([$eventId]);
+        }
+        $pdo->prepare("UPDATE musabaqa_programs SET status = 'scoring' WHERE id = ?")->execute([$programId]);
+    }
+    
+    save_musabaqa_settings($pdo, $settings);
+}
+
+function admin_get_live_stage_control(PDO $pdo): array
+{
+    $settings = admin_get_settings($pdo);
+    $liveProgramId = (int)($settings['live_program_id'] ?? 0);
+    $liveEntryId = (int)($settings['live_entry_id'] ?? 0);
+
+    if ($liveProgramId <= 0) {
+        $eventId = (int)($_SESSION['selected_event_id'] ?? $_SESSION['active_event_id'] ?? 0);
+        $stmt = $pdo->prepare("SELECT id FROM musabaqa_programs WHERE event_id = ? AND status = 'scoring' LIMIT 1");
+        $stmt->execute([$eventId]);
+        $liveProgramId = (int)($stmt->fetchColumn() ?: 0);
+    }
+
+    return [
+        'program_id' => $liveProgramId,
+        'entry_id' => $liveEntryId
+    ];
 }
 
 function admin_validate_member_program_limits(PDO $pdo, int $eventId, int $programId, int $teamMemberId, ?int $excludeEntryId = null): void
