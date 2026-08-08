@@ -1057,20 +1057,24 @@ function admin_get_settings(PDO $pdo): array
     return $defaults;
 }
 
-function admin_save_settings(PDO $pdo, array $settings): void
-{
-    $json = json_encode($settings, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-    $stmt = $pdo->prepare("
-        INSERT INTO musabaqa_settings (setting_key, setting_value)
-        VALUES ('global_musabaqa_settings', ?)
-        ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)
-    ");
-    $stmt->execute([$json]);
+if (!function_exists('admin_save_settings')) {
+    function admin_save_settings(PDO $pdo, array $settings): void
+    {
+        $json = json_encode($settings, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $stmt = $pdo->prepare("
+            INSERT INTO musabaqa_settings (setting_key, setting_value)
+            VALUES ('global_musabaqa_settings', ?)
+            ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)
+        ");
+        $stmt->execute([$json]);
+    }
 }
 
-function save_musabaqa_settings(PDO $pdo, array $settings): void
-{
-    admin_save_settings($pdo, $settings);
+if (!function_exists('save_musabaqa_settings')) {
+    function save_musabaqa_settings(PDO $pdo, array $settings): void
+    {
+        admin_save_settings($pdo, $settings);
+    }
 }
 
 function admin_get_judge_passkey(PDO $pdo, int $judgeNo): string

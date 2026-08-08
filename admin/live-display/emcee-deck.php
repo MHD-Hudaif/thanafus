@@ -154,9 +154,10 @@ foreach ($programs as $pIdx => $prog) {
                 FROM musabaqa_entry_members em
                 JOIN musabaqa_team_members tm ON tm.id = em.team_member_id
                 WHERE em.entry_id = pe.id AND tm.chest_number IS NOT NULL AND tm.chest_number <> '') AS chest_number,
-               (SELECT GROUP_CONCAT(tm.name SEPARATOR ', ')
+               (SELECT GROUP_CONCAT(COALESCE(NULLIF(s.display_name, ''), s.full_name) SEPARATOR ', ')
                 FROM musabaqa_entry_members em
                 JOIN musabaqa_team_members tm ON tm.id = em.team_member_id
+                JOIN " . DB_MAIN_NAME . ".students s ON s.id = tm.student_id
                 WHERE em.entry_id = pe.id) AS member_names
         FROM musabaqa_program_entries pe
         LEFT JOIN musabaqa_teams t ON t.id = pe.team_id
@@ -178,10 +179,10 @@ foreach ($programs as $pIdx => $prog) {
         'type' => 'intro',
         'program_id' => $pId,
         'entry_id' => 0,
-        'title' => 'PROGRAM INTRO: ' . $prog['name'],
+        'title' => 'PROGRAM INTRO: ' . ($prog['title'] ?? $prog['name'] ?? ''),
         'subtitle' => ($prog['class_type_name'] ?? 'General') . ' (' . ($isGroup ? 'Group' : 'Individual') . ')',
         'chest_number' => 'INTRO',
-        'performer_name' => $prog['name'],
+        'performer_name' => ($prog['title'] ?? $prog['name'] ?? 'Program Intro'),
         'team_name' => $prog['schedule_section_name'] ?: 'Main Stage',
         'team_color' => '#10b981',
         'order' => 0,
@@ -204,7 +205,7 @@ foreach ($programs as $pIdx => $prog) {
             'type' => 'entry',
             'program_id' => $pId,
             'entry_id' => $eId,
-            'title' => $prog['name'],
+            'title' => ($prog['title'] ?? $prog['name'] ?? ''),
             'subtitle' => $tName,
             'chest_number' => $chest,
             'performer_name' => $pName,
@@ -1105,7 +1106,7 @@ body {
                 </div>
                 <div class="deck-meta-item">
                     <span class="deck-meta-label">Venue</span>
-                    <span class="deck-meta-val"><?= e($activeEvent['location'] ?: 'Main Auditorium') ?></span>
+                    <span class="deck-meta-val"><?= e($activeEvent['location'] ?? 'Main Auditorium') ?></span>
                 </div>
                 <div class="deck-meta-item">
                     <span class="deck-meta-label">Division</span>
@@ -1131,7 +1132,7 @@ body {
                 <div class="deck-meta-item">
                     <span class="deck-meta-label">Current Program</span>
                     <span class="deck-meta-val" style="color: var(--deck-neon-green); font-size: 15px;">
-                        <?= e($activeProgram['name'] ?? 'QURAN RECITATION') ?>
+                        <?= e($activeProgram['title'] ?? $activeProgram['name'] ?? 'QURAN RECITATION') ?>
                     </span>
                     <span style="font-size: 11px; color: var(--deck-text-muted);">
                         <?= ($activeProgram['program_type'] ?? '') === 'group' ? 'Group Performance' : 'Individual Performance' ?>

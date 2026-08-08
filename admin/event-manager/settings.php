@@ -96,14 +96,20 @@ function get_musabaqa_settings($pdo) {
     return $defaults;
 }
 
-function save_musabaqa_settings($pdo, $settings) {
-    $value = json_encode($settings);
-    $stmt = $pdo->prepare("
-        INSERT INTO musabaqa_settings (setting_key, setting_value)
-        VALUES ('global_musabaqa_settings', ?)
-        ON DUPLICATE KEY UPDATE setting_value = ?
-    ");
-    $stmt->execute([$value, $value]);
+if (!function_exists('save_musabaqa_settings')) {
+    function save_musabaqa_settings($pdo, $settings) {
+        if (function_exists('admin_save_settings') && is_array($settings)) {
+            admin_save_settings($pdo, $settings);
+            return;
+        }
+        $value = json_encode($settings);
+        $stmt = $pdo->prepare("
+            INSERT INTO musabaqa_settings (setting_key, setting_value)
+            VALUES ('global_musabaqa_settings', ?)
+            ON DUPLICATE KEY UPDATE setting_value = ?
+        ");
+        $stmt->execute([$value, $value]);
+    }
 }
 
 $classTypes = $dashboardPdo->query('SELECT id, name FROM class_types ORDER BY name ASC')->fetchAll(PDO::FETCH_ASSOC);
