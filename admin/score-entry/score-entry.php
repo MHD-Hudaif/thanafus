@@ -435,8 +435,11 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                                     <i class="fa-solid fa-lock mr-1"></i> Locked
                                                 </button>
                                             <?php else: ?>
-                                                <a class="btn btn-success btn-sm" href="<?= app_url('/admin/score-entry/program-scores.php') ?>?program_id=<?= (int)$program['id'] ?>">
-                                                    <i class="fa-solid fa-pen-to-square mr-1"></i> Score Entry
+                                                <a class="btn btn-secondary btn-sm" href="<?= app_url('/admin/score-entry/program-scores.php') ?>?program_id=<?= (int)$program['id'] ?>" title="View scores in read-only mode">
+                                                    <i class="fa-solid fa-eye mr-1"></i> Audit Scores
+                                                </a>
+                                                <a class="btn btn-primary btn-sm" href="<?= app_url('/judges/program-scores.php') ?>?program_id=<?= (int)$program['id'] ?>" title="Open Judges Marking Portal">
+                                                    <i class="fa-solid fa-gavel mr-1"></i> Judges Marking
                                                 </a>
                                             <?php endif; ?>
                                         </div>
@@ -561,8 +564,11 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                                     <i class="fa-solid fa-lock mr-1"></i> Locked
                                                 </button>
                                             <?php else: ?>
-                                                <a class="btn btn-success btn-sm" href="<?= app_url('/admin/score-entry/program-scores.php') ?>?program_id=<?= (int)$program['id'] ?>">
-                                                    <i class="fa-solid fa-pen-to-square mr-1"></i> Score Entry
+                                                <a class="btn btn-secondary btn-sm" href="<?= app_url('/admin/score-entry/program-scores.php') ?>?program_id=<?= (int)$program['id'] ?>" title="View scores in read-only mode">
+                                                    <i class="fa-solid fa-eye mr-1"></i> Audit Scores
+                                                </a>
+                                                <a class="btn btn-primary btn-sm" href="<?= app_url('/judges/program-scores.php') ?>?program_id=<?= (int)$program['id'] ?>" title="Open Judges Marking Portal">
+                                                    <i class="fa-solid fa-gavel mr-1"></i> Judges Marking
                                                 </a>
                                             <?php endif; ?>
                                         </div>
@@ -677,8 +683,11 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                                     <i class="fa-solid fa-lock mr-1"></i> Locked
                                                 </button>
                                             <?php else: ?>
-                                                <a class="btn btn-success btn-sm" href="<?= app_url('/admin/score-entry/program-scores.php') ?>?program_id=<?= (int)$program['id'] ?>">
-                                                    <i class="fa-solid fa-pen-to-square mr-1"></i> Score Entry
+                                                <a class="btn btn-secondary btn-sm" href="<?= app_url('/admin/score-entry/program-scores.php') ?>?program_id=<?= (int)$program['id'] ?>" title="View scores in read-only mode">
+                                                    <i class="fa-solid fa-eye mr-1"></i> Audit Scores
+                                                </a>
+                                                <a class="btn btn-primary btn-sm" href="<?= app_url('/judges/program-scores.php') ?>?program_id=<?= (int)$program['id'] ?>" title="Open Judges Marking Portal">
+                                                    <i class="fa-solid fa-gavel mr-1"></i> Judges Marking
                                                 </a>
                                             <?php endif; ?>
                                         </div>

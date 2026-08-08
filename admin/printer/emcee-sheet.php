@@ -104,7 +104,8 @@ $rowHeight = $participantsCount <= 5 ? 48 : ($participantsCount <= 10 ? 36 : 24)
 <head>
     <meta charset="UTF-8">
     <title>Emcee Running Order Sheet (Side-by-Side) - <?= e($programName1) ?></title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="<?= asset_url('css/event-id-cards.css') ?>">
+    <script src="<?= asset_url('js/print-helpers.js') ?>" defer></script>
     <style>
         @page {
             size: A4 landscape;

@@ -121,7 +121,8 @@ if ($action === 'print' && $activeEvent) {
     <head>
         <meta charset="UTF-8">
         <title>Emcee Running Order Sheets - <?= e($activeEvent['title']) ?></title>
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+        <link rel="stylesheet" href="<?= asset_url('css/event-id-cards.css') ?>">
+        <script src="<?= asset_url('js/print-helpers.js') ?>" defer></script>
         <style>
             @page {
                 size: A4 landscape;
@@ -133,9 +134,9 @@ if ($action === 'print' && $activeEvent) {
             body {
                 font-family: 'Arial', 'Helvetica Neue', system-ui, sans-serif;
                 color: #000;
-                background: #fff;
+                background: #f8fafc;
                 margin: 0;
-                padding: 4px;
+                padding: 16px;
                 line-height: 1.2;
             }
             .landscape-page {
@@ -144,8 +145,16 @@ if ($action === 'print' && $activeEvent) {
                 gap: 24px;
                 position: relative;
                 width: 100%;
-                min-height: 96vh;
+                min-height: 90vh;
                 box-sizing: border-box;
+            }
+            @media (max-width: 800px) {
+                .landscape-page {
+                    grid-template-columns: 1fr;
+                }
+                .vertical-divider {
+                    display: none;
+                }
             }
             .vertical-divider {
                 position: absolute;
@@ -210,36 +219,7 @@ if ($action === 'print' && $activeEvent) {
                 page-break-before: always !important;
                 break-before: page !important;
             }
-            .no-print-btn {
-                position: fixed;
-                top: 20px;
-                right: 20px;
-                background: #0284c7;
-                color: #fff;
-                border: none;
-                padding: 10px 20px;
-                border-radius: 8px;
-                font-weight: 600;
-                cursor: pointer;
-                box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);
-                display: inline-flex;
-                align-items: center;
-                gap: 8px;
-                z-index: 9999;
-            }
-            .no-print-btn:hover {
-                background: #0369a1;
-            }
             @media print {
-                .no-print-btn {
-                    display: none !important;
-                }
-                body {
-                    padding: 0;
-                }
-                .emcee-table th {
-                    background: #f1f5f9 !important;
-                    -webkit-print-color-adjust: exact;
                     print-color-adjust: exact;
                 }
             }

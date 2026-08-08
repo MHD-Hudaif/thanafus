@@ -76,7 +76,8 @@ $allTeams = $pdo->query("SELECT id, team_name, team_color FROM musabaqa_teams WH
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ID Cards Print View - <?= e($activeEvent['title']) ?></title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="<?= asset_url('css/event-id-cards.css') ?>">
+    <script src="<?= asset_url('js/print-helpers.js') ?>" defer></script>
     <style>
         * {
             box-sizing: border-box;
@@ -119,15 +120,17 @@ $allTeams = $pdo->query("SELECT id, team_name, team_color FROM musabaqa_teams WH
 
         .cards-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
             gap: 20px;
             justify-items: center;
+            width: 100%;
         }
 
         .id-card-wrapper {
             position: relative;
-            width: 320px;
-            height: 506px; /* Aspect ratio 600x950 */
+            width: min(320px, 100%);
+            height: auto;
+            aspect-ratio: 320 / 506;
             border-radius: 12px;
             overflow: hidden;
             background-size: cover;
@@ -155,10 +158,10 @@ $allTeams = $pdo->query("SELECT id, team_name, team_color FROM musabaqa_teams WH
                 display: none !important;
             }
             .cards-grid {
-                display: flex !important;
-                flex-wrap: wrap !important;
-                gap: 15mm !important;
-                justify-content: flex-start !important;
+                display: grid !important;
+                grid-template-columns: repeat(var(--print-cols, 2), 1fr) !important;
+                gap: 10mm !important;
+                justify-items: center !important;
             }
             .id-card-wrapper {
                 box-shadow: none !important;
@@ -168,14 +171,10 @@ $allTeams = $pdo->query("SELECT id, team_name, team_color FROM musabaqa_teams WH
                 width: 75mm !important;
                 height: 118mm !important;
             }
-            @page {
-                size: A4 portrait;
-                margin: 10mm;
-            }
         }
     </style>
 </head>
-<body>
+<body data-print-orientation="portrait">
 
     <div class="no-print-bar">
         <div>
@@ -192,6 +191,23 @@ $allTeams = $pdo->query("SELECT id, team_name, team_color FROM musabaqa_teams WH
                 <?php endforeach; ?>
             </select>
 
+            <select data-print-select="orientation" style="padding: 8px 12px; border-radius: 8px; background: #0f172a; color: #fff; border: 1px solid #334155;">
+                <option value="portrait">📄 Portrait</option>
+                <option value="landscape">🖼️ Landscape</option>
+            </select>
+
+            <select data-print-select="cols" style="padding: 8px 12px; border-radius: 8px; background: #0f172a; color: #fff; border: 1px solid #334155;">
+                <option value="2">2 Columns / Page</option>
+                <option value="3">3 Columns / Page</option>
+                <option value="1">1 Column / Page</option>
+            </select>
+
+            <select data-print-select="scale" style="padding: 8px 12px; border-radius: 8px; background: #0f172a; color: #fff; border: 1px solid #334155;">
+                <option value="1">100% Fit</option>
+                <option value="0.9">90% Fit</option>
+                <option value="0.8">80% Fit</option>
+            </select>
+
             <a href="<?= app_url('/admin/printer/id-card-designer.php') ?>" class="btn btn-secondary">
                 <i class="fa-solid fa-wand-magic-sparkles"></i> Customize Layout
             </a>
@@ -200,7 +216,7 @@ $allTeams = $pdo->query("SELECT id, team_name, team_color FROM musabaqa_teams WH
                 <i class="fa-solid fa-arrow-left"></i> Back to Search
             </a>
 
-            <button onclick="window.print()" class="btn btn-success">
+            <button data-print-action="print" class="btn btn-success">
                 <i class="fa-solid fa-print"></i> Print Cards (Ctrl+P)
             </button>
         </div>

@@ -88,15 +88,16 @@ if ($action === 'print' && $activeEvent) {
     <head>
         <meta charset="UTF-8">
         <title>Judges Score Sheets - <?= e($activeEvent['title']) ?></title>
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+        <link rel="stylesheet" href="<?= asset_url('css/event-id-cards.css') ?>">
+        <script src="<?= asset_url('js/print-helpers.js') ?>" defer></script>
         <style>
             * { box-sizing: border-box; }
             body {
                 font-family: 'Inter', system-ui, -apple-system, sans-serif;
                 color: #000;
-                background: #fff;
+                background: #f8fafc;
                 margin: 0;
-                padding: 8px;
+                padding: 16px;
                 line-height: 1.3;
             }
             .judge-full-sheet {
@@ -105,6 +106,7 @@ if ($action === 'print' && $activeEvent) {
                 border-radius: 8px;
                 background: #fff;
                 width: 100%;
+                margin-bottom: 16px;
             }
             .judge-half-sheet {
                 border: 1px dashed #94a3b8;
@@ -126,6 +128,8 @@ if ($action === 'print' && $activeEvent) {
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
+                flex-wrap: wrap;
+                gap: 8px;
             }
             .program-title {
                 font-size: 15px;
@@ -167,37 +171,36 @@ if ($action === 'print' && $activeEvent) {
                 font-size: 14px;
                 font-weight: 800;
             }
-            .no-print-btn {
-                position: fixed;
-                top: 20px;
-                right: 20px;
-                background: #8b5cf6;
-                color: #fff;
-                border: none;
-                padding: 10px 20px;
-                border-radius: 8px;
-                font-weight: 600;
-                cursor: pointer;
-                box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
-                display: inline-flex;
-                align-items: center;
-                gap: 8px;
-                z-index: 9999;
-            }
-            .no-print-btn:hover {
-                background: #7c3aed;
-            }
             @media print {
-                .no-print-btn { display: none !important; }
-                body { padding: 0; }
+                body { padding: 0; background: #fff !important; }
                 .judge-half-sheet { border-color: #cbd5e1; }
             }
         </style>
     </head>
-    <body>
-        <button onclick="window.print()" class="no-print-btn">
-            <i class="fa-solid fa-print"></i> Print Judges Score Sheets
-        </button>
+    <body data-print-orientation="portrait">
+        <div class="no-print-bar" style="background: #0f172a; padding: 12px 20px; border-radius: 12px; margin-bottom: 20px; color: #fff; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+            <div>
+                <h3 style="margin:0; font-size: 16px; color:#fff;"><i class="fa-solid fa-file-invoice" style="color:#60a5fa;"></i> Judges Score Sheets</h3>
+                <small style="color:#94a3b8;"><?= count($orderedPrograms) ?> Program(s) ready to print</small>
+            </div>
+            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                <select data-print-select="orientation" style="padding: 6px 12px; border-radius: 6px; background: #1e293b; color: #fff; border: 1px solid #334155;">
+                    <option value="portrait">📄 Portrait</option>
+                    <option value="landscape">🖼️ Landscape</option>
+                </select>
+                <select data-print-select="scale" style="padding: 6px 12px; border-radius: 6px; background: #1e293b; color: #fff; border: 1px solid #334155;">
+                    <option value="1">100% Fit</option>
+                    <option value="0.9">90% Fit</option>
+                    <option value="0.8">80% Fit</option>
+                </select>
+                <a href="<?= app_url('/admin/printer/score-sheets.php') ?>" class="btn btn-secondary" style="padding: 6px 14px; text-decoration: none; color: #fff; background: #334155; border-radius: 6px; font-size: 13px; font-weight: 600;">
+                    <i class="fa-solid fa-arrow-left"></i> Selection
+                </a>
+                <button data-print-action="print" class="btn btn-success" style="padding: 6px 16px; background: #10b981; color: #fff; border: none; border-radius: 6px; font-size: 13px; font-weight: 700; cursor: pointer;">
+                    <i class="fa-solid fa-print"></i> Print Sheets (Ctrl+P)
+                </button>
+            </div>
+        </div>
 
         <?php
         $totalProgs = count($orderedPrograms);

@@ -9,7 +9,7 @@ define('APP_PUBLIC_PATH', APP_ROOT);
 
 require_once APP_ROOT . '/app/Support/url.php';
 
-$configuredBaseUrl = env('APP_BASE_URL', env('APP_URL', '/kauzariyya-musabaqa'));
+$configuredBaseUrl = env('APP_BASE_URL', env('APP_URL', 'auto'));
 
 define('APP_BASE_URL', app_normalize_base_url($configuredBaseUrl));
 

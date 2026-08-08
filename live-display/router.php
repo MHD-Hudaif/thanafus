@@ -9,7 +9,7 @@ function tv_page_map(): array
         'intro' => 'intro.php',
         'leaderboard' => 'leaderboard.php',
         'schedule' => 'schedule.php',
-        'current-program' => 'current-program.php',
+        'current-program' => 'current-programs.php',
     ];
 }
 

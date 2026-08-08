@@ -28,10 +28,26 @@ $requestUri  = $_SERVER['REQUEST_URI'] ?? '';
 if (!function_exists('admin_sidebar_is_active')) {
     function admin_sidebar_is_active(string $path): string {
         global $currentPath, $requestUri;
+        
+        $norm = function(string $p): string {
+            $p = str_replace('\\', '/', $p);
+            $p = preg_replace('/\.php$/i', '', $p);
+            $p = preg_replace('/\/index$/i', '', $p);
+            return rtrim($p, '/');
+        };
+        
+        $cNorm = $norm($currentPath);
+        $pNorm = $norm($path);
+        
         if (str_contains($path, '?') || str_contains($path, '=')) {
             return str_contains($requestUri, $path) ? 'active' : '';
         }
-        return str_contains($currentPath, $path) ? 'active' : '';
+        
+        if ($cNorm === $pNorm || (strlen($pNorm) > 0 && str_ends_with($cNorm, '/' . ltrim($pNorm, '/')))) {
+            return 'active';
+        }
+        
+        return '';
     }
 }
 
@@ -140,18 +156,11 @@ if ($activeEventId) {
                     <i data-lucide="users" class="sidebar-icon"></i>
                     <span class="sidebar-label">Teams Directory</span>
                 </a>
-                <?php 
-                $hasActiveTeam = (int)($_GET['team'] ?? $_SESSION['active_team_id'] ?? 0) > 0;
-                ?>
-                <a href="<?= app_url('/admin/event-manager/members.php?team=' . (int)($_GET['team'] ?? $_SESSION['active_team_id'] ?? 0)) ?>" class="sidebar-vertical-link members-link <?= admin_sidebar_is_active('members.php') ?> <?= !$hasActiveTeam ? 'hidden-link' : 'slide-in-link' ?>" id="sidebarMembersLink">
-                    <i data-lucide="user-plus" class="sidebar-icon"></i>
-                    <span class="sidebar-label">Members Registry</span>
-                </a>
                 <a href="<?= app_url('/admin/event-manager/chest-numbers.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('chest-numbers.php') ?>">
                     <i data-lucide="credit-card" class="sidebar-icon"></i>
                     <span class="sidebar-label">Chest Numbers</span>
                 </a>
-                <a href="<?= app_url('/admin/registrar/add-entry.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('add-entry.php') ?>">
+                <a href="<?= app_url('/admin/registrar/entries.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('entries.php') ?>">
                     <i data-lucide="user-check" class="sidebar-icon"></i>
                     <span class="sidebar-label">Register Participant</span>
                 </a>
@@ -165,13 +174,17 @@ if ($activeEventId) {
                 <i data-lucide="chevron-down" class="chevron-icon"></i>
             </div>
             <div class="sidebar-group-content">
+                <a href="<?= app_url('/judges/index.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('/judges/') ?>">
+                    <i data-lucide="gavel" class="sidebar-icon"></i>
+                    <span class="sidebar-label">Judges Marking Portal</span>
+                </a>
                 <a href="<?= app_url('/admin/score-entry/score-entry.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('score-entry.php') ?>">
-                    <i data-lucide="edit-3" class="sidebar-icon"></i>
-                    <span class="sidebar-label">Quick Score Entry</span>
+                    <i data-lucide="eye" class="sidebar-icon"></i>
+                    <span class="sidebar-label">Admin Score Audit</span>
                 </a>
                 <a href="<?= app_url('/admin/score-entry/program-scores.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('program-scores.php') ?>">
                     <i data-lucide="file-text" class="sidebar-icon"></i>
-                    <span class="sidebar-label">Score Sheets</span>
+                    <span class="sidebar-label">Score Sheets View</span>
                 </a>
                 <?php if (is_admin()): ?>
                 <a href="<?= app_url('/admin/score-update/score-approval.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('score-approval.php') ?>">

@@ -450,7 +450,7 @@
         
         // 1. Dynamic background based on 1st place team color
         if (rows.length > 0 && typeof gsap !== 'undefined') {
-            const firstColor = rows[0].team_color || '#00ff88';
+            const firstColor = rows[0].team_color || '#10b981';
             const rgb = hexToRgb(firstColor);
             const rootStyle = getComputedStyle(document.documentElement);
             const currentR = parseInt(rootStyle.getPropertyValue('--dynamic-r')) || 0;
@@ -472,387 +472,44 @@
             });
         }
 
-        const container = document.querySelector('[data-leaderboard]');
+        const container = document.querySelector('[data-leaderboard], [data-leaderboard-stage]');
         if (!container) return;
 
         const signature = JSON.stringify((rows || []).slice(0, 4).map((team) => [
             team?.id, team?.rank, team?.team_name, team?.total_score, team?.team_color
         ]));
-        if (signature === state.leaderboardSignature && container.childElementCount > 0) return;
+        
+        if (window.TVLeaderboard3D && window.TVLeaderboard3D.update && container.querySelector('#tvLeaderboardCanvas')) {
+            window.TVLeaderboard3D.update(rows);
+            const leaderNameEl = container.querySelector('.aura-watermark');
+            if (leaderNameEl) {
+                leaderNameEl.textContent = `Champion Aura: ${rows[0]?.team_name || rows[0]?.short_name || 'Leader'}`;
+            }
+            state.leaderboardSignature = signature;
+            return;
+        }
         state.leaderboardSignature = signature;
 
-        const slots = Array.from({ length: 4 }, (_, index) => rows[index] || null);
-        const podiumSlots = [slots[1], slots[0], slots[2], slots[3]];
-        const maxScore = Math.max(...slots.map(t => t ? Number(t.total_score || 0) : 0), 10);
-
-        // Get event title from the topbar
-        const eventTitleEl = document.querySelector('[data-event-title]');
-        const eventTitle = eventTitleEl ? eventTitleEl.textContent : 'SCORE REVEAL';
-
-        const isStyle2 = state.slides['leaderboard']?.style === 'style2';
-        container.className = 'tv-floating-leaderboard cinema-stage' + (isStyle2 ? ' style-style2' : '');
+        container.className = 'tv-leaderboard-stage-root';
         container.innerHTML = `
-            <canvas class="confetti-canvas"></canvas>
-            <canvas class="three-stage-canvas" aria-hidden="true"></canvas>
-
-            <!-- Stage Haze Overlay -->
-            <div class="stage-haze"></div>
-
-            <!-- Event Header with LIVE Badge -->
-            <div class="cinema-header">
-                <div class="cinema-header-inner">
-                    <div class="cinema-logo-mark">
-                        <img src="${escapeHtml(document.querySelector('.tv-brand img')?.src || '')}" alt="" />
-                    </div>
-                    <div class="cinema-title-block">
-                        <div class="cinema-event-title">${escapeHtml(eventTitle)}</div>
-                        <div class="cinema-subtitle">SCORE REVEAL</div>
-                    </div>
-                    <div class="cinema-live-badge"><span></span>LIVE</div>
+            <canvas id="tvLeaderboardCanvas" class="tv-3d-canvas"></canvas>
+            <div id="team-labels" class="team-labels"></div>
+            <div class="tv-broadcast-overlay">
+                <div class="live-chip-3d">
+                    <span></span> Live Standings
                 </div>
             </div>
-
-            <!-- Score Overlay Table -->
-            <div class="cinema-score-table">
-                <div class="score-table-inner">
-                    <div class="score-table-header">
-                        <span class="st-rank">RANK</span>
-                        <span class="st-team">TEAM</span>
-                        <span class="st-score">TOTAL SCORE</span>
-                    </div>
-                    ${slots.map((team, index) => {
-                        const color = team?.team_color || ['#38bdf8', '#f7c948', '#34d399', '#fb7185'][index];
-                        const scoreVal = team ? Number(team.total_score || 0) : 0;
-                        const name = team ? (team.team_name || team.short_name || 'Team') : '—';
-                        const rank = team ? team.rank : index + 1;
-                        return `
-                            <div class="score-table-row" style="--row-color: ${color};">
-                                <span class="st-rank"><strong>${rank}</strong></span>
-                                <span class="st-team">${escapeHtml(name)}</span>
-                                <span class="st-score score-table-val" data-target="${scoreVal}">0</span>
-                            </div>
-                        `;
-                    }).join('')}
-                </div>
-            </div>
-
-            <!-- Pedestal Stage -->
-            <div class="cinema-pedestal-stage">
-                ${podiumSlots.map((team, index) => {
-                    const color = team?.team_color || ['#38bdf8', '#f7c948', '#34d399', '#fb7185'][index];
-                    const rgb = hexToRgb(color);
-                    const rgbStr = `${rgb.r}, ${rgb.g}, ${rgb.b}`;
-                    
-                    const scoreVal = team ? Number(team.total_score || 0) : 0;
-                    const targetHeight = team ? Math.max(100, Math.round((scoreVal / maxScore) * 460)) : 100;
-                    
-                    const rank = team ? team.rank : index + 1;
-                    const name = team ? (team.team_name || team.short_name || 'Team') : '—';
-                    const mascot = getTeamMascot(name);
-
-                    return `
-                        <div class="cinema-pedestal-slot" data-index="${index}" data-rank="${rank}" style="--team-color: ${color}; --team-rgb: ${rgbStr}; --podium-px: ${targetHeight}px;">
-                            <!-- Volumetric Mascot Banner behind pedestal/on walls -->
-                            <div class="cinema-banner">
-                                <div class="banner-mascot">${mascot.svg}</div>
-                                <div class="banner-team-label">${escapeHtml(name)}</div>
-                            </div>
-
-                            <!-- Spotlight beam from above -->
-                            <div class="cinema-spotlight-beam"></div>
-
-                            ${isStyle2 ? `
-                            <!-- Diamond Panel -->
-                            <div class="cinema-diamond-panel-wrapper">
-                                <div class="cinema-diamond-panel">
-                                    <div class="diamond-content">
-                                        <div class="diamond-mascot">${mascot.svg}</div>
-                                        <div class="diamond-team-name">${escapeHtml(name)}</div>
-                                        <div class="diamond-team-sub">${escapeHtml(mascot.subName || '')}</div>
-                                        <div class="diamond-score" data-score="${scoreVal}">
-                                            <span class="diamond-score-val">0</span>
-                                            <span class="diamond-score-lbl">POINTS</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <!-- Rank Badge -->
-                                <div class="cinema-diamond-rank">
-                                    <span>${rank}</span>
-                                </div>
-                            </div>
-                            ` : `
-                            <!-- Score Badge floating above pedestal -->
-                            <div class="cinema-score-badge" data-score="${scoreVal}">
-                                <span class="badge-value">0</span>
-                            </div>
-
-                            <!-- Cylindrical Pedestal -->
-                            <div class="cinema-pedestal-wrapper" style="--pedestal-height: ${targetHeight}px;">
-                                <div class="cinema-pedestal">
-                                    <div class="pedestal-body"></div>
-                                    <div class="pedestal-top-disc"></div>
-                                    <div class="pedestal-glow"></div>
-                                </div>
-                            </div>
-
-                            <!-- Name Tag -->
-                            <div class="cinema-name-tag">
-                                <div class="name-tag-rank">#${rank}</div>
-                                <div class="name-tag-name">${escapeHtml(name)}</div>
-                            </div>
-                            `}
-
-                            <!-- Glowing Base Platform -->
-                            <div class="cinema-base-platform">
-                                <div class="base-ring-outer"></div>
-                                <div class="base-ring-inner"></div>
-                                <div class="base-glow-pool"></div>
-                            </div>
-                        </div>
-                    `;
-                }).join('')}
+            <div class="aura-watermark">
+                Champion Aura: ${escapeHtml(rows[0]?.team_name || rows[0]?.short_name || 'Leader')}
             </div>
         `;
 
-        // ========== 3D WEBGL STAGE MOUNT ==========
-        const threeCanvas = container.querySelector('.three-stage-canvas');
-        if (threeCanvas && window.TVLeaderboard3D) {
-            const mounted = window.TVLeaderboard3D.mount(threeCanvas, podiumSlots.map((team, idx) => ({
-                name: team ? (team.team_name || team.short_name || 'Team') : '—',
-                score: team ? Number(team.total_score || 0) : 0,
-                color: team?.team_color || ['#38bdf8', '#f7c948', '#34d399', '#fb7185'][idx]
-            })));
-            if (mounted) {
-                container.classList.add('three-stage-ready');
-            }
-        }
-
-        // ========== GSAP CINEMATIC ANIMATION SEQUENCE ==========
         setTimeout(() => {
-            if (typeof gsap === 'undefined') return;
-
-            const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
-
-            // Elements
-            const header = container.querySelector('.cinema-header');
-            const scoreTable = container.querySelector('.cinema-score-table');
-            const pedestalSlots = container.querySelectorAll('.cinema-pedestal-slot');
-            const pedestals = container.querySelectorAll('.cinema-pedestal-wrapper');
-            const pedestalInners = container.querySelectorAll('.cinema-pedestal');
-            const scoreBadges = container.querySelectorAll('.cinema-score-badge');
-            const nameTags = container.querySelectorAll('.cinema-name-tag');
-            const spotlights = container.querySelectorAll('.cinema-spotlight-beam');
-            const banners = container.querySelectorAll('.cinema-banner');
-            const tableRows = container.querySelectorAll('.score-table-row');
-            const tableScores = container.querySelectorAll('.score-table-val');
-            const badgeValues = container.querySelectorAll('.badge-value, .diamond-score-val');
-            const haze = container.querySelector('.stage-haze');
-            const diamondPanels = container.querySelectorAll('.cinema-diamond-panel-wrapper');
-            const diamondInners = container.querySelectorAll('.cinema-diamond-panel');
-
-            if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
-                gsap.set([header, scoreTable, haze, ...tableRows, ...spotlights, ...banners, ...pedestals,
-                    ...scoreBadges, ...nameTags, ...diamondPanels], {
-                    opacity: 1,
-                    x: 0,
-                    y: 0,
-                    scale: 1,
-                    scaleX: 1,
-                    scaleY: 1
-                });
-                podiumSlots.forEach((team, idx) => {
-                    if (badgeValues[idx]) badgeValues[idx].textContent = formatScore(team?.total_score || 0);
-                });
-                slots.forEach((team, idx) => {
-                    if (tableScores[idx]) tableScores[idx].textContent = formatScore(team?.total_score || 0);
-                });
-                return;
+            const canvas3d = container.querySelector('#tvLeaderboardCanvas');
+            if (canvas3d && window.TVLeaderboard3D) {
+                window.TVLeaderboard3D.mount(canvas3d, rows);
             }
-
-            // Initial states
-            gsap.set(header, { opacity: 0, y: -40 });
-            gsap.set(scoreTable, { opacity: 0, y: -30, scale: 0.95 });
-            gsap.set(spotlights, { opacity: 0 });
-            gsap.set(tableRows, { opacity: 0, x: -20 });
-            gsap.set(haze, { opacity: 0 });
-
-            if (isStyle2) {
-                gsap.set(diamondPanels, { scale: 0, y: 150, opacity: 0, transformOrigin: 'center center' });
-                // Set initial x for banners: left banners slide left, right banners slide right
-                banners.forEach((banner, idx) => {
-                    const xOffset = idx < 2 ? -250 : 250;
-                    gsap.set(banner, { x: xOffset, opacity: 0 });
-                });
-            } else {
-                gsap.set(pedestals, { scaleY: 0 });
-                gsap.set(scoreBadges, { opacity: 0, y: 20, scale: 0.5 });
-                gsap.set(nameTags, { opacity: 0, y: 20 });
-                gsap.set(banners, { opacity: 0, y: -80, scaleY: 0, transformOrigin: 'top center' });
-            }
-
-            // 1. Stage haze fades in
-            tl.to(haze, { opacity: 1, duration: 1.5 }, 0);
-
-            // 2. Header slides in
-            tl.to(header, { opacity: 1, y: 0, duration: 0.8 }, 0.3);
-
-            // 3. Score table fades in (only if not Style 2, since it is hidden in Style 2)
-            if (!isStyle2) {
-                tl.to(scoreTable, { opacity: 1, y: 0, scale: 1, duration: 0.7 }, 0.6);
-                // 4. Table rows stagger in
-                tl.to(tableRows, { opacity: 1, x: 0, duration: 0.5, stagger: 0.12 }, 0.9);
-            }
-
-            // 5. Banners drop down/slide in (staggered)
-            if (isStyle2) {
-                tl.to(banners, { opacity: 1, x: 0, duration: 1.4, ease: 'back.out(1.2)', stagger: 0.15 }, 1.0);
-            } else {
-                tl.to(banners, { opacity: 1, y: 0, scaleY: 1, duration: 1.4, ease: 'power2.out', stagger: 0.15 }, 1.0);
-            }
-
-            // 6. Spotlights turn on (staggered)
-            tl.to(spotlights, { opacity: 1, duration: 1.2, stagger: 0.15 }, 1.4);
-
-            // 7. Pedestals/Diamonds rise
-            const riseOrder = [1, 2, 0, 3]; // center pair first, then outer
-            if (isStyle2) {
-                riseOrder.forEach((idx, seqIdx) => {
-                    if (diamondPanels[idx]) {
-                        tl.to(diamondPanels[idx], {
-                            scale: 1,
-                            y: 0,
-                            opacity: 1,
-                            duration: 1.8,
-                            ease: 'back.out(1.5)',
-                            onStart: () => {
-                                // Quake shake during rise
-                                gsap.to(diamondInners[idx], {
-                                    x: "random(-6, 6)",
-                                    y: "random(-3, 3)",
-                                    rotation: "random(-1.5, 1.5)",
-                                    yoyo: true,
-                                    repeat: 22,
-                                    duration: 0.08,
-                                    onComplete: () => {
-                                        // Reset offset and rotation (default is 0 rotation, but we rotate parent or child)
-                                        gsap.set(diamondInners[idx], { x: 0, y: 0, rotation: 0 });
-                                        // Screen/Stage quake slam shake!
-                                        const stage = container.querySelector('.cinema-pedestal-stage');
-                                        if (stage) {
-                                            gsap.fromTo(stage, { y: 6 }, { y: 0, duration: 0.25, ease: 'bounce.out' });
-                                        }
-                                    }
-                                });
-                            }
-                        }, 1.8 + seqIdx * 0.35);
-                    }
-                });
-            } else {
-                riseOrder.forEach((idx, seqIdx) => {
-                    if (pedestals[idx]) {
-                        tl.to(pedestals[idx], {
-                            scaleY: 1,
-                            duration: 2.2,
-                            ease: 'power2.out',
-                            onStart: () => {
-                                // Shake the pedestal intensely during the rise
-                                gsap.to(pedestalInners[idx], {
-                                    x: "random(-8, 8)",
-                                    y: "random(-3, 3)",
-                                    rotation: "random(-1.5, 1.5)",
-                                    yoyo: true,
-                                    repeat: 27,
-                                    duration: 0.08,
-                                    onComplete: () => {
-                                        // Reset offsets
-                                        gsap.set(pedestalInners[idx], { x: 0, y: 0, rotation: 0 });
-                                        // Heavy impact slam effect on landing
-                                        gsap.fromTo(pedestalInners[idx], { y: 25 }, { y: 0, duration: 0.5, ease: 'bounce.out' });
-                                        // Screen/Stage quake slam shake!
-                                        const stage = container.querySelector('.cinema-pedestal-stage');
-                                        if (stage) {
-                                            gsap.fromTo(stage, { y: 8 }, { y: 0, duration: 0.3, ease: 'bounce.out' });
-                                        }
-                                    }
-                                });
-                            }
-                        }, 1.8 + seqIdx * 0.35);
-                    }
-                });
-            }
-
-            if (!isStyle2) {
-                // 8. Score badges pop in after their pedestal rises
-                riseOrder.forEach((idx, seqIdx) => {
-                    if (scoreBadges[idx]) {
-                        tl.to(scoreBadges[idx], {
-                            opacity: 1,
-                            y: 0,
-                            scale: 1,
-                            duration: 0.6,
-                            ease: 'back.out(1.7)'
-                        }, 3.0 + seqIdx * 0.35);
-                    }
-                });
-
-                // 9. Name tags fade in
-                tl.to(nameTags, { opacity: 1, y: 0, duration: 0.5, stagger: 0.1 }, 3.5);
-            }
-
-            // 10. Animate score counters (both table and badges/diamonds)
-            podiumSlots.forEach((team, idx) => {
-                const target = team ? Number(team.total_score || 0) : 0;
-                
-                // Badge/Diamond counter
-                if (badgeValues[idx]) {
-                    const bObj = { value: 0 };
-                    gsap.to(bObj, {
-                        value: target,
-                        duration: 2.5,
-                        delay: 2.0 + idx * 0.3,
-                        ease: 'power2.out',
-                        onUpdate: () => {
-                            badgeValues[idx].textContent = formatScore(bObj.value);
-                        }
-                    });
-                }
-
-            });
-
-            slots.forEach((team, idx) => {
-                const target = team ? Number(team.total_score || 0) : 0;
-                if (tableScores[idx] && !isStyle2) {
-                    const tObj = { value: 0 };
-                    gsap.to(tObj, {
-                        value: target,
-                        duration: 2.0,
-                        delay: 1.2 + idx * 0.15,
-                        ease: 'power2.out',
-                        onUpdate: () => {
-                            tableScores[idx].textContent = formatScore(tObj.value);
-                        }
-                    });
-                }
-            });
-
-            // 10. Winner spotlight enhancement after all rise (confetti removed)
-            tl.call(() => {
-                let winnerIdx = 0;
-                let maxS = -1;
-                slots.forEach((t, i) => {
-                    if (t && Number(t.total_score || 0) > maxS) {
-                        maxS = Number(t.total_score || 0);
-                        winnerIdx = i;
-                    }
-                });
-
-                // Enhance winner spotlight
-                if (pedestalSlots[winnerIdx]) {
-                    pedestalSlots[winnerIdx].classList.add('is-winner');
-                }
-            }, null, null, 4.8);
-
-        }, 100);
+        }, 80);
     }
 
     function triggerLeaderboardAnimations() {
@@ -861,9 +518,7 @@
 
     function scheduleRowsPerPage() {
         const height = window.innerHeight || 1080;
-        if (height < 760) return 5;
-        if (height < 920) return 6;
-        return 7;
+        return height < 800 ? 7 : 8;
     }
 
     function getScheduleStatus(item) {
@@ -906,7 +561,11 @@
     }
 
     function buildSchedulePages(scheduleData) {
-        const rows = flattenScheduleItems(scheduleData);
+        const rows = flattenScheduleItems(scheduleData).filter((item) => {
+            const isCompleted = item.status === 'completed' || item.approval_status === 'approved';
+            const isCurrent = item.status === 'scoring' || item.status === 'active-stage';
+            return !isCompleted && !isCurrent;
+        });
         const pageSize = scheduleRowsPerPage();
         const pages = [];
 
@@ -944,72 +603,15 @@
     }
 
     function renderScheduleFrame(scheduleData) {
-        const eventTitleEl = document.querySelector('[data-event-title]');
-        const eventTitle = eventTitleEl ? eventTitleEl.textContent : 'Kauzariyya Musabaqa';
-        const summary = scheduleSummary(scheduleData);
-        const event = TV_BOOT.initial?.event || {};
-        const now = new Date();
-        const start = event.start_date ? new Date(event.start_date) : null;
-        const dayNumber = start && !Number.isNaN(start.getTime())
-            ? Math.max(1, Math.floor((now.setHours(0, 0, 0, 0) - start.setHours(0, 0, 0, 0)) / 86400000) + 1)
-            : 1;
-        const dateLabel = new Date().toLocaleDateString([], {
-            day: '2-digit',
-            month: 'short',
-            year: 'numeric'
-        }).toUpperCase();
-        const palette = scheduleTeamPalette();
-        const scheduleVars = Array.from({ length: 4 }, (_, index) => {
-            return `--schedule-team-${index + 1}:${palette[index % palette.length]}`;
-        }).join(';');
-
-        const isMinimalSchedule = (state.slides['schedule']?.style ?? 'minimal') === 'minimal';
-
         els.schedule.innerHTML = `
-            <div class="tv-schedule-cinema ${isMinimalSchedule ? 'tv-schedule--minimal' : ''}" style="${scheduleVars}">
-                <div class="tv-schedule-light tv-schedule-light--gold"></div>
-                <div class="tv-schedule-light tv-schedule-light--cyan"></div>
-                <div class="tv-schedule-side tv-schedule-side--left">
-                    <span></span>
-                    <strong>AL</strong>
-                </div>
-                <div class="tv-schedule-side tv-schedule-side--right">
-                    <span></span>
-                    <strong>TH</strong>
-                </div>
-                <div class="tv-schedule-brand-card">
-                    <img src="${escapeHtml(document.querySelector('.tv-brand img')?.src || '')}" alt="">
-                    <div>
-                        <strong>${escapeHtml(eventTitle)}</strong>
-                        <span>Musabaqa 2026</span>
-                    </div>
-                </div>
-                <div class="tv-schedule-live-card">
-                    <div>
-                        <strong><span></span> Live</strong>
-                        <small>Day ${escapeHtml(dayNumber)} | ${escapeHtml(dateLabel)}</small>
-                    </div>
-                    <em data-schedule-clock>--:--:--</em>
-                </div>
-                <div class="tv-schedule-title-block">
-                    <h2>AL THANAFUS</h2>
-                    <div>Schedule</div>
-                </div>
+            <div class="broadcast-perspective-grid" aria-hidden="true"></div>
+            <div class="broadcast-ambient-glow" aria-hidden="true">
+                <div class="glow-blob--emerald"></div>
+                <div class="glow-blob--blue"></div>
+            </div>
+            <div class="schedule-slide-container">
                 <div class="tv-schedule-board">
-                    <div class="tv-schedule-board-head">
-                        <span>Time</span>
-                        <span>Program</span>
-                        <span>Category</span>
-                        <span>Status</span>
-                    </div>
                     <div class="tv-schedule-page" data-schedule-page></div>
-                </div>
-                <div class="tv-schedule-stats">
-                    <div><span>Total Programs</span><strong>${summary.total}</strong></div>
-                    <div><span>Completed</span><strong>${summary.completed}</strong></div>
-                    <div><span>Live Now</span><strong>${summary.live}</strong></div>
-                    <div><span>Breaks</span><strong>${summary.breaks}</strong></div>
-                    <div><span>Page</span><strong data-schedule-page-count>1 / 1</strong></div>
                 </div>
             </div>
         `;
@@ -1034,14 +636,12 @@
         const pages = state.schedule.pages;
         const page = pages[index] || [];
         const total = Math.max(1, pages.length);
-        const countEl = els.schedule.querySelector('[data-schedule-page-count]');
-        if (countEl) countEl.textContent = `${Math.min(index + 1, total)} / ${total}`;
 
         if (!page.length) {
             pageEl.innerHTML = `
                 <div class="tv-schedule-empty">
-                    <strong>No schedule items found</strong>
-                    <span>Programs will appear here when they are added.</span>
+                    <strong>No upcoming programs scheduled</strong>
+                    <span>Stand by for upcoming competition events.</span>
                 </div>
             `;
             return;
@@ -1050,23 +650,44 @@
         pageEl.innerHTML = page.map((item, rowIndex) => {
             const status = getScheduleStatus(item);
             const time = item.start_label || item.start_time || '--';
-            const category = item.category || item.section_name || 'All';
-            const rowNumber = String((index * scheduleRowsPerPage()) + rowIndex + 1).padStart(2, '0');
-            const rowClass = status.className === 'inprogress' ? ' is-live' : '';
-            const palette = scheduleTeamPalette();
-            const absoluteIndex = (index * scheduleRowsPerPage()) + rowIndex;
-            const teamColor = palette[absoluteIndex % palette.length];
+            const category = item.category || item.class_type_name || item.class_name || item.section_name || '';
+            const title = item.title || item.name || 'Program';
+            
+            // Program name and category combined on one line: Program Name - Senior
+            let programLabel = title;
+            if (category && category !== 'All' && category !== 'Full Schedule' && category.toLowerCase() !== title.toLowerCase()) {
+                programLabel = `${title} - ${category}`;
+            }
+
+            const globalIndex = (index * scheduleRowsPerPage()) + rowIndex;
+            const rowNumber = String(globalIndex + 1).padStart(2, '0');
+            const isFirstUpcoming = (globalIndex === 0 && status.className !== 'break');
+            const isBreak = (status.className === 'break');
+
+            let rowClasses = ['tv-schedule-row'];
+            let rowAccent = '#3b82f6';
+
+            if (isFirstUpcoming) {
+                rowClasses.push('is-first-upcoming');
+                rowAccent = '#10b981';
+            } else if (isBreak) {
+                rowClasses.push('is-break');
+                rowAccent = '#f59e0b';
+            }
+
+            const stageName = item.stage || item.location || item.stage_name || item.stage_type_name || item.section_time_label || 'Main Stage';
 
             return `
-                <article class="tv-schedule-row${rowClass}" style="--row-neon:${escapeHtml(teamColor)}">
+                <article class="${rowClasses.join(' ')}" style="--row-neon:${escapeHtml(rowAccent)}">
                     <div class="tv-schedule-row-num">${rowNumber}</div>
                     <div class="tv-schedule-row-time">${escapeHtml(time)}</div>
                     <div class="tv-schedule-row-program">
-                        <strong>${escapeHtml(item.title || 'Program')}</strong>
-                        <span>${escapeHtml(item.stage || item.section_time_label || 'Main Stage')}</span>
+                        <strong>${escapeHtml(programLabel)}</strong>
                     </div>
-                    <div class="tv-schedule-row-category">${escapeHtml(category)}</div>
-                    <div><span class="tv-status ${status.className}">${escapeHtml(status.label)}</span></div>
+                    <div class="tv-schedule-row-location">${escapeHtml(stageName)}</div>
+                    <div class="tv-schedule-row-status">
+                        <span class="tv-status ${status.className}">${escapeHtml(status.label)}</span>
+                    </div>
                 </article>
             `;
         }).join('');
@@ -1075,14 +696,14 @@
             const rows = pageEl.querySelectorAll('.tv-schedule-row');
             gsap.fromTo(rows, {
                 opacity: 0,
-                x: -18,
-                filter: 'blur(10px)'
+                x: -24,
+                filter: 'blur(8px)'
             }, {
                 opacity: 1,
                 x: 0,
                 filter: 'blur(0px)',
-                duration: 0.55,
-                stagger: 0.055,
+                duration: 0.5,
+                stagger: 0.05,
                 ease: 'power3.out'
             });
         }
@@ -1150,18 +771,12 @@
         els.currentRoom.textContent = program.location || 'Stage Room';
 
         if (els.nextPerformer) {
-            els.nextPerformer.textContent = next.name ? `${next.name} (${next.number || performer.number + 1})` : '—';
+            els.nextPerformer.textContent = next.name || '—';
         }
         if (els.nextTeam) {
             els.nextTeam.innerHTML = next.team ? `${next.team_color ? `<span class="tv-team-dot" style="background:${escapeHtml(next.team_color)}"></span>` : ''}${escapeHtml(next.team)}` : '—';
         }
 
-        if (els.nextPerformer) {
-            els.nextPerformer.textContent = next.number || '—';
-        }
-        if (els.nextTeam) {
-            els.nextTeam.textContent = '';
-        }
         if (nextChest) {
             nextChest.textContent = next.number || '—';
         }

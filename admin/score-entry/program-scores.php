@@ -80,6 +80,10 @@ function program_scores_render_row(array $entry, array $categories, int $judgesC
     $entryId = (int)$entry['id'];
     $hasSheet = !empty($entry['score_sheet_id']);
     
+    // In admin view, score inputs are read-only
+    $adminReadOnly = true;
+    $inputsDisabled = $scoresLocked || $adminReadOnly;
+    
     ob_start();
     ?>
     <tr data-entry-row="<?= $entryId ?>">
@@ -97,7 +101,8 @@ function program_scores_render_row(array $entry, array $categories, int $judgesC
                 <select class="score-grid-rank-select form-control input-sm"
                         data-entry-id="<?= $entryId ?>"
                         style="width: 130px; background: rgba(15,23,42,0.8); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 4px 6px; border-radius: 6px; display: inline-block;"
-                        <?= $scoresLocked ? 'disabled' : '' ?>>
+                        disabled
+                        title="Marking is managed on Judges Page">
                     <option value="0">None</option>
                     <option value="1" <?= (int)($entry['final_rank'] ?? 0) === 1 ? 'selected' : '' ?>>1st Place</option>
                     <option value="2" <?= (int)($entry['final_rank'] ?? 0) === 2 ? 'selected' : '' ?>>2nd Place</option>
@@ -122,8 +127,9 @@ function program_scores_render_row(array $entry, array $categories, int $judgesC
                                data-category-id="<?= $catId ?>" 
                                data-max="<?= (float)$cat['max_marks'] ?>"
                                value="<?= $val !== '' ? number_format($val, 2) : '' ?>" 
-                               style="width: 75px; text-align: center; background: rgba(15,23,42,0.8); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 4px 6px; border-radius: 6px; display: inline-block;"
-                               <?= $scoresLocked ? 'disabled' : '' ?>>
+                               style="width: 75px; text-align: center; background: rgba(15,23,42,0.5); border: 1px solid rgba(255,255,255,0.08); color: #cbd5e1; padding: 4px 6px; border-radius: 6px; display: inline-block; cursor: not-allowed;"
+                               disabled
+                               title="Read-Only: Marking managed on Judges Portal">
                     </td>
                 <?php endforeach; ?>
             <?php endfor; ?>
@@ -139,7 +145,7 @@ function program_scores_render_row(array $entry, array $categories, int $judgesC
             <?php elseif ($hasSheet): ?>
                 <i class="fa-solid fa-circle-check text-success" title="Saved"></i>
             <?php else: ?>
-                <i class="fa-solid fa-circle-minus text-warning" title="Not Scored"></i>
+                <i class="fa-solid fa-eye text-info" title="Read-Only"></i>
             <?php endif; ?>
         </td>
     </tr>
@@ -1331,6 +1337,19 @@ require_once __DIR__ . '/../../includes/sidebar.php';
     <?php if ($flash): ?>
         <div class="alert <?= in_array($flash['type'], ['success', 'ready'], true) ? 'alert-success' : 'alert-error' ?>" id="<?= $flash['type'] === 'ready' ? 'programReadyAlert' : '' ?>"><?= e($flash['message']) ?></div>
     <?php endif; ?>
+
+    <div class="alert alert-info flex items-center justify-between mb-6" style="background: rgba(14, 165, 233, 0.1); border: 1px solid rgba(14, 165, 233, 0.3); color: #38bdf8; padding: 14px 18px; border-radius: 10px;">
+        <div class="flex items-center gap-2">
+            <i class="fa-solid fa-eye" style="font-size: 18px;"></i>
+            <div>
+                <strong style="display: block; font-size: 14px; color: #fff;">Read-Only Administrative View</strong>
+                <span style="font-size: 12px; opacity: 0.85;">Criterion marks and score entries are managed on the dedicated Judges Marking Portal.</span>
+            </div>
+        </div>
+        <a href="<?= app_url('/judges/program-scores.php?program_id=' . (int)$programId) ?>" class="btn btn-sm btn-primary">
+            <i class="fa-solid fa-pen-to-square mr-1"></i> Open Judges Marking Portal
+        </a>
+    </div>
 
     <div class="grid grid-auto gap-5 mb-6">
         <div class="stat-card"><div class="stat-icon"><i class="fa-solid fa-list-check"></i></div><div class="stat-value"><?= count($entries) ?></div><div class="stat-label">Entries</div></div>

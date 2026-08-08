@@ -223,6 +223,19 @@
 }
 
 @media print {
+    body[data-print-orientation="landscape"] {
+        @page {
+            size: A4 landscape !important;
+            margin: 5mm 7mm !important;
+        }
+    }
+    body[data-print-orientation="portrait"] {
+        @page {
+            size: A4 portrait !important;
+            margin: 8mm 10mm !important;
+        }
+    }
+
     body[data-print-mode="mailmerge"] .mailmerge-sheet {
         display: block !important;
     }
@@ -288,9 +301,17 @@
         background-repeat: no-repeat;
     }
     
-.mailmerge-card-preview-wrapper .mailmerge-card-print-item * {
+    .mailmerge-card-preview-wrapper .mailmerge-card-print-item *,
+    body * {
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
+    }
+
+    .no-print-bar,
+    .print-controls-bar,
+    .no-print-btn,
+    .no-print {
+        display: none !important;
     }
 }
 

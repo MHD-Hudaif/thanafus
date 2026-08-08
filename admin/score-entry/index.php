@@ -18,16 +18,19 @@ require_once __DIR__ . '/../../includes/sidebar.php';
 <div class="main-content">
     <div class="musabaqa-hub-header">
         <div>
-            <h1><i class="fa-solid fa-pen-to-square" style="color:#8b5cf6;"></i> Score Entry Agent Space</h1>
-            <p>Enter judge scores per participant and submit score approval requests to Score Updater</p>
+            <h1><i class="fa-solid fa-eye" style="color:#8b5cf6;"></i> Score Audit & Monitoring Space</h1>
+            <p>Read-only view of entered scores. All score marking is performed on the Judges Marking Portal.</p>
         </div>
-        <?php if (is_admin()): ?>
-        <div>
-            <a href="<?= app_url('/admin/index.php') ?>" class="btn btn-secondary btn-md">
-                <i class="fa-solid fa-calendar-days mr-1"></i> All Events
+        <div class="flex gap-2">
+            <a href="<?= app_url('/judges/index.php') ?>" class="btn btn-primary btn-md">
+                <i class="fa-solid fa-gavel mr-1"></i> Open Judges Marking Portal
             </a>
+            <?php if (is_admin()): ?>
+                <a href="<?= app_url('/admin/index.php') ?>" class="btn btn-secondary btn-md">
+                    <i class="fa-solid fa-calendar-days mr-1"></i> All Events
+                </a>
+            <?php endif; ?>
         </div>
-        <?php endif; ?>
     </div>
 
     <?php if (!$activeEvent): ?>

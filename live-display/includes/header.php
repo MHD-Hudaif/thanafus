@@ -19,7 +19,19 @@ $assetBase = live_display_asset_url();
     <link rel="stylesheet" href="<?= e(live_display_asset_url('css/live-display.css')) ?>?v=<?= filemtime(app_path('live-display/assets/css/live-display.css')) ?>">
     <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js" defer></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" defer></script>
-    <script src="<?= e(live_display_asset_url('js/leaderboard-3d.js')) ?>?v=<?= filemtime(app_path('tv/assets/js/leaderboard-3d.js')) ?>" defer></script>
+    <script src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/js/loaders/GLTFLoader.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/js/postprocessing/EffectComposer.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/js/postprocessing/Pass.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/js/postprocessing/RenderPass.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/js/postprocessing/ShaderPass.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/js/shaders/CopyShader.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/js/shaders/LuminosityHighPassShader.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/js/postprocessing/UnrealBloomPass.js" defer></script>
+    <script>
+        window.LIVE_DISPLAY_GLB_MODEL_URL = "<?= e(file_exists(app_path('assets/musabaqa_arena_leaderboard.glb')) ? app_absolute_url('assets/musabaqa_arena_leaderboard.glb') : app_absolute_url('assets/Untitled.glb')) ?>";
+        window.TV_GLB_MODEL_URL = window.LIVE_DISPLAY_GLB_MODEL_URL;
+    </script>
+    <script src="<?= e(live_display_asset_url('js/leaderboard-3d.js')) ?>?v=<?= filemtime(app_path('live-display/assets/js/leaderboard-3d.js')) ?>" defer></script>
     <style>
         .tv-app { animation: tv-page-in .5s ease both; }
         @keyframes tv-page-in {

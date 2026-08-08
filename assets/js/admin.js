@@ -54,8 +54,8 @@
         if (!mc) return;
 
         gsap.fromTo(mc,
-            { opacity: 0, y: 8 },
-            { opacity: 1, y: 0, duration: 0.2, ease: 'power2.out', clearProps: 'transform' }
+            { opacity: 0.85, y: 4 },
+            { opacity: 1, y: 0, duration: 0.16, ease: 'power2.out', clearProps: 'all' }
         );
     }
 
@@ -180,88 +180,33 @@
        ===================================================== */
 
     function initAlerts() {
-        document.querySelectorAll('.alert').forEach(alert => {
-            if (alert.dataset.initialized) return;
-            alert.dataset.initialized = 'true';
+        document.querySelectorAll('.alert').forEach(alertEl => {
+            if (alertEl.dataset.alertInitialized) return;
+            alertEl.dataset.alertInitialized = 'true';
 
-            // Wrap text in span
-            const content = alert.innerHTML;
-            alert.innerHTML = `<span style="flex-grow: 1; padding-right: 8px;">${content}</span>`;
+            // Only auto-dismiss temporary notification banners, not inline form warnings
+            const isTemporary = alertEl.classList.contains('alert-success') || 
+                                alertEl.classList.contains('alert-info') || 
+                                alertEl.classList.contains('alert-ready') ||
+                                alertEl.classList.contains('alert-flash');
 
-            // Close button
-            const closeBtn = document.createElement('button');
-            closeBtn.className = 'alert-close-btn';
-            closeBtn.innerHTML = '<i class="fa-solid fa-xmark"></i>';
-            closeBtn.setAttribute('type', 'button');
-            alert.appendChild(closeBtn);
+            // Add close button if missing
+            if (!alertEl.querySelector('.alert-close-btn')) {
+                const closeBtn = document.createElement('button');
+                closeBtn.type = 'button';
+                closeBtn.className = 'alert-close-btn';
+                closeBtn.innerHTML = '&times;';
+                closeBtn.setAttribute('aria-label', 'Close alert');
+                closeBtn.style.cssText = 'margin-left: auto; background: none; border: none; font-size: 18px; color: inherit; opacity: 0.7; cursor: pointer; padding: 0 4px; border-radius: 4px;';
+                closeBtn.addEventListener('click', () => dismissAlert(alertEl));
+                alertEl.style.display = 'flex';
+                alertEl.style.alignItems = 'center';
+                alertEl.style.justifyContent = 'space-between';
+                alertEl.appendChild(closeBtn);
+            }
 
-            // Progress bar
-            const progressBar = document.createElement('div');
-            progressBar.className = 'alert-progress';
-            alert.appendChild(progressBar);
-
-            if (hasGsap()) {
-                const tl = gsap.timeline();
-                
-                // Animate entry with a 3D tilt and bounce
-                tl.fromTo(alert, 
-                    { opacity: 0, y: -24, rotationX: -15, transformPerspective: 800, transformOrigin: "top center" }, 
-                    { opacity: 1, y: 0, rotationX: 1.5, duration: 0.75, ease: 'back.out(1.1)' }
-                );
-
-                // Progress indicator (12 seconds)
-                tl.fromTo(progressBar, 
-                    { scaleX: 1 }, 
-                    { scaleX: 0, duration: 12, ease: 'none' }
-                );
-
-                // Auto dismiss (1.2s fadeout with tilt back)
-                tl.to(alert, {
-                    opacity: 0,
-                    y: -16,
-                    rotationX: -10,
-                    height: 0,
-                    paddingTop: 0,
-                    paddingBottom: 0,
-                    marginTop: 0,
-                    marginBottom: 0,
-                    borderWidth: 0,
-                    duration: 1.2,
-                    ease: 'power3.inOut',
-                    onComplete: () => alert.remove()
-                });
-
-                closeBtn.addEventListener('click', () => {
-                    tl.kill();
-                    gsap.to(alert, {
-                        opacity: 0,
-                        y: -16,
-                        rotationX: -10,
-                        height: 0,
-                        paddingTop: 0,
-                        paddingBottom: 0,
-                        marginTop: 0,
-                        marginBottom: 0,
-                        borderWidth: 0,
-                        duration: 0.45,
-                        ease: 'power3.out',
-                        onComplete: () => alert.remove()
-                    });
-                });
-            } else {
-                // Fallback
-                setTimeout(() => {
-                    alert.style.transition = 'opacity 1.2s ease, height 1.2s ease, transform 1.2s ease';
-                    alert.style.opacity = '0';
-                    alert.style.transform = 'perspective(800px) rotateX(-10deg) translateY(-16px)';
-                    setTimeout(() => alert.remove(), 1200);
-                }, 12000);
-
-                closeBtn.addEventListener('click', () => {
-                    alert.style.transition = 'opacity 0.4s ease, height 0.4s ease';
-                    alert.style.opacity = '0';
-                    setTimeout(() => alert.remove(), 400);
-                });
+            if (isTemporary) {
+                setTimeout(() => dismissAlert(alertEl), 3500);
             }
         });
     }
@@ -524,7 +469,7 @@
 
         // Update vertical sidebar links and top navigation links separately to avoid single-winner collision
         updateLinkGroup('.sidebar-vertical .sidebar-vertical-link, .sidebar .sidebar-link');
-        updateLinkGroup('.event-top-nav .nav-item-link, .sliding-nav-header .nav-item-link');
+        updateLinkGroup('.event-top-nav .nav-item-link, .event-nav-menu a, .sliding-nav-header .nav-item-link');
     }
 
     /* =====================================================
@@ -696,11 +641,12 @@
                     currentNavHeader.innerHTML = newNavHeader.innerHTML;
                 }
 
-                // Dynamically update vertical sidebar navigation if present in response
-                const newSidebar = doc.querySelector('.sidebar-vertical');
-                const currentSidebar = document.querySelector('.sidebar-vertical');
-                if (newSidebar && currentSidebar) {
-                    currentSidebar.innerHTML = newSidebar.innerHTML;
+                // Dynamically update targeted sidebar links if necessary (e.g. Members link team parameter)
+                const newMembersLink = doc.querySelector('#sidebarMembersLink');
+                const currentMembersLink = document.querySelector('#sidebarMembersLink');
+                if (newMembersLink && currentMembersLink) {
+                    currentMembersLink.href = newMembersLink.href;
+                    currentMembersLink.className = newMembersLink.className;
                 }
 
                 /*
@@ -731,7 +677,8 @@
 
                 /* Re-init modals */
                 initModals();
-                initAlerts();
+                // Clear any leftover temporary notifications before swapping new content
+                document.querySelectorAll('.alert-success, .alert-info, .alert-flash, .toast-notification').forEach(el => el.remove());
                 initCursorGlows();
 
                 /* Let page features that need a fresh DOM re-initialize safely. */
@@ -741,7 +688,6 @@
 
                 /* Animate in new content */
                 if (hasGsap()) {
-                    mainContent.style.opacity = '0';
                     runEntryAnimations();
                 } else {
                     mainContent.style.opacity = '';
@@ -769,19 +715,8 @@
                 mainContent.scrollTo({ top: 0, behavior: 'smooth' });
         };
 
-        /* Keep navigation functional if the optional animation CDN is down. */
-        if (hasGsap()) {
-            gsap.killTweensOf(mainContent);
-            gsap.to(mainContent, {
-                opacity: 0,
-                y: -10,
-                duration: 0.18,
-                ease: 'power2.in',
-                onComplete: completeSwap
-            });
-        } else {
-            completeSwap();
-        }
+        /* Trigger content swap immediately without transparent blank blinking screen */
+        completeSwap();
     }
 
     /* =====================================================
@@ -935,6 +870,7 @@
         initAjaxPaginationControls();
         initAdminChat();
         initRealTimeUpdates();
+        updateSidebarActive(location.href);
     });
 
     /* =====================================================
@@ -1480,30 +1416,7 @@
     }
 
     function initAlertsAndToasts() {
-        document.querySelectorAll('.alert').forEach(alertEl => {
-            if (alertEl.dataset.alertInitialized) return;
-            alertEl.dataset.alertInitialized = 'true';
-
-            // Ensure close button exists
-            if (!alertEl.querySelector('.alert-close-btn')) {
-                const closeBtn = document.createElement('button');
-                closeBtn.type = 'button';
-                closeBtn.className = 'alert-close-btn';
-                closeBtn.innerHTML = '&times;';
-                closeBtn.setAttribute('aria-label', 'Close alert');
-                closeBtn.style.cssText = 'margin-left: auto; background: none; border: none; font-size: 18px; color: inherit; opacity: 0.7; cursor: pointer; padding: 0 4px; border-radius: 4px;';
-                closeBtn.addEventListener('click', () => dismissAlert(alertEl));
-                alertEl.style.display = 'flex';
-                alertEl.style.alignItems = 'center';
-                alertEl.style.justifyContent = 'space-between';
-                alertEl.appendChild(closeBtn);
-            }
-
-            // Auto-dismiss success or info alerts after 3.5 seconds
-            if (alertEl.classList.contains('alert-success') || alertEl.classList.contains('alert-info') || alertEl.classList.contains('alert-ready')) {
-                setTimeout(() => dismissAlert(alertEl), 3500);
-            }
-        });
+        initAlerts();
     }
 
     window.showToast = function(message, type = 'info') {
@@ -1575,8 +1488,6 @@
         }
         updateSidebarActive(location.href);
         initAlertsAndToasts();
-    });
-
     });
 
 })();

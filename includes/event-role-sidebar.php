@@ -37,19 +37,19 @@ $currentPath = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH);
 
     <nav class="event-nav-menu" id="eventNavMenu" aria-label="Event workspace navigation">
         <?php if (current_user_has_authority('members-info')): ?>
-            <a href="<?= app_url('/admin/printer/id-cards.php') ?>" class="<?= str_contains($currentPath, 'id-cards.php') ? 'active' : '' ?>"><i class="fa-solid fa-id-card-clip"></i> Print Center</a>
+            <a href="<?= app_url('/admin/printer/id-cards.php') ?>" class="nav-item-link <?= str_contains($currentPath, 'id-cards.php') ? 'active' : '' ?>"><i class="fa-solid fa-id-card-clip"></i> Print Center</a>
         <?php endif; ?>
         <?php if (current_user_has_authority('assign-entries')): ?>
-            <a href="<?= app_url('/admin/registrar/program-entries.php') ?>" class="<?= str_contains($currentPath, 'program-entries.php') ? 'active' : '' ?>"><i class="fa-solid fa-list-check"></i> Assign Entries</a>
+            <a href="<?= app_url('/admin/registrar/entries.php') ?>" class="nav-item-link <?= str_contains($currentPath, 'entries.php') || str_contains($currentPath, 'program-entries.php') ? 'active' : '' ?>"><i class="fa-solid fa-list-check"></i> Assign Entries</a>
         <?php endif; ?>
         <?php if (current_user_has_authority('upload-scores')): ?>
-            <a href="<?= app_url('/admin/score-entry/score-entry.php') ?>" class="<?= str_contains($currentPath, 'score-entry.php') ? 'active' : '' ?>"><i class="fa-solid fa-pen-to-square"></i> Score Entry</a>
+            <a href="<?= app_url('/admin/score-entry/score-entry.php') ?>" class="nav-item-link <?= str_contains($currentPath, 'score-entry.php') ? 'active' : '' ?>"><i class="fa-solid fa-pen-to-square"></i> Score Entry</a>
         <?php endif; ?>
         <?php if (current_user_has_authority('control-live-display') || current_user_has_authority('control-tv')): ?>
-            <a href="<?= app_url('/admin/live-display/control-live-display.php') ?>" class="<?= str_contains($currentPath, 'control-live-display.php') || str_contains($currentPath, 'control-tv.php') ? 'active' : '' ?>"><i class="fa-solid fa-display"></i> Live Display</a>
+            <a href="<?= app_url('/admin/live-display/control-live-display.php') ?>" class="nav-item-link <?= str_contains($currentPath, 'control-live-display.php') || str_contains($currentPath, 'control-tv.php') ? 'active' : '' ?>"><i class="fa-solid fa-display"></i> Live Display</a>
         <?php endif; ?>
-        <a href="<?= app_url('/home.php') ?>"><i class="fa-solid fa-house"></i> Home</a>
-        <?php if (is_admin()): ?><a href="<?= app_url('/admin/event-manager/index.php') ?>"><i class="fa-solid fa-table-columns"></i> Admin</a><?php endif; ?>
+        <a href="<?= app_url('/home.php') ?>" class="nav-item-link"><i class="fa-solid fa-house"></i> Home</a>
+        <?php if (is_admin()): ?><a href="<?= app_url('/admin/event-manager/index.php') ?>" class="nav-item-link"><i class="fa-solid fa-table-columns"></i> Admin</a><?php endif; ?>
     </nav>
 
     <div class="event-nav-right">

@@ -100,7 +100,7 @@ foreach ($programs as $prog) {
 }
 
 // Active program determination
-$selectedProgramId = (int)($_GET['program_id'] ?? $_GET['program'] ?? $_SESSION['active_program_id'] ?? 0);
+$selectedProgramId = (int)($_GET['program_id'] ?? $_GET['program'] ?? 0);
 $viewMode = trim((string)($_GET['view'] ?? ''));
 
 if ($viewMode === 'programs') {
@@ -1067,7 +1067,10 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                     ?>
                                     <tr>
                                         <td>
-                                            <strong style="color: #fff; font-size: 14px;"><?= e($prog['title']) ?></strong>
+                                            <a href="<?= app_url('/admin/registrar/entries.php?program_id=' . (int)$prog['id']) ?>" style="color: #60a5fa; text-decoration: none; font-weight: 700; font-size: 14.5px; display: inline-block;" class="program-title-link">
+                                                <i class="fa-solid fa-folder-open mr-1.5" style="color: var(--accent); font-size: 13px;"></i>
+                                                <?= e($prog['title']) ?>
+                                            </a>
                                             <div class="muted" style="font-size: 12px; font-weight: 500; margin-top: 2px;"><?= e($prog['location'] ?: '-') ?></div>
                                         </td>
                                         <td>
