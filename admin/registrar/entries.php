@@ -651,23 +651,25 @@ if ($activeProgram) {
         $tId = (int)$row['team_id'];
         $teamAssignedCounts[$tId] = ($teamAssignedCounts[$tId] ?? 0) + 1;
 
-        $mIds = array_filter(array_map('intval', explode(',', (string)$row['member_ids_str'])));
+        $mIds = array_filter(array_map('intval', explode(',', (string)($row['member_ids_str'] ?? ''))));
+
+        $currentEntriesMap[$eId] = [
+            'id' => $eId,
+            'team_id' => $tId,
+            'team_name' => $row['team_name'],
+            'team_color' => $row['team_color'],
+            'entry_name' => $row['entry_name'],
+            'entry_number' => (int)$row['entry_number'],
+            'performance_order' => (int)$row['performance_order'],
+            'status' => $row['status'],
+            'created_at' => $row['created_at'],
+            'member_ids' => $mIds,
+            'member_names' => $row['member_names'] ?: 'No members assigned',
+            'chest_numbers' => $row['chest_numbers'] ?: '—',
+            'class_name' => $row['class_name'] ?: '—',
+        ];
+
         foreach ($mIds as $tmId) {
-            $currentEntriesMap[$eId] = [
-                'id' => $eId,
-                'team_id' => $tId,
-                'team_name' => $row['team_name'],
-                'team_color' => $row['team_color'],
-                'entry_name' => $row['entry_name'],
-                'entry_number' => (int)$row['entry_number'],
-                'performance_order' => (int)$row['performance_order'],
-                'status' => $row['status'],
-                'created_at' => $row['created_at'],
-                'member_ids' => $mIds,
-                'member_names' => $row['member_names'],
-                'chest_numbers' => $row['chest_numbers'],
-                'class_name' => $row['class_name'],
-            ];
             $assignedMemberMap[$tmId] = [
                 'id' => $eId,
                 'entry_name' => $row['entry_name'],
