@@ -75,12 +75,15 @@ $nextProgTime = !empty($initNextProg['start_label']) ? $initNextProg['start_labe
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;700;800;900&family=Outfit:wght@600;700;800;900&family=Cairo:wght@700;800;900&display=swap');
 
     body.tv-current-programs-theme .tv-topbar,
-    body:has(#slide-current-program.tv-slide--active) .tv-topbar {
+    body.tv-current-programs-theme .tv-backdrop,
+    body:has(#slide-current-program.tv-slide--active) .tv-topbar,
+    body:has(#slide-current-program.tv-slide--active) .tv-backdrop {
         display: none !important;
     }
 
     #slide-current-program {
         padding: 0 !important;
+        margin: 0 !important;
         overflow: hidden;
         background: #f8fafc url('<?= asset_url('images/white-background.png') ?>') center center / cover no-repeat;
         font-family: 'Plus Jakarta Sans', 'Outfit', 'Cairo', system-ui, -apple-system, sans-serif;
@@ -91,6 +94,17 @@ $nextProgTime = !empty($initNextProg['start_label']) ? $initNextProg['start_labe
         align-items: center;
         justify-content: center;
         position: relative;
+    }
+
+    .current-programs-stage-root {
+        width: 100vw;
+        height: 100vh;
+        position: relative;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #f8fafc url('<?= asset_url('images/white-background.png') ?>') center center / cover no-repeat;
     }
 
     /* Light Backdrop Mesh with Subtle Pulse Tinted in 1st Rank Team's Color */
@@ -121,15 +135,15 @@ $nextProgTime = !empty($initNextProg['start_label']) ? $initNextProg['start_labe
         --first-team-color: <?= e($firstTeamColor) ?>;
         --current-neon: #10b981;
         width: 100%;
-        max-width: 1720px;
+        max-width: 1840px;
         height: 100vh;
-        padding: 50px 70px;
+        padding: 36px 48px;
         display: flex;
         flex-direction: column;
         justify-content: center;
         box-sizing: border-box;
         position: relative;
-        z-index: 1;
+        z-index: 2;
     }
 
     /* Ultra-Smooth Luxury Entrance Slide-In Keyframe Animations */
@@ -287,14 +301,42 @@ $nextProgTime = !empty($initNextProg['start_label']) ? $initNextProg['start_labe
 
     /* Performer Showcase Box */
     .performer-hero-info {
+        position: relative;
         background: rgba(255, 255, 255, 0.88);
-        border: 1px solid rgba(255, 255, 255, 0.95);
+        border: 1.5px solid color-mix(in srgb, var(--current-team-color, #10b981) 30%, rgba(255, 255, 255, 0.95));
         padding: 40px 48px;
         border-radius: 28px;
         display: flex;
         align-items: center;
         justify-content: space-between;
         box-shadow: 0 14px 35px rgba(0, 0, 0, 0.03);
+        transition: border-color 1.2s ease;
+    }
+
+    /* Traveling Neon Border Light Beam Outline */
+    .travel-border-svg {
+        position: absolute;
+        inset: -2px;
+        width: calc(100% + 4px);
+        height: calc(100% + 4px);
+        pointer-events: none;
+        z-index: 5;
+        overflow: visible;
+    }
+
+    .travel-border-rect {
+        fill: none;
+        stroke: var(--current-team-color, #10b981);
+        stroke-width: 3.5px;
+        stroke-dasharray: 24 76;
+        animation: neon-travel-dash 3.5s linear infinite;
+        filter: drop-shadow(0 0 6px var(--current-team-color, #10b981)) drop-shadow(0 0 16px var(--current-team-color, #10b981));
+        transition: stroke 1.2s ease, filter 1.2s ease;
+    }
+
+    @keyframes neon-travel-dash {
+        0% { stroke-dashoffset: 100; }
+        100% { stroke-dashoffset: 0; }
     }
 
     .performer-details {
@@ -514,7 +556,6 @@ $nextProgTime = !empty($initNextProg['start_label']) ? $initNextProg['start_labe
         pointer-events: none !important;
         z-index: 0 !important;
         overflow: hidden !important;
-        animation: fade-in-silk-lines 2.4s cubic-bezier(0.16, 1, 0.3, 1) 0.5s both;
     }
 
     .animated-card-group {
@@ -522,145 +563,124 @@ $nextProgTime = !empty($initNextProg['start_label']) ? $initNextProg['start_labe
         animation: bg-chevron-pulse-float 11s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite alternate;
     }
 
-    /* Elevate all card text & child elements above SVG chevron lines */
-    .glass-panel > *:not(.card-chevrons-svg) {
-        position: relative !important;
-        z-index: 2 !important;
+    #particles-js, .tv-particles {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 1;
     }
 </style>
 
-<!-- 3D Relief Geometric Layer Cuts Background -->
-<svg class="bg-3d-cuts-svg" viewBox="0 0 1920 1080" preserveAspectRatio="none" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <filter id="cutShadow" x="-20%" y="-20%" width="140%" height="140%">
-        <feDropShadow dx="-8" dy="12" stdDeviation="15" flood-color="rgba(0,0,0,0.06)" />
-    </filter>
-    <!-- Left Side 3D Cut Polygons -->
-    <polygon points="-100,1200 650,540 -100,-100" fill="#ffffff" filter="url(#cutShadow)" />
-    <polygon points="-100,1050 480,540 -100,30" fill="rgba(250,250,252,0.92)" filter="url(#cutShadow)" />
-    
-    <!-- Right Side 3D Cut Polygons -->
-    <polygon points="2020,1200 1270,540 2020,-100" fill="#ffffff" filter="url(#cutShadow)" />
-    <polygon points="2020,1050 1440,540 2020,30" fill="rgba(250,250,252,0.92)" filter="url(#cutShadow)" />
-</svg>
+<script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js" defer></script>
 
-<!-- Dynamic 1st Rank Team Geometric Chevron Vectors (Full Screen Background) -->
-<svg class="side-chevrons-svg full-screen" viewBox="0 0 1920 1080" preserveAspectRatio="none" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <g class="animated-chevron-group">
-        <!-- Left Side Chevron & Cross Lines -->
-        <path class="animated-dash-line" d="M-100 1200 L650 540 L-100 -100" stroke="var(--first-team-color)" stroke-width="3" stroke-linecap="round" />
-        <path class="animated-dash-line" d="M-150 1050 L480 540 L-150 30" stroke="var(--first-team-color)" stroke-width="2" opacity="0.8" stroke-linecap="round" />
-        <path class="animated-dash-line" d="M-50 1350 L750 540 L-50 -200" stroke="var(--first-team-color)" stroke-width="1.5" opacity="0.6" stroke-linecap="round" />
-        
-        <line class="animated-cross-line" x1="200" y1="900" x2="420" y2="680" stroke="var(--first-team-color)" stroke-width="2" opacity="0.75" />
-        <line class="animated-cross-line" x1="320" y1="780" x2="540" y2="560" stroke="var(--first-team-color)" stroke-width="2" opacity="0.75" />
-        <line class="animated-cross-line" x1="100" y1="360" x2="320" y2="140" stroke="var(--first-team-color)" stroke-width="2" opacity="0.75" />
-        <line class="animated-cross-line" x1="220" y1="240" x2="440" y2="20" stroke="var(--first-team-color)" stroke-width="2" opacity="0.75" />
+<div class="current-programs-stage-root" data-current-theme-root style="--first-team-color: <?= e($firstTeamColor) ?>; --top-team-color: <?= e($firstTeamColor) ?>;">
+    <!-- 3D Relief Geometric Layer Cuts Background -->
+    <svg class="bg-3d-cuts-svg" viewBox="0 0 1920 1080" preserveAspectRatio="none" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <filter id="cutShadowCurrent" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="-8" dy="12" stdDeviation="15" flood-color="rgba(0,0,0,0.06)" />
+        </filter>
+        <polygon points="-100,1200 650,540 -100,-100" fill="#ffffff" filter="url(#cutShadowCurrent)" />
+        <polygon points="-100,1050 480,540 -100,30" fill="rgba(250,250,252,0.92)" filter="url(#cutShadowCurrent)" />
+        <polygon points="2020,1200 1270,540 2020,-100" fill="#ffffff" filter="url(#cutShadowCurrent)" />
+        <polygon points="2020,1050 1440,540 2020,30" fill="rgba(250,250,252,0.92)" filter="url(#cutShadowCurrent)" />
+    </svg>
 
-        <!-- Right Side Chevron & Cross Lines -->
-        <path class="animated-dash-line" d="M2020 1200 L1270 540 L2020 -100" stroke="var(--first-team-color)" stroke-width="3" stroke-linecap="round" />
-        <path class="animated-dash-line" d="M2070 1050 L1440 540 L2070 30" stroke="var(--first-team-color)" stroke-width="2" opacity="0.8" stroke-linecap="round" />
-        <path class="animated-dash-line" d="M1970 1350 L1170 540 L1970 -200" stroke="var(--first-team-color)" stroke-width="1.5" opacity="0.6" stroke-linecap="round" />
+    <!-- Dynamic 1st Rank Team Geometric Chevron Vectors -->
+    <svg class="side-chevrons-svg full-screen" viewBox="0 0 1920 1080" preserveAspectRatio="none" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <g class="animated-chevron-group">
+            <path class="animated-dash-line" d="M-100 1200 L650 540 L-100 -100" stroke="var(--first-team-color, #10b981)" stroke-width="3" stroke-linecap="round" />
+            <path class="animated-dash-line" d="M-150 1050 L480 540 L-150 30" stroke="var(--first-team-color, #10b981)" stroke-width="2" opacity="0.8" stroke-linecap="round" />
+            <line class="animated-cross-line" x1="200" y1="900" x2="420" y2="680" stroke="var(--first-team-color, #10b981)" stroke-width="2" opacity="0.75" />
+            <line class="animated-cross-line" x1="320" y1="780" x2="540" y2="560" stroke="var(--first-team-color, #10b981)" stroke-width="2" opacity="0.75" />
 
-        <line class="animated-cross-line" x1="1720" y1="900" x2="1500" y2="680" stroke="var(--first-team-color)" stroke-width="2" opacity="0.75" />
-        <line class="animated-cross-line" x1="1600" y1="780" x2="1380" y2="560" stroke="var(--first-team-color)" stroke-width="2" opacity="0.75" />
-        <line class="animated-cross-line" x1="1820" y1="360" x2="1600" y2="140" stroke="var(--first-team-color)" stroke-width="2" opacity="0.75" />
-        <line class="animated-cross-line" x1="1700" y1="240" x2="1480" y2="20" stroke="var(--first-team-color)" stroke-width="2" opacity="0.75" />
-    </g>
-</svg>
+            <path class="animated-dash-line" d="M2020 1200 L1270 540 L2020 -100" stroke="var(--first-team-color, #10b981)" stroke-width="3" stroke-linecap="round" />
+            <path class="animated-dash-line" d="M2070 1050 L1440 540 L2070 30" stroke="var(--first-team-color, #10b981)" stroke-width="2" opacity="0.8" stroke-linecap="round" />
+            <line class="animated-cross-line" x1="1720" y1="900" x2="1500" y2="680" stroke="var(--first-team-color, #10b981)" stroke-width="2" opacity="0.75" />
+        </g>
+    </svg>
 
-<!-- Light Backdrop Mesh with Subtle Pulse Tinted in 1st Rank Team's Color -->
-<div class="ambient-mesh-bg"></div>
+    <div class="ambient-mesh-bg"></div>
+    <div id="particles-js" class="tv-particles"></div>
 
-<div class="programs-wrapper" data-current-theme-root style="--top-team-color: <?= e($firstTeamColor) ?>;">
-    <!-- Main Workspace Grid (Enlarged Left Card + 2 Right Boxes) -->
-    <div class="dashboard-grid">
-        <!-- Main Panel (Program Title + Section & Active Performer) -->
-        <main class="glass-panel now-performing-card">
-            <!-- Dynamic Geometric Chevron Lines Accents Inside Main Card -->
-            <svg class="card-chevrons-svg" viewBox="0 0 800 500" preserveAspectRatio="none" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <g class="animated-card-group">
-                    <path class="animated-dash-line" d="M-50 480 L350 80 L-50 -320" stroke="var(--first-team-color)" stroke-width="2" opacity="0.5" stroke-linecap="round"/>
-                    <path class="animated-dash-line" d="M-20 510 L380 110 L-20 -290" stroke="var(--first-team-color)" stroke-width="1.2" opacity="0.35" stroke-linecap="round"/>
-                    <line class="animated-cross-line" x1="120" y1="410" x2="240" y2="290" stroke="var(--first-team-color)" stroke-width="1.6" opacity="0.45" />
-                    <line class="animated-cross-line" x1="180" y1="350" x2="300" y2="230" stroke="var(--first-team-color)" stroke-width="1.6" opacity="0.45" />
+    <div class="programs-wrapper">
+        <!-- Main Workspace Grid (Enlarged Left Card + 2 Right Boxes) -->
+        <div class="dashboard-grid">
+            <!-- Main Panel (Program Title + Section & Active Performer) -->
+            <main class="glass-panel now-performing-card">
+                <div>
+                    <h1 class="program-title-display" data-current-title><?= $initRenderTitle ?></h1>
+                </div>
 
-                    <!-- Right edge mirrored chevrons -->
-                    <path class="animated-dash-line" d="M850 480 L450 80 L850 -320" stroke="var(--first-team-color)" stroke-width="2" opacity="0.5" stroke-linecap="round"/>
-                    <line class="animated-cross-line" x1="680" y1="410" x2="560" y2="290" stroke="var(--first-team-color)" stroke-width="1.6" opacity="0.45" />
-                </g>
-            </svg>
-
-            <div>
-                <h1 class="program-title-display" data-current-title><?= e($initTitleRaw) ?><?= $initCategory !== '' ? ' <span class="program-section-inline">' . e($initCategory) . '</span>' : '' ?></h1>
-            </div>
-
-            <!-- Performer Hero Details -->
-            <div class="performer-hero-info">
-                <div class="performer-details">
-                    <h2 class="performer-name" data-current-performer><?= e($initPerfName) ?></h2>
-                    <div class="team-pill" data-current-team style="<?= ($initIsIntro || $initTeamName === '—') ? 'display: none;' : 'display: flex;' ?>">
-                        <span class="tv-team-dot" style="background:<?= e($initTeamColor) ?>;"></span> <?= e($initTeamName) ?>
+                <!-- Performer Hero Details -->
+                <div class="performer-hero-info">
+                    <div class="performer-details">
+                        <h2 class="performer-name" data-current-performer><?= e($initPerfName) ?></h2>
+                        <div class="team-pill" data-current-team style="<?= ($initIsIntro || $initTeamName === '—') ? 'display: none;' : 'display: flex;' ?>">
+                            <span class="tv-team-dot" style="background:<?= e($initTeamColor) ?>;"></span> <?= e($initTeamName) ?>
+                        </div>
+                    </div>
+                    <div class="active-chest-hero" data-active-chest-box style="<?= $initIsIntro ? 'display: none;' : '' ?>">
+                        <span class="label">CHEST NO</span>
+                        <span class="num" data-current-chest><?= e($initChest) ?></span>
                     </div>
                 </div>
-                <div class="active-chest-hero" data-active-chest-box style="<?= $initIsIntro ? 'display: none;' : '' ?>">
-                    <span class="label">CHEST NO</span>
-                    <span class="num" data-current-chest><?= e($initChest) ?></span>
-                </div>
-            </div>
-        </main>
+            </main>
 
-        <!-- Sidebar Column: 2 Right Glass Boxes -->
-        <aside class="sidebar-column">
-            <!-- Box 1 (Top Right): NEXT CONTESTANT -->
-            <div class="glass-panel side-card-top">
-                <svg class="card-chevrons-svg" viewBox="0 0 500 260" preserveAspectRatio="none" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <g class="animated-card-group">
-                        <path class="animated-dash-line" d="M-30 260 L280 80 L-30 -100" stroke="var(--first-team-color)" stroke-width="2" opacity="0.55" stroke-linecap="round"/>
-                        <path class="animated-dash-line" d="M530 260 L220 80 L530 -100" stroke="var(--first-team-color)" stroke-width="2" opacity="0.55" stroke-linecap="round"/>
-                    </g>
-                </svg>
+            <!-- Sidebar Column: 2 Right Glass Boxes -->
+            <aside class="sidebar-column">
+                <!-- Box 1 (Top Right): NEXT PARTICIPANT / CONTESTANT -->
+                <div class="glass-panel side-card-top">
+                    <svg class="card-chevrons-svg" viewBox="0 0 500 260" preserveAspectRatio="none" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <g class="animated-card-group">
+                            <path class="animated-dash-line" d="M-30 260 L280 80 L-30 -100" stroke="var(--first-team-color)" stroke-width="2" opacity="0.55" stroke-linecap="round"/>
+                            <path class="animated-dash-line" d="M530 260 L220 80 L530 -100" stroke="var(--first-team-color)" stroke-width="2" opacity="0.55" stroke-linecap="round"/>
+                        </g>
+                    </svg>
 
-                <div class="side-box-label" data-next-label>
-                    <?= $initIsIntro ? '1ST CONTESTANT STAGE ENTRY' : 'NEXT CONTESTANT' ?>
+                    <div class="side-box-label" data-next-label>
+                        <?= $initIsIntro ? '1ST CONTESTANT STAGE ENTRY' : 'NEXT CONTESTANT' ?>
+                    </div>
+                    <div class="up-next-chest-big">
+                        <span data-next-chest><?= e($initNextChest) ?></span>
+                    </div>
                 </div>
-                <div class="up-next-chest-big">
-                    <span data-next-chest><?= e($initNextChest) ?></span>
-                </div>
-            </div>
 
-            <!-- Box 2 (Bottom Right): NEXT PROGRAM / BREAK -->
-            <div class="glass-panel side-card-bottom">
-                <svg class="card-chevrons-svg" viewBox="0 0 500 260" preserveAspectRatio="none" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <g class="animated-card-group">
-                        <path class="animated-dash-line" d="M-30 260 L280 80 L-30 -100" stroke="var(--first-team-color)" stroke-width="2" opacity="0.55" stroke-linecap="round"/>
-                        <path class="animated-dash-line" d="M530 260 L220 80 L530 -100" stroke="var(--first-team-color)" stroke-width="2" opacity="0.55" stroke-linecap="round"/>
-                    </g>
-                </svg>
+                <!-- Box 2 (Bottom Right): NEXT PROGRAM / BREAK -->
+                <div class="glass-panel side-card-bottom">
+                    <svg class="card-chevrons-svg" viewBox="0 0 500 260" preserveAspectRatio="none" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <g class="animated-card-group">
+                            <path class="animated-dash-line" d="M-30 260 L280 80 L-30 -100" stroke="var(--first-team-color)" stroke-width="2" opacity="0.55" stroke-linecap="round"/>
+                            <path class="animated-dash-line" d="M530 260 L220 80 L530 -100" stroke="var(--first-team-color)" stroke-width="2" opacity="0.55" stroke-linecap="round"/>
+                        </g>
+                    </svg>
 
-                <div class="side-box-label" data-next-prog-label>
-                    <?= $isBreak ? 'INTERMISSION / BREAK' : 'NEXT PROGRAM' ?>
+                    <div class="side-box-label" data-next-prog-label>
+                        <?= $isBreak ? 'INTERMISSION / BREAK' : 'NEXT PROGRAM' ?>
+                    </div>
+                    <h3 class="next-prog-title" data-next-prog-title>
+                        <?= e($nextProgTitle) ?><?= $nextProgCategory ? ' <span class="next-prog-cat">' . e($nextProgCategory) . '</span>' : '' ?>
+                    </h3>
+                    <div class="next-prog-time-badge" data-next-prog-time>
+                        <i class="fa-solid fa-clock mr-1"></i> <?= e($nextProgTime) ?>
+                    </div>
                 </div>
-                <h3 class="next-prog-title" data-next-prog-title>
-                    <?= e($nextProgTitle) ?><?= $nextProgCategory ? ' <span class="next-prog-cat">' . e($nextProgCategory) . '</span>' : '' ?>
-                </h3>
-                <div class="next-prog-time-badge" data-next-prog-time>
-                    <i class="fa-solid fa-clock mr-1"></i> <?= e($nextProgTime) ?>
-                </div>
-            </div>
-        </aside>
-    </div>
+            </aside>
+        </div>
 
-    <!-- Hidden elements for tracker compatibility -->
-    <div hidden>
-        <span data-current-status>LIVE STAGE</span>
-        <span data-current-stage>Stage</span>
-        <span data-current-category>Category</span>
-        <span data-current-room>Venue</span>
-        <span data-current-entry-count>0</span>
-        <span data-judges>No judges</span>
-        <span data-next-program>No program</span>
-        <span data-current-progress-label>0 / 0</span>
-        <div data-current-progress-fill style="width: 0%;"></div>
+        <!-- Hidden elements for tracker compatibility -->
+        <div hidden>
+            <span data-current-status>LIVE STAGE</span>
+            <span data-current-stage>Stage</span>
+            <span data-current-category>Category</span>
+            <span data-current-room>Venue</span>
+            <span data-current-entry-count>0</span>
+            <span data-judges>No judges</span>
+            <span data-next-program>No program</span>
+            <span data-current-progress-label>0 / 0</span>
+            <div data-current-progress-fill style="width: 0%;"></div>
+        </div>
     </div>
 </div>
 
@@ -713,6 +733,79 @@ $nextProgTime = !empty($initNextProg['start_label']) ? $initNextProg['start_labe
             return c;
         }
 
+        let activeParticleColor = '';
+
+        function initTopTeamParticles(colorHex) {
+            if (!colorHex || colorHex === activeParticleColor) return;
+            activeParticleColor = colorHex;
+
+            if (typeof particlesJS === 'undefined') {
+                setTimeout(() => initTopTeamParticles(colorHex), 150);
+                return;
+            }
+
+            if (window.pJSDom && window.pJSDom.length > 0) {
+                try {
+                    window.pJSDom[0].pJS.fn.vendors.destroypJS();
+                } catch(e) {}
+                window.pJSDom = [];
+            }
+
+            particlesJS('particles-js', {
+                "particles": {
+                    "number": {
+                        "value": 50,
+                        "density": { "enable": true, "value_area": 900 }
+                    },
+                    "color": {
+                        "value": [colorHex, "#ffffff", colorHex]
+                    },
+                    "shape": { "type": "circle" },
+                    "opacity": {
+                        "value": 0.7,
+                        "random": true,
+                        "anim": { "enable": true, "speed": 1.4, "opacity_min": 0.25, "sync": false }
+                    },
+                    "size": {
+                        "value": 4.5,
+                        "random": true,
+                        "anim": { "enable": true, "speed": 2.2, "size_min": 1.2, "sync": false }
+                    },
+                    "line_linked": {
+                        "enable": true,
+                        "distance": 140,
+                        "color": colorHex,
+                        "opacity": 0.28,
+                        "width": 1.2
+                    },
+                    "move": {
+                        "enable": true,
+                        "speed": 1.6,
+                        "direction": "none",
+                        "random": true,
+                        "straight": false,
+                        "out_mode": "out",
+                        "bounce": false
+                    }
+                },
+                "interactivity": {
+                    "detect_on": "canvas",
+                    "events": {
+                        "onhover": { "enable": true, "mode": "grab" },
+                        "onclick": { "enable": true, "mode": "push" },
+                        "resize": true
+                    },
+                    "modes": {
+                        "grab": { "distance": 180, "line_linked": { "opacity": 0.45 } },
+                        "push": { "particles_nb": 4 }
+                    }
+                },
+                "retina_detect": true
+            });
+        }
+
+        initTopTeamParticles(<?= json_encode($firstTeamColor) ?>);
+
         // Real-Time Live API Polling Engine
         let lastStateHash = '';
 
@@ -722,6 +815,16 @@ $nextProgTime = !empty($initNextProg['start_label']) ? $initNextProg['start_labe
                 .then(res => res.json())
                 .then(res => {
                     if (!res.success || !res.data || !res.data.current) return;
+                    
+                    // Live Top Rank Team Color Synchronization & Dynamic Particles
+                    if (res.data.leaderboard && res.data.leaderboard[0] && res.data.leaderboard[0].team_color) {
+                        const topTeamColor = res.data.leaderboard[0].team_color;
+                        document.documentElement.style.setProperty('--first-team-color', topTeamColor);
+                        const rootEl = document.querySelector('[data-current-theme-root]');
+                        if (rootEl) rootEl.style.setProperty('--first-team-color', topTeamColor);
+                        initTopTeamParticles(topTeamColor);
+                    }
+
                     const c = res.data.current;
                     const prog = c.program || {};
                     const perf = c.performer || {};
@@ -764,16 +867,19 @@ $nextProgTime = !empty($initNextProg['start_label']) ? $initNextProg['start_labe
                         perfEl.textContent = isIntro ? 'Ready to begin' : (perf.name || 'Awaiting performer');
                     }
 
-                    // Update Team Pill under performer
+                    // Update Team Pill & Traveling Neon Border Color under performer
                     const teamEl = document.querySelector('[data-current-team]');
+                    const heroBoxEl = document.querySelector('.performer-hero-info');
                     if (teamEl) {
                         if (isIntro || !perf.team || perf.team === '—') {
                             teamEl.style.display = 'none';
                             teamEl.innerHTML = '';
+                            if (heroBoxEl) heroBoxEl.style.setProperty('--current-team-color', '#10b981');
                         } else {
                             const color = perf.team_color || '#10b981';
-                            teamEl.innerHTML = `<span class="tv-team-dot" style="background:${color};"></span> ${perf.team}`;
+                            teamEl.innerHTML = `<span class="tv-team-dot" style="background:${color};"></span>`;
                             teamEl.style.display = 'flex';
+                            if (heroBoxEl) heroBoxEl.style.setProperty('--current-team-color', color);
                         }
                     }
 

@@ -93,72 +93,79 @@
         state.timers.clock = setInterval(update, 1000);
     }
 
-    function initParticles() {
-        if (typeof particlesJS !== 'undefined' && document.getElementById('particles-js')) {
+    function initParticles(teamColor = '#10b981') {
+        const pContainer = document.getElementById('particles-js');
+        if (!pContainer) return;
+
+        if (typeof particlesJS !== 'undefined') {
             try {
+                const particleColors = [teamColor, '#38bdf8', '#fbbf24', '#ffffff'];
                 particlesJS('particles-js', {
                     "particles": {
                         "number": {
-                            "value": 45,
+                            "value": 55,
                             "density": {
                                 "enable": true,
-                                "value_area": 800
+                                "value_area": 900
                             }
                         },
                         "color": {
-                            "value": "#ffffff"
+                            "value": particleColors
                         },
                         "shape": {
-                            "type": ["edge", "triangle"]
+                            "type": ["circle", "triangle"],
+                            "stroke": {
+                                "width": 0,
+                                "color": "#000000"
+                            }
                         },
                         "opacity": {
-                            "value": 0.12,
+                            "value": 0.45,
                             "random": true,
                             "anim": {
                                 "enable": true,
-                                "speed": 0.8,
-                                "opacity_min": 0.04,
+                                "speed": 1.2,
+                                "opacity_min": 0.15,
                                 "sync": false
                             }
                         },
                         "size": {
-                            "value": 3.5,
+                            "value": 4.5,
                             "random": true,
                             "anim": {
                                 "enable": true,
-                                "speed": 1.5,
-                                "size_min": 0.1,
+                                "speed": 2,
+                                "size_min": 1,
                                 "sync": false
                             }
                         },
                         "line_linked": {
                             "enable": true,
                             "distance": 140,
-                            "color": "#ffffff",
-                            "opacity": 0.05,
-                            "width": 1
+                            "color": teamColor,
+                            "opacity": 0.18,
+                            "width": 1.2
                         },
                         "move": {
                             "enable": true,
-                            "speed": 1.0,
-                            "direction": "none",
+                            "speed": 1.4,
+                            "direction": "top-right",
                             "random": true,
                             "straight": false,
                             "out_mode": "out",
-                            "bounce": false,
-                            "attract": {
-                                "enable": false,
-                                "rotateX": 600,
-                                "rotateY": 1200
-                            }
+                            "bounce": false
                         }
                     },
                     "interactivity": {
                         "detect_on": "canvas",
                         "events": {
-                            "onhover": { "enable": false },
-                            "onclick": { "enable": false },
+                            "onhover": { "enable": true, "mode": "grab" },
+                            "onclick": { "enable": true, "mode": "push" },
                             "resize": true
+                        },
+                        "modes": {
+                            "grab": { "distance": 160, "line_linked": { "opacity": 0.35 } },
+                            "push": { "particles_nb": 3 }
                         }
                     },
                     "retina_detect": true
@@ -166,6 +173,8 @@
             } catch (err) {
                 console.error("particlesJS error:", err);
             }
+        } else {
+            setTimeout(() => initParticles(teamColor), 100);
         }
     }
 
@@ -447,16 +456,38 @@
 
     function renderLeaderboard(rows, completionPercent = 0) {
         state.leaderboardData = rows;
-        
+        const teams = Array.isArray(rows) ? rows : [];
+
+        const container = document.querySelector('[data-leaderboard], [data-leaderboard-stage]');
+        if (!container) return;
+
+        const signature = JSON.stringify((teams || []).slice(0, 8).map((team) => [
+            team?.id, team?.rank, team?.team_name, team?.total_score, team?.team_color
+        ]));
+
+        if (state.leaderboardSignature === signature && container.querySelector('.dashboard-grid')) {
+            return;
+        }
+        state.leaderboardSignature = signature;
+
+        const firstTeam = teams[0] || {};
+        const firstTeamColor = firstTeam.team_color || '#10b981';
+        const firstTeamName = firstTeam.team_name || firstTeam.short_name || 'Leader';
+        const firstTeamScore = Math.round(Number(firstTeam.total_score || 0));
+
+        const secondTeam = teams[1] || {};
+        const secondTeamColor = secondTeam.team_color || '#3b82f6';
+        const secondTeamName = secondTeam.team_name || secondTeam.short_name || '—';
+        const secondTeamScore = Math.round(Number(secondTeam.total_score || 0));
+
         // 1. Dynamic background based on 1st place team color
-        if (rows.length > 0 && typeof gsap !== 'undefined') {
-            const firstColor = rows[0].team_color || '#10b981';
-            const rgb = hexToRgb(firstColor);
+        if (teams.length > 0 && typeof gsap !== 'undefined') {
+            const rgb = hexToRgb(firstTeamColor);
             const rootStyle = getComputedStyle(document.documentElement);
             const currentR = parseInt(rootStyle.getPropertyValue('--dynamic-r')) || 0;
             const currentG = parseInt(rootStyle.getPropertyValue('--dynamic-g')) || 255;
             const currentB = parseInt(rootStyle.getPropertyValue('--dynamic-b')) || 136;
-            
+
             const colorObj = { r: currentR, g: currentG, b: currentB };
             gsap.to(colorObj, {
                 r: rgb.r,
@@ -471,49 +502,182 @@
                 }
             });
         }
+        document.documentElement.style.setProperty('--first-team-color', firstTeamColor);
 
-        const container = document.querySelector('[data-leaderboard], [data-leaderboard-stage]');
-        if (!container) return;
+        // Other teams (3rd, 4th, etc.)
+        const otherTeams = teams.slice(2);
+        const otherRowsHtml = otherTeams.length ? otherTeams.map((team) => {
+            const color = team.team_color || '#64748b';
+            const rank = Number(team.rank || 3);
+            const name = team.team_name || team.short_name || 'Team';
+            const score = Math.round(Number(team.total_score || 0));
+            const medal = rank === 3 ? '🥉 ' : '';
 
-        const signature = JSON.stringify((rows || []).slice(0, 4).map((team) => [
-            team?.id, team?.rank, team?.team_name, team?.total_score, team?.team_color
-        ]));
-        
-        if (window.TVLeaderboard3D && window.TVLeaderboard3D.update && container.querySelector('#tvLeaderboardCanvas')) {
-            window.TVLeaderboard3D.update(rows);
-            const leaderNameEl = container.querySelector('.aura-watermark');
-            if (leaderNameEl) {
-                leaderNameEl.textContent = `Champion Aura: ${rows[0]?.team_name || rows[0]?.short_name || 'Leader'}`;
-            }
-            state.leaderboardSignature = signature;
-            return;
-        }
-        state.leaderboardSignature = signature;
+            return `
+                <div class="standing-row-item">
+                    <span class="st-rank-badge">${medal}${rank}th</span>
+                    <span class="st-team-info">
+                        <span class="tv-team-dot" style="background:${escapeHtml(color)};"></span>
+                        <span>${escapeHtml(name)}</span>
+                    </span>
+                    <span class="st-pts-num">${score} <span style="font-size: 13px; font-weight: 700; color: #64748b;">PTS</span></span>
+                </div>
+            `;
+        }).join('') : `<div style="color: #64748b; font-size: 16px; text-align: center;">No additional teams</div>`;
 
         container.className = 'tv-leaderboard-stage-root';
         container.innerHTML = `
-            <canvas id="tvLeaderboardCanvas" class="tv-3d-canvas"></canvas>
-            <div id="team-labels" class="team-labels"></div>
-            <div class="tv-broadcast-overlay">
-                <div class="live-chip-3d">
-                    <span></span> Live Standings
+            <!-- 3D Relief Geometric Layer Cuts Background -->
+            <svg class="bg-3d-cuts-svg" viewBox="0 0 1920 1080" preserveAspectRatio="none" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <filter id="cutShadow" x="-20%" y="-20%" width="140%" height="140%">
+                    <feDropShadow dx="-8" dy="12" stdDeviation="15" flood-color="rgba(0,0,0,0.06)" />
+                </filter>
+                <polygon points="-100,1200 650,540 -100,-100" fill="#ffffff" filter="url(#cutShadow)" />
+                <polygon points="-100,1050 480,540 -100,30" fill="rgba(250,250,252,0.92)" filter="url(#cutShadow)" />
+                <polygon points="2020,1200 1270,540 2020,-100" fill="#ffffff" filter="url(#cutShadow)" />
+                <polygon points="2020,1050 1440,540 2020,30" fill="rgba(250,250,252,0.92)" filter="url(#cutShadow)" />
+            </svg>
+
+            <!-- Dynamic 1st Rank Team Geometric Chevron Vectors -->
+            <svg class="side-chevrons-svg full-screen" viewBox="0 0 1920 1080" preserveAspectRatio="none" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <g class="animated-chevron-group">
+                    <path class="animated-dash-line" d="M-100 1200 L650 540 L-100 -100" stroke="var(--first-team-color, #10b981)" stroke-width="3" stroke-linecap="round" />
+                    <path class="animated-dash-line" d="M-150 1050 L480 540 L-150 30" stroke="var(--first-team-color, #10b981)" stroke-width="2" opacity="0.8" stroke-linecap="round" />
+                    <line class="animated-cross-line" x1="200" y1="900" x2="420" y2="680" stroke="var(--first-team-color, #10b981)" stroke-width="2" opacity="0.75" />
+                    <line class="animated-cross-line" x1="320" y1="780" x2="540" y2="560" stroke="var(--first-team-color, #10b981)" stroke-width="2" opacity="0.75" />
+
+                    <path class="animated-dash-line" d="M2020 1200 L1270 540 L2020 -100" stroke="var(--first-team-color, #10b981)" stroke-width="3" stroke-linecap="round" />
+                    <path class="animated-dash-line" d="M2070 1050 L1440 540 L2070 30" stroke="var(--first-team-color, #10b981)" stroke-width="2" opacity="0.8" stroke-linecap="round" />
+                    <line class="animated-cross-line" x1="1720" y1="900" x2="1500" y2="680" stroke="var(--first-team-color, #10b981)" stroke-width="2" opacity="0.75" />
+                </g>
+            </svg>
+
+            <div class="ambient-mesh-bg"></div>
+
+            <div class="leaderboard-slide-container" style="--first-team-color: ${escapeHtml(firstTeamColor)};">
+                <div class="leaderboard-slide-title">
+                    <span>Team Standings & Points</span>
+                    <span class="first-team-rank-pill">
+                        <span class="rank-crown">👑</span>
+                        <span class="rank-label">CHAMPION LEADER:</span>
+                        <span class="rank-name">${escapeHtml(firstTeamName)}</span>
+                    </span>
                 </div>
-            </div>
-            <div class="aura-watermark">
-                Champion Aura: ${escapeHtml(rows[0]?.team_name || rows[0]?.short_name || 'Leader')}
+
+                <div class="dashboard-grid">
+                    <!-- Main Card (1st Place Hero) -->
+                    <main class="glass-panel leaderboard-hero-card">
+                        <svg class="card-chevrons-svg" viewBox="0 0 800 500" preserveAspectRatio="none" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <g class="animated-card-group">
+                                <path class="animated-dash-line" d="M-50 480 L350 80 L-50 -320" stroke="var(--first-team-color, #10b981)" stroke-width="2.5" opacity="0.6" stroke-linecap="round"/>
+                                <path class="animated-dash-line" d="M850 480 L450 80 L850 -320" stroke="var(--first-team-color, #10b981)" stroke-width="2.5" opacity="0.6" stroke-linecap="round"/>
+                            </g>
+                        </svg>
+
+                        <div>
+                            <div class="hero-leader-badge">
+                                <span>👑</span> 1st Place Leader
+                            </div>
+                            <h1 class="hero-team-name">${escapeHtml(firstTeamName)}</h1>
+                            <div class="st-team-info">
+                                <span class="tv-team-dot" style="background:${escapeHtml(firstTeamColor)};"></span>
+                                <span style="font-size: 16px; color: #475569; font-weight: 700;">Leading Musabaqa Standings</span>
+                            </div>
+                        </div>
+
+                        <div class="hero-score-box">
+                            <span class="hero-score-label">TOTAL OVERALL SCORE</span>
+                            <span class="hero-score-num">${firstTeamScore}</span>
+                        </div>
+                    </main>
+
+                    <!-- Sidebar Column: 2nd Place & Other Teams -->
+                    <aside class="sidebar-column">
+                        <!-- Top Card: 2nd Place Runner Up -->
+                        <div class="glass-panel side-card-top runner-up-card">
+                            <svg class="card-chevrons-svg" viewBox="0 0 500 260" preserveAspectRatio="none" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <g class="animated-card-group">
+                                    <path class="animated-dash-line" d="M-30 260 L280 80 L-30 -100" stroke="${escapeHtml(secondTeamColor)}" stroke-width="2" opacity="0.55" stroke-linecap="round"/>
+                                </g>
+                            </svg>
+
+                            <div class="side-box-label">
+                                🥈 2nd Place Runner-Up
+                            </div>
+                            <h2 class="runner-team-name">${escapeHtml(secondTeamName)}</h2>
+                            <div class="runner-score-big">
+                                <span style="color:${escapeHtml(secondTeamColor)}">${secondTeamScore}</span> <span style="font-size: 20px; color: #64748b; font-weight: 700;">PTS</span>
+                            </div>
+                        </div>
+
+                        <!-- Bottom Card: Remaining Standings -->
+                        <div class="glass-panel side-card-bottom standings-list-card">
+                            <div class="side-box-label" style="text-align: left; margin-bottom: 14px;">
+                                Other Team Standings
+                            </div>
+                            <div class="standings-rows-list">
+                                ${otherRowsHtml}
+                            </div>
+                        </div>
+                    </aside>
+                </div>
             </div>
         `;
 
-        setTimeout(() => {
-            const canvas3d = container.querySelector('#tvLeaderboardCanvas');
-            if (canvas3d && window.TVLeaderboard3D) {
-                window.TVLeaderboard3D.mount(canvas3d, rows);
-            }
-        }, 80);
+        triggerLeaderboardAnimations(container);
     }
 
-    function triggerLeaderboardAnimations() {
-        // Handled dynamically by renderLeaderboard
+    function triggerLeaderboardAnimations(customContainer) {
+        const root = customContainer || document.querySelector('[data-leaderboard], [data-leaderboard-stage]');
+        if (!root || typeof gsap === 'undefined') return;
+
+        const heroCard = root.querySelector('.leaderboard-hero-card');
+        const sideTopCard = root.querySelector('.runner-up-card');
+        const sideBottomCard = root.querySelector('.standings-list-card');
+
+        if (heroCard) {
+            gsap.fromTo(heroCard, {
+                opacity: 0.85,
+                scale: 0.98,
+                x: -30
+            }, {
+                opacity: 1,
+                scale: 1,
+                x: 0,
+                duration: 0.8,
+                ease: 'power3.out'
+            });
+        }
+
+        if (sideTopCard) {
+            gsap.fromTo(sideTopCard, {
+                opacity: 0.85,
+                scale: 0.98,
+                x: 30
+            }, {
+                opacity: 1,
+                scale: 1,
+                x: 0,
+                duration: 0.8,
+                ease: 'power3.out',
+                delay: 0.08
+            });
+        }
+
+        if (sideBottomCard) {
+            gsap.fromTo(sideBottomCard, {
+                opacity: 0.85,
+                scale: 0.98,
+                x: 30
+            }, {
+                opacity: 1,
+                scale: 1,
+                x: 0,
+                duration: 0.8,
+                ease: 'power3.out',
+                delay: 0.16
+            });
+        }
     }
 
     function scheduleRowsPerPage() {
@@ -561,11 +725,8 @@
     }
 
     function buildSchedulePages(scheduleData) {
-        const rows = flattenScheduleItems(scheduleData).filter((item) => {
-            const isCompleted = item.status === 'completed' || item.approval_status === 'approved';
-            const isCurrent = item.status === 'scoring' || item.status === 'active-stage';
-            return !isCompleted && !isCurrent;
-        });
+        const rows = flattenScheduleItems(scheduleData);
+        state.schedule.allRows = rows;
         const pageSize = scheduleRowsPerPage();
         const pages = [];
 
@@ -603,6 +764,10 @@
     }
 
     function renderScheduleFrame(scheduleData) {
+        const pages = state.schedule.pages || [];
+        const totalPages = Math.max(1, pages.length);
+        const curPage = state.schedule.currentPage || 0;
+
         els.schedule.innerHTML = `
             <div class="broadcast-perspective-grid" aria-hidden="true"></div>
             <div class="broadcast-ambient-glow" aria-hidden="true">
@@ -610,8 +775,21 @@
                 <div class="glow-blob--blue"></div>
             </div>
             <div class="schedule-slide-container">
+                <div class="schedule-slide-title">
+                    <span>Program Schedule</span>
+                    <span class="page-count-badge" data-schedule-page-badge>Page ${curPage + 1} / ${totalPages}</span>
+                </div>
                 <div class="tv-schedule-board">
-                    <div class="tv-schedule-page" data-schedule-page></div>
+                    <div class="tv-schedule-board-head">
+                        <span>#</span>
+                        <span>Time</span>
+                        <span>Program</span>
+                        <span>Stage / Venue</span>
+                        <span style="text-align: center;">Status</span>
+                    </div>
+                    <div class="tv-schedule-page-wrapper" style="overflow: hidden; position: relative;">
+                        <div class="tv-schedule-page" data-schedule-page></div>
+                    </div>
                 </div>
             </div>
         `;
@@ -646,94 +824,133 @@
         return c;
     }
 
-    function renderSchedulePage(index) {
+    function renderSchedulePage(index, animateOut = false) {
         const pageEl = els.schedule?.querySelector('[data-schedule-page]');
         if (!pageEl) return;
 
-        const pages = state.schedule.pages;
+        const pages = state.schedule.pages || [];
         const page = pages[index] || [];
-        const total = Math.max(1, pages.length);
+        const totalPages = Math.max(1, pages.length);
 
-        if (!page.length) {
-            pageEl.innerHTML = `
-                <div class="tv-schedule-empty">
-                    <strong>No upcoming programs scheduled</strong>
-                    <span>Stand by for upcoming competition events.</span>
-                </div>
-            `;
-            return;
+        const badgeEl = els.schedule?.querySelector('[data-schedule-page-badge]');
+        if (badgeEl) {
+            badgeEl.textContent = `Page ${index + 1} / ${totalPages}`;
         }
 
-        pageEl.innerHTML = page.map((item, rowIndex) => {
-            const status = getScheduleStatus(item);
-            const time = item.start_label || item.start_time || '--';
-            const rawCategory = item.category || item.class_type_name || item.class_name || item.section_name || '';
-            const title = item.title || item.name || 'Program';
-            const secName = tvFormatScheduleSectionName(rawCategory);
+        const currentRows = Array.from(pageEl.querySelectorAll('.tv-schedule-row'));
 
-            let programLabel = title;
-            if (secName && secName.toLowerCase() !== title.toLowerCase()) {
-                programLabel = `${title} ${secName}`;
+        const updateAndAnimateIn = () => {
+            if (!page.length) {
+                pageEl.innerHTML = `
+                    <div class="tv-schedule-empty" style="padding: 48px; text-align: center;">
+                        <strong style="font-size: 24px; display: block; margin-bottom: 8px;">No programs scheduled</strong>
+                        <span style="color: #64748b;">Stand by for upcoming competition events.</span>
+                    </div>
+                `;
+                return;
             }
 
-            const globalIndex = (index * scheduleRowsPerPage()) + rowIndex;
-            const rowNumber = String(globalIndex + 1).padStart(2, '0');
-            const isFirstUpcoming = (globalIndex === 0 && status.className !== 'break');
-            const isBreak = (status.className === 'break');
-
-            let rowClasses = ['tv-schedule-row'];
-            let rowAccent = '#3b82f6';
-
-            if (isFirstUpcoming) {
-                rowClasses.push('is-first-upcoming');
-                rowAccent = '#10b981';
-            } else if (isBreak) {
-                rowClasses.push('is-break');
-                rowAccent = '#f59e0b';
-            }
-
-            const stageName = item.stage || item.location || item.stage_name || item.stage_type_name || item.section_time_label || 'Main Stage';
-
-            return `
-                <article class="${rowClasses.join(' ')}" style="--row-neon:${escapeHtml(rowAccent)}">
-                    <div class="tv-schedule-row-num">${rowNumber}</div>
-                    <div class="tv-schedule-row-time">${escapeHtml(time)}</div>
-                    <div class="tv-schedule-row-program">
-                        <strong>${escapeHtml(programLabel)}</strong>
-                    </div>
-                    <div class="tv-schedule-row-location">${escapeHtml(stageName)}</div>
-                    <div class="tv-schedule-row-status">
-                        <span class="tv-status ${status.className}">${escapeHtml(status.label)}</span>
-                    </div>
-                </article>
-            `;
-        }).join('');
-
-        if (typeof gsap !== 'undefined') {
-            const rows = pageEl.querySelectorAll('.tv-schedule-row');
-            gsap.fromTo(rows, {
-                opacity: 0,
-                x: -30
-            }, {
-                opacity: 1,
-                x: 0,
-                duration: 0.8,
-                stagger: 0.06,
-                ease: 'power3.out'
+            const allRows = state.schedule.allRows || flattenScheduleItems(state.schedule.data);
+            const firstUpcomingIndex = allRows.findIndex(item => {
+                const s = getScheduleStatus(item);
+                return s.className === 'upcoming' || s.className === 'inprogress';
             });
+
+            pageEl.innerHTML = page.map((item, rowIndex) => {
+                const status = getScheduleStatus(item);
+                const time = item.start_label || item.start_time || '--';
+                const rawCategory = item.category || item.class_type_name || item.class_name || item.section_name || '';
+                const title = item.title || item.name || 'Program';
+                const secName = tvFormatScheduleSectionName(rawCategory);
+
+                let programLabel = title;
+                if (secName && secName.toLowerCase() !== title.toLowerCase()) {
+                    programLabel = `${title} ${secName}`;
+                }
+
+                const globalIndex = (index * scheduleRowsPerPage()) + rowIndex;
+                const rowNumber = String(globalIndex + 1).padStart(2, '0');
+                const isFirstUpcoming = (globalIndex === firstUpcomingIndex && status.className !== 'break');
+                const isBreak = (status.className === 'break');
+                const isInProgress = (status.className === 'inprogress');
+
+                let rowClasses = ['tv-schedule-row'];
+                let rowAccent = '#3b82f6';
+
+                if (isInProgress || isFirstUpcoming) {
+                    rowClasses.push('is-first-upcoming');
+                    rowAccent = '#10b981';
+                } else if (isBreak) {
+                    rowClasses.push('is-break');
+                    rowAccent = '#f59e0b';
+                } else if (status.className === 'completed') {
+                    rowAccent = '#94a3b8';
+                }
+
+                const stageName = item.stage || item.location || item.stage_name || item.stage_type_name || item.section_time_label || 'Main Stage';
+
+                return `
+                    <article class="${rowClasses.join(' ')}" style="--row-neon:${escapeHtml(rowAccent)}">
+                        <div class="tv-schedule-row-num">${rowNumber}</div>
+                        <div class="tv-schedule-row-time">${escapeHtml(time)}</div>
+                        <div class="tv-schedule-row-program">
+                            <strong>${escapeHtml(programLabel)}</strong>
+                        </div>
+                        <div class="tv-schedule-row-location">${escapeHtml(stageName)}</div>
+                        <div class="tv-schedule-row-status">
+                            <span class="tv-status ${status.className}">${escapeHtml(status.label)}</span>
+                        </div>
+                    </article>
+                `;
+            }).join('');
+
+            if (typeof gsap !== 'undefined') {
+                const rows = pageEl.querySelectorAll('.tv-schedule-row');
+                gsap.fromTo(rows, {
+                    opacity: 0,
+                    x: 60,
+                    scale: 0.98
+                }, {
+                    opacity: 1,
+                    x: 0,
+                    scale: 1,
+                    duration: 0.65,
+                    stagger: 0.05,
+                    ease: 'power3.out'
+                });
+            }
+        };
+
+        if (animateOut && typeof gsap !== 'undefined' && currentRows.length > 0) {
+            gsap.to(currentRows, {
+                opacity: 0,
+                x: -60,
+                duration: 0.35,
+                stagger: 0.03,
+                ease: 'power2.in',
+                onComplete: updateAndAnimateIn
+            });
+        } else {
+            updateAndAnimateIn();
         }
     }
 
     function renderSchedule(scheduleData) {
         if (!els.schedule) return;
 
+        const signature = JSON.stringify(scheduleData || {});
+        if (state.schedule.signature === signature && state.schedule.playing) {
+            return;
+        }
+
         stopScheduleTimer();
+        state.schedule.signature = signature;
         state.schedule.data = scheduleData || { sections: [] };
         state.schedule.pages = buildSchedulePages(state.schedule.data);
         state.schedule.currentPage = 0;
         renderScheduleFrame(state.schedule.data);
         updateScheduleClock();
-        renderSchedulePage(0);
+        renderSchedulePage(0, false);
 
         if (state.activeSlide === 'schedule') {
             startSchedulePlayback();
@@ -953,17 +1170,18 @@
 
         if (!state.schedule.data) {
             state.schedule.data = { sections: [] };
-            state.schedule.pages = buildSchedulePages(state.schedule.data);
         }
+        state.schedule.pages = buildSchedulePages(state.schedule.data);
 
         state.schedule.playing = true;
         state.schedule.currentPage = 0;
         updateScheduleClock();
-        renderSchedulePage(0);
 
         const totalPages = Math.max(1, state.schedule.pages.length);
         const configuredDuration = state.slides.schedule?.duration || 18000;
-        const pageDuration = Math.max(4200, Math.min(9000, Math.round(configuredDuration / Math.max(totalPages, 1))));
+        const pageDuration = Math.max(3000, configuredDuration);
+
+        renderSchedulePage(0, false);
 
         const tick = () => {
             updateScheduleClock();
@@ -976,7 +1194,7 @@
             if (state.schedule.currentPage >= totalPages - 1) {
                 if (state.mode === 'manual') {
                     state.schedule.currentPage = 0;
-                    renderSchedulePage(0);
+                    renderSchedulePage(0, true);
                     state.schedule.timer = setTimeout(tick, pageDuration);
                     return;
                 }
@@ -986,7 +1204,7 @@
             }
 
             state.schedule.currentPage += 1;
-            renderSchedulePage(state.schedule.currentPage);
+            renderSchedulePage(state.schedule.currentPage, true);
             state.schedule.timer = setTimeout(tick, pageDuration);
         };
 

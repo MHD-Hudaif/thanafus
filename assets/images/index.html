@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>High Quality 60FPS Video Background Loop</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@700;800;900&display=swap');
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+            background: #030712;
+            color: #f8fafc;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        /* 100% Seamless 60FPS MP4 Video Background Loop */
+        .bg-video-loop {
+            position: absolute;
+            inset: 0;
+            width: 100vw;
+            height: 100vh;
+            object-fit: cover;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        /* Glass Center Card */
+        .hero-card {
+            position: relative;
+            z-index: 10;
+            background: rgba(255, 255, 255, 0.88);
+            backdrop-filter: blur(40px);
+            -webkit-backdrop-filter: blur(40px);
+            border: 2px solid rgba(212, 175, 55, 0.3);
+            border-radius: 32px;
+            padding: 48px 64px;
+            text-align: center;
+            max-width: 620px;
+            box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.08);
+        }
+
+        .hero-card h1 {
+            font-size: 36px;
+            font-weight: 900;
+            letter-spacing: -0.02em;
+            color: #0f172a;
+            margin-bottom: 12px;
+        }
+
+        .hero-card p {
+            font-size: 16px;
+            color: #475569;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 60FPS High-Quality Video Loop Background -->
+    <video class="bg-video-loop" autoplay loop muted playsinline poster="gold-chevron-4k.png">
+        <source src="high-quality-bg-loop.mp4" type="video/mp4">
+    </video>
+
+    <main class="hero-card">
+        <h1>High-Quality 60FPS Video Background</h1>
+        <p>100% Seamless 60FPS video background loop created without overdoing it. Rendered with optical Gaussian line glow and sub-pixel micro-float motion.</p>
+    </main>
+
+</body>
+</html>

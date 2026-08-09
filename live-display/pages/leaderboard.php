@@ -33,6 +33,8 @@ document.querySelector('.tv-topbar')?.setAttribute('hidden', '');
 <?php endif; ?>
 
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;700;800;900&family=Outfit:wght@600;700;800;900&family=Cairo:wght@700;800;900&display=swap');
+
 body.tv-leaderboard-only .tv-topbar,
 body:has(#slide-leaderboard.tv-slide--active) .tv-topbar {
     display: none !important;
@@ -42,9 +44,9 @@ body:has(#slide-leaderboard.tv-slide--active) .tv-topbar {
     padding: 0 !important;
     margin: 0 !important;
     overflow: hidden;
-    background: #02040a;
-    font-family: 'Inter', 'Cairo', system-ui, -apple-system, sans-serif;
-    color: #f8fafc;
+    background: #f8fafc url('<?= asset_url('images/white-background.png') ?>') center center / cover no-repeat;
+    font-family: 'Plus Jakarta Sans', 'Outfit', 'Cairo', system-ui, -apple-system, sans-serif;
+    color: #0f172a;
     width: 100vw;
     height: 100vh;
     display: flex;
@@ -54,171 +56,340 @@ body:has(#slide-leaderboard.tv-slide--active) .tv-topbar {
 }
 
 .tv-leaderboard-stage-root {
-    width: 100vw;
-    height: 100vh;
-    position: absolute;
-    inset: 0;
-    overflow: hidden;
-    background: #02040a;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
 }
 
-/* 3D WebGL Canvas Backdrop - 100% Fullscreen Broadcast Engine */
-.tv-3d-canvas {
+.ambient-mesh-bg {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    background:
+        radial-gradient(circle at 15% 20%, color-mix(in srgb, var(--first-team-color, #10b981) 25%, transparent) 0%, transparent 65%),
+        radial-gradient(circle at 85% 80%, color-mix(in srgb, var(--first-team-color, #10b981) 20%, transparent) 0%, transparent 60%);
+    animation: simple-aura-pulse 7s ease-in-out infinite alternate;
+}
+
+@keyframes simple-aura-pulse {
+    0% { opacity: 0.7; transform: scale(1); }
+    100% { opacity: 1; transform: scale(1.05); }
+}
+
+.bg-3d-cuts-svg {
+    position: absolute;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.side-chevrons-svg.full-screen {
+    position: absolute;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    pointer-events: none;
+    z-index: 1;
+}
+
+@keyframes bg-chevron-pulse-float {
+    0% { transform: translate3d(0, 0, 0) scale(1); opacity: 0.85; }
+    50% { transform: translate3d(0, -6px, 0) scale(1.008); opacity: 1; }
+    100% { transform: translate3d(0, 0, 0) scale(1); opacity: 0.85; }
+}
+
+@keyframes line-dash-flow {
+    0% { stroke-dashoffset: 400; }
+    100% { stroke-dashoffset: -400; }
+}
+
+.animated-chevron-group {
+    will-change: transform, opacity;
+    animation: bg-chevron-pulse-float 10s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite alternate;
+}
+
+.animated-dash-line {
+    stroke-dasharray: 250 120;
+    will-change: stroke-dashoffset;
+    animation: line-dash-flow 24s linear infinite;
+    transition: stroke 1.4s cubic-bezier(0.19, 1, 0.22, 1), opacity 1.4s cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+.animated-cross-line {
+    transition: stroke 1.4s cubic-bezier(0.19, 1, 0.22, 1), opacity 1.4s cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+.leaderboard-slide-container {
+    --first-team-color: <?= e($firstTeamColor) ?>;
+    --current-neon: #10b981;
+    width: 100%;
+    max-width: 1720px;
+    height: 100vh;
+    padding: 50px 70px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    box-sizing: border-box;
+    position: relative;
+    z-index: 2;
+}
+
+.leaderboard-slide-title {
+    font-size: 38px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: -0.01em;
+    color: #0f172a;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 16px;
+    margin-bottom: 24px;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    border-bottom: 2px solid color-mix(in srgb, var(--first-team-color, #10b981) 30%, transparent);
+}
+
+.first-team-rank-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1.5px solid color-mix(in srgb, var(--first-team-color, #10b981) 40%, white);
+    padding: 10px 24px;
+    border-radius: 30px;
+    font-size: 14px;
+    font-weight: 800;
+    color: #1e293b;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.05);
+}
+
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: 1.65fr 1fr;
+    gap: 32px;
+    width: 100%;
+    align-items: stretch;
+    position: relative;
+    z-index: 2;
+}
+
+.glass-panel {
+    background: rgba(255, 255, 255, 0.82);
+    backdrop-filter: blur(40px);
+    -webkit-backdrop-filter: blur(40px);
+    border: 1.5px solid color-mix(in srgb, var(--first-team-color, #10b981) 25%, rgba(255, 255, 255, 0.95));
+    border-radius: 36px;
+    padding: 48px 56px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    box-sizing: border-box;
+    box-shadow: 0 24px 60px -12px rgba(0, 0, 0, 0.05);
+    transition: transform 0.6s ease, border-color 1.2s ease;
+}
+
+.glass-panel:hover {
+    transform: translateY(-4px);
+}
+
+.leaderboard-hero-card {
+    min-height: 540px;
+    justify-content: space-between;
+}
+
+.card-chevrons-svg {
     position: absolute !important;
     top: 0 !important;
     left: 0 !important;
     right: 0 !important;
     bottom: 0 !important;
-    width: 100vw !important;
-    height: 100vh !important;
-    z-index: 1 !important;
+    width: 100% !important;
+    height: 100% !important;
     pointer-events: none !important;
-    margin: 0 !important;
-    padding: 0 !important;
+    z-index: 0 !important;
+    overflow: hidden !important;
 }
 
-/* Screen-Space Projected 3D Labels */
-.team-labels {
-    position: absolute;
-    inset: 0;
-    z-index: 5;
-    pointer-events: none;
-    overflow: hidden;
-}
-
-.team-label {
-    position: absolute;
-    min-width: 180px;
-    text-align: center;
-    text-shadow: 0 2px 14px #000, 0 0 28px #000;
-    transform: translate(-50%, -50%);
-    will-change: transform, opacity;
-    transition: opacity 0.35s ease;
-    pointer-events: none;
-}
-
-.team-label__rank {
-    display: block;
-    margin-bottom: 4px;
-    color: var(--team-color);
-    font-size: 14px;
-    font-weight: 900;
-    letter-spacing: 0.22em;
-    text-transform: uppercase;
-}
-
-.team-label__name {
-    display: block;
-    font-family: 'Inter', 'Cairo', system-ui, sans-serif;
-    font-size: 26px;
-    font-weight: 900;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: #ffffff;
-}
-
-.team-label__score {
-    display: block;
-    margin-top: 4px;
-    color: #fef08a;
-    font-size: 32px;
-    font-variant-numeric: tabular-nums;
-    font-weight: 900;
-    letter-spacing: 0.04em;
-}
-
-.team-label.is-leading .team-label__name {
-    color: #fef08a;
-    text-shadow: 0 0 28px #f59e0b;
-}
-
-/* Minimal Live Overlay Indicator */
-.tv-broadcast-overlay {
-    position: absolute;
-    top: 35px;
-    right: 50px;
-    z-index: 10;
-    pointer-events: none;
-}
-
-.live-chip-3d {
-    font-size: 16px;
-    font-weight: 900;
-    color: #ef4444;
-    background: rgba(239, 68, 68, 0.12);
-    border: 1.5px solid rgba(239, 68, 68, 0.35);
-    padding: 8px 20px;
-    border-radius: 30px;
+.hero-leader-badge {
     display: inline-flex;
     align-items: center;
-    gap: 10px;
-    letter-spacing: 0.15em;
+    gap: 8px;
+    background: color-mix(in srgb, var(--first-team-color, #10b981) 12%, rgba(255, 255, 255, 0.9));
+    border: 1.5px solid color-mix(in srgb, var(--first-team-color, #10b981) 35%, white);
+    padding: 8px 20px;
+    border-radius: 30px;
+    font-size: 14px;
+    font-weight: 900;
     text-transform: uppercase;
-    box-shadow: 0 0 20px rgba(239, 68, 68, 0.2);
+    letter-spacing: 0.12em;
+    color: #0f172a;
+    width: fit-content;
 }
 
-.live-chip-3d span {
-    width: 10px;
-    height: 10px;
-    background: #ef4444;
+.hero-team-name {
+    font-size: 64px;
+    font-weight: 900;
+    margin: 20px 0 10px 0;
+    color: #0f172a;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    font-family: 'Plus Jakarta Sans', 'Cairo', sans-serif;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.hero-score-box {
+    background: rgba(255, 255, 255, 0.88);
+    border: 1px solid rgba(255, 255, 255, 0.95);
+    padding: 32px 48px;
+    border-radius: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 14px 35px rgba(0, 0, 0, 0.03);
+    margin-top: 24px;
+}
+
+.hero-score-label {
+    font-size: 14px;
+    font-weight: 900;
+    letter-spacing: 0.2em;
+    color: #64748b;
+    text-transform: uppercase;
+}
+
+.hero-score-num {
+    font-size: 88px;
+    font-weight: 900;
+    color: var(--first-team-color, #10b981);
+    font-family: 'Plus Jakarta Sans', monospace;
+    line-height: 1;
+}
+
+.sidebar-column {
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+    height: 100%;
+    justify-content: space-between;
+}
+
+.side-card-top {
+    flex: 1;
+    min-height: 250px;
+    padding: 32px 40px;
+    text-align: center;
+    justify-content: center;
+    align-items: center;
+}
+
+.side-card-bottom {
+    flex: 1;
+    min-height: 250px;
+    padding: 32px 40px;
+    justify-content: center;
+}
+
+.side-box-label {
+    font-size: 14px;
+    font-weight: 900;
+    color: #64748b;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+}
+
+.runner-team-name {
+    font-size: 40px;
+    font-weight: 900;
+    color: #0f172a;
+    margin: 0 0 10px 0;
+    font-family: 'Plus Jakarta Sans', 'Cairo', sans-serif;
+}
+
+.runner-score-big {
+    font-size: 72px;
+    font-weight: 900;
+    line-height: 1;
+    font-family: 'Plus Jakarta Sans', monospace;
+}
+
+.standings-rows-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+}
+
+.standing-row-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 20px;
+    background: rgba(15, 23, 42, 0.04);
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    border-radius: 18px;
+    font-family: 'Plus Jakarta Sans', 'Cairo', sans-serif;
+}
+
+.st-rank-badge {
+    font-size: 14px;
+    font-weight: 900;
+    color: #475569;
+    width: 48px;
+}
+
+.st-team-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    font-size: 20px;
+    font-weight: 800;
+    color: #0f172a;
+}
+
+.tv-team-dot {
+    width: 14px;
+    height: 14px;
     border-radius: 50%;
     display: inline-block;
-    box-shadow: 0 0 10px #ef4444;
-    animation: live-pulse-3d 1.6s infinite ease-in-out;
 }
 
-@keyframes live-pulse-3d {
-    0% { transform: scale(0.9); opacity: 0.6; }
-    50% { transform: scale(1.3); opacity: 1; box-shadow: 0 0 16px #ef4444; }
-    100% { transform: scale(0.9); opacity: 0.6; }
-}
-
-/* Watermark indicator showing leading team */
-.aura-watermark {
-    position: absolute;
-    bottom: 25px;
-    right: 50px;
-    font-size: 14px;
-    font-weight: 800;
-    color: rgba(255, 255, 255, 0.25);
-    text-transform: uppercase;
-    letter-spacing: 0.18em;
-    pointer-events: none;
-    z-index: 10;
+.st-pts-num {
+    font-size: 24px;
+    font-weight: 900;
+    color: #0f172a;
+    font-family: 'Plus Jakarta Sans', monospace;
 }
 </style>
 
 <div class="tv-leaderboard-stage-root" data-leaderboard data-leaderboard-stage>
-    <!-- Fullscreen 3D WebGL Canvas -->
-    <canvas id="tvLeaderboardCanvas" class="tv-3d-canvas"></canvas>
-
-    <!-- Screen-Space 3D Projected Floating Labels Container -->
-    <div id="team-labels" class="team-labels"></div>
-
-    <!-- Minimal Broadcast Live Chip Overlay -->
-    <div class="tv-broadcast-overlay">
-        <div class="live-chip-3d">
-            <span></span> Live Standings
-        </div>
-    </div>
-
-    <!-- Dynamic Leader Watermark -->
-    <div class="aura-watermark">
-        Champion Aura: <?= e($firstTeamName) ?>
-    </div>
+    <!-- Dynamic Leaderboard Stage rendered by live-display.js -->
 </div>
 
 <script>
-(function init3DStage() {
+(function initLeaderboardStage() {
     function tryMount() {
         if (!window.TV_BOOTSTRAP_DATA && window.TV_BOOT?.initial) {
             window.TV_BOOTSTRAP_DATA = window.TV_BOOT.initial;
         }
-        const canvas = document.querySelector('#tvLeaderboardCanvas');
+        const container = document.querySelector('[data-leaderboard], [data-leaderboard-stage]');
         const teams = window.TV_BOOTSTRAP_DATA?.leaderboard || window.TV_BOOT?.initial?.leaderboard || [];
-        if (canvas && window.TVLeaderboard3D) {
-            window.TVLeaderboard3D.mount(canvas, teams);
-        } else {
+        if (container && typeof renderLeaderboard === 'function' && teams.length > 0) {
+            renderLeaderboard(teams);
+        } else if (!container || !teams.length) {
             setTimeout(tryMount, 50);
         }
     }

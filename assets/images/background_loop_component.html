@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Website Video Background Loop Example</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+            color: #0f172a;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* Seamless Looping Video Background */
+        .website-bg-video {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            object-fit: cover;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        /* Hero Content Container on top of Video Loop */
+        .content-card {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(40px);
+            -webkit-backdrop-filter: blur(40px);
+            border: 1.5px solid rgba(212, 175, 55, 0.3);
+            padding: 60px 72px;
+            border-radius: 36px;
+            max-width: 680px;
+            text-align: center;
+            box-shadow: 0 30px 60px -12px rgba(0,0,0,0.08);
+        }
+
+        .content-card h1 {
+            font-size: 42px;
+            font-weight: 900;
+            color: #0f172a;
+            margin-bottom: 16px;
+            letter-spacing: -0.02em;
+        }
+
+        .content-card p {
+            font-size: 18px;
+            color: #475569;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Video Background Loop -->
+<video class="website-bg-video" autoplay loop muted playsinline poster="gold-chevron-4k.png">
+    <source src="website-background-loop.webm" type="video/webm">
+    <source src="website-background-loop.mp4" type="video/mp4">
+</video>
+
+<main class="content-card">
+    <h1>Subtle Video Background</h1>
+    <p>Seamless, elegant 4K background video loop crafted with subtle ambient sheen reflections and gentle 3D breathing motion.</p>
+</main>
+
+</body>
+</html>
