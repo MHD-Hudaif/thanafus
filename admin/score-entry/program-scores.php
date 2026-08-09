@@ -1055,10 +1055,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $postedScores = (array)($_POST['scores'] ?? []);
 
+        // Load existing saved category scores from DB if present
+        $existingSheetId = 0;
+        $existingSheetStatus = null;
+        $existingCategoryScores = [];
+
+        $stmtSheet = $pdo->prepare("SELECT id, status FROM musabaqa_score_sheets WHERE entry_id = ? LIMIT 1");
+        $stmtSheet->execute([$entryId]);
+        $sheetRow = $stmtSheet->fetch(PDO::FETCH_ASSOC);
+        if ($sheetRow) {
+            $existingSheetId = (int)$sheetRow['id'];
+            $existingSheetStatus = (string)$sheetRow['status'];
+            $stmtCat = $pdo->prepare("SELECT judge_no, category_id, score FROM musabaqa_category_scores WHERE score_sheet_id = ?");
+            $stmtCat->execute([$existingSheetId]);
+            while ($cRow = $stmtCat->fetch(PDO::FETCH_ASSOC)) {
+                $existingCategoryScores[(int)$cRow['judge_no']][(int)$cRow['category_id']] = (float)$cRow['score'];
+            }
+        }
+
         $judgesCount = (int)($program['judges_count'] ?? 2);
         $judgeTotals = [];
+        $judgeEntryComplete = [];
         for ($j = 1; $j <= $judgesCount; $j++) {
             $judgeTotals[$j] = 0.0;
+            $judgeEntryComplete[$j] = true;
         }
 
         $categoryMap = [];
@@ -1066,14 +1086,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $categoryMap[(int)$category['id']] = $category;
         }
 
+        $finalCategoryScores = [];
+
         for ($judgeNo = 1; $judgeNo <= $judgesCount; $judgeNo++) {
+            $isThisJudgeActive = ($isAdminUser || ($activeJudgeNo > 0 && $activeJudgeNo === $judgeNo));
+            $hasCategoryScore = true;
+
             foreach ($categoryMap as $categoryId => $category) {
                 $rawScore = $postedScores[$judgeNo][$categoryId] ?? null;
-                if ($rawScore === null || $rawScore === '' || !is_numeric($rawScore)) {
-                    throw new RuntimeException('Every judge category score is required.');
+
+                if ($rawScore !== null && $rawScore !== '' && is_numeric($rawScore)) {
+                    $score = (float)$rawScore;
+                } elseif (isset($existingCategoryScores[$judgeNo][$categoryId])) {
+                    $score = (float)$existingCategoryScores[$judgeNo][$categoryId];
+                } else {
+                    $score = 0.0;
+                    $hasCategoryScore = false;
                 }
 
-                $score = (float)$rawScore;
                 $max = (float)$category['max_marks'];
                 if ($score < 0) {
                     throw new RuntimeException('Category score cannot be negative.');
@@ -1082,13 +1112,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     throw new RuntimeException($category['name'] . ' cannot exceed ' . number_format($max, 2) . ' marks.');
                 }
 
+                if ($rawScore === null || $rawScore === '' || !is_numeric($rawScore)) {
+                    if (!isset($existingCategoryScores[$judgeNo][$categoryId])) {
+                        $hasCategoryScore = false;
+                    }
+                }
+
+                $finalCategoryScores[$judgeNo][$categoryId] = $score;
                 $judgeTotals[$judgeNo] += $score;
+            }
+
+            if (!$hasCategoryScore) {
+                $judgeEntryComplete[$judgeNo] = false;
             }
         }
 
+        $allJudgesDone = true;
+        foreach ($judgeEntryComplete as $isDone) {
+            if (!$isDone) {
+                $allJudgesDone = false;
+                break;
+            }
+        }
+        $newSheetStatus = $allJudgesDone ? 'completed' : 'draft';
+
         $finalTotal = round(array_sum($judgeTotals), 2);
 
-        admin_db_transaction($pdo, function ($pdo) use ($entryId, $program, $judgeTotals, $judgesCount, $postedScores, $categoryMap, $programId, $activeEventId, $currentUserId, $finalTotal) {
+        admin_db_transaction($pdo, function ($pdo) use ($entryId, $program, $judgeTotals, $judgesCount, $finalCategoryScores, $categoryMap, $programId, $activeEventId, $currentUserId, $finalTotal, $newSheetStatus) {
             $stmt = $pdo->prepare('SELECT * FROM musabaqa_score_sheets WHERE entry_id = ? LIMIT 1');
             $stmt->execute([$entryId]);
             $existingSheet = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
@@ -1107,10 +1157,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         judge1_total = ?,
                         judge2_total = ?,
                         final_total = ?,
-                        status = 'completed'
+                        status = ?
                     WHERE id = ?
                 ");
-                $stmt->execute([$programId, $judge1Total, $judge2Total, $finalTotal, (int)$existingSheet['id']]);
+                $stmt->execute([$programId, $judge1Total, $judge2Total, $finalTotal, $newSheetStatus, (int)$existingSheet['id']]);
                 $scoreSheetId = (int)$existingSheet['id'];
                 $logType = 'score_update';
                 $logText = 'Program score sheet updated.';
@@ -1118,9 +1168,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt = $pdo->prepare("
                     INSERT INTO musabaqa_score_sheets
                         (entry_id, program_id, judge1_total, judge2_total, final_total, status, created_by)
-                    VALUES (?, ?, ?, ?, ?, 'completed', ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
                 ");
-                $stmt->execute([$entryId, $programId, $judge1Total, $judge2Total, $finalTotal, $currentUserId]);
+                $stmt->execute([$entryId, $programId, $judge1Total, $judge2Total, $finalTotal, $newSheetStatus, $currentUserId]);
                 $scoreSheetId = (int)$pdo->lastInsertId();
                 $logType = 'score_creation';
                 $logText = 'Program score sheet created.';
@@ -1133,7 +1183,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ");
             for ($judgeNo = 1; $judgeNo <= $judgesCount; $judgeNo++) {
                 foreach ($categoryMap as $categoryId => $category) {
-                    $insert->execute([$scoreSheetId, $judgeNo, $categoryId, (float)$postedScores[$judgeNo][$categoryId]]);
+                    $catScore = (float)($finalCategoryScores[$judgeNo][$categoryId] ?? 0.0);
+                    $insert->execute([$scoreSheetId, $judgeNo, $categoryId, $catScore]);
                 }
             }
 
@@ -1511,13 +1562,112 @@ const CSRF_TOKEN = <?= json_encode(admin_csrf_value()) ?>;
 const PROGRAM_ID = <?= (int)$programId ?>;
 const SCORES_LOCKED = <?= json_encode($scoresLocked) ?>;
 
-// Dynamic calculations on input
+// --- LocalStorage Draft Caching & Auto-Restoration Engine ---
+const DRAFT_CACHE_KEY = `judge_draft_scores_prog_${PROGRAM_ID}`;
+
+function getDraftCache() {
+    try {
+        return JSON.parse(localStorage.getItem(DRAFT_CACHE_KEY) || '{}');
+    } catch (e) {
+        return {};
+    }
+}
+
+function saveDraftInputToCache(entryId, fieldKey, val) {
+    if (SCORES_LOCKED) return;
+    try {
+        const cache = getDraftCache();
+        if (!cache[entryId]) cache[entryId] = {};
+        cache[entryId][fieldKey] = val;
+        localStorage.setItem(DRAFT_CACHE_KEY, JSON.stringify(cache));
+    } catch (e) {}
+}
+
+function clearEntryDraftFromCache(entryId) {
+    try {
+        const cache = getDraftCache();
+        if (cache[entryId]) {
+            delete cache[entryId];
+            localStorage.setItem(DRAFT_CACHE_KEY, JSON.stringify(cache));
+        }
+    } catch (e) {}
+}
+
+function clearAllProgramDraftCache() {
+    try {
+        localStorage.removeItem(DRAFT_CACHE_KEY);
+    } catch (e) {}
+}
+
+function restoreDraftScoresFromCache() {
+    if (SCORES_LOCKED) return;
+    const cache = getDraftCache();
+    let restoredCount = 0;
+    const touchedEntries = new Set();
+
+    Object.keys(cache).forEach(entryId => {
+        const entryDrafts = cache[entryId];
+        if (!entryDrafts) return;
+
+        const row = document.querySelector(`tr[data-entry-row="${entryId}"]`);
+        if (!row) return;
+
+        Object.keys(entryDrafts).forEach(fieldKey => {
+            const val = entryDrafts[fieldKey];
+            if (val === undefined || val === null) return;
+
+            if (fieldKey === 'rank') {
+                const rankSelect = row.querySelector('.score-grid-rank-select');
+                if (rankSelect && !rankSelect.disabled) {
+                    rankSelect.value = val;
+                    touchedEntries.add(entryId);
+                    restoredCount++;
+                }
+            } else {
+                const parts = fieldKey.match(/^j(\d+)_cat(\d+)$/);
+                if (parts) {
+                    const jNo = parts[1];
+                    const catId = parts[2];
+                    const input = row.querySelector(`.score-grid-input[data-judge="${jNo}"][data-category-id="${catId}"]`);
+                    if (input && !input.disabled) {
+                        input.value = val;
+                        touchedEntries.add(entryId);
+                        restoredCount++;
+                    }
+                }
+            }
+        });
+    });
+
+    if (restoredCount > 0) {
+        touchedEntries.forEach(entryId => {
+            recalculateRowTotal(entryId);
+            saveRowScore(entryId); // Auto-sync restored scores to database
+        });
+    }
+}
+
+// Auto-restore draft scores on page load
+if (document.readyState === 'complete') {
+    restoreDraftScoresFromCache();
+} else {
+    window.addEventListener('load', restoreDraftScoresFromCache);
+}
+
+let scoreSaveDebounceTimer = null;
+
+// Dynamic calculations & caching on input
 document.addEventListener('input', (e) => {
     if (e.target.classList.contains('score-grid-input')) {
         const input = e.target;
         const entryId = input.dataset.entryId;
+        const jNo = input.dataset.judge;
+        const catId = input.dataset.categoryId;
         const maxVal = parseFloat(input.dataset.max);
         const val = parseFloat(input.value || 0);
+
+        // Save typed value to LocalStorage draft cache instantly
+        saveDraftInputToCache(entryId, `j${jNo}_cat${catId}`, input.value);
 
         // Client-side validation check
         if (val < 0 || val > maxVal) {
@@ -1530,6 +1680,12 @@ document.addEventListener('input', (e) => {
 
         // Recalculate row total
         recalculateRowTotal(entryId);
+
+        // Auto-save to server 500ms after typing pauses
+        clearTimeout(scoreSaveDebounceTimer);
+        scoreSaveDebounceTimer = setTimeout(() => {
+            saveRowScore(entryId);
+        }, 500);
     }
 });
 
@@ -1537,6 +1693,10 @@ document.addEventListener('input', (e) => {
 document.addEventListener('change', (e) => {
     if (e.target.classList.contains('score-grid-input') || e.target.classList.contains('score-grid-rank-select')) {
         const entryId = e.target.dataset.entryId;
+        if (e.target.classList.contains('score-grid-rank-select')) {
+            saveDraftInputToCache(entryId, 'rank', e.target.value);
+        }
+        clearTimeout(scoreSaveDebounceTimer);
         saveRowScore(entryId);
     }
 });
@@ -1580,9 +1740,11 @@ async function saveRowScore(entryId) {
         formData.append('placement_rank', rankSelect.value);
     } else {
         row.querySelectorAll('.score-grid-input').forEach(input => {
-            const judge = input.dataset.judge;
-            const catId = input.dataset.categoryId;
-            formData.append(`scores[${judge}][${catId}]`, input.value);
+            if (!input.disabled) {
+                const judge = input.dataset.judge;
+                const catId = input.dataset.categoryId;
+                formData.append(`scores[${judge}][${catId}]`, input.value);
+            }
         });
     }
 
@@ -1599,6 +1761,9 @@ async function saveRowScore(entryId) {
             if (statusEl) {
                 statusEl.innerHTML = '<i class="fa-solid fa-circle-check text-success" title="Saved"></i>';
             }
+            // Clear entry draft cache upon successful server save
+            clearEntryDraftFromCache(entryId);
+
             // Update final total from server response
             const totalEl = document.getElementById(`total-score-${entryId}`);
             if (totalEl && data.final_total) {
@@ -1637,6 +1802,24 @@ function checkProgramCompletion() {
             submitBtn.setAttribute('disabled', 'disabled');
             submitBtn.classList.remove('ready-submit');
         }
+    }
+}
+
+// Send For Approval Handler: Auto-syncs all typed marks before submitting approval
+const sendApprovalBtn = document.getElementById('sendApprovalButton');
+if (sendApprovalBtn) {
+    const sendApprovalForm = sendApprovalBtn.closest('form');
+    if (sendApprovalForm) {
+        sendApprovalForm.addEventListener('submit', async (e) => {
+            const rows = document.querySelectorAll('tr[data-entry-row]');
+            for (const row of rows) {
+                const entryId = row.dataset.entryRow;
+                if (entryId) {
+                    await saveRowScore(entryId);
+                }
+            }
+            clearAllProgramDraftCache();
+        });
     }
 }
 

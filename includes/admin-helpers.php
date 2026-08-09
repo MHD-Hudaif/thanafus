@@ -851,17 +851,13 @@ function admin_render_pagination_html(int $page, int $limit, int $totalItems): s
     $html .= 'Showing ' . $showingStart . ' to ' . $showingEnd . ' of ' . $totalItems . ' entries';
     $html .= '<span style="margin-left: 8px; color: var(--muted); font-size: 13px;">Limit:</span>';
     
-    $html .= '<div class="limit-popover-container" style="position: relative; display: inline-block;">';
-    $html .= '<button type="button" class="btn btn-secondary btn-sm active-limit-trigger" style="padding: 2px 6px; font-size: 12px; height: 24px; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.05); color: #fff; min-width: 28px;">';
-    $html .= '<span>' . ($limit === 5000 ? 'All' : $limit) . '</span>';
-    $html .= '</button>';
-    $html .= '<div class="limit-options-popover">';
+    $html .= '<div class="limit-options-bar" style="display: inline-flex; align-items: center; gap: 4px; margin-left: 4px;">';
     foreach ([10, 15, 30, 5000] as $lOpt) {
-        $btnClass = $limit === $lOpt ? 'btn-primary' : 'btn-secondary';
+        $isSel = ($limit === $lOpt);
+        $btnClass = $isSel ? 'btn-primary' : 'btn-secondary';
         $label = $lOpt === 5000 ? 'All' : $lOpt;
-        $html .= '<button type="button" class="btn ' . $btnClass . ' btn-xs limit-btn" data-limit="' . $lOpt . '" style="padding: 2px 6px; font-size: 11px;">' . $label . '</button>';
+        $html .= '<button type="button" class="btn ' . $btnClass . ' btn-xs limit-btn" data-limit="' . $lOpt . '" style="padding: 2px 8px; font-size: 11px; border-radius: 999px;">' . $label . '</button>';
     }
-    $html .= '</div>';
     $html .= '</div>';
     $html .= '</div>'; // End left side
     

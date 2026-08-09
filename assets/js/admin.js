@@ -476,10 +476,21 @@
        AJAX NAVIGATION CORE
        ===================================================== */
 
-    function isAdminUrl(url) {
+    /* =====================================================
+       AJAX NAVIGATION CORE (Site-Wide Zero Refresh)
+       ===================================================== */
+
+    function isInternalAppUrl(url) {
         try {
             const u = new URL(url, location.origin);
-            return u.pathname.includes('/admin/') || u.pathname.includes('/admin.');
+            if (u.origin !== location.origin) return false;
+            if (u.pathname.startsWith('/uploads/')) return false;
+            if (u.pathname.startsWith('/assets/')) return false;
+            if (u.pathname.includes('/live-display/dashboard.php')) return false;
+            if (u.pathname.includes('/live-display/index.php')) return false;
+            if (u.pathname.includes('/live-display/pages/')) return false;
+            if (u.searchParams.get('action') === 'logout') return false;
+            return true;
         } catch { return false; }
     }
 
@@ -490,10 +501,7 @@
         if (anchor.hasAttribute('download')) return false;
 
         const url = anchor.href;
-        if (url.includes('/live-display/') && !url.includes('/admin/live-display/')) return false;
-        if (url.includes('/auth/')) return false;
-        if (url.includes('/utilities/')) return false;
-        if (!isAdminUrl(url)) return false;
+        if (!isInternalAppUrl(url)) return false;
 
         return true;
     }
@@ -513,7 +521,7 @@
 
             if (navigationId !== navigationSequence) return;
 
-            if (resp.redirected && !isAdminUrl(resp.url)) {
+            if (resp.redirected && !isInternalAppUrl(resp.url)) {
                 location.href = resp.url;
                 return;
             }
@@ -545,8 +553,14 @@
         }
     }
 
+    window.navigateTo = navigateTo;
+
+    function getAppShell(docObj = document) {
+        return docObj.querySelector('.main-content, #mainAppShell, .app-container, .main-wrapper, .site-content, main') || docObj.body;
+    }
+
     function swapContent(html, url, pushState, navigationId = navigationSequence) {
-        const mainContent = document.querySelector('.main-content');
+        const mainContent = getAppShell(document);
         if (!mainContent) {
             location.href = url;
             return;
@@ -556,18 +570,13 @@
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, 'text/html');
 
-        /* Try to find .main-content in the response */
-        let newContent = doc.querySelector('.main-content');
+        /* Try to find app shell container in the response */
+        let newContent = getAppShell(doc);
 
         if (!newContent) {
-            /* If the response IS the main-content (AJAX response without shell) */
             const wrapper = doc.body;
             if (wrapper) {
-                newContent = wrapper.querySelector('.main-content');
-                if (!newContent) {
-                    /* The entire response body might be the content */
-                    newContent = wrapper;
-                }
+                newContent = getAppShell(wrapper) || wrapper;
             }
         }
 
@@ -724,8 +733,8 @@
        ===================================================== */
 
     async function handleFormSubmit(form) {
-        const action = form.action || location.href;
-        if (!isAdminUrl(action)) return false;
+        const action = form.getAttribute('action') || location.href;
+        if (!isInternalAppUrl(action)) return false;
 
         const method = (form.method || 'GET').toUpperCase();
         showLoader();
@@ -796,8 +805,8 @@
             const form = e.target.closest('form');
             if (!form) return;
 
-            const action = form.action || location.href;
-            if (!isAdminUrl(action)) return;
+            const action = form.getAttribute('action') || location.href;
+            if (!isInternalAppUrl(action)) return;
             if (form.hasAttribute('data-ajax-ignore')) return;
 
             e.preventDefault();
@@ -1280,6 +1289,71 @@
 
 
     /* =====================================================
+       ALERT & TOAST MANAGER
+       Auto-dismiss success/info alerts after 3.5s and add close buttons
+       ===================================================== */
+    function dismissAlert(alertEl) {
+        if (!alertEl || alertEl.dataset.dismissing) return;
+        alertEl.dataset.dismissing = 'true';
+        alertEl.style.transition = 'opacity 0.3s ease, transform 0.3s ease, margin 0.3s ease, max-height 0.3s ease, padding 0.3s ease';
+        alertEl.style.opacity = '0';
+        alertEl.style.transform = 'translateY(-6px)';
+        setTimeout(() => {
+            alertEl.style.maxHeight = '0px';
+            alertEl.style.paddingTop = '0px';
+            alertEl.style.paddingBottom = '0px';
+            alertEl.style.marginTop = '0px';
+            alertEl.style.marginBottom = '0px';
+            setTimeout(() => alertEl.remove(), 300);
+        }, 300);
+    }
+
+    function initAlertsAndToasts() {
+        initAlerts();
+    }
+
+    window.showToast = function(message, type = 'info') {
+        let container = document.getElementById('toastContainer');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'toastContainer';
+            container.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 99999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; max-width: 400px; width: calc(100% - 40px);';
+            document.body.appendChild(container);
+        }
+
+        const toast = document.createElement('div');
+        const isSuccess = type === 'success';
+        const isError = type === 'error' || type === 'danger';
+        const bgColor = isSuccess ? 'rgba(16, 185, 129, 0.92)' : (isError ? 'rgba(239, 68, 68, 0.92)' : 'rgba(30, 41, 59, 0.92)');
+        const borderColor = isSuccess ? '#34d399' : (isError ? '#f87171' : '#60a5fa');
+        const icon = isSuccess ? 'fa-circle-check' : (isError ? 'fa-triangle-exclamation' : 'fa-circle-info');
+
+        toast.className = 'toast-notification';
+        toast.style.cssText = `pointer-events: auto; background: ${bgColor}; color: #fff; border: 1px solid ${borderColor}; padding: 12px 18px; border-radius: 10px; box-shadow: 0 10px 25px rgba(0,0,0,0.4); backdrop-filter: blur(10px); display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 13px; font-weight: 600; opacity: 0; transform: translateY(-10px); transition: all 0.3s ease;`;
+
+        toast.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <i class="fa-solid ${icon}" style="font-size: 16px;"></i>
+                <span>${escapeHtml(message)}</span>
+            </div>
+            <button type="button" style="background: none; border: none; color: #fff; font-size: 16px; opacity: 0.8; cursor: pointer; padding: 0 4px;" onclick="this.parentElement.remove()">&times;</button>
+        `;
+
+        container.appendChild(toast);
+
+        requestAnimationFrame(() => {
+            toast.style.opacity = '1';
+            toast.style.transform = 'translateY(0)';
+        });
+
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateY(-10px)';
+            setTimeout(() => toast.remove(), 300);
+        }, 3500);
+    };
+
+    /* =====================================================
        HTMX INTEGRATION FOR SPA NAVIGATION
        ===================================================== */
     if (typeof htmx !== 'undefined') {
@@ -1394,71 +1468,6 @@
                 mainContent.scrollTo({ top: 0, behavior: 'smooth' });
             }
         });
-
-    /* =====================================================
-       ALERT & TOAST MANAGER
-       Auto-dismiss success/info alerts after 3.5s and add close buttons
-       ===================================================== */
-    function dismissAlert(alertEl) {
-        if (!alertEl || alertEl.dataset.dismissing) return;
-        alertEl.dataset.dismissing = 'true';
-        alertEl.style.transition = 'opacity 0.3s ease, transform 0.3s ease, margin 0.3s ease, max-height 0.3s ease, padding 0.3s ease';
-        alertEl.style.opacity = '0';
-        alertEl.style.transform = 'translateY(-6px)';
-        setTimeout(() => {
-            alertEl.style.maxHeight = '0px';
-            alertEl.style.paddingTop = '0px';
-            alertEl.style.paddingBottom = '0px';
-            alertEl.style.marginTop = '0px';
-            alertEl.style.marginBottom = '0px';
-            setTimeout(() => alertEl.remove(), 300);
-        }, 300);
-    }
-
-    function initAlertsAndToasts() {
-        initAlerts();
-    }
-
-    window.showToast = function(message, type = 'info') {
-        let container = document.getElementById('toastContainer');
-        if (!container) {
-            container = document.createElement('div');
-            container.id = 'toastContainer';
-            container.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 99999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; max-width: 400px; width: calc(100% - 40px);';
-            document.body.appendChild(container);
-        }
-
-        const toast = document.createElement('div');
-        const isSuccess = type === 'success';
-        const isError = type === 'error' || type === 'danger';
-        const bgColor = isSuccess ? 'rgba(16, 185, 129, 0.92)' : (isError ? 'rgba(239, 68, 68, 0.92)' : 'rgba(30, 41, 59, 0.92)');
-        const borderColor = isSuccess ? '#34d399' : (isError ? '#f87171' : '#60a5fa');
-        const icon = isSuccess ? 'fa-circle-check' : (isError ? 'fa-triangle-exclamation' : 'fa-circle-info');
-
-        toast.className = 'toast-notification';
-        toast.style.cssText = `pointer-events: auto; background: ${bgColor}; color: #fff; border: 1px solid ${borderColor}; padding: 12px 18px; border-radius: 10px; box-shadow: 0 10px 25px rgba(0,0,0,0.4); backdrop-filter: blur(10px); display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 13px; font-weight: 600; opacity: 0; transform: translateY(-10px); transition: all 0.3s ease;`;
-
-        toast.innerHTML = `
-            <div style="display: flex; align-items: center; gap: 10px;">
-                <i class="fa-solid ${icon}" style="font-size: 16px;"></i>
-                <span>${escapeHtml(message)}</span>
-            </div>
-            <button type="button" style="background: none; border: none; color: #fff; font-size: 16px; opacity: 0.8; cursor: pointer; padding: 0 4px;" onclick="this.parentElement.remove()">&times;</button>
-        `;
-
-        container.appendChild(toast);
-
-        requestAnimationFrame(() => {
-            toast.style.opacity = '1';
-            toast.style.transform = 'translateY(0)';
-        });
-
-        setTimeout(() => {
-            toast.style.opacity = '0';
-            toast.style.transform = 'translateY(-10px)';
-            setTimeout(() => toast.remove(), 300);
-        }, 3500);
-    };
 
         // Handle page titles dynamically if a title element is returned
         document.addEventListener('htmx:afterOnLoad', (evt) => {

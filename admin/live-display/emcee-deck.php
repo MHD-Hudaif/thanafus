@@ -288,9 +288,15 @@ body {
 .main-content {
     background: radial-gradient(circle at 50% 0%, #0d261b 0%, #060c09 70%) !important;
     min-height: 100vh;
-    padding: 16px 24px 32px 24px;
+    padding: 20px 24px 32px 24px !important;
+    margin-left: calc(var(--sidebar-width-expanded, 280px) + (var(--sidebar-margin, 16px) * 2)) !important;
+    transition: margin-left 0.22s ease !important;
     color: #e5e7eb;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+body.layout-sidebar-enabled.sidebar-collapsed .main-content {
+    margin-left: calc(var(--sidebar-width-collapsed, 80px) + (var(--sidebar-margin, 16px) * 2)) !important;
 }
 
 /* Master Top Header Bar */
@@ -812,28 +818,36 @@ body {
 /* Broadcast Switcher Grid */
 .deck-switcher-grid {
     display: grid;
-    grid-template-columns: 2fr repeat(4, 1fr);
+    grid-template-columns: 1.8fr repeat(4, 1fr);
     gap: 12px;
+    align-items: stretch;
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 1100px) {
     .deck-switcher-grid {
         grid-template-columns: repeat(3, 1fr);
+    }
+    .deck-btn-golive {
+        grid-column: span 3 !important;
+        grid-row: span 1 !important;
+        min-height: 70px !important;
     }
 }
 
 .deck-btn-golive {
     grid-column: span 1;
     grid-row: span 2;
+    height: 100%;
+    min-height: 110px;
     background: linear-gradient(135deg, #059669 0%, #10b981 100%);
     border: 2px solid var(--deck-neon-green);
     border-radius: 16px;
-    padding: 20px;
+    padding: 16px 12px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 10px;
+    gap: 8px;
     cursor: pointer;
     transition: all 0.25s ease;
     box-shadow: 0 0 25px rgba(16, 185, 129, 0.4);
@@ -1058,6 +1072,7 @@ body {
 }
 </style>
 
+<div class="main-content">
 <!-- Top Master Deck Navigation Header Bar -->
 <div class="deck-top-bar">
     <div class="deck-brand-area">
@@ -1070,21 +1085,21 @@ body {
 
     <div class="deck-center-heading">
         <div class="deck-title-main">
-            <i data-lucide="activity"></i> EMCEE STAGE CONTROL DECK
+            <i data-lucide="tv"></i> STAGE LIVE MONITOR
         </div>
-        <div class="deck-title-sub">Master Live Stage Controller</div>
+        <div class="deck-title-sub">Real-Time Live Stage View</div>
     </div>
 
     <div class="deck-top-widgets">
         <div class="deck-pill-badge">
             <span class="pulse-dot-green"></span>
-            LIVE EVENT • <?= e($eventStartDate) ?>
+            LIVE MONITORING • <?= e($eventStartDate) ?>
         </div>
         <div class="deck-clock-box" id="deckLiveClock">
             --:--:-- AM
         </div>
         <div class="deck-status-online">
-            <i data-lucide="wifi"></i> All Systems Online
+            <i data-lucide="wifi"></i> Auto Sync Active
         </div>
     </div>
 </div>
@@ -1092,7 +1107,7 @@ body {
 <!-- Master 3-Column Deck Layout -->
 <div class="deck-main-grid">
     
-    <!-- LEFT COLUMN: Event Overview & Health -->
+    <!-- LEFT COLUMN: Event Overview & Program Progress -->
     <div class="deck-left-col">
         <!-- Event Overview Panel -->
         <div class="deck-panel">
@@ -1131,80 +1146,37 @@ body {
             <div class="deck-meta-list">
                 <div class="deck-meta-item">
                     <span class="deck-meta-label">Current Program</span>
-                    <span class="deck-meta-val" style="color: var(--deck-neon-green); font-size: 15px;">
+                    <span class="deck-meta-val" id="deckCurrentProgTitle" style="color: var(--deck-neon-green); font-size: 15px;">
                         <?= e($activeProgram['title'] ?? $activeProgram['name'] ?? 'QURAN RECITATION') ?>
                     </span>
-                    <span style="font-size: 11px; color: var(--deck-text-muted);">
+                    <span id="deckCurrentProgType" style="font-size: 11px; color: var(--deck-text-muted);">
                         <?= ($activeProgram['program_type'] ?? '') === 'group' ? 'Group Performance' : 'Individual Performance' ?>
                     </span>
                 </div>
                 <div class="deck-meta-item" style="margin-top: 6px;">
                     <span class="deck-meta-label">Entry No.</span>
-                    <span class="deck-meta-val" style="font-size: 18px; font-family: monospace;">
+                    <span class="deck-meta-val" id="deckCurrentEntryOrder" style="font-size: 18px; font-family: monospace;">
                         <?= sprintf('%02d', $currProgCurrentOrder) ?> / <?= sprintf('%02d', $currProgTotalEntries) ?>
                     </span>
                 </div>
             </div>
             <div class="deck-progress-wrapper">
                 <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--deck-text-muted); font-weight: 700;">
-                    <span>Total: <?= $currProgTotalEntries ?></span>
-                    <span>Completed: <?= $currProgCompleted ?></span>
-                    <span>Remaining: <?= $currProgRemaining ?></span>
+                    <span id="deckProgTotalText">Total: <?= $currProgTotalEntries ?></span>
+                    <span id="deckProgCompText">Completed: <?= $currProgCompleted ?></span>
+                    <span id="deckProgRemText">Remaining: <?= $currProgRemaining ?></span>
                 </div>
                 <div class="deck-progress-bar-bg">
-                    <div class="deck-progress-bar-fill" style="width: <?= $currProgPercent ?>%;"></div>
+                    <div class="deck-progress-bar-fill" id="deckProgressBarFill" style="width: <?= $currProgPercent ?>%;"></div>
                 </div>
-                <div style="text-align: right; font-size: 10px; color: var(--deck-accent-green); font-weight: 800; margin-top: 4px;">
+                <div id="deckProgPercentText" style="text-align: right; font-size: 10px; color: var(--deck-accent-green); font-weight: 800; margin-top: 4px;">
                     <?= $currProgPercent ?>%
                 </div>
             </div>
         </div>
-
-        <!-- Event Health Panel -->
-        <div class="deck-panel">
-            <div class="deck-panel-header">
-                <span><i data-lucide="shield-check"></i> Event Health</span>
-            </div>
-            <div class="deck-health-row">
-                <div class="deck-health-name"><i data-lucide="tv" style="width:14px;"></i> TV Display</div>
-                <div class="deck-health-status">Online</div>
-            </div>
-            <div class="deck-health-row">
-                <div class="deck-health-name"><i data-lucide="gavel" style="width:14px;"></i> Judges Portal</div>
-                <div class="deck-health-status">Online</div>
-            </div>
-            <div class="deck-health-row">
-                <div class="deck-health-name"><i data-lucide="file-spreadsheet" style="width:14px;"></i> Score Sheet</div>
-                <div class="deck-health-status">Online</div>
-            </div>
-            <div class="deck-health-row">
-                <div class="deck-health-name"><i data-lucide="database" style="width:14px;"></i> Database</div>
-                <div class="deck-health-status">Online</div>
-            </div>
-            <div class="deck-health-row">
-                <div class="deck-health-name"><i data-lucide="refresh-cw" style="width:14px;"></i> Auto Sync</div>
-                <div class="deck-health-status">Online</div>
-            </div>
-            <div class="deck-health-row">
-                <div class="deck-health-name"><i data-lucide="globe" style="width:14px;"></i> Internet</div>
-                <div class="deck-health-status">Online</div>
-            </div>
-            <div class="deck-health-row">
-                <div class="deck-health-name"><i data-lucide="monitor" style="width:14px;"></i> Projector</div>
-                <div class="deck-health-status">Online</div>
-            </div>
-
-            <!-- Voice Announcer Mode Toggle -->
-            <div class="deck-announcer-toggle" id="btnToggleVoice">
-                <div style="display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 800; color: #ffffff;">
-                    <i data-lucide="volume-2" style="color: var(--deck-neon-green);"></i> Voice Announcer Mode
-                </div>
-                <span class="deck-kbd-hint">Press SPACE</span>
-            </div>
-        </div>
     </div>
 
-    <!-- CENTER COLUMN: Stage Visual Viewport & Controls -->
+    <!-- CENTER COLUMN: Stage Visual Viewport -->
     <div class="deck-center-col">
         <!-- Master Stage Viewport Card -->
         <div class="deck-stage-hero">
@@ -1254,7 +1226,7 @@ body {
         <div class="deck-panel" style="margin-top: 20px;">
             <div class="deck-panel-header">
                 <span><i data-lucide="git-commit"></i> Program Timeline</span>
-                <span style="font-size: 10px; color: var(--deck-text-muted);">Click node to jump</span>
+                <span style="font-size: 10px; color: var(--deck-text-muted);">Real-Time Progress</span>
             </div>
             <div class="deck-timeline-bar" id="timelineBar">
                 <div class="deck-timeline-line"></div>
@@ -1274,147 +1246,74 @@ body {
                 <?php endfor; ?>
             </div>
         </div>
-
-        <!-- Broadcast Switcher Action Buttons Grid -->
-        <div class="deck-panel">
-            <div class="deck-panel-header">
-                <span><i data-lucide="radio"></i> Broadcast Switcher</span>
-            </div>
-            <div class="deck-switcher-grid">
-                <!-- Big GO LIVE Button -->
-                <button class="deck-btn-golive" id="btnGoLive">
-                    <i data-lucide="zap" style="width: 28px; height: 28px; color: #ffffff;"></i>
-                    <span style="font-size: 15px; font-weight: 900; letter-spacing: 0.08em; text-transform: uppercase;">GO LIVE</span>
-                    <span style="font-size: 11px; opacity: 0.9;">Broadcast to Stage</span>
-                </button>
-
-                <button class="deck-btn-action" onclick="triggerNextContestant()">
-                    <i data-lucide="user-plus"></i> Next Contestant
-                </button>
-                <button class="deck-btn-action" onclick="triggerMode('intro', 'intro')">
-                    <i data-lucide="tv"></i> Program Intro
-                </button>
-                <button class="deck-btn-action" onclick="triggerMode('leaderboard', 'leaderboard')">
-                    <i data-lucide="trophy"></i> Leaderboard
-                </button>
-                <button class="deck-btn-action" onclick="triggerMode('break', 'schedule')">
-                    <i data-lucide="coffee"></i> Break Screen
-                </button>
-                <button class="deck-btn-action" onclick="triggerMode('sponsor', 'intro')">
-                    <i data-lucide="handshake"></i> Sponsor Slide
-                </button>
-                <button class="deck-btn-action" onclick="triggerMode('results', 'results')">
-                    <i data-lucide="award"></i> Results
-                </button>
-                <button class="deck-btn-action" onclick="triggerMode('blank', 'blank')">
-                    <i data-lucide="power"></i> Emergency Blank
-                </button>
-                <button class="deck-btn-action" onclick="triggerMode('hold', 'hold')">
-                    <i data-lucide="pause-circle"></i> Hold / Pause
-                </button>
-                <button class="deck-btn-action" onclick="triggerMode('black', 'black')">
-                    <i data-lucide="monitor-off"></i> Black Screen
-                </button>
-            </div>
-        </div>
     </div>
 
     <!-- RIGHT COLUMN: Stage Queue & System Connections -->
     <div class="deck-right-col">
         <!-- Stage Queue Panel -->
-        <div class="deck-panel">
+        <div class="deck-panel" id="stageQueuePanel">
             <div class="deck-panel-header">
                 <span><i data-lucide="list-ordered"></i> Stage Queue</span>
             </div>
-            
-            <!-- LIVE NOW -->
-            <div style="font-size: 10px; font-weight: 800; color: var(--deck-neon-green); margin-bottom: 6px; letter-spacing: 0.08em;">
-                • LIVE NOW
-            </div>
-            <div class="deck-queue-card is-live">
-                <div class="deck-queue-chest"><?= e($liveItem['chest_number']) ?></div>
-                <div class="deck-queue-info">
-                    <div class="deck-queue-name"><?= e($liveItem['performer_name']) ?></div>
-                    <div class="deck-queue-sub"><?= e($liveItem['team_name']) ?></div>
+            <div id="stageQueuePanelContent">
+                <!-- LIVE NOW -->
+                <div style="font-size: 10px; font-weight: 800; color: var(--deck-neon-green); margin-bottom: 6px; letter-spacing: 0.08em;">
+                    • LIVE NOW
                 </div>
-                <i data-lucide="mic" style="color: var(--deck-neon-green); width:16px;"></i>
-            </div>
-
-            <!-- NEXT -->
-            <?php if ($nextItem): ?>
-            <div style="font-size: 10px; font-weight: 800; color: var(--deck-text-muted); margin: 10px 0 6px 0; letter-spacing: 0.08em;">
-                • NEXT
-            </div>
-            <div class="deck-queue-card" onclick="broadcastSpecific(<?= (int)$nextItem['program_id'] ?>, <?= (int)$nextItem['entry_id'] ?>)" style="cursor:pointer;">
-                <div class="deck-queue-chest"><?= e($nextItem['chest_number']) ?></div>
-                <div class="deck-queue-info">
-                    <div class="deck-queue-name"><?= e($nextItem['performer_name']) ?></div>
-                    <div class="deck-queue-sub"><?= e($nextItem['team_name']) ?></div>
+                <div class="deck-queue-card is-live">
+                    <div class="deck-queue-chest"><?= e($liveItem['chest_number']) ?></div>
+                    <div class="deck-queue-info">
+                        <div class="deck-queue-name"><?= e($liveItem['performer_name']) ?></div>
+                        <div class="deck-queue-sub"><?= e($liveItem['team_name']) ?></div>
+                    </div>
+                    <i data-lucide="mic" style="color: var(--deck-neon-green); width:16px;"></i>
                 </div>
-            </div>
-            <?php endif; ?>
 
-            <!-- THEN -->
-            <?php if ($thenItem): ?>
-            <div style="font-size: 10px; font-weight: 800; color: var(--deck-text-muted); margin: 10px 0 6px 0; letter-spacing: 0.08em;">
-                • THEN
-            </div>
-            <div class="deck-queue-card" onclick="broadcastSpecific(<?= (int)$thenItem['program_id'] ?>, <?= (int)$thenItem['entry_id'] ?>)" style="cursor:pointer;">
-                <div class="deck-queue-chest"><?= e($thenItem['chest_number']) ?></div>
-                <div class="deck-queue-info">
-                    <div class="deck-queue-name"><?= e($thenItem['performer_name']) ?></div>
-                    <div class="deck-queue-sub"><?= e($thenItem['team_name']) ?></div>
+                <!-- NEXT -->
+                <?php if ($nextItem): ?>
+                <div style="font-size: 10px; font-weight: 800; color: var(--deck-text-muted); margin: 10px 0 6px 0; letter-spacing: 0.08em;">
+                    • NEXT
                 </div>
-            </div>
-            <?php endif; ?>
-
-            <!-- AFTER -->
-            <?php if ($afterItem): ?>
-            <div style="font-size: 10px; font-weight: 800; color: var(--deck-text-muted); margin: 10px 0 6px 0; letter-spacing: 0.08em;">
-                • AFTER
-            </div>
-            <div class="deck-queue-card" onclick="broadcastSpecific(<?= (int)$afterItem['program_id'] ?>, <?= (int)$afterItem['entry_id'] ?>)" style="cursor:pointer;">
-                <div class="deck-queue-chest"><?= e($afterItem['chest_number']) ?></div>
-                <div class="deck-queue-info">
-                    <div class="deck-queue-name"><?= e($afterItem['performer_name']) ?></div>
-                    <div class="deck-queue-sub"><?= e($afterItem['team_name']) ?></div>
+                <div class="deck-queue-card" onclick="broadcastSpecific(<?= (int)$nextItem['program_id'] ?>, <?= (int)$nextItem['entry_id'] ?>)" style="cursor:pointer;">
+                    <div class="deck-queue-chest"><?= e($nextItem['chest_number']) ?></div>
+                    <div class="deck-queue-info">
+                        <div class="deck-queue-name"><?= e($nextItem['performer_name']) ?></div>
+                        <div class="deck-queue-sub"><?= e($nextItem['team_name']) ?></div>
+                    </div>
                 </div>
-            </div>
-            <?php endif; ?>
+                <?php endif; ?>
 
-            <button class="btn btn-secondary btn-sm w-100 mt-3" style="background: rgba(16,30,24,0.8); border: 1px solid var(--deck-border); color:#ffffff; font-weight:700;" onclick="openFullQueueModal()">
-                <i data-lucide="list"></i> View Full Queue
-            </button>
-        </div>
+                <!-- THEN -->
+                <?php if ($thenItem): ?>
+                <div style="font-size: 10px; font-weight: 800; color: var(--deck-text-muted); margin: 10px 0 6px 0; letter-spacing: 0.08em;">
+                    • THEN
+                </div>
+                <div class="deck-queue-card" onclick="broadcastSpecific(<?= (int)$thenItem['program_id'] ?>, <?= (int)$thenItem['entry_id'] ?>)" style="cursor:pointer;">
+                    <div class="deck-queue-chest"><?= e($thenItem['chest_number']) ?></div>
+                    <div class="deck-queue-info">
+                        <div class="deck-queue-name"><?= e($thenItem['performer_name']) ?></div>
+                        <div class="deck-queue-sub"><?= e($thenItem['team_name']) ?></div>
+                    </div>
+                </div>
+                <?php endif; ?>
 
-        <!-- Connections Status Panel -->
-        <div class="deck-panel">
-            <div class="deck-panel-header">
-                <span><i data-lucide="plug-zap"></i> Connections</span>
-            </div>
-            <div class="deck-health-row">
-                <div class="deck-health-name"><i data-lucide="tv" style="width:14px;"></i> TV Display</div>
-                <div class="deck-health-status">Connected</div>
-            </div>
-            <div class="deck-health-row">
-                <div class="deck-health-name"><i data-lucide="circle-dot" style="width:14px; color:#10b981;"></i> Judge 1</div>
-                <div class="deck-health-status">Connected</div>
-            </div>
-            <div class="deck-health-row">
-                <div class="deck-health-name"><i data-lucide="circle-dot" style="width:14px; color:#10b981;"></i> Judge 2</div>
-                <div class="deck-health-status">Connected</div>
-            </div>
-            <div class="deck-health-row">
-                <div class="deck-health-name"><i data-lucide="circle-dot" style="width:14px; color:#ef4444;"></i> Judge 3</div>
-                <div class="deck-health-status is-off">Disconnected</div>
-            </div>
-            <div class="deck-health-row">
-                <div class="deck-health-name"><i data-lucide="layout" style="width:14px;"></i> Score Desk</div>
-                <div class="deck-health-status">Connected</div>
-            </div>
-            <div class="deck-health-row">
-                <div class="deck-health-name"><i data-lucide="tablet" style="width:14px;"></i> Emcee Tablet</div>
-                <div class="deck-health-status">Connected</div>
+                <!-- AFTER -->
+                <?php if ($afterItem): ?>
+                <div style="font-size: 10px; font-weight: 800; color: var(--deck-text-muted); margin: 10px 0 6px 0; letter-spacing: 0.08em;">
+                    • AFTER
+                </div>
+                <div class="deck-queue-card" onclick="broadcastSpecific(<?= (int)$afterItem['program_id'] ?>, <?= (int)$afterItem['entry_id'] ?>)" style="cursor:pointer;">
+                    <div class="deck-queue-chest"><?= e($afterItem['chest_number']) ?></div>
+                    <div class="deck-queue-info">
+                        <div class="deck-queue-name"><?= e($afterItem['performer_name']) ?></div>
+                        <div class="deck-queue-sub"><?= e($afterItem['team_name']) ?></div>
+                    </div>
+                </div>
+                <?php endif; ?>
+
+                <button class="btn btn-secondary btn-sm w-100 mt-3" style="background: rgba(16,30,24,0.8); border: 1px solid var(--deck-border); color:#ffffff; font-weight:700;" onclick="openFullQueueModal()">
+                    <i data-lucide="list"></i> View Full Queue
+                </button>
             </div>
         </div>
     </div>
@@ -1430,7 +1329,7 @@ body {
         
         <div class="deck-strip-scroll" id="slideStripScroll">
             <?php foreach ($stageQueue as $qIdx => $sq): ?>
-                <div class="deck-strip-card <?= $sq['is_live'] ? 'active' : '' ?>" onclick="broadcastSpecific(<?= (int)$sq['program_id'] ?>, <?= (int)$sq['entry_id'] ?>)">
+                <div class="deck-strip-card <?= $sq['is_live'] ? 'active' : '' ?>">
                     <?php if ($sq['is_live']): ?>
                         <span style="position: absolute; top:4px; right:4px; background:#ef4444; color:#fff; font-size:9px; font-weight:900; padding:2px 6px; border-radius:4px;">LIVE</span>
                     <?php endif; ?>
@@ -1447,34 +1346,15 @@ body {
     </div>
 </div>
 
-<!-- BOTTOM FOOTER BAR: KEYBOARD SHORTCUTS & EMERGENCY CONTROLS -->
+<!-- BOTTOM FOOTER BAR: LIVE SYNC & STATUS -->
 <div class="deck-bottom-bar">
     <div style="display: flex; align-items: center; gap: 16px; font-size: 11.5px; font-weight: 700; color: var(--deck-text-muted);">
-        <span><i data-lucide="keyboard"></i> KEYBOARD SHORTCUTS</span>
-        <span><span class="deck-kbd-hint">←</span> Previous</span>
-        <span><span class="deck-kbd-hint">→</span> Next</span>
-        <span><span class="deck-kbd-hint">SPACE</span> Voice Mode</span>
-        <span><span class="deck-kbd-hint">B</span> Black Screen</span>
-        <span><span class="deck-kbd-hint">H</span> Hold</span>
+        <span><i data-lucide="tv"></i> STAGE LIVE MONITORING</span>
+        <span style="color: var(--deck-accent-green);"><i data-lucide="refresh-cw" style="width:12px;"></i> Auto-Sync Active</span>
     </div>
 
-    <div class="deck-emergency-controls">
-        <span style="font-size: 11px; font-weight: 900; color: #f87171; letter-spacing: 0.08em; margin-right: 6px;">EMERGENCY CONTROLS</span>
-        <button class="btn-emergency" onclick="triggerMode('black', 'black')">
-            <i data-lucide="monitor-off" style="width:12px;"></i> Black Screen
-        </button>
-        <button class="btn-emergency" onclick="triggerMode('hold', 'hold')">
-            <i data-lucide="pause" style="width:12px;"></i> Hold
-        </button>
-        <button class="btn-emergency" onclick="triggerMode('pause', 'pause')">
-            <i data-lucide="pause-circle" style="width:12px;"></i> Pause
-        </button>
-        <button class="btn-emergency" onclick="triggerMode('break', 'schedule')">
-            <i data-lucide="coffee" style="width:12px;"></i> Break
-        </button>
-        <button class="btn-emergency" onclick="resetLiveStage()">
-            <i data-lucide="rotate-ccw" style="width:12px;"></i> Reset Live
-        </button>
+    <div style="font-size: 11.5px; font-weight: 700; color: var(--deck-text-muted);">
+        <span>Displaying Live Contestant & Stage Progress</span>
     </div>
 </div>
 
@@ -1493,16 +1373,16 @@ body {
                         <div class="deck-queue-name"><?= e($item['performer_name']) ?></div>
                         <div class="deck-queue-sub"><?= e($item['title']) ?> (<?= e($item['team_name']) ?>)</div>
                     </div>
-                    <button class="btn btn-sm <?= $item['is_live'] ? 'btn-success' : 'btn-primary' ?>" onclick="broadcastSpecific(<?= (int)$item['program_id'] ?>, <?= (int)$item['entry_id'] ?>)">
-                        <?= $item['is_live'] ? 'ON STAGE' : 'Set Live' ?>
-                    </button>
+                    <span class="badge <?= $item['is_live'] ? 'badge-success' : 'badge-neutral' ?>" style="font-size: 11px; padding: 4px 10px;">
+                        <?= $item['is_live'] ? 'ON STAGE' : 'QUEUED' ?>
+                    </span>
                 </div>
             <?php endforeach; ?>
         </div>
     </div>
 </div>
 
-<!-- Master Deck JavaScript Logic -->
+<!-- Master Deck Zero-Refresh Real-Time Engine -->
 <script>
 let currentLiveIndex = <?= (int)$currentLiveIndex ?>;
 const stageQueueData = <?= json_encode($stageQueue, JSON_UNESCAPED_UNICODE) ?>;
@@ -1510,7 +1390,58 @@ let stageElapsedSeconds = <?= (int)$stageElapsed ?>;
 let stageTimerInterval = null;
 let voiceAnnouncerEnabled = false;
 
-// Real-Time Clock Handler
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+// Sleek Floating Toast Notification
+function showToast(msg, type = 'success') {
+    let container = document.getElementById('deckToastContainer');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'deckToastContainer';
+        container.style.cssText = 'position:fixed; bottom:24px; right:24px; z-index:99999; display:flex; flex-direction:column; gap:10px; pointer-events:none;';
+        document.body.appendChild(container);
+    }
+    const toast = document.createElement('div');
+    const isError = (type === 'error');
+    toast.style.cssText = `
+        background: ${isError ? 'rgba(220, 38, 38, 0.95)' : 'rgba(16, 185, 129, 0.95)'};
+        color: #ffffff;
+        padding: 12px 20px;
+        border-radius: 12px;
+        font-size: 13px;
+        font-weight: 800;
+        letter-spacing: 0.03em;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(10px);
+        transform: translateY(20px);
+        opacity: 0;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        pointer-events: auto;
+    `;
+    toast.textContent = msg;
+    container.appendChild(toast);
+
+    requestAnimationFrame(() => {
+        toast.style.transform = 'translateY(0)';
+        toast.style.opacity = '1';
+    });
+
+    setTimeout(() => {
+        toast.style.transform = 'translateY(-10px)';
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 300);
+    }, 2800);
+}
+
+// Real-Time Digital Clock Handler
 function updateLiveClock() {
     const now = new Date();
     const clockEl = document.getElementById('deckLiveClock');
@@ -1536,33 +1467,173 @@ function startStageTimer() {
 }
 startStageTimer();
 
-// AJAX Stage Broadcast Handler
+// Zero-Refresh Dynamic Deck UI Updater
+function updateDeckUI(pId, eId) {
+    const newIdx = stageQueueData.findIndex(item => item.program_id == pId && item.entry_id == eId);
+    if (newIdx < 0) return;
+
+    currentLiveIndex = newIdx;
+    const liveItem = stageQueueData[newIdx];
+    lastPolledProgId = pId;
+    lastPolledEntryId = eId;
+
+    // 1. Center Hero Box Text
+    const chestDisplay = document.getElementById('liveChestDisplay');
+    const nameDisplay = document.getElementById('liveNameDisplay');
+    const teamDisplay = document.getElementById('liveTeamDisplay');
+    if (chestDisplay) chestDisplay.textContent = liveItem.chest_number;
+    if (nameDisplay) nameDisplay.textContent = liveItem.performer_name;
+    if (teamDisplay) teamDisplay.textContent = liveItem.team_name;
+
+    // 2. Stage Timer Reset
+    stageElapsedSeconds = 0;
+    const timerEl = document.getElementById('stageTimerDisplay');
+    if (timerEl) timerEl.textContent = '00:00';
+
+    // 3. Stage Queue Side Panel (LIVE NOW, NEXT, THEN, AFTER)
+    const nextItem = stageQueueData[newIdx + 1] || null;
+    const thenItem = stageQueueData[newIdx + 2] || null;
+    const afterItem = stageQueueData[newIdx + 3] || null;
+
+    const queueContent = document.getElementById('stageQueuePanelContent');
+    if (queueContent) {
+        let html = `
+            <div style="font-size: 10px; font-weight: 800; color: var(--deck-neon-green); margin-bottom: 6px; letter-spacing: 0.08em;">
+                • LIVE NOW
+            </div>
+            <div class="deck-queue-card is-live">
+                <div class="deck-queue-chest">${escapeHtml(liveItem.chest_number)}</div>
+                <div class="deck-queue-info">
+                    <div class="deck-queue-name">${escapeHtml(liveItem.performer_name)}</div>
+                    <div class="deck-queue-sub">${escapeHtml(liveItem.team_name)}</div>
+                </div>
+                <i data-lucide="mic" style="color: var(--deck-neon-green); width:16px;"></i>
+            </div>
+        `;
+
+        if (nextItem) {
+            html += `
+                <div style="font-size: 10px; font-weight: 800; color: var(--deck-text-muted); margin: 10px 0 6px 0; letter-spacing: 0.08em;">
+                    • NEXT
+                </div>
+                <div class="deck-queue-card" onclick="broadcastSpecific(${nextItem.program_id}, ${nextItem.entry_id})" style="cursor:pointer;">
+                    <div class="deck-queue-chest">${escapeHtml(nextItem.chest_number)}</div>
+                    <div class="deck-queue-info">
+                        <div class="deck-queue-name">${escapeHtml(nextItem.performer_name)}</div>
+                        <div class="deck-queue-sub">${escapeHtml(nextItem.team_name)}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        if (thenItem) {
+            html += `
+                <div style="font-size: 10px; font-weight: 800; color: var(--deck-text-muted); margin: 10px 0 6px 0; letter-spacing: 0.08em;">
+                    • THEN
+                </div>
+                <div class="deck-queue-card" onclick="broadcastSpecific(${thenItem.program_id}, ${thenItem.entry_id})" style="cursor:pointer;">
+                    <div class="deck-queue-chest">${escapeHtml(thenItem.chest_number)}</div>
+                    <div class="deck-queue-info">
+                        <div class="deck-queue-name">${escapeHtml(thenItem.performer_name)}</div>
+                        <div class="deck-queue-sub">${escapeHtml(thenItem.team_name)}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        if (afterItem) {
+            html += `
+                <div style="font-size: 10px; font-weight: 800; color: var(--deck-text-muted); margin: 10px 0 6px 0; letter-spacing: 0.08em;">
+                    • AFTER
+                </div>
+                <div class="deck-queue-card" onclick="broadcastSpecific(${afterItem.program_id}, ${afterItem.entry_id})" style="cursor:pointer;">
+                    <div class="deck-queue-chest">${escapeHtml(afterItem.chest_number)}</div>
+                    <div class="deck-queue-info">
+                        <div class="deck-queue-name">${escapeHtml(afterItem.performer_name)}</div>
+                        <div class="deck-queue-sub">${escapeHtml(afterItem.team_name)}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        html += `
+            <button class="btn btn-secondary btn-sm w-100 mt-3" style="background: rgba(16,30,24,0.8); border: 1px solid var(--deck-border); color:#ffffff; font-weight:700;" onclick="openFullQueueModal()">
+                <i data-lucide="list"></i> View Full Queue
+            </button>
+        `;
+
+        queueContent.innerHTML = html;
+    }
+
+    // 4. Slide Strip Cards Highlights
+    const cards = document.querySelectorAll('.deck-strip-card');
+    cards.forEach((card, idx) => {
+        const isCur = (idx === newIdx);
+        card.classList.toggle('active', isCur);
+        let liveBadge = card.querySelector('.live-card-badge');
+        if (isCur) {
+            if (!liveBadge) {
+                const b = document.createElement('span');
+                b.className = 'live-card-badge';
+                b.style.cssText = 'position: absolute; top:4px; right:4px; background:#ef4444; color:#fff; font-size:9px; font-weight:900; padding:2px 6px; border-radius:4px;';
+                b.textContent = 'LIVE';
+                card.appendChild(b);
+            }
+        } else if (liveBadge) {
+            liveBadge.remove();
+        }
+    });
+
+    // 5. Timeline Nodes Highlights
+    const order = liveItem.order || 0;
+    const nodes = document.querySelectorAll('.deck-timeline-node');
+    nodes.forEach((node, idx) => {
+        const n = idx + 1;
+        node.classList.remove('active', 'completed');
+        const circle = node.querySelector('.node-circle');
+        const label = node.querySelector('.node-label');
+
+        if (n === order) {
+            node.classList.add('active');
+            if (circle) circle.innerHTML = String(n).padStart(2, '0');
+            if (label) label.textContent = 'LIVE NOW';
+        } else if (n < order) {
+            node.classList.add('completed');
+            if (circle) circle.innerHTML = '<i data-lucide="check" style="width:14px;"></i>';
+            if (label) label.textContent = 'DONE';
+        } else {
+            if (circle) circle.innerHTML = String(n).padStart(2, '0');
+            if (label) label.textContent = '';
+        }
+    });
+
+    if (window.lucide) lucide.createIcons();
+
+    // 6. Voice Announcer Trigger
+    if (voiceAnnouncerEnabled) {
+        announceCurrentStage();
+    }
+}
+
+// Zero-Refresh AJAX Broadcast Trigger
 function broadcastSpecific(programId, entryId) {
     const formData = new FormData();
     formData.append('action', 'broadcast_stage');
     formData.append('program_id', programId);
     formData.append('entry_id', entryId);
 
-    fetch(window.location.href + '?ajax=1', {
+    fetch(window.location.href + (window.location.search ? '&' : '?') + 'ajax=1', {
         method: 'POST',
         body: formData
     })
     .then(r => r.json())
     .then(data => {
         if (data.success) {
-            stageElapsedSeconds = 0;
-            // Update current index locally & refresh view
-            const newIdx = stageQueueData.findIndex(item => item.program_id == programId && item.entry_id == entryId);
-            if (newIdx >= 0) {
-                currentLiveIndex = newIdx;
-                updateStageDisplay(stageQueueData[newIdx]);
-            }
-            if (voiceAnnouncerEnabled) {
-                announceCurrentStage();
-            }
+            updateDeckUI(programId, entryId);
+            showToast(data.message || 'Contestant broadcast live on stage!');
         }
     })
-    .catch(err => console.error('Broadcast error:', err));
+    .catch(err => showToast('Broadcast failed', 'error'));
 }
 
 function triggerNextContestant() {
@@ -1585,16 +1656,17 @@ function triggerMode(mode, slideKey) {
     formData.append('mode', mode);
     formData.append('slide_key', slideKey);
 
-    fetch(window.location.href + '?ajax=1', {
+    fetch(window.location.href + (window.location.search ? '&' : '?') + 'ajax=1', {
         method: 'POST',
         body: formData
     })
     .then(r => r.json())
     .then(data => {
         if (data.success) {
-            alert(`Stage mode set to: ${mode.toUpperCase()}`);
+            showToast(`Stage Mode Switched: ${mode.toUpperCase()}`);
         }
-    });
+    })
+    .catch(err => showToast('Failed to switch stage mode', 'error'));
 }
 
 function resetLiveStage() {
@@ -1604,18 +1676,10 @@ function resetLiveStage() {
 }
 
 function jumpToEntryNode(nodeIndex) {
-    // Find entry in active program by performance order
     const item = stageQueueData.find(q => q.order === nodeIndex);
     if (item) {
         broadcastSpecific(item.program_id, item.entry_id);
     }
-}
-
-function updateStageDisplay(item) {
-    document.getElementById('liveChestDisplay').textContent = item.chest_number;
-    document.getElementById('liveNameDisplay').textContent = item.performer_name;
-    document.getElementById('liveTeamDisplay').textContent = item.team_name;
-    window.location.reload();
 }
 
 // Speech Synthesis Voice Announcer
@@ -1630,30 +1694,57 @@ function announceCurrentStage() {
     }
 }
 
-// Toggle Voice Announcer
-document.getElementById('btnToggleVoice').addEventListener('click', () => {
+// Toggle Voice Announcer Button
+document.getElementById('btnToggleVoice')?.addEventListener('click', () => {
     voiceAnnouncerEnabled = !voiceAnnouncerEnabled;
     const btn = document.getElementById('btnToggleVoice');
-    if (voiceAnnouncerEnabled) {
-        btn.style.background = 'rgba(16, 185, 129, 0.4)';
-        btn.style.borderColor = '#00ff87';
-        announceCurrentStage();
-    } else {
-        btn.style.background = 'rgba(16, 185, 129, 0.1)';
-        btn.style.borderColor = 'rgba(16, 185, 129, 0.22)';
+    if (btn) {
+        if (voiceAnnouncerEnabled) {
+            btn.style.background = 'rgba(16, 185, 129, 0.4)';
+            btn.style.borderColor = '#00ff87';
+            showToast('Voice Announcer Enabled');
+            announceCurrentStage();
+        } else {
+            btn.style.background = 'rgba(16, 185, 129, 0.1)';
+            btn.style.borderColor = 'rgba(16, 185, 129, 0.22)';
+            showToast('Voice Announcer Disabled');
+        }
     }
 });
 
-document.getElementById('btnGoLive').addEventListener('click', () => {
+// GO LIVE Primary Button Trigger
+document.getElementById('btnGoLive')?.addEventListener('click', () => {
     if (stageQueueData.length > 0) {
         const item = stageQueueData[currentLiveIndex];
         broadcastSpecific(item.program_id, item.entry_id);
     }
 });
 
+// Auto-Sync Live State Polling Engine (every 2.5s) without full reloads
+let lastPolledProgId = <?= (int)$liveProgramId ?>;
+let lastPolledEntryId = <?= (int)$liveEntryId ?>;
+
+function pollDeckState() {
+    fetch(window.location.href + (window.location.search ? '&' : '?') + 'poll_deck_state=1')
+    .then(r => r.json())
+    .then(data => {
+        if (data.success && data.live_control) {
+            const pId = parseInt(data.live_control.program_id || 0, 10);
+            const eId = parseInt(data.live_control.entry_id || 0, 10);
+            if (pId !== lastPolledProgId || eId !== lastPolledEntryId) {
+                updateDeckUI(pId, eId);
+            } else if (typeof data.elapsed_seconds !== 'undefined') {
+                stageElapsedSeconds = parseInt(data.elapsed_seconds, 10);
+            }
+        }
+    })
+    .catch(err => console.warn('Poll error:', err));
+}
+setInterval(pollDeckState, 2500);
+
 // Carousel Scroll
 function scrollStrip(amount) {
-    document.getElementById('slideStripScroll').scrollBy({ left: amount, behavior: 'smooth' });
+    document.getElementById('slideStripScroll')?.scrollBy({ left: amount, behavior: 'smooth' });
 }
 
 // Modal Handlers
@@ -1666,7 +1757,7 @@ function closeFullQueueModal() {
 
 // Keyboard Shortcuts Listener
 document.addEventListener('keydown', (e) => {
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
 
     if (e.key === 'ArrowRight') {
         e.preventDefault();
@@ -1676,7 +1767,7 @@ document.addEventListener('keydown', (e) => {
         triggerPreviousContestant();
     } else if (e.code === 'Space') {
         e.preventDefault();
-        document.getElementById('btnToggleVoice').click();
+        document.getElementById('btnToggleVoice')?.click();
     } else if (e.key === 'b' || e.key === 'B') {
         e.preventDefault();
         triggerMode('black', 'black');
@@ -1687,4 +1778,5 @@ document.addEventListener('keydown', (e) => {
 });
 </script>
 
+</div>
 <?php require_once __DIR__ . '/../../includes/public-footer.php'; ?>

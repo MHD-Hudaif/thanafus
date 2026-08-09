@@ -637,17 +637,19 @@ function live_display_program_entries(int $programId): array
             pe.*,
             t.team_name,
             t.short_name,
-            t.team_color
+            t.team_color,
+            COALESCE(
+                (SELECT GROUP_CONCAT(tm.chest_number SEPARATOR ', ')
+                 FROM musabaqa_entry_members em
+                 JOIN musabaqa_team_members tm ON tm.id = em.team_member_id
+                 WHERE em.entry_id = pe.id AND tm.chest_number IS NOT NULL AND tm.chest_number <> ''),
+                pe.entry_number
+            ) AS chest_number
         FROM musabaqa_program_entries pe
         JOIN musabaqa_teams t ON t.id = pe.team_id
         WHERE pe.program_id = ?
         ORDER BY
-            CASE pe.status
-                WHEN 'scoring' THEN 0
-                WHEN 'approved' THEN 1
-                ELSE 2
-            END,
-            COALESCE(pe.entry_number, pe.id) ASC,
+            COALESCE(pe.performance_order, pe.entry_number, pe.id) ASC,
             pe.id ASC
     ");
     $stmt->execute([$programId]);
@@ -676,14 +678,30 @@ function live_display_current_program(?int $eventId = null): array
     $now = time();
     $selected = null;
 
-    foreach ($programs as $program) {
-        $startValue = $program['live_display_start_time'] ?? $program['start_time'] ?? $program['start_datetime'] ?? null;
-        $endValue = $program['live_display_end_time'] ?? $program['end_time'] ?? $program['end_datetime'] ?? null;
-        $start = !empty($startValue) ? strtotime((string)$startValue) : null;
-        $end = !empty($endValue) ? strtotime((string)$endValue) : null;
-        if ($start && $end && $start <= $now && $end >= $now) {
-            $selected = $program;
-            break;
+    $pdo = live_display_pdo();
+    $globalSettings = live_display_read_settings_row($pdo, 'global_musabaqa_settings');
+    $liveProgramId = (int)($globalSettings['live_program_id'] ?? 0);
+    $liveEntryId = isset($globalSettings['live_entry_id']) ? (int)$globalSettings['live_entry_id'] : -1;
+
+    if ($liveProgramId > 0) {
+        foreach ($programs as $program) {
+            if ((int)$program['id'] === $liveProgramId) {
+                $selected = $program;
+                break;
+            }
+        }
+    }
+
+    if (!$selected) {
+        foreach ($programs as $program) {
+            $startValue = $program['live_display_start_time'] ?? $program['start_time'] ?? $program['start_datetime'] ?? null;
+            $endValue = $program['live_display_end_time'] ?? $program['end_time'] ?? $program['end_datetime'] ?? null;
+            $start = !empty($startValue) ? strtotime((string)$startValue) : null;
+            $end = !empty($endValue) ? strtotime((string)$endValue) : null;
+            if ($start && $end && $start <= $now && $end >= $now) {
+                $selected = $program;
+                break;
+            }
         }
     }
 
@@ -710,25 +728,43 @@ function live_display_current_program(?int $eventId = null): array
     }
 
     $entries = live_display_program_entries((int)$selected['id']);
-    $currentIndex = null;
-    foreach ($entries as $index => $entry) {
-        if (($entry['status'] ?? '') !== 'completed') {
-            $currentIndex = $index;
-            break;
-        }
-    }
-    if ($currentIndex === null && $entries) {
-        $currentIndex = 0;
-    }
-
-    $current = $currentIndex !== null ? $entries[$currentIndex] : null;
+    $current = null;
     $next = null;
-    if ($currentIndex !== null) {
-        for ($i = $currentIndex + 1; $i < count($entries); $i++) {
-            if (($entries[$i]['status'] ?? '') !== 'completed') {
-                $next = $entries[$i];
+
+    if ($liveEntryId === 0) {
+        // Emcee set stage to Program Intro Slide
+        $current = null;
+        $next = isset($entries[0]) ? $entries[0] : null;
+    } elseif ($liveEntryId > 0) {
+        // Emcee explicitly set a participant live
+        $currentIndex = null;
+        foreach ($entries as $index => $entry) {
+            if ((int)$entry['id'] === $liveEntryId) {
+                $currentIndex = $index;
                 break;
             }
+        }
+        if ($currentIndex !== null) {
+            $current = $entries[$currentIndex];
+            $next = isset($entries[$currentIndex + 1]) ? $entries[$currentIndex + 1] : null;
+        }
+    }
+
+    // Fallback if no explicit liveEntryId matched
+    if ($current === null && $liveEntryId !== 0) {
+        $currentIndex = null;
+        foreach ($entries as $index => $entry) {
+            if (($entry['status'] ?? '') !== 'completed') {
+                $currentIndex = $index;
+                break;
+            }
+        }
+        if ($currentIndex === null && $entries) {
+            $currentIndex = 0;
+        }
+        $current = $currentIndex !== null ? $entries[$currentIndex] : null;
+        if ($currentIndex !== null && isset($entries[$currentIndex + 1])) {
+            $next = $entries[$currentIndex + 1];
         }
     }
 
@@ -770,8 +806,9 @@ function live_display_current_program(?int $eventId = null): array
 
         return [
             'id' => (int)$entry['id'],
-            'name' => $entry['entry_name'] ?: ('Entry #' . $entry['entry_number']),
-            'number' => $entry['entry_number'],
+            'name' => $entry['entry_name'] ?: ('Entry #' . ($entry['chest_number'] ?? $entry['entry_number'])),
+            'number' => $entry['chest_number'] ?? $entry['entry_number'],
+            'chest_number' => $entry['chest_number'] ?? $entry['entry_number'],
             'team' => $entry['team_name'],
             'team_short' => $entry['short_name'] ?: $entry['team_name'],
             'team_color' => live_display_color($entry['team_color'] ?? null),
@@ -780,14 +817,16 @@ function live_display_current_program(?int $eventId = null): array
         ];
     };
 
+    $isIntro = ($liveEntryId === 0 || $current === null);
     return [
         'is_break' => false,
+        'is_intro' => $isIntro,
         'program' => live_display_program_payload($selected),
         'performer' => $entryPayload($current),
         'next_performer' => $entryPayload($next),
         'next_program' => $nextProgram,
         'judges' => $judges,
-        'status' => ($selected['status'] ?? '') === 'scoring' ? 'Scoring Live' : 'On Stage',
+        'status' => $isIntro ? 'PROGRAM OVERVIEW' : (($selected['status'] ?? '') === 'scoring' ? 'Scoring Live' : 'NOW PERFORMING'),
     ];
 }
 

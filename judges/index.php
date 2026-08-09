@@ -363,7 +363,12 @@ setInterval(() => {
     .then(r => r.json())
     .then(data => {
         if (data.success && data.live_control && parseInt(data.live_control.program_id, 10) !== currentLiveProgId) {
-            window.location.reload();
+            currentLiveProgId = parseInt(data.live_control.program_id, 10);
+            if (window.navigateTo) {
+                window.navigateTo(window.location.href, false);
+            } else {
+                location.reload();
+            }
         }
     })
     .catch(() => {});

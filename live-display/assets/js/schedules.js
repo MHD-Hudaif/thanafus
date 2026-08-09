@@ -423,7 +423,7 @@
         const next = getPageSize().signature;
 
         if (oldSignature && oldSignature !== next) {
-            window.location.reload();
+            renderPages(true);
         }
     }
 

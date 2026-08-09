@@ -175,4 +175,112 @@
     };
     window.setInterval(pollScores, 10000);
   }
+
+  // Site-Wide Zero Refresh SPA Link & Form Interception
+  if (typeof window.navigateTo === 'undefined') {
+    function isSpaUrl(url) {
+      try {
+        const u = new URL(url, location.origin);
+        if (u.origin !== location.origin) return false;
+        if (u.pathname.startsWith('/uploads/')) return false;
+        if (u.pathname.startsWith('/assets/')) return false;
+        if (u.pathname.includes('/live-display/dashboard.php')) return false;
+        if (u.pathname.includes('/live-display/index.php')) return false;
+        if (u.pathname.includes('/live-display/pages/')) return false;
+        if (u.searchParams.get('action') === 'logout') return false;
+        return true;
+      } catch { return false; }
+    }
+
+    async function navigateSpa(url, pushState = true) {
+      try {
+        const resp = await fetch(url, {
+          headers: { 'X-Requested-With': 'XMLHttpRequest' },
+          credentials: 'same-origin'
+        });
+        if (resp.redirected && !isSpaUrl(resp.url)) {
+          location.href = resp.url;
+          return;
+        }
+        const contentType = resp.headers.get('Content-Type') || '';
+        if (contentType.includes('application/json')) {
+          const data = await resp.json();
+          if (data.redirect) return navigateSpa(data.redirect, pushState);
+        }
+        const html = await resp.text();
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+        let container = document.querySelector('main, .main-content, #mainAppShell, .site-content, body');
+        let newContainer = doc.querySelector('main, .main-content, #mainAppShell, .site-content, body');
+        if (container && newContainer) {
+          container.innerHTML = newContainer.innerHTML;
+          doc.querySelectorAll('script').forEach(s => {
+            if (!s.src && s.textContent) {
+              try { new Function(s.textContent)(); } catch(e){}
+            }
+          });
+          if (pushState) history.pushState({ spaUrl: url }, '', url);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        } else {
+          location.href = url;
+        }
+      } catch(e) {
+        location.href = url;
+      }
+    }
+
+    window.navigateTo = navigateSpa;
+
+    document.addEventListener('click', (e) => {
+      const a = e.target.closest('a');
+      if (!a || !a.href || a.target === '_blank' || a.hasAttribute('download') || a.hasAttribute('data-ajax-ignore')) return;
+      if (a.getAttribute('href')?.startsWith('#')) return;
+      if (!isSpaUrl(a.href)) return;
+      e.preventDefault();
+      navigateSpa(a.href);
+    });
+
+    document.addEventListener('submit', async (e) => {
+      if (e.defaultPrevented) return;
+      const form = e.target.closest('form');
+      if (!form || form.hasAttribute('data-ajax-ignore')) return;
+      const action = form.action || location.href;
+      if (!isSpaUrl(action)) return;
+      e.preventDefault();
+      const method = (form.method || 'GET').toUpperCase();
+      try {
+        let url = action;
+        let options = { method, headers: { 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' };
+        if (method === 'POST') {
+          options.body = new FormData(form);
+        } else {
+          const params = new URLSearchParams(new FormData(form));
+          url += (url.includes('?') ? '&' : '?') + params.toString();
+          return navigateSpa(url);
+        }
+        const resp = await fetch(url, options);
+        const contentType = resp.headers.get('Content-Type') || '';
+        if (contentType.includes('application/json')) {
+          const data = await resp.json();
+          if (data.redirect) return navigateSpa(data.redirect);
+        }
+        const html = await resp.text();
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+        let container = document.querySelector('main, .main-content, #mainAppShell, .site-content, body');
+        let newContainer = doc.querySelector('main, .main-content, #mainAppShell, .site-content, body');
+        if (container && newContainer) {
+          container.innerHTML = newContainer.innerHTML;
+        } else {
+          location.href = resp.url || action;
+        }
+      } catch(err) {
+        form.submit();
+      }
+    });
+
+    window.addEventListener('popstate', (e) => {
+      if (e.state && e.state.spaUrl) {
+        navigateSpa(e.state.spaUrl, false);
+      }
+    });
+  }
 })();
