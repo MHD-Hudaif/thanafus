@@ -21,20 +21,48 @@ $firstTeam = !empty($leaderboard) ? $leaderboard[0] : null;
 $firstTeamColor = !empty($firstTeam['team_color']) ? live_display_color($firstTeam['team_color']) : '#10b981';
 $firstTeamName = !empty($firstTeam['team_name']) ? $firstTeam['team_name'] : 'Leader';
 
+if (!function_exists('tv_format_section_name')) {
+    function tv_format_section_name(?string $category): string {
+        if (empty($category) || $category === 'Musabaqa Category' || $category === 'All Classes') {
+            return 'General';
+        }
+        $c = trim($category);
+        if (str_contains($c, 'العالية') || strcasecmp($c, 'senior') === 0) {
+            return 'Senior';
+        }
+        if (str_contains($c, 'الثانوية') || strcasecmp($c, 'junior') === 0) {
+            return 'Junior';
+        }
+        if (str_contains($c, 'حفظ') || str_contains($c, 'التحصص') || strcasecmp($c, 'sub') === 0 || strcasecmp($c, 'sub junior') === 0) {
+            return 'Sub';
+        }
+        return $c;
+    }
+}
+
 // Pre-fetch live stage program & performer data for instant server-side rendering
 $cpData = tv_current_program((int)($event['id'] ?? 0));
 $initProg = $cpData['program'] ?? [];
 $initPerf = $cpData['performer'] ?? [];
 $initNext = $cpData['next_performer'] ?? [];
+$initNextProg = $cpData['next_program'] ?? [];
 $initIsIntro = !empty($cpData['is_intro']) || empty($initPerf['id']);
+$isBreak = !empty($cpData['is_break']);
 
-$initTitle = !empty($initProg['title']) ? $initProg['title'] : 'No Active Program';
+$initTitleRaw = !empty($initProg['title']) ? $initProg['title'] : 'No Active Program';
+$initCategory = tv_format_section_name($initProg['category'] ?? null);
+$initFullTitle = trim($initTitleRaw . ($initCategory !== '' ? ' ' . $initCategory : ''));
+
 $initChest = !empty($initPerf['chest_number']) ? $initPerf['chest_number'] : (!empty($initPerf['number']) ? $initPerf['number'] : '—');
 $initPerfName = !empty($initPerf['name']) ? $initPerf['name'] : 'Awaiting Performer';
 $initTeamName = !empty($initPerf['team']) ? $initPerf['team'] : '—';
 $initTeamColor = !empty($initPerf['team_color']) ? live_display_color($initPerf['team_color'] ?? null) : '#10b981';
 
 $initNextChest = !empty($initNext['chest_number']) ? $initNext['chest_number'] : (!empty($initNext['number']) ? $initNext['number'] : '—');
+
+$nextProgTitle = !empty($initNextProg['title']) ? $initNextProg['title'] : ($isBreak ? 'Upcoming Break' : 'Next Program');
+$nextProgCategory = tv_format_section_name($initNextProg['category'] ?? null);
+$nextProgTime = !empty($initNextProg['start_label']) ? $initNextProg['start_label'] : (!empty($initNextProg['time']) ? $initNextProg['time'] : 'Scheduled Soon');
 ?>
 <?php if (!defined('LIVE_DISPLAY_STAGE')): ?>
     <script>
@@ -44,7 +72,7 @@ $initNextChest = !empty($initNext['chest_number']) ? $initNext['chest_number'] :
 <?php endif; ?>
 
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=Cairo:wght@600;800;900&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;700;800;900&family=Outfit:wght@600;700;800;900&family=Cairo:wght@700;800;900&display=swap');
 
     body.tv-current-programs-theme .tv-topbar,
     body:has(#slide-current-program.tv-slide--active) .tv-topbar {
@@ -55,7 +83,7 @@ $initNextChest = !empty($initNext['chest_number']) ? $initNext['chest_number'] :
         padding: 0 !important;
         overflow: hidden;
         background: #f8fafc url('<?= asset_url('images/white-background.png') ?>') center center / cover no-repeat;
-        font-family: 'Outfit', 'Cairo', system-ui, -apple-system, sans-serif;
+        font-family: 'Plus Jakarta Sans', 'Outfit', 'Cairo', system-ui, -apple-system, sans-serif;
         color: #0f172a;
         width: 100vw;
         height: 100vh;
@@ -93,9 +121,9 @@ $initNextChest = !empty($initNext['chest_number']) ? $initNext['chest_number'] :
         --first-team-color: <?= e($firstTeamColor) ?>;
         --current-neon: #10b981;
         width: 100%;
-        max-width: 1680px;
+        max-width: 1720px;
         height: 100vh;
-        padding: 60px 80px;
+        padding: 50px 70px;
         display: flex;
         flex-direction: column;
         justify-content: center;
@@ -152,12 +180,12 @@ $initNextChest = !empty($initNext['chest_number']) ? $initNext['chest_number'] :
     /* Elegant 1st Rank Team Indicator Transition Badge */
     .first-team-rank-pill {
         position: absolute;
-        top: 50px;
-        right: 80px;
+        top: 40px;
+        right: 70px;
         display: inline-flex;
         align-items: center;
         gap: 10px;
-        background: rgba(255, 255, 255, 0.9);
+        background: rgba(255, 255, 255, 0.92);
         backdrop-filter: blur(20px);
         -webkit-backdrop-filter: blur(20px);
         border: 1.5px solid color-mix(in srgb, var(--first-team-color) 40%, white);
@@ -197,32 +225,32 @@ $initNextChest = !empty($initNext['chest_number']) ? $initNext['chest_number'] :
         display: inline-block;
     }
 
-    /* Main Grid Workspace: Balanced 2 Columns */
+    /* Main Grid Workspace: Enlarged Main Card + 2 Right Boxes */
     .dashboard-grid {
         display: grid;
-        grid-template-columns: 1.25fr 0.75fr;
-        gap: 48px;
+        grid-template-columns: 1.65fr 1fr;
+        gap: 32px;
         width: 100%;
-        align-items: center;
+        align-items: stretch;
         position: relative;
         z-index: 2;
     }
 
     /* Seamlessly Blended Glass Cards with 1st Team Rank Color Detailing */
     .glass-panel {
-        background: rgba(255, 255, 255, 0.78);
+        background: rgba(255, 255, 255, 0.82);
         backdrop-filter: blur(40px);
         -webkit-backdrop-filter: blur(40px);
         border: 1.5px solid color-mix(in srgb, var(--first-team-color) 25%, rgba(255, 255, 255, 0.95));
-        border-radius: 40px;
-        padding: 56px 60px;
+        border-radius: 36px;
+        padding: 56px 64px;
         display: flex;
         flex-direction: column;
         justify-content: center;
         position: relative;
         overflow: hidden;
         box-sizing: border-box;
-        box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.05);
+        box-shadow: 0 24px 60px -12px rgba(0, 0, 0, 0.05);
         transition: transform 0.6s ease, border-color 1.2s ease;
     }
 
@@ -230,54 +258,43 @@ $initNextChest = !empty($initNext['chest_number']) ? $initNext['chest_number'] :
         transform: translateY(-4px);
     }
 
-    /* Main Performing Card with Slower Ultra-Smooth Slide-In */
+    /* Main Performing Card (Enlarged per Yellow Line Drawing) */
     .now-performing-card {
-        min-height: 480px;
+        min-height: 560px;
         justify-content: space-between;
         animation: slide-in-main-card 1.6s cubic-bezier(0.19, 1, 0.22, 1) 0.15s both;
     }
 
     .program-title-display {
-        font-size: 68px;
+        font-size: 52px;
         font-weight: 900;
-        line-height: 1.1;
-        margin: 0 0 24px 0;
+        line-height: 1.15;
+        margin: 0 0 36px 0;
         color: #0f172a;
         letter-spacing: -0.02em;
         text-transform: uppercase;
+        font-family: 'Plus Jakarta Sans', 'Outfit', sans-serif;
     }
 
-    .program-category-sub {
-        font-size: 22px;
+    .program-section-inline {
         font-weight: 800;
-        color: #64748b;
-        letter-spacing: 0.08em;
+        color: #475569;
+        font-size: 44px;
+        margin-left: 10px;
+        letter-spacing: 0;
         text-transform: uppercase;
-        margin-bottom: 30px;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-    }
-
-    .program-category-sub::before {
-        content: '';
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background: var(--first-team-color);
-        transition: background 0.8s ease;
     }
 
     /* Performer Showcase Box */
     .performer-hero-info {
-        background: rgba(255, 255, 255, 0.82);
+        background: rgba(255, 255, 255, 0.88);
         border: 1px solid rgba(255, 255, 255, 0.95);
-        padding: 36px 44px;
-        border-radius: 26px;
+        padding: 40px 48px;
+        border-radius: 28px;
         display: flex;
         align-items: center;
         justify-content: space-between;
-        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.02);
+        box-shadow: 0 14px 35px rgba(0, 0, 0, 0.03);
     }
 
     .performer-details {
@@ -286,7 +303,7 @@ $initNextChest = !empty($initNext['chest_number']) ? $initNext['chest_number'] :
     }
 
     .performer-name {
-        font-size: 60px;
+        font-size: 68px;
         font-weight: 900;
         margin: 0;
         color: #0f172a;
@@ -295,21 +312,23 @@ $initNextChest = !empty($initNext['chest_number']) ? $initNext['chest_number'] :
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
+        font-family: 'Plus Jakarta Sans', 'Cairo', sans-serif;
     }
 
     .team-pill {
-        margin-top: 12px;
+        margin-top: 10px;
         font-size: 24px;
         font-weight: 800;
         color: #475569;
         display: flex;
         align-items: center;
-        gap: 14px;
+        gap: 12px;
+        font-family: 'Plus Jakarta Sans', 'Cairo', sans-serif;
     }
 
     .tv-team-dot {
-        width: 18px;
-        height: 18px;
+        width: 16px;
+        height: 16px;
         border-radius: 50%;
         display: inline-block;
     }
@@ -318,16 +337,17 @@ $initNextChest = !empty($initNext['chest_number']) ? $initNext['chest_number'] :
     .active-chest-hero {
         background: #0f172a;
         color: #ffffff;
-        padding: 20px 32px;
+        padding: 22px 36px;
         border-radius: 24px;
         text-align: center;
-        box-shadow: 0 12px 28px rgba(15, 23, 42, 0.15);
+        box-shadow: 0 14px 30px rgba(15, 23, 42, 0.18);
+        margin-left: 24px;
     }
 
     .active-chest-hero .label {
         font-size: 11px;
         font-weight: 900;
-        letter-spacing: 0.2em;
+        letter-spacing: 0.22em;
         color: #94a3b8;
         text-transform: uppercase;
         display: block;
@@ -335,46 +355,58 @@ $initNextChest = !empty($initNext['chest_number']) ? $initNext['chest_number'] :
     }
 
     .active-chest-hero .num {
-        font-size: 42px;
+        font-size: 46px;
         font-weight: 900;
         color: #ffffff;
-        font-family: monospace;
+        font-family: 'Plus Jakarta Sans', monospace;
         line-height: 1;
     }
 
-    /* Sidebar Panel: Coming Up Next with Slower Ultra-Smooth Slide-In */
-    .side-panel {
-        min-height: 480px;
+    /* Sidebar Column with 2 Glass Boxes (Top & Bottom) */
+    .sidebar-column {
+        display: flex;
+        flex-direction: column;
+        gap: 28px;
+        height: 100%;
+        justify-content: space-between;
+    }
+
+    /* Top Right Box: NEXT PARTICIPANT / CONTESTANT */
+    .side-card-top {
+        flex: 1;
+        min-height: 260px;
+        padding: 36px 44px;
         text-align: center;
         justify-content: center;
         align-items: center;
         animation: slide-in-side-card 1.6s cubic-bezier(0.19, 1, 0.22, 1) 0.3s both;
     }
 
-    .up-next-chest-only-box {
-        width: 100%;
-        padding: 60px 40px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
+    /* Bottom Right Box: NEXT PROGRAM / BREAK */
+    .side-card-bottom {
+        flex: 1;
+        min-height: 260px;
+        padding: 36px 44px;
+        text-align: center;
         justify-content: center;
+        align-items: center;
+        animation: slide-in-side-card 1.6s cubic-bezier(0.19, 1, 0.22, 1) 0.45s both;
     }
 
-    .up-next-chest-label {
-        font-size: 15px;
+    .side-box-label {
+        font-size: 14px;
         font-weight: 900;
         color: #64748b;
-        letter-spacing: 0.22em;
+        letter-spacing: 0.2em;
         text-transform: uppercase;
-        margin-bottom: 24px;
+        margin-bottom: 14px;
     }
 
     .up-next-chest-big {
-        font-size: 96px;
+        font-size: 88px;
         font-weight: 900;
         line-height: 1;
-        font-family: monospace;
-        margin-bottom: 20px;
+        font-family: 'Plus Jakarta Sans', monospace;
     }
 
     .up-next-chest-big span {
@@ -382,80 +414,92 @@ $initNextChest = !empty($initNext['chest_number']) ? $initNext['chest_number'] :
         transition: color 1.2s ease;
     }
 
-    .up-next-subtext {
-        font-size: 13px;
+    .next-prog-title {
+        font-size: 36px;
+        font-weight: 900;
+        color: #0f172a;
+        line-height: 1.2;
+        margin: 0 0 14px 0;
+        letter-spacing: -0.01em;
+        font-family: 'Plus Jakarta Sans', 'Cairo', sans-serif;
+    }
+
+    .next-prog-cat {
+        font-size: 26px;
         font-weight: 800;
-        color: #94a3b8;
-        letter-spacing: 0.18em;
-        text-transform: uppercase;
-        display: flex;
+        color: #64748b;
+    }
+
+    .next-prog-time-badge {
+        display: inline-flex;
         align-items: center;
         gap: 8px;
+        background: rgba(15, 23, 42, 0.05);
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        padding: 8px 20px;
+        border-radius: 20px;
+        font-size: 15px;
+        font-weight: 800;
+        color: #334155;
     }
 
-    .up-next-subtext::before,
-    .up-next-subtext::after {
-        content: '';
-        width: 14px;
-        height: 1px;
-        background: #cbd5e1;
+    /* Upgraded Page Background & Dynamic 3D Cut Geometric Chevrons */
+    .bg-3d-cuts-svg {
+        position: absolute;
+        inset: 0;
+        width: 100vw;
+        height: 100vh;
+        pointer-events: none;
+        z-index: 0;
     }
 
-    /* Dynamic Animated Geometric Chevron Vector Lines (Background & Cards) */
+    .side-chevrons-svg.full-screen {
+        position: absolute;
+        inset: 0;
+        width: 100vw;
+        height: 100vh;
+        pointer-events: none;
+        z-index: 1;
+    }
+
     @keyframes bg-chevron-pulse-float {
         0% {
-            transform: translateY(0) scale(1);
-            opacity: 0.8;
+            transform: translate3d(0, 0, 0) scale(1);
+            opacity: 0.85;
         }
         50% {
-            transform: translateY(-6px) scale(1.01);
+            transform: translate3d(0, -6px, 0) scale(1.008);
             opacity: 1;
         }
         100% {
-            transform: translateY(0) scale(1);
-            opacity: 0.8;
+            transform: translate3d(0, 0, 0) scale(1);
+            opacity: 0.85;
         }
     }
 
     @keyframes line-dash-flow {
         0% {
-            stroke-dashoffset: 300;
+            stroke-dashoffset: 400;
         }
         100% {
-            stroke-dashoffset: -300;
+            stroke-dashoffset: -400;
         }
-    }
-
-    .side-chevrons-svg {
-        position: absolute;
-        top: 0;
-        bottom: 0;
-        height: 100vh;
-        width: 500px;
-        pointer-events: none;
-        z-index: 1;
-    }
-
-    .side-chevrons-svg.left-side {
-        left: 0;
-    }
-
-    .side-chevrons-svg.right-side {
-        right: 0;
     }
 
     .animated-chevron-group {
-        animation: bg-chevron-pulse-float 6s ease-in-out infinite alternate;
+        will-change: transform, opacity;
+        animation: bg-chevron-pulse-float 10s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite alternate;
     }
 
     .animated-dash-line {
-        stroke-dasharray: 200 100;
-        animation: line-dash-flow 12s linear infinite;
-        transition: stroke 1.2s ease, opacity 1.2s ease;
+        stroke-dasharray: 250 120;
+        will-change: stroke-dashoffset;
+        animation: line-dash-flow 24s linear infinite;
+        transition: stroke 1.4s cubic-bezier(0.19, 1, 0.22, 1), opacity 1.4s cubic-bezier(0.19, 1, 0.22, 1);
     }
 
     .animated-cross-line {
-        transition: stroke 1.2s ease, opacity 1.2s ease;
+        transition: stroke 1.4s cubic-bezier(0.19, 1, 0.22, 1), opacity 1.4s cubic-bezier(0.19, 1, 0.22, 1);
     }
 
     /* Dynamic Chevron Lines Strictly Behind Card Text */
@@ -470,11 +514,12 @@ $initNextChest = !empty($initNext['chest_number']) ? $initNext['chest_number'] :
         pointer-events: none !important;
         z-index: 0 !important;
         overflow: hidden !important;
-        animation: fade-in-silk-lines 2s cubic-bezier(0.19, 1, 0.22, 1) 0.5s both;
+        animation: fade-in-silk-lines 2.4s cubic-bezier(0.16, 1, 0.3, 1) 0.5s both;
     }
 
     .animated-card-group {
-        animation: bg-chevron-pulse-float 7s ease-in-out infinite alternate;
+        will-change: transform, opacity;
+        animation: bg-chevron-pulse-float 11s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite alternate;
     }
 
     /* Elevate all card text & child elements above SVG chevron lines */
@@ -484,42 +529,42 @@ $initNextChest = !empty($initNext['chest_number']) ? $initNext['chest_number'] :
     }
 </style>
 
-<!-- Dynamic 1st Rank Team Geometric Chevron Vectors (Background Left & Right) -->
-<svg class="side-chevrons-svg left-side" viewBox="0 0 500 1080" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <g class="animated-chevron-group">
-        <!-- Soft 3D Cut Drop Shadows -->
-        <path d="M-100 1180 L450 630 L-100 80" stroke="rgba(0,0,0,0.06)" stroke-width="14" stroke-linecap="round"/>
-        <path d="M-150 1000 L350 500 L-150 -50" stroke="rgba(0,0,0,0.04)" stroke-width="10" stroke-linecap="round"/>
-
-        <!-- Primary Team Colored Diagonal Chevron Lines -->
-        <path class="animated-dash-line" d="M-100 1180 L450 630 L-100 80" stroke="var(--first-team-color)" stroke-width="3" stroke-linecap="round"/>
-        <path class="animated-dash-line" d="M-150 1000 L350 500 L-150 -50" stroke="var(--first-team-color)" stroke-width="2" opacity="0.8" stroke-linecap="round"/>
-        <path class="animated-dash-line" d="M-50 1280 L520 710 L-50 200" stroke="var(--first-team-color)" stroke-width="1.5" opacity="0.6" stroke-linecap="round"/>
-
-        <!-- Perpendicular Cross-Hatch Accent Slashes -->
-        <line class="animated-cross-line" x1="120" y1="960" x2="320" y2="760" stroke="var(--first-team-color)" stroke-width="2" opacity="0.75" />
-        <line class="animated-cross-line" x1="220" y1="860" x2="420" y2="660" stroke="var(--first-team-color)" stroke-width="2" opacity="0.75" />
-        <line class="animated-cross-line" x1="50" y1="430" x2="250" y2="230" stroke="var(--first-team-color)" stroke-width="2" opacity="0.75" />
-        <line class="animated-cross-line" x1="150" y1="330" x2="350" y2="130" stroke="var(--first-team-color)" stroke-width="2" opacity="0.75" />
-    </g>
+<!-- 3D Relief Geometric Layer Cuts Background -->
+<svg class="bg-3d-cuts-svg" viewBox="0 0 1920 1080" preserveAspectRatio="none" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <filter id="cutShadow" x="-20%" y="-20%" width="140%" height="140%">
+        <feDropShadow dx="-8" dy="12" stdDeviation="15" flood-color="rgba(0,0,0,0.06)" />
+    </filter>
+    <!-- Left Side 3D Cut Polygons -->
+    <polygon points="-100,1200 650,540 -100,-100" fill="#ffffff" filter="url(#cutShadow)" />
+    <polygon points="-100,1050 480,540 -100,30" fill="rgba(250,250,252,0.92)" filter="url(#cutShadow)" />
+    
+    <!-- Right Side 3D Cut Polygons -->
+    <polygon points="2020,1200 1270,540 2020,-100" fill="#ffffff" filter="url(#cutShadow)" />
+    <polygon points="2020,1050 1440,540 2020,30" fill="rgba(250,250,252,0.92)" filter="url(#cutShadow)" />
 </svg>
 
-<svg class="side-chevrons-svg right-side" viewBox="0 0 500 1080" fill="none" xmlns="http://www.w3.org/2000/svg">
+<!-- Dynamic 1st Rank Team Geometric Chevron Vectors (Full Screen Background) -->
+<svg class="side-chevrons-svg full-screen" viewBox="0 0 1920 1080" preserveAspectRatio="none" fill="none" xmlns="http://www.w3.org/2000/svg">
     <g class="animated-chevron-group">
-        <!-- Soft 3D Cut Drop Shadows -->
-        <path d="M600 1180 L50 630 L600 80" stroke="rgba(0,0,0,0.06)" stroke-width="14" stroke-linecap="round"/>
-        <path d="M650 1000 L150 500 L650 -50" stroke="rgba(0,0,0,0.04)" stroke-width="10" stroke-linecap="round"/>
+        <!-- Left Side Chevron & Cross Lines -->
+        <path class="animated-dash-line" d="M-100 1200 L650 540 L-100 -100" stroke="var(--first-team-color)" stroke-width="3" stroke-linecap="round" />
+        <path class="animated-dash-line" d="M-150 1050 L480 540 L-150 30" stroke="var(--first-team-color)" stroke-width="2" opacity="0.8" stroke-linecap="round" />
+        <path class="animated-dash-line" d="M-50 1350 L750 540 L-50 -200" stroke="var(--first-team-color)" stroke-width="1.5" opacity="0.6" stroke-linecap="round" />
+        
+        <line class="animated-cross-line" x1="200" y1="900" x2="420" y2="680" stroke="var(--first-team-color)" stroke-width="2" opacity="0.75" />
+        <line class="animated-cross-line" x1="320" y1="780" x2="540" y2="560" stroke="var(--first-team-color)" stroke-width="2" opacity="0.75" />
+        <line class="animated-cross-line" x1="100" y1="360" x2="320" y2="140" stroke="var(--first-team-color)" stroke-width="2" opacity="0.75" />
+        <line class="animated-cross-line" x1="220" y1="240" x2="440" y2="20" stroke="var(--first-team-color)" stroke-width="2" opacity="0.75" />
 
-        <!-- Primary Team Colored Diagonal Chevron Lines -->
-        <path class="animated-dash-line" d="M600 1180 L50 630 L600 80" stroke="var(--first-team-color)" stroke-width="3" stroke-linecap="round"/>
-        <path class="animated-dash-line" d="M650 1000 L150 500 L650 -50" stroke="var(--first-team-color)" stroke-width="2" opacity="0.8" stroke-linecap="round"/>
-        <path class="animated-dash-line" d="M550 1280 L-20 710 L550 200" stroke="var(--first-team-color)" stroke-width="1.5" opacity="0.6" stroke-linecap="round"/>
+        <!-- Right Side Chevron & Cross Lines -->
+        <path class="animated-dash-line" d="M2020 1200 L1270 540 L2020 -100" stroke="var(--first-team-color)" stroke-width="3" stroke-linecap="round" />
+        <path class="animated-dash-line" d="M2070 1050 L1440 540 L2070 30" stroke="var(--first-team-color)" stroke-width="2" opacity="0.8" stroke-linecap="round" />
+        <path class="animated-dash-line" d="M1970 1350 L1170 540 L1970 -200" stroke="var(--first-team-color)" stroke-width="1.5" opacity="0.6" stroke-linecap="round" />
 
-        <!-- Perpendicular Cross-Hatch Accent Slashes -->
-        <line class="animated-cross-line" x1="380" y1="960" x2="180" y2="760" stroke="var(--first-team-color)" stroke-width="2" opacity="0.75" />
-        <line class="animated-cross-line" x1="280" y1="860" x2="80" y2="660" stroke="var(--first-team-color)" stroke-width="2" opacity="0.75" />
-        <line class="animated-cross-line" x1="450" y1="430" x2="250" y2="230" stroke="var(--first-team-color)" stroke-width="2" opacity="0.75" />
-        <line class="animated-cross-line" x1="350" y1="330" x2="150" y2="130" stroke="var(--first-team-color)" stroke-width="2" opacity="0.75" />
+        <line class="animated-cross-line" x1="1720" y1="900" x2="1500" y2="680" stroke="var(--first-team-color)" stroke-width="2" opacity="0.75" />
+        <line class="animated-cross-line" x1="1600" y1="780" x2="1380" y2="560" stroke="var(--first-team-color)" stroke-width="2" opacity="0.75" />
+        <line class="animated-cross-line" x1="1820" y1="360" x2="1600" y2="140" stroke="var(--first-team-color)" stroke-width="2" opacity="0.75" />
+        <line class="animated-cross-line" x1="1700" y1="240" x2="1480" y2="20" stroke="var(--first-team-color)" stroke-width="2" opacity="0.75" />
     </g>
 </svg>
 
@@ -527,17 +572,9 @@ $initNextChest = !empty($initNext['chest_number']) ? $initNext['chest_number'] :
 <div class="ambient-mesh-bg"></div>
 
 <div class="programs-wrapper" data-current-theme-root style="--top-team-color: <?= e($firstTeamColor) ?>;">
-    <!-- Minimalist 1st Rank Team Transition Indicator -->
-    <div class="first-team-rank-pill">
-        <span class="rank-crown">🏆</span>
-        <span class="rank-label">LEADING TEAM:</span>
-        <strong class="rank-name"><?= e($firstTeamName) ?></strong>
-        <span class="rank-dot" style="background: <?= e($firstTeamColor) ?>;"></span>
-    </div>
-
-    <!-- Main Workspace Grid -->
+    <!-- Main Workspace Grid (Enlarged Left Card + 2 Right Boxes) -->
     <div class="dashboard-grid">
-        <!-- Main Panel (Program Title & Active Performer) -->
+        <!-- Main Panel (Program Title + Section & Active Performer) -->
         <main class="glass-panel now-performing-card">
             <!-- Dynamic Geometric Chevron Lines Accents Inside Main Card -->
             <svg class="card-chevrons-svg" viewBox="0 0 800 500" preserveAspectRatio="none" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -554,22 +591,15 @@ $initNextChest = !empty($initNext['chest_number']) ? $initNext['chest_number'] :
             </svg>
 
             <div>
-                <h1 class="program-title-display" data-current-title><?= e($initTitle) ?></h1>
-                <div class="program-category-sub" data-current-category-sub>
-                    <?= e($initProg['category'] ?? 'Musabaqa Category') ?>
-                </div>
+                <h1 class="program-title-display" data-current-title><?= e($initTitleRaw) ?><?= $initCategory !== '' ? ' <span class="program-section-inline">' . e($initCategory) . '</span>' : '' ?></h1>
             </div>
 
             <!-- Performer Hero Details -->
             <div class="performer-hero-info">
                 <div class="performer-details">
                     <h2 class="performer-name" data-current-performer><?= e($initPerfName) ?></h2>
-                    <div class="team-pill" data-current-team>
-                        <?php if ($initTeamName !== '—'): ?>
-                            <span class="tv-team-dot" style="background:<?= e($initTeamColor) ?>; color:<?= e($initTeamColor) ?>;"></span> <?= e($initTeamName) ?>
-                        <?php else: ?>
-                            —
-                        <?php endif; ?>
+                    <div class="team-pill" data-current-team style="<?= ($initIsIntro || $initTeamName === '—') ? 'display: none;' : 'display: flex;' ?>">
+                        <span class="tv-team-dot" style="background:<?= e($initTeamColor) ?>;"></span> <?= e($initTeamName) ?>
                     </div>
                 </div>
                 <div class="active-chest-hero" data-active-chest-box style="<?= $initIsIntro ? 'display: none;' : '' ?>">
@@ -579,26 +609,43 @@ $initNextChest = !empty($initNext['chest_number']) ? $initNext['chest_number'] :
             </div>
         </main>
 
-        <!-- Sidebar Panel: Coming Up Next (Chest Number ONLY) -->
-        <aside class="glass-panel side-panel">
-            <!-- Dynamic Geometric Chevron Lines Accents Inside Sidebar Card -->
-            <svg class="card-chevrons-svg" viewBox="0 0 500 500" preserveAspectRatio="none" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <g class="animated-card-group">
-                    <path class="animated-dash-line" d="M-30 480 L280 170 L-30 -140" stroke="var(--first-team-color)" stroke-width="2" opacity="0.55" stroke-linecap="round"/>
-                    <path class="animated-dash-line" d="M530 480 L220 170 L530 -140" stroke="var(--first-team-color)" stroke-width="2" opacity="0.55" stroke-linecap="round"/>
-                    <line class="animated-cross-line" x1="100" y1="400" x2="200" y2="300" stroke="var(--first-team-color)" stroke-width="1.6" opacity="0.45" />
-                    <line class="animated-cross-line" x1="400" y1="400" x2="300" y2="300" stroke="var(--first-team-color)" stroke-width="1.6" opacity="0.45" />
-                </g>
-            </svg>
+        <!-- Sidebar Column: 2 Right Glass Boxes -->
+        <aside class="sidebar-column">
+            <!-- Box 1 (Top Right): NEXT CONTESTANT -->
+            <div class="glass-panel side-card-top">
+                <svg class="card-chevrons-svg" viewBox="0 0 500 260" preserveAspectRatio="none" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <g class="animated-card-group">
+                        <path class="animated-dash-line" d="M-30 260 L280 80 L-30 -100" stroke="var(--first-team-color)" stroke-width="2" opacity="0.55" stroke-linecap="round"/>
+                        <path class="animated-dash-line" d="M530 260 L220 80 L530 -100" stroke="var(--first-team-color)" stroke-width="2" opacity="0.55" stroke-linecap="round"/>
+                    </g>
+                </svg>
 
-            <div class="up-next-chest-only-box">
-                <div class="up-next-chest-label" data-next-label>
+                <div class="side-box-label" data-next-label>
                     <?= $initIsIntro ? '1ST CONTESTANT STAGE ENTRY' : 'NEXT CONTESTANT' ?>
                 </div>
                 <div class="up-next-chest-big">
                     <span data-next-chest><?= e($initNextChest) ?></span>
                 </div>
-                <div class="up-next-subtext">GET READY FOR STAGE</div>
+            </div>
+
+            <!-- Box 2 (Bottom Right): NEXT PROGRAM / BREAK -->
+            <div class="glass-panel side-card-bottom">
+                <svg class="card-chevrons-svg" viewBox="0 0 500 260" preserveAspectRatio="none" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <g class="animated-card-group">
+                        <path class="animated-dash-line" d="M-30 260 L280 80 L-30 -100" stroke="var(--first-team-color)" stroke-width="2" opacity="0.55" stroke-linecap="round"/>
+                        <path class="animated-dash-line" d="M530 260 L220 80 L530 -100" stroke="var(--first-team-color)" stroke-width="2" opacity="0.55" stroke-linecap="round"/>
+                    </g>
+                </svg>
+
+                <div class="side-box-label" data-next-prog-label>
+                    <?= $isBreak ? 'INTERMISSION / BREAK' : 'NEXT PROGRAM' ?>
+                </div>
+                <h3 class="next-prog-title" data-next-prog-title>
+                    <?= e($nextProgTitle) ?><?= $nextProgCategory ? ' <span class="next-prog-cat">' . e($nextProgCategory) . '</span>' : '' ?>
+                </h3>
+                <div class="next-prog-time-badge" data-next-prog-time>
+                    <i class="fa-solid fa-clock mr-1"></i> <?= e($nextProgTime) ?>
+                </div>
             </div>
         </aside>
     </div>
@@ -649,17 +696,22 @@ $initNextChest = !empty($initNext['chest_number']) ? $initNext['chest_number'] :
 
         syncTheme();
 
-        const watched = [
-            '[data-current-team]',
-            '[data-current-performer]'
-        ].map((selector) => document.querySelector(selector)).filter(Boolean);
-        const observer = new MutationObserver(syncTheme);
-        watched.forEach((node) => observer.observe(node, {
-            childList: true,
-            subtree: true,
-            characterData: true,
-            attributes: true
-        }));
+        function tvFormatSectionName(category) {
+            if (!category || category === 'Musabaqa Category' || category === 'All Classes') {
+                return 'General';
+            }
+            const c = String(category).trim();
+            if (c.includes('العالية') || c.toLowerCase() === 'senior') {
+                return 'Senior';
+            }
+            if (c.includes('الثانوية') || c.toLowerCase() === 'junior') {
+                return 'Junior';
+            }
+            if (c.includes('حفظ') || c.includes('التحصص') || c.toLowerCase() === 'sub' || c.toLowerCase() === 'sub junior') {
+                return 'Sub';
+            }
+            return c;
+        }
 
         // Real-Time Live API Polling Engine
         let lastStateHash = '';
@@ -674,24 +726,29 @@ $initNextChest = !empty($initNext['chest_number']) ? $initNext['chest_number'] :
                     const prog = c.program || {};
                     const perf = c.performer || {};
                     const nextPerf = c.next_performer || {};
+                    const nextProg = c.next_program || {};
                     const isIntro = c.is_intro || !perf || !perf.id;
+                    const isBreak = !!c.is_break;
 
                     const hash = JSON.stringify({
                         progId: prog.id,
                         perfId: perf.id,
                         nextId: nextPerf.id,
+                        nextProgId: nextProg.id,
                         status: c.status,
-                        isIntro: isIntro
+                        isIntro: isIntro,
+                        isBreak: isBreak
                     });
                     if (hash === lastStateHash) return;
                     lastStateHash = hash;
 
-                    // Update Title & Category Subtitle
+                    // Update Main Title (Program Title + Section)
                     const titleEl = document.querySelector('[data-current-title]');
-                    if (titleEl && prog.title) titleEl.textContent = prog.title;
-
-                    const catSubEl = document.querySelector('[data-current-category-sub]');
-                    if (catSubEl) catSubEl.textContent = prog.category || 'Musabaqa Category';
+                    if (titleEl) {
+                        const pTitle = prog.title || 'No Active Program';
+                        const pSec = tvFormatSectionName(prog.category);
+                        titleEl.innerHTML = pTitle + (pSec ? ` <span class="program-section-inline">${pSec}</span>` : '');
+                    }
 
                     // Update Active Chest Box
                     const activeChestBox = document.querySelector('[data-active-chest-box]');
@@ -707,25 +764,43 @@ $initNextChest = !empty($initNext['chest_number']) ? $initNext['chest_number'] :
                         perfEl.textContent = isIntro ? 'Ready to begin' : (perf.name || 'Awaiting performer');
                     }
 
-                    // Update Team
+                    // Update Team Pill under performer
                     const teamEl = document.querySelector('[data-current-team]');
                     if (teamEl) {
-                        if (isIntro) {
-                            teamEl.innerHTML = `Category: ${prog.category || 'All Classes'}`;
+                        if (isIntro || !perf.team || perf.team === '—') {
+                            teamEl.style.display = 'none';
+                            teamEl.innerHTML = '';
                         } else {
                             const color = perf.team_color || '#10b981';
-                            teamEl.innerHTML = perf.team ? `<span class="tv-team-dot" style="background:${color}; color:${color};"></span> ${perf.team}` : '—';
+                            teamEl.innerHTML = `<span class="tv-team-dot" style="background:${color};"></span> ${perf.team}`;
+                            teamEl.style.display = 'flex';
                         }
                     }
 
-                    // Update Up Next Box Label & Chest Number
+                    // Update Up Next Box 1 (Next Contestant)
                     const upNextLabelEl = document.querySelector('[data-next-label]');
                     if (upNextLabelEl) {
                         upNextLabelEl.textContent = isIntro ? '1ST CONTESTANT STAGE ENTRY' : 'NEXT CONTESTANT';
                     }
-
                     const nextChestEl = document.querySelector('[data-next-chest]');
                     if (nextChestEl) nextChestEl.textContent = nextPerf.chest_number || nextPerf.number || '—';
+
+                    // Update Up Next Box 2 (Next Program / Break)
+                    const nextProgLabelEl = document.querySelector('[data-next-prog-label]');
+                    if (nextProgLabelEl) {
+                        nextProgLabelEl.textContent = isBreak ? 'INTERMISSION / BREAK' : 'NEXT PROGRAM';
+                    }
+                    const nextProgTitleEl = document.querySelector('[data-next-prog-title]');
+                    if (nextProgTitleEl) {
+                        const npTitle = nextProg.title || (isBreak ? 'Upcoming Break' : 'Next Program');
+                        const npSec = tvFormatSectionName(nextProg.category);
+                        nextProgTitleEl.innerHTML = npTitle + (npSec ? ` <span class="next-prog-cat">${npSec}</span>` : '');
+                    }
+                    const nextProgTimeEl = document.querySelector('[data-next-prog-time]');
+                    if (nextProgTimeEl) {
+                        const npTime = nextProg.start_label || nextProg.time || 'Scheduled Soon';
+                        nextProgTimeEl.innerHTML = `<i class="fa-solid fa-clock mr-1"></i> ${npTime}`;
+                    }
 
                     syncTheme();
                     window.triggerCurrentProgramAnimations?.();
@@ -740,9 +815,10 @@ $initNextChest = !empty($initNext['chest_number']) ? $initNext['chest_number'] :
         window.triggerCurrentProgramAnimations = function() {
             if (typeof gsap === 'undefined') return;
             const mainCard = document.querySelector('.now-performing-card');
-            const sideCard = document.querySelector('.side-panel');
+            const sideTopCard = document.querySelector('.side-card-top');
+            const sideBottomCard = document.querySelector('.side-card-bottom');
 
-            gsap.killTweensOf([mainCard, sideCard]);
+            gsap.killTweensOf([mainCard, sideTopCard, sideBottomCard]);
 
             if (mainCard) {
                 gsap.fromTo(mainCard, {
@@ -757,8 +833,8 @@ $initNextChest = !empty($initNext['chest_number']) ? $initNext['chest_number'] :
                     ease: 'power3.out'
                 });
             }
-            if (sideCard) {
-                gsap.fromTo(sideCard, {
+            if (sideTopCard) {
+                gsap.fromTo(sideTopCard, {
                     opacity: 0.88,
                     scale: 0.98,
                     x: 16
@@ -769,6 +845,20 @@ $initNextChest = !empty($initNext['chest_number']) ? $initNext['chest_number'] :
                     duration: 0.8,
                     ease: 'power3.out',
                     delay: 0.08
+                });
+            }
+            if (sideBottomCard) {
+                gsap.fromTo(sideBottomCard, {
+                    opacity: 0.88,
+                    scale: 0.98,
+                    x: 16
+                }, {
+                    opacity: 1,
+                    scale: 1,
+                    x: 0,
+                    duration: 0.8,
+                    ease: 'power3.out',
+                    delay: 0.16
                 });
             }
         };

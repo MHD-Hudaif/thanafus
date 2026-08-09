@@ -629,6 +629,23 @@
         });
     }
 
+    function tvFormatScheduleSectionName(category) {
+        if (!category || category === 'All' || category === 'Full Schedule' || category === 'Musabaqa Category' || category === 'All Classes') {
+            return 'General';
+        }
+        const c = String(category).trim();
+        if (c.includes('العالية') || c.toLowerCase() === 'senior') {
+            return 'Senior';
+        }
+        if (c.includes('الثانوية') || c.toLowerCase() === 'junior') {
+            return 'Junior';
+        }
+        if (c.includes('حفظ') || c.includes('التحصص') || c.toLowerCase() === 'sub' || c.toLowerCase() === 'sub junior') {
+            return 'Sub';
+        }
+        return c;
+    }
+
     function renderSchedulePage(index) {
         const pageEl = els.schedule?.querySelector('[data-schedule-page]');
         if (!pageEl) return;
@@ -650,13 +667,13 @@
         pageEl.innerHTML = page.map((item, rowIndex) => {
             const status = getScheduleStatus(item);
             const time = item.start_label || item.start_time || '--';
-            const category = item.category || item.class_type_name || item.class_name || item.section_name || '';
+            const rawCategory = item.category || item.class_type_name || item.class_name || item.section_name || '';
             const title = item.title || item.name || 'Program';
-            
-            // Program name and category combined on one line: Program Name - Senior
+            const secName = tvFormatScheduleSectionName(rawCategory);
+
             let programLabel = title;
-            if (category && category !== 'All' && category !== 'Full Schedule' && category.toLowerCase() !== title.toLowerCase()) {
-                programLabel = `${title} - ${category}`;
+            if (secName && secName.toLowerCase() !== title.toLowerCase()) {
+                programLabel = `${title} ${secName}`;
             }
 
             const globalIndex = (index * scheduleRowsPerPage()) + rowIndex;
@@ -696,14 +713,12 @@
             const rows = pageEl.querySelectorAll('.tv-schedule-row');
             gsap.fromTo(rows, {
                 opacity: 0,
-                x: -24,
-                filter: 'blur(8px)'
+                x: -30
             }, {
                 opacity: 1,
                 x: 0,
-                filter: 'blur(0px)',
-                duration: 0.5,
-                stagger: 0.05,
+                duration: 0.8,
+                stagger: 0.06,
                 ease: 'power3.out'
             });
         }
