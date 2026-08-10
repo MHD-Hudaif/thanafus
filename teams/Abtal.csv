@@ -1,61 +1,62 @@
-﻿Display_Name,Chest_Number,Team_Name,Section
-Abdulla Kunjumon,400,الأبطال,Senior
+Name,Num,Team,Section
+"Abdulla Kunjumon",400,الأبطال,Senior
 As'adh,401,الأبطال,Senior
-Swalih basheer,402,الأبطال,Senior
-Arshad Rahman,403,الأبطال,Senior
+"Swalih basheer",402,الأبطال,Senior
+"Arshad Rahman",403,الأبطال,Senior
 Hassan,404,الأبطال,Senior
-Mahin MVPT,405,الأبطال,Senior
+"Mahin MVPT",405,الأبطال,Senior
 Nasrulla,406,الأبطال,Senior
 Salim,407,الأبطال,Senior
 Ammar,408,الأبطال,Senior
-Hamzath Ali,409,الأبطال,Senior
+"Hamzath Ali",409,الأبطال,Senior
 Shaad,410,الأبطال,Senior
-Swalih ,411,الأبطال,Senior
+Swalih,411,الأبطال,Senior
 Thoyyib,412,الأبطال,Senior
 Ubaidulla,413,الأبطال,Senior
 Amanulla,414,الأبطال,Junior
-Yaseen TDP,415,الأبطال,Junior
-Faiz Erpt,416,الأبطال,Junior
+"Yaseen TDP",415,الأبطال,Junior
+"Faiz Erpt",416,الأبطال,Junior
 Jabir,417,الأبطال,Junior
-Muzzammil Navas,418,الأبطال,Junior
-Sufyan Edathala,419,الأبطال,Junior
-Hafis Kodungallur,420,الأبطال,Junior
+"Muzzammil Navas",418,الأبطال,Junior
+"Sufyan Edathala",419,الأبطال,Junior
+"Hafis Kodungallur",420,الأبطال,Junior
 Ashmil,421,الأبطال,Junior
 Farhan,422,الأبطال,Junior
 Moosa,423,الأبطال,Junior
-Mubarak Erpt,424,الأبطال,Junior
+"Mubarak Erpt",424,الأبطال,Junior
 Shuraim,425,الأبطال,Junior
 Zainulabidheen,426,الأبطال,Junior
 Anfaas,427,الأبطال,Junior
 Bilal,428,الأبطال,Junior
-Faiz Faisal,429,الأبطال,Junior
-Hashim Parakkode,430,الأبطال,Junior
+"Faiz Faisal",429,الأبطال,Junior
+"Hashim Parakkode",430,الأبطال,Junior
 Khaleelurahman,431,الأبطال,Junior
-Mubarak Ali,432,الأبطال,Junior
+"Mubarak Ali",432,الأبطال,Junior
 Muhammed,433,الأبطال,Junior
-Safwan Chilav,434,الأبطال,Junior
+"Safwan Chilav",434,الأبطال,Junior
 Usman,435,الأبطال,Junior
-Abdul Hadi,436,الأبطال,Sub Junior
-Abdulla Kodakara,437,الأبطال,Sub Junior
-Affan Paravoor,438,الأبطال,Sub Junior
-Aman Edathala,439,الأبطال,Sub Junior
-Aman Nellikkuzhi,440,الأبطال,Sub Junior
-Ameer Ali,441,الأبطال,Sub Junior
-Amjad,442,الأبطال,Sub Junior
-Arif Naeem,443,الأبطال,Sub Junior
-Asadullah,444,الأبطال,Sub Junior
-Aslam Palakkad,445,الأبطال,Sub Junior
-Fadil,446,الأبطال,Sub Junior
-Farhan Pattimottom,447,الأبطال,Sub Junior
-Hashim Quraishi,448,الأبطال,Sub Junior
-Ihsan Trissur,449,الأبطال,Sub Junior
-Jasim,450,الأبطال,Sub Junior
-Naeem,451,الأبطال,Sub Junior
-Nasrulla,452,الأبطال,Sub Junior
-Nihal Ernakulam,453,الأبطال,Sub Junior
-Rilwan Thrissur,454,الأبطال,Sub Junior
-Rizwan Kunjattukara,455,الأبطال,Sub Junior
-Safal,456,الأبطال,Sub Junior
-Sayyidul Arham,457,الأبطال,Sub Junior
-Thariq,458,الأبطال,Sub Junior
-Umarul Mukthar,459,الأبطال,Sub Junior
+"Abdul Hadi",436,الأبطال,"Sub Junior"
+"Abdulla Kodakara",437,الأبطال,"Sub Junior"
+"Affan Paravoor",438,الأبطال,"Sub Junior"
+"Aman Edathala",439,الأبطال,"Sub Junior"
+"Aman Nellikkuzhi",440,الأبطال,"Sub Junior"
+"Ameer Ali",441,الأبطال,"Sub Junior"
+Amjad,442,الأبطال,"Sub Junior"
+"Arif Naeem",443,الأبطال,"Sub Junior"
+Asadullah,444,الأبطال,"Sub Junior"
+"Aslam Palakkad",445,الأبطال,"Sub Junior"
+Fadil,446,الأبطال,"Sub Junior"
+"Farhan Pattimottom",447,الأبطال,"Sub Junior"
+"Hashim Quraishi",448,الأبطال,"Sub Junior"
+"Ihsan Trissur",449,الأبطال,"Sub Junior"
+Jasim,450,الأبطال,"Sub Junior"
+Naeem,451,الأبطال,"Sub Junior"
+Nasrulla,452,الأبطال,"Sub Junior"
+"Nihal Ernakulam",453,الأبطال,"Sub Junior"
+"Rilwan Thrissur",454,الأبطال,"Sub Junior"
+"Rizwan Kunjattukara",455,الأبطال,"Sub Junior"
+Safal,456,الأبطال,"Sub Junior"
+"Sayyidul Arham",457,الأبطال,"Sub Junior"
+Thariq,458,الأبطال,"Sub Junior"
+"Umarul Mukthar",459,الأبطال,"Sub Junior"
+Thoufeek,460,الأبطال,"Sub Junior"
