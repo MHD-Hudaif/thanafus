@@ -91,6 +91,10 @@ if ($action === 'print' && $activeEvent) {
         <link rel="stylesheet" href="<?= asset_url('css/event-id-cards.css') ?>">
         <script src="<?= asset_url('js/print-helpers.js') ?>" defer></script>
         <style>
+            @page {
+                size: A4 landscape;
+                margin: 6mm 8mm;
+            }
             * { box-sizing: border-box; }
             body {
                 font-family: 'Inter', system-ui, -apple-system, sans-serif;
@@ -100,93 +104,138 @@ if ($action === 'print' && $activeEvent) {
                 padding: 16px;
                 line-height: 1.3;
             }
-            .judge-full-sheet {
-                border: 1px solid #cbd5e1;
-                padding: 16px 20px;
-                border-radius: 8px;
+            .judge-landscape-sheet {
+                border: 1.5px solid #cbd5e1;
+                padding: 18px 24px;
+                border-radius: 12px;
                 background: #fff;
                 width: 100%;
-                margin-bottom: 16px;
-            }
-            .judge-half-sheet {
-                border: 1px dashed #94a3b8;
-                padding: 10px 12px;
-                border-radius: 8px;
-                background: #fff;
+                margin-bottom: 24px;
                 box-sizing: border-box;
+                page-break-after: always !important;
+                break-after: page !important;
+            }
+            .judge-landscape-sheet:last-child {
+                page-break-after: auto !important;
+                break-after: auto !important;
             }
             .page-break {
                 page-break-before: always !important;
                 break-before: page !important;
             }
             .print-header {
-                border-bottom: 1.5px solid #000;
-                padding-bottom: 5px;
-                margin-bottom: 6px;
+                border-bottom: 2px solid #000;
+                padding-bottom: 8px;
+                margin-bottom: 12px;
+            }
+            .event-kicker {
+                font-size: 11px;
+                font-weight: 800;
+                text-transform: uppercase;
+                letter-spacing: 0.1em;
+                color: #475569;
             }
             .program-title-banner {
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
                 flex-wrap: wrap;
-                gap: 8px;
+                gap: 12px;
+                margin-top: 2px;
             }
             .program-title {
-                font-size: 15px;
-                font-weight: 800;
+                font-size: 18px;
+                font-weight: 900;
                 color: #000;
+                letter-spacing: -0.01em;
             }
             .judge-badge {
                 background: #0f172a;
                 color: #fff;
-                font-size: 11px;
-                font-weight: 800;
-                padding: 3px 8px;
-                border-radius: 4px;
+                font-size: 12px;
+                font-weight: 900;
+                padding: 5px 14px;
+                border-radius: 6px;
                 text-transform: uppercase;
-                letter-spacing: 0.05em;
+                letter-spacing: 0.08em;
             }
             .sheet-table {
                 width: 100%;
                 table-layout: fixed;
                 border-collapse: collapse;
-                margin-bottom: 4px;
+                margin-top: 8px;
+                margin-bottom: 16px;
             }
             .sheet-table th, .sheet-table td {
                 border: 1.5px solid #000;
-                padding: 5px 6px;
+                padding: 6px 8px;
                 text-align: center;
                 vertical-align: middle;
-                font-size: 12px;
+                font-size: 12.5px;
             }
             .sheet-table th {
                 background: #f1f5f9;
-                font-weight: 700;
+                font-weight: 800;
                 text-transform: uppercase;
-                font-size: 10.5px;
-                padding: 6px 4px;
+                font-size: 11px;
+                padding: 8px 6px;
             }
             .chest-col {
-                width: 75px;
-                font-size: 14px;
-                font-weight: 800;
+                width: 90px;
+                font-size: 14.5px;
+                font-weight: 900;
+            }
+            .participant-col {
+                text-align: left !important;
+                padding-left: 10px !important;
+                width: 220px;
+            }
+            .sheet-footer {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-top: 18px;
+                padding-top: 12px;
+                border-top: 1.5px solid #cbd5e1;
+                font-size: 13px;
+                font-weight: 700;
+            }
+            .signature-line {
+                border-bottom: 1.5px solid #000;
+                display: inline-block;
+                width: 200px;
+                margin-left: 6px;
             }
             @media print {
+                @page {
+                    size: A4 landscape;
+                    margin: 6mm 8mm;
+                }
                 body { padding: 0; background: #fff !important; }
-                .judge-half-sheet { border-color: #cbd5e1; }
+                .judge-landscape-sheet {
+                    border: none;
+                    padding: 0;
+                    margin-bottom: 0;
+                    border-radius: 0;
+                }
+                .sheet-table th {
+                    background: #f1f5f9 !important;
+                    -webkit-print-color-adjust: exact;
+                    print-color-adjust: exact;
+                }
             }
         </style>
     </head>
-    <body data-print-orientation="portrait">
+    <body data-print-orientation="landscape">
         <div class="no-print-bar" style="background: #0f172a; padding: 12px 20px; border-radius: 12px; margin-bottom: 20px; color: #fff; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
             <div>
-                <h3 style="margin:0; font-size: 16px; color:#fff;"><i class="fa-solid fa-file-invoice" style="color:#60a5fa;"></i> Judges Score Sheets</h3>
-                <small style="color:#94a3b8;"><?= count($orderedPrograms) ?> Program(s) ready to print</small>
+                <h3 style="margin:0; font-size: 16px; color:#fff;"><i class="fa-solid fa-file-invoice" style="color:#60a5fa;"></i> Judges Score Sheets (Landscape Mode)</h3>
+                <small style="color:#94a3b8;"><?= count($orderedPrograms) ?> Program(s) — Each program & judge on a separate page</small>
             </div>
             <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
                 <select data-print-select="orientation" style="padding: 6px 12px; border-radius: 6px; background: #1e293b; color: #fff; border: 1px solid #334155;">
+                    <option value="landscape" selected>🖼️ Landscape</option>
                     <option value="portrait">📄 Portrait</option>
-                    <option value="landscape">🖼️ Landscape</option>
                 </select>
                 <select data-print-select="scale" style="padding: 6px 12px; border-radius: 6px; background: #1e293b; color: #fff; border: 1px solid #334155;">
                     <option value="1">100% Fit</option>
@@ -204,7 +253,7 @@ if ($action === 'print' && $activeEvent) {
 
         <?php
         $totalProgs = count($orderedPrograms);
-        $prevProgType = null;
+        $judgesCount = max(1, min(6, (int)($_GET['judges_count'] ?? $_GET['judges'] ?? 2)));
 
         foreach ($orderedPrograms as $pIdx => $program):
             $pId = (int)$program['id'];
@@ -212,8 +261,7 @@ if ($action === 'print' && $activeEvent) {
             $categories = $categoriesByProgram[$pId] ?? [];
             $entriesForPrint = $entriesByProgram[$pId] ?? [];
             $entryCount = count($entriesForPrint);
-            $useSeparatePages = $entryCount > 10;
-            $rowHeight = $useSeparatePages ? 30 : ($entryCount <= 5 ? 36 : 26);
+            $rowHeight = ($entryCount <= 6) ? 40 : (($entryCount <= 12) ? 32 : 26);
 
             $tier = admin_class_type_tier_from_name($program['class_type_name'] ?? '');
             $sectionLabel = $tier ? admin_class_type_tier_label($tier) : '';
@@ -230,113 +278,75 @@ if ($action === 'print' && $activeEvent) {
             } else {
                 $programHeading = $program['title'];
             }
-
-            $isLastProgram = ($pIdx === $totalProgs - 1);
-            // Force page break when transitioning from individual to group programs
-            $isTypeTransition = ($prevProgType !== null && $prevProgType !== $pType);
-            $prevProgType = $pType;
         ?>
-            <?php if ($useSeparatePages): ?>
-                <?php for ($j = 1; $j <= 2; $j++): ?>
-                    <div class="judge-full-sheet <?= ($pIdx > 0 || $j > 1) ? 'page-break' : '' ?>">
-                        <div class="print-header">
-                            <div class="program-title-banner">
-                                <span class="program-title"><?= e($programHeading) ?> (<?= ucfirst($pType) ?>)</span>
-                                <span class="judge-badge">JUDGE <?= $j ?> SCORE SHEET</span>
-                            </div>
+            <?php for ($j = 1; $j <= $judgesCount; $j++): ?>
+                <div class="judge-landscape-sheet <?= ($pIdx > 0 || $j > 1) ? 'page-break' : '' ?>">
+                    <div class="print-header">
+                        <div class="event-kicker"><?= e($activeEvent['title']) ?> — Official Judge Score Sheet</div>
+                        <div class="program-title-banner">
+                            <span class="program-title"><?= e($programHeading) ?> <small style="font-weight:700; font-size:13px; color:#475569;">(<?= ucfirst($pType) ?>)</small></span>
+                            <span class="judge-badge">JUDGE <?= $j ?> SCORE SHEET</span>
                         </div>
-
-                        <table class="sheet-table">
-                            <thead>
-                                <tr>
-                                    <th class="chest-col">Chest #</th>
-                                    <?php foreach ($categories as $cat): ?>
-                                        <th class="score-col">
-                                            <?= e($cat['name']) ?><br>
-                                            <small style="font-weight:600; font-size:9.5px;">(Max <?= number_format($cat['max_marks'], 0) ?>)</small>
-                                        </th>
-                                    <?php endforeach; ?>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php if (empty($entriesForPrint)): ?>
-                                    <tr>
-                                        <td colspan="<?= 1 + count($categories) ?>" style="padding: 20px; color: #666;">No entries registered for this program.</td>
-                                    </tr>
-                                <?php else: ?>
-                                    <?php foreach ($entriesForPrint as $entry): ?>
-                                        <?php
-                                            $chestNo = !empty($entry['chest_number']) ? $entry['chest_number'] : $entry['entry_number'];
-                                            $formattedChest = is_numeric($chestNo) ? str_pad((string)$chestNo, 3, '0', STR_PAD_LEFT) : (string)$chestNo;
-                                        ?>
-                                        <tr>
-                                            <td class="chest-col" style="font-weight: 800; font-size: 13.5px; height: <?= $rowHeight ?>px;">
-                                                #<?= e($formattedChest) ?>
-                                            </td>
-                                            <?php foreach ($categories as $cat): ?>
-                                                <td style="height: <?= $rowHeight ?>px;"></td>
-                                            <?php endforeach; ?>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                <?php endif; ?>
-                            </tbody>
-                        </table>
                     </div>
-                <?php endfor; ?>
-            <?php else: ?>
-                <div class="<?= ($pIdx > 0 || $isTypeTransition) ? 'page-break' : '' ?>">
-                    <?php for ($j = 1; $j <= 2; $j++): ?>
-                        <?php if ($j === 2): ?>
-                            <div style="margin: 12px 0; border-top: 1px dashed #cbd5e1;"></div>
-                        <?php endif; ?>
 
-                        <div class="judge-half-sheet">
-                            <div class="print-header">
-                                <div class="program-title-banner">
-                                    <span class="program-title"><?= e($programHeading) ?> (<?= ucfirst($pType) ?>)</span>
-                                    <span class="judge-badge">JUDGE <?= $j ?> SCORE SHEET</span>
-                                </div>
-                            </div>
-
-                            <table class="sheet-table">
-                                <thead>
+                    <table class="sheet-table">
+                        <thead>
+                            <tr>
+                                <th class="chest-col">Chest #</th>
+                                <th class="participant-col">Participant / Team Name</th>
+                                <?php foreach ($categories as $cat): ?>
+                                    <th class="score-col">
+                                        <?= e($cat['name']) ?><br>
+                                        <small style="font-weight:700; font-size:9.5px; text-transform:none;">(Max <?= number_format($cat['max_marks'], 0) ?>)</small>
+                                    </th>
+                                <?php endforeach; ?>
+                                <th style="width: 80px;">Total</th>
+                                <th style="width: 140px;">Judge Notes</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if (empty($entriesForPrint)): ?>
+                                <tr>
+                                    <td colspan="<?= 3 + count($categories) + 1 ?>" style="padding: 24px; color: #666; font-size: 14px;">No registered entries found for this program.</td>
+                                </tr>
+                            <?php else: ?>
+                                <?php foreach ($entriesForPrint as $entry): ?>
+                                    <?php
+                                        $chestNo = !empty($entry['chest_number']) ? $entry['chest_number'] : $entry['entry_number'];
+                                        $formattedChest = is_numeric($chestNo) ? str_pad((string)$chestNo, 3, '0', STR_PAD_LEFT) : (string)$chestNo;
+                                        $pName = !empty($entry['participant_name']) ? $entry['participant_name'] : (!empty($entry['team_name']) ? $entry['team_name'] : '—');
+                                    ?>
                                     <tr>
-                                        <th class="chest-col">Chest #</th>
+                                        <td class="chest-col" style="font-weight: 900; font-size: 14px; height: <?= $rowHeight ?>px;">
+                                            #<?= e($formattedChest) ?>
+                                        </td>
+                                        <td class="participant-col" style="font-weight: 700; font-size: 13px; height: <?= $rowHeight ?>px;">
+                                            <?= e($pName) ?>
+                                        </td>
                                         <?php foreach ($categories as $cat): ?>
-                                            <th class="score-col">
-                                                <?= e($cat['name']) ?><br>
-                                                <small style="font-weight:600; font-size:9.5px;">(Max <?= number_format($cat['max_marks'], 0) ?>)</small>
-                                            </th>
+                                            <td style="height: <?= $rowHeight ?>px;"></td>
                                         <?php endforeach; ?>
+                                        <td style="height: <?= $rowHeight ?>px;"></td>
+                                        <td style="height: <?= $rowHeight ?>px;"></td>
                                     </tr>
-                                </thead>
-                                <tbody>
-                                    <?php if (empty($entriesForPrint)): ?>
-                                        <tr>
-                                            <td colspan="<?= 1 + count($categories) ?>" style="padding: 20px; color: #666;">No entries registered for this program.</td>
-                                        </tr>
-                                    <?php else: ?>
-                                        <?php foreach ($entriesForPrint as $entry): ?>
-                                            <?php
-                                                $chestNo = !empty($entry['chest_number']) ? $entry['chest_number'] : $entry['entry_number'];
-                                                $formattedChest = is_numeric($chestNo) ? str_pad((string)$chestNo, 3, '0', STR_PAD_LEFT) : (string)$chestNo;
-                                            ?>
-                                            <tr>
-                                                <td class="chest-col" style="font-weight: 800; font-size: 13.5px; height: <?= $rowHeight ?>px;">
-                                                    #<?= e($formattedChest) ?>
-                                                </td>
-                                                <?php foreach ($categories as $cat): ?>
-                                                    <td style="height: <?= $rowHeight ?>px;"></td>
-                                                <?php endforeach; ?>
-                                            </tr>
-                                        <?php endforeach; ?>
-                                    <?php endif; ?>
-                                </tbody>
-                            </table>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+
+                    <div class="sheet-footer">
+                        <div>
+                            <span>Judge Name: <span class="signature-line"></span></span>
                         </div>
-                    <?php endfor; ?>
+                        <div>
+                            <span>Signature: <span class="signature-line"></span></span>
+                        </div>
+                        <div>
+                            <span>Date: <span class="signature-line" style="width: 130px;"></span></span>
+                        </div>
+                    </div>
                 </div>
-            <?php endif; ?>
+            <?php endfor; ?>
         <?php endforeach; ?>
 
         <script>

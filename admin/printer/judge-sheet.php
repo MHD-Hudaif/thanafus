@@ -86,9 +86,8 @@ if (empty($chestNumbers)) {
     }
 }
 
-$useLandscapeHalfSheet = ($participantsCount <= 10);
-$pageSize = $useLandscapeHalfSheet ? 'A4 landscape' : 'A4 portrait';
-$rowHeight = $useLandscapeHalfSheet ? ($participantsCount <= 5 ? 44 : 32) : ($participantsCount <= 15 ? 36 : 28);
+$pageSize = 'A4 landscape';
+$rowHeight = ($participantsCount <= 6) ? 40 : (($participantsCount <= 12) ? 32 : 26);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -99,7 +98,7 @@ $rowHeight = $useLandscapeHalfSheet ? ($participantsCount <= 5 ? 44 : 32) : ($pa
     <script src="<?= asset_url('js/print-helpers.js') ?>" defer></script>
     <style>
         @page {
-            size: <?= $pageSize ?>;
+            size: A4 landscape;
             margin: 6mm 8mm;
         }
         * {
@@ -333,7 +332,7 @@ $rowHeight = $useLandscapeHalfSheet ? ($participantsCount <= 5 ? 44 : 32) : ($pa
         }
     </style>
 </head>
-<body>
+<body data-print-orientation="landscape">
 
     <!-- SCREEN-ONLY CONTROL PANEL -->
     <div class="no-print-controls">
@@ -342,8 +341,8 @@ $rowHeight = $useLandscapeHalfSheet ? ($participantsCount <= 5 ? 44 : 32) : ($pa
                 <i class="fa-solid fa-clipboard-check" style="color: #38bdf8;"></i>
                 <span>Judge Chest Number Sheet Generator</span>
                 <span class="layout-indicator-badge">
-                    <i class="fa-solid <?= $useLandscapeHalfSheet ? 'fa-square-minus' : 'fa-copy' ?>"></i>
-                    <?= $useLandscapeHalfSheet ? 'Layout 2: A4 Landscape Cut-Line (<=10)' : 'Layout 1: A4 Portrait 1-per-Judge (>10)' ?>
+                    <i class="fa-solid fa-file-invoice"></i>
+                    A4 Landscape Mode (Each Judge on Separate Page)
                 </span>
             </div>
 
@@ -390,108 +389,51 @@ $rowHeight = $useLandscapeHalfSheet ? ($participantsCount <= 5 ? 44 : 32) : ($pa
 
     <!-- DOCUMENT PRINT CONTAINER -->
     <div class="sheet-container">
-        <?php if ($useLandscapeHalfSheet): ?>
-            <!-- ================================================== -->
-            <!-- LAYOUT 2 – 10 PARTICIPANTS OR LESS (A4 LANDSCAPE) -->
-            <!-- ================================================== -->
-            <div class="landscape-halves-wrapper">
-                <div class="cut-line-divider">
-                    <span class="cut-line-indicator">✂ CUT HERE FOR JUDGE 1 / JUDGE 2 ✂</span>
+        <?php for ($j = 1; $j <= $judgesCount; $j++): ?>
+            <div class="sheet-card <?= ($j > 1) ? 'page-break' : '' ?>">
+                <div class="sheet-header">
+                    <div class="brand-title">KAUZARIYYA MUSABAQA</div>
+                    <div class="sheet-subtitle">Judge Chest Number Sheet</div>
+
+                    <div class="header-meta-lines">
+                        <div class="meta-line">
+                            <span class="meta-label">Program:</span>
+                            <span class="meta-underline"><?= e($programName) ?></span>
+                        </div>
+                        <div style="width: 40px;"></div>
+                        <div class="meta-line" style="max-width: 180px;">
+                            <span class="meta-label">Judge:</span>
+                            <span class="meta-underline">Judge <?= $j ?></span>
+                        </div>
+                    </div>
                 </div>
 
-                <?php for ($j = 1; $j <= min(2, $judgesCount); $j++): ?>
-                    <div class="sheet-card">
-                        <div class="sheet-header">
-                            <div class="brand-title">KAUZARIYYA MUSABAQA</div>
-                            <div class="sheet-subtitle">Judge Chest Number Sheet</div>
-
-                            <div class="header-meta-lines">
-                                <div class="meta-line">
-                                    <span class="meta-label">Program:</span>
-                                    <span class="meta-underline"><?= e($programName) ?></span>
-                                </div>
-                                <div style="width: 20px;"></div>
-                                <div class="meta-line" style="max-width: 140px;">
-                                    <span class="meta-label">Judge:</span>
-                                    <span class="meta-underline">Judge <?= $j ?></span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <table class="judge-table">
-                            <thead>
-                                <tr>
-                                    <th class="chest-col">Chest No.</th>
-                                    <th><?= e($cat1) ?></th>
-                                    <th><?= e($cat2) ?></th>
-                                    <th><?= e($cat3) ?></th>
-                                    <th><?= e($cat4) ?></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($chestNumbers as $chest): ?>
-                                    <tr>
-                                        <td class="chest-col">#<?= e($chest) ?></td>
-                                        <td style="height: <?= $rowHeight ?>px;"></td>
-                                        <td style="height: <?= $rowHeight ?>px;"></td>
-                                        <td style="height: <?= $rowHeight ?>px;"></td>
-                                        <td style="height: <?= $rowHeight ?>px;"></td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                    </div>
-                <?php endfor; ?>
-            </div>
-
-        <?php else: ?>
-            <!-- ================================================== -->
-            <!-- LAYOUT 1 – MORE THAN 10 PARTICIPANTS (A4 PORTRAIT) -->
-            <!-- ================================================== -->
-            <?php for ($j = 1; $j <= $judgesCount; $j++): ?>
-                <div class="sheet-card <?= ($j > 1) ? 'page-break' : '' ?>">
-                    <div class="sheet-header">
-                        <div class="brand-title">KAUZARIYYA MUSABAQA</div>
-                        <div class="sheet-subtitle">Judge Chest Number Sheet</div>
-
-                        <div class="header-meta-lines">
-                            <div class="meta-line">
-                                <span class="meta-label">Program:</span>
-                                <span class="meta-underline"><?= e($programName) ?></span>
-                            </div>
-                            <div style="width: 40px;"></div>
-                            <div class="meta-line" style="max-width: 180px;">
-                                <span class="meta-label">Judge:</span>
-                                <span class="meta-underline">Judge <?= $j ?></span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <table class="judge-table">
-                        <thead>
+                <table class="judge-table">
+                    <thead>
+                        <tr>
+                            <th class="chest-col">Chest No.</th>
+                            <th><?= e($cat1) ?></th>
+                            <th><?= e($cat2) ?></th>
+                            <th><?= e($cat3) ?></th>
+                            <th><?= e($cat4) ?></th>
+                            <th style="width: 90px;">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($chestNumbers as $chest): ?>
                             <tr>
-                                <th class="chest-col">Chest No.</th>
-                                <th><?= e($cat1) ?></th>
-                                <th><?= e($cat2) ?></th>
-                                <th><?= e($cat3) ?></th>
-                                <th><?= e($cat4) ?></th>
+                                <td class="chest-col">#<?= e($chest) ?></td>
+                                <td style="height: <?= $rowHeight ?>px;"></td>
+                                <td style="height: <?= $rowHeight ?>px;"></td>
+                                <td style="height: <?= $rowHeight ?>px;"></td>
+                                <td style="height: <?= $rowHeight ?>px;"></td>
+                                <td style="height: <?= $rowHeight ?>px;"></td>
                             </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($chestNumbers as $chest): ?>
-                                <tr>
-                                    <td class="chest-col">#<?= e($chest) ?></td>
-                                    <td style="height: <?= $rowHeight ?>px;"></td>
-                                    <td style="height: <?= $rowHeight ?>px;"></td>
-                                    <td style="height: <?= $rowHeight ?>px;"></td>
-                                    <td style="height: <?= $rowHeight ?>px;"></td>
-                                </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
-            <?php endfor; ?>
-        <?php endif; ?>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        <?php endfor; ?>
     </div>
 
     <script>
