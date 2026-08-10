@@ -27,16 +27,19 @@ document.querySelector('.tv-topbar')?.setAttribute('hidden', '');
 </script>
 <?php endif; ?>
 
-<style>
+<<style>
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;700;800;900&family=Outfit:wght@600;700;800;900&family=Cairo:wght@700;800;900&display=swap');
 
 body.tv-schedule-active .tv-topbar,
-body:has(#slide-schedule.tv-slide--active) .tv-topbar {
+body.tv-schedule-active .tv-backdrop,
+body:has(#slide-schedule.tv-slide--active) .tv-topbar,
+body:has(#slide-schedule.tv-slide--active) .tv-backdrop {
     display: none !important;
 }
 
 #slide-schedule {
     padding: 0 !important;
+    margin: 0 !important;
     overflow: hidden;
     background: #f8fafc url('<?= asset_url('images/white-background.png') ?>') center center / cover no-repeat;
     font-family: 'Plus Jakarta Sans', 'Outfit', 'Cairo', system-ui, -apple-system, sans-serif;
@@ -47,6 +50,16 @@ body:has(#slide-schedule.tv-slide--active) .tv-topbar {
     align-items: center;
     justify-content: center;
     position: relative;
+}
+
+.tv-schedule-stage-root {
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
 }
 
 .tv-schedule {
@@ -80,8 +93,8 @@ body:has(#slide-schedule.tv-slide--active) .tv-topbar {
     pointer-events: none;
     z-index: 0;
     background: 
-        radial-gradient(circle at 18% 25%, color-mix(in srgb, var(--first-team-color) 22%, transparent) 0%, transparent 55%),
-        radial-gradient(circle at 82% 75%, color-mix(in srgb, var(--first-team-color) 14%, transparent) 0%, transparent 48%);
+        radial-gradient(circle at 18% 25%, color-mix(in srgb, var(--first-team-color, #10b981) 22%, transparent) 0%, transparent 55%),
+        radial-gradient(circle at 82% 75%, color-mix(in srgb, var(--first-team-color, #10b981) 14%, transparent) 0%, transparent 48%);
     animation: ambient-pulse 12s ease-in-out infinite alternate;
 }
 
@@ -105,6 +118,15 @@ body:has(#slide-schedule.tv-slide--active) .tv-topbar {
     inset: 0;
     width: 100vw;
     height: 100vh;
+    pointer-events: none;
+    z-index: 1;
+}
+
+#particles-js, .tv-particles {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
     pointer-events: none;
     z-index: 1;
 }
@@ -260,7 +282,7 @@ body:has(#slide-schedule.tv-slide--active) .tv-topbar {
     font-size: 26px;
     font-weight: 900;
     color: #0f172a;
-    font-font-family: 'Plus Jakarta Sans', sans-serif;
+    font-family: 'Plus Jakarta Sans', sans-serif;
     font-variant-numeric: tabular-nums;
 }
 
@@ -329,48 +351,116 @@ body:has(#slide-schedule.tv-slide--active) .tv-topbar {
 }
 </style>
 
-<!-- 3D Relief Geometric Layer Cuts Background -->
-<svg class="bg-3d-cuts-svg" viewBox="0 0 1920 1080" preserveAspectRatio="none" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <filter id="cutShadow" x="-20%" y="-20%" width="140%" height="140%">
-        <feDropShadow dx="-8" dy="12" stdDeviation="15" flood-color="rgba(0,0,0,0.06)" />
-    </filter>
-    <!-- Left Side 3D Cut Polygons -->
-    <polygon points="-100,1200 650,540 -100,-100" fill="#ffffff" filter="url(#cutShadow)" />
-    <polygon points="-100,1050 480,540 -100,30" fill="rgba(250,250,252,0.92)" filter="url(#cutShadow)" />
-    
-    <!-- Right Side 3D Cut Polygons -->
-    <polygon points="2020,1200 1270,540 2020,-100" fill="#ffffff" filter="url(#cutShadow)" />
-    <polygon points="2020,1050 1440,540 2020,30" fill="rgba(250,250,252,0.92)" filter="url(#cutShadow)" />
-</svg>
+<script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js" defer></script>
 
-<!-- Dynamic 1st Rank Team Geometric Chevron Vectors (Full Screen Background) -->
-<svg class="side-chevrons-svg full-screen" viewBox="0 0 1920 1080" preserveAspectRatio="none" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <g class="animated-chevron-group">
-        <!-- Left Side Chevron & Cross Lines -->
-        <path class="animated-dash-line" d="M-100 1200 L650 540 L-100 -100" stroke="var(--first-team-color)" stroke-width="3" stroke-linecap="round" />
-        <path class="animated-dash-line" d="M-150 1050 L480 540 L-150 30" stroke="var(--first-team-color)" stroke-width="2" opacity="0.8" stroke-linecap="round" />
-        <path class="animated-dash-line" d="M-50 1350 L750 540 L-50 -200" stroke="var(--first-team-color)" stroke-width="1.5" opacity="0.6" stroke-linecap="round" />
-        
-        <line class="animated-cross-line" x1="200" y1="900" x2="420" y2="680" stroke="var(--first-team-color)" stroke-width="2" opacity="0.75" />
-        <line class="animated-cross-line" x1="320" y1="780" x2="540" y2="560" stroke="var(--first-team-color)" stroke-width="2" opacity="0.75" />
-        <line class="animated-cross-line" x1="100" y1="360" x2="320" y2="140" stroke="var(--first-team-color)" stroke-width="2" opacity="0.75" />
-        <line class="animated-cross-line" x1="220" y1="240" x2="440" y2="20" stroke="var(--first-team-color)" stroke-width="2" opacity="0.75" />
+<div class="tv-schedule-stage-root" data-schedule-stage-root style="--first-team-color: <?= e($firstTeamColor) ?>; --top-team-color: <?= e($firstTeamColor) ?>;">
+    <!-- 3D Relief Geometric Layer Cuts Background -->
+    <svg class="bg-3d-cuts-svg" viewBox="0 0 1920 1080" preserveAspectRatio="none" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <filter id="cutShadowSchedule" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="-8" dy="12" stdDeviation="15" flood-color="rgba(0,0,0,0.06)" />
+        </filter>
+        <polygon points="-100,1200 650,540 -100,-100" fill="#ffffff" filter="url(#cutShadowSchedule)" />
+        <polygon points="-100,1050 480,540 -100,30" fill="rgba(250,250,252,0.92)" filter="url(#cutShadowSchedule)" />
+        <polygon points="2020,1200 1270,540 2020,-100" fill="#ffffff" filter="url(#cutShadowSchedule)" />
+        <polygon points="2020,1050 1440,540 2020,30" fill="rgba(250,250,252,0.92)" filter="url(#cutShadowSchedule)" />
+    </svg>
 
-        <!-- Right Side Chevron & Cross Lines -->
-        <path class="animated-dash-line" d="M2020 1200 L1270 540 L2020 -100" stroke="var(--first-team-color)" stroke-width="3" stroke-linecap="round" />
-        <path class="animated-dash-line" d="M2070 1050 L1440 540 L2070 30" stroke="var(--first-team-color)" stroke-width="2" opacity="0.8" stroke-linecap="round" />
-        <path class="animated-dash-line" d="M1970 1350 L1170 540 L1970 -200" stroke="var(--first-team-color)" stroke-width="1.5" opacity="0.6" stroke-linecap="round" />
+    <!-- Dynamic 1st Rank Team Geometric Chevron Vectors -->
+    <svg class="side-chevrons-svg full-screen" viewBox="0 0 1920 1080" preserveAspectRatio="none" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <g class="animated-chevron-group">
+            <path class="animated-dash-line" d="M-100 1200 L650 540 L-100 -100" stroke="var(--first-team-color, #10b981)" stroke-width="3" stroke-linecap="round" />
+            <path class="animated-dash-line" d="M-150 1050 L480 540 L-150 30" stroke="var(--first-team-color, #10b981)" stroke-width="2" opacity="0.8" stroke-linecap="round" />
+            <line class="animated-cross-line" x1="200" y1="900" x2="420" y2="680" stroke="var(--first-team-color, #10b981)" stroke-width="2" opacity="0.75" />
+            <line class="animated-cross-line" x1="320" y1="780" x2="540" y2="560" stroke="var(--first-team-color, #10b981)" stroke-width="2" opacity="0.75" />
 
-        <line class="animated-cross-line" x1="1720" y1="900" x2="1500" y2="680" stroke="var(--first-team-color)" stroke-width="2" opacity="0.75" />
-        <line class="animated-cross-line" x1="1600" y1="780" x2="1380" y2="560" stroke="var(--first-team-color)" stroke-width="2" opacity="0.75" />
-        <line class="animated-cross-line" x1="1820" y1="360" x2="1600" y2="140" stroke="var(--first-team-color)" stroke-width="2" opacity="0.75" />
-        <line class="animated-cross-line" x1="1700" y1="240" x2="1480" y2="20" stroke="var(--first-team-color)" stroke-width="2" opacity="0.75" />
-    </g>
-</svg>
+            <path class="animated-dash-line" d="M2020 1200 L1270 540 L2020 -100" stroke="var(--first-team-color, #10b981)" stroke-width="3" stroke-linecap="round" />
+            <path class="animated-dash-line" d="M2070 1050 L1440 540 L2070 30" stroke="var(--first-team-color, #10b981)" stroke-width="2" opacity="0.8" stroke-linecap="round" />
+            <line class="animated-cross-line" x1="1720" y1="900" x2="1500" y2="680" stroke="var(--first-team-color, #10b981)" stroke-width="2" opacity="0.75" />
+        </g>
+    </svg>
 
-<div class="ambient-mesh-bg"></div>
+    <div class="ambient-mesh-bg"></div>
+    <div id="particles-js" class="tv-particles"></div>
 
-<div class="tv-schedule" data-schedule></div>
+    <div class="tv-schedule" data-schedule></div>
+</div>
+
+<script>
+    (() => {
+        let activeParticleColor = '';
+
+        function initTopTeamParticles(colorHex) {
+            if (!colorHex || colorHex === activeParticleColor) return;
+            activeParticleColor = colorHex;
+
+            if (typeof particlesJS === 'undefined') {
+                setTimeout(() => initTopTeamParticles(colorHex), 150);
+                return;
+            }
+
+            if (window.pJSDom && window.pJSDom.length > 0) {
+                try {
+                    window.pJSDom[0].pJS.fn.vendors.destroypJS();
+                } catch(e) {}
+                window.pJSDom = [];
+            }
+
+            particlesJS('particles-js', {
+                "particles": {
+                    "number": {
+                        "value": 50,
+                        "density": { "enable": true, "value_area": 900 }
+                    },
+                    "color": {
+                        "value": [colorHex, "#ffffff", colorHex]
+                    },
+                    "shape": { "type": "circle" },
+                    "opacity": {
+                        "value": 0.7,
+                        "random": true,
+                        "anim": { "enable": true, "speed": 1.4, "opacity_min": 0.25, "sync": false }
+                    },
+                    "size": {
+                        "value": 4.5,
+                        "random": true,
+                        "anim": { "enable": true, "speed": 2.2, "size_min": 1.2, "sync": false }
+                    },
+                    "line_linked": {
+                        "enable": true,
+                        "distance": 140,
+                        "color": colorHex,
+                        "opacity": 0.28,
+                        "width": 1.2
+                    },
+                    "move": {
+                        "enable": true,
+                        "speed": 1.6,
+                        "direction": "none",
+                        "random": true,
+                        "straight": false,
+                        "out_mode": "out",
+                        "bounce": false
+                    }
+                },
+                "interactivity": {
+                    "detect_on": "canvas",
+                    "events": {
+                        "onhover": { "enable": true, "mode": "grab" },
+                        "onclick": { "enable": true, "mode": "push" },
+                        "resize": true
+                    },
+                    "modes": {
+                        "grab": { "distance": 180, "line_linked": { "opacity": 0.45 } },
+                        "push": { "particles_nb": 4 }
+                    }
+                },
+                "retina_detect": true
+            });
+        }
+
+        initTopTeamParticles(<?= json_encode($firstTeamColor) ?>);
+    })();
+</script>
 
 <?php
 if (!defined('LIVE_DISPLAY_STAGE')) {
