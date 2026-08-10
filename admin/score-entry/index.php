@@ -19,11 +19,11 @@ require_once __DIR__ . '/../../includes/sidebar.php';
     <div class="musabaqa-hub-header">
         <div>
             <h1><i class="fa-solid fa-eye" style="color:#8b5cf6;"></i> Score Audit & Monitoring Space</h1>
-            <p>Read-only view of entered scores. All score marking is performed on the Judges Marking Portal.</p>
+            <p>Manage score entries and program evaluations.</p>
         </div>
         <div class="flex gap-2">
-            <a href="<?= app_url('/judges/index.php') ?>" class="btn btn-primary btn-md">
-                <i class="fa-solid fa-gavel mr-1"></i> Open Judges Marking Portal
+            <a href="<?= app_url('/admin/score-entry/score-entry.php') ?>" class="btn btn-primary btn-md">
+                <i class="fa-solid fa-pen-to-square mr-1"></i> Open Score Entry
             </a>
             <?php if (is_admin()): ?>
                 <a href="<?= app_url('/admin/index.php') ?>" class="btn btn-secondary btn-md">

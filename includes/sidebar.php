@@ -117,11 +117,11 @@ if ($activeEventId) {
         <i data-lucide="chevron-left"></i>
     </button>
 
-    <!-- Search Launcher Command Launcher -->
+    <!-- Operations Workspace Launcher -->
     <div class="sidebar-search-launcher-container">
-        <button class="sidebar-search-launcher" id="sidebarSearchLauncher" title="Search pages... (Ctrl+K)">
-            <i data-lucide="search"></i>
-            <span>Search...</span>
+        <button class="sidebar-search-launcher" id="sidebarSearchLauncher" onclick="openCmdPalette()" title="Open Operations Workspace (Ctrl+K)">
+            <i data-lucide="zap" style="color: #34d399;"></i>
+            <span>Operations</span>
             <span class="sidebar-search-shortcut">⌘K</span>
         </button>
     </div>
@@ -160,10 +160,6 @@ if ($activeEventId) {
                     <i data-lucide="credit-card" class="sidebar-icon"></i>
                     <span class="sidebar-label">Chest Numbers</span>
                 </a>
-                <a href="<?= app_url('/admin/registrar/entries.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('entries.php') ?>">
-                    <i data-lucide="user-check" class="sidebar-icon"></i>
-                    <span class="sidebar-label">Register Participant</span>
-                </a>
             </div>
         </div>
 
@@ -174,24 +170,14 @@ if ($activeEventId) {
                 <i data-lucide="chevron-down" class="chevron-icon"></i>
             </div>
             <div class="sidebar-group-content">
-                <a href="<?= app_url('/judges/index.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('/judges/') ?>">
-                    <i data-lucide="gavel" class="sidebar-icon"></i>
-                    <span class="sidebar-label">Judges Marking Portal</span>
-                </a>
                 <a href="<?= app_url('/admin/score-entry/score-entry.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('score-entry.php') ?>">
-                    <i data-lucide="eye" class="sidebar-icon"></i>
-                    <span class="sidebar-label">Admin Score Audit</span>
+                    <i data-lucide="pen-tool" class="sidebar-icon"></i>
+                    <span class="sidebar-label">Score Entry &amp; Audit</span>
                 </a>
                 <a href="<?= app_url('/admin/score-entry/program-scores.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('program-scores.php') ?>">
                     <i data-lucide="file-text" class="sidebar-icon"></i>
                     <span class="sidebar-label">Score Sheets View</span>
                 </a>
-                <?php if (is_admin()): ?>
-                <a href="<?= app_url('/admin/score-update/score-approval.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('score-approval.php') ?>">
-                    <i data-lucide="check-circle-2" class="sidebar-icon"></i>
-                    <span class="sidebar-label">Approve Standings</span>
-                </a>
-                <?php endif; ?>
                 <a href="<?= app_url('/admin/score-update/approval-marks.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('approval-marks.php') ?>">
                     <i data-lucide="trophy" class="sidebar-icon"></i>
                     <span class="sidebar-label">Final Rankings</span>

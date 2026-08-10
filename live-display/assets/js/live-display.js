@@ -178,36 +178,40 @@
         }
     }
 
+    function getSlideElements() {
+        return Array.from(document.querySelectorAll('.tv-slide'));
+    }
+
     function setActiveSlide(name) {
-        els.body.classList.toggle('tv-schedule-active', name === 'schedule');
+        if (!name) return;
+        const normalizedName = String(name).replace('_', '-');
+        const slides = getSlideElements();
 
-        if (state.activeSlide === name && slideEls.some(s => s.classList.contains('tv-slide--active') && s.dataset.slide === name)) {
-            return;
-        }
+        els.body.classList.toggle('tv-schedule-active', normalizedName === 'schedule');
 
-        state.activeSlide = name;
-        slideEls.forEach((slide) => {
-            const isActive = slide.dataset.slide === name;
+        state.activeSlide = normalizedName;
+        slides.forEach((slide) => {
+            const isActive = slide.dataset.slide === normalizedName;
             slide.classList.toggle('tv-slide--active', isActive);
         });
 
-        if (name !== 'schedule') {
+        if (normalizedName !== 'schedule') {
             stopScheduleTimer();
         }
 
-        if (name === 'intro') {
-            if (els.introVideo) {
+        if (normalizedName === 'intro') {
+            const video = document.querySelector('[data-intro-video]');
+            if (video) {
                 try {
-                    els.introVideo.currentTime = 0;
-                    els.introVideo.play().catch(() => {});
+                    video.currentTime = 0;
+                    video.play().catch(() => {});
                 } catch (_) {}
             }
-            return;
         }
 
-        animateEntrance(`#slide-${name}`);
+        animateEntrance(`#slide-${normalizedName}`);
 
-        if (name === 'schedule') {
+        if (normalizedName === 'schedule') {
             startSchedulePlayback();
         }
     }
@@ -218,7 +222,6 @@
 
         gsap.killTweensOf(root.querySelectorAll('*'));
 
-        // Custom animations for the Current Program slide
         if (scope === '#slide-current-program') {
             if (typeof window.triggerCurrentProgramAnimations === 'function') {
                 window.triggerCurrentProgramAnimations();
@@ -226,61 +229,24 @@
             return;
         }
 
-        // Custom sliding animations for the Leaderboard slide
         if (scope === '#slide-leaderboard') {
-            // Whole leaderboard slide entrance
-            gsap.fromTo(root, {
-                opacity: 0,
-                scale: 0.95,
-                filter: 'blur(16px)',
-                y: 60
-            }, {
-                opacity: 1,
-                scale: 1,
-                filter: 'blur(0px)',
-                y: 0,
-                duration: 0.9,
-                ease: 'power2.out',
-                clearProps: 'transform, opacity, filter',
-                onComplete: () => {
-                    triggerLeaderboardAnimations();
-                }
-            });
-
-            // Card elements slide left-to-right on entrance
-            const cards = root.querySelectorAll('.tv-chart-row');
-            if (cards.length > 0) {
-                gsap.fromTo(cards, {
-                    opacity: 0,
-                    scale: 0.82,
-                    x: -160,
-                    filter: 'blur(20px)'
-                }, {
-                    opacity: 1,
-                    scale: 1,
-                    x: 0,
-                    filter: 'blur(0px)',
-                    duration: 1.1,
-                    stagger: 0.12,
-                    ease: 'power4.out',
-                    clearProps: 'transform, opacity, filter'
-                });
-            }
+            triggerLeaderboardAnimations(root);
             return;
         }
 
-        // Default layout slide transitions
-        const items = root.querySelectorAll('.tv-card-rank, .tv-item, .tv-panel, .tv-now-main, .tv-now-side > *');
-        gsap.fromTo(items, {
-            opacity: 0,
-            y: 20
-        }, {
-            opacity: 1,
-            y: 0,
-            duration: 0.6,
-            stagger: 0.04,
-            ease: 'power2.out'
-        });
+        const items = root.querySelectorAll('.tv-card-rank, .tv-item, .tv-panel, .glass-panel');
+        if (items.length > 0) {
+            gsap.fromTo(items, {
+                opacity: 0,
+                y: 20
+            }, {
+                opacity: 1,
+                y: 0,
+                duration: 0.6,
+                stagger: 0.04,
+                ease: 'power2.out'
+            });
+        }
     }
 
     function hexToRgb(hex) {
@@ -1230,11 +1196,10 @@
         stopSlideTimer();
         if (!state.is_playing || state.mode === 'manual' || state.isCelebrating) return;
 
+        const actualDelay = Math.max(3000, delay || 12000);
+
         state.timers.slide = setTimeout(() => {
-            if (state.activeSlide === 'intro' && els.introVideo && !els.introVideo.ended) {
-                scheduleNextSlide(1000);
-                return;
-            }
+            if (!state.is_playing || state.mode === 'manual' || state.isCelebrating) return;
 
             const next = getNextEnabledSlide();
             setActiveSlide(next);
@@ -1243,42 +1208,23 @@
                 const duration = state.slides[next]?.duration || 12000;
                 scheduleNextSlide(duration);
             }
-        }, delay);
+        }, actualDelay);
     }
 
     function startRotation() {
-        const first = state.slides[state.activeSlide]?.enabled ? state.activeSlide : getNextEnabledSlide();
+        stopSlideTimer();
+        stopScheduleTimer();
+
+        if (!state.is_playing || state.mode === 'manual' || state.isCelebrating) return;
+
+        const first = (state.slides[state.activeSlide]?.enabled !== false) ? state.activeSlide : getNextEnabledSlide();
         setActiveSlide(first);
 
-        if (first === 'intro' && els.introVideo) {
-            let advanced = false;
-            const introDone = () => {
-                if (advanced) return;
-                advanced = true;
-                if (state.mode === 'auto' && !state.isCelebrating) {
-                    const next = getNextEnabledSlide();
-                    setActiveSlide(next);
-                    if (next !== 'schedule') {
-                        scheduleNextSlide(state.slides[next]?.duration || 12000);
-                    }
-                }
-            };
-
-            els.introVideo.addEventListener('ended', introDone, { once: true });
-            els.introVideo.addEventListener('error', introDone, { once: true });
-
-            els.introVideo.play().catch(() => {
-                introDone();
-            });
-
-            // Fallback: advance after configured intro duration regardless of video state
-            const introDuration = state.slides['intro']?.duration || 12000;
-            setTimeout(introDone, introDuration);
-
-        } else if (first === 'schedule') {
+        if (first === 'schedule') {
             startSchedulePlayback();
         } else {
-            scheduleNextSlide(state.slides[first]?.duration || 12000);
+            const duration = state.slides[first]?.duration || 12000;
+            scheduleNextSlide(duration);
         }
     }
 
