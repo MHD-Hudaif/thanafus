@@ -769,25 +769,26 @@
         const curPage = state.schedule.currentPage || 0;
 
         els.schedule.innerHTML = `
-            <div class="broadcast-perspective-grid" aria-hidden="true"></div>
-            <div class="broadcast-ambient-glow" aria-hidden="true">
-                <div class="glow-blob--emerald"></div>
-                <div class="glow-blob--blue"></div>
-            </div>
             <div class="schedule-slide-container">
                 <div class="schedule-slide-title">
                     <span>Program Schedule</span>
                     <span class="page-count-badge" data-schedule-page-badge>Page ${curPage + 1} / ${totalPages}</span>
                 </div>
                 <div class="tv-schedule-board">
-                    <div class="tv-schedule-board-head">
+                    <svg class="card-chevrons-svg" viewBox="0 0 800 500" preserveAspectRatio="none" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <g class="animated-card-group">
+                            <path class="animated-dash-line" d="M-50 480 L350 80 L-50 -320" stroke="var(--first-team-color, #10b981)" stroke-width="2.5" opacity="0.4" stroke-linecap="round"/>
+                            <path class="animated-dash-line" d="M850 480 L450 80 L850 -320" stroke="var(--first-team-color, #10b981)" stroke-width="2.5" opacity="0.4" stroke-linecap="round"/>
+                        </g>
+                    </svg>
+                    <div class="tv-schedule-board-head" style="position: relative; z-index: 2;">
                         <span>#</span>
                         <span>Time</span>
                         <span>Program</span>
                         <span>Stage / Venue</span>
                         <span style="text-align: center;">Status</span>
                     </div>
-                    <div class="tv-schedule-page-wrapper" style="overflow: hidden; position: relative;">
+                    <div class="tv-schedule-page-wrapper" style="overflow: hidden; position: relative; z-index: 2;">
                         <div class="tv-schedule-page" data-schedule-page></div>
                     </div>
                 </div>
