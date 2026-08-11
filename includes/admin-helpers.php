@@ -1332,7 +1332,7 @@ if (!function_exists('get_user_default_category_url')) {
         }
 
         if (current_user_has_authority('members-info')) {
-            return '/admin/event/id-cards.php';
+            return '/admin/printer/index.php';
         }
         if (current_user_has_authority('assign-entries')) {
             return '/admin/event/program-entries.php';

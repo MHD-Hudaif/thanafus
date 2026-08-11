@@ -498,25 +498,16 @@ MODALS
 ===================================================== */
 
 .modal-overlay{
-
     position:fixed;
-
     inset:0;
-
-    background:
-    rgba(0,0,0,0.7);
-
+    background: rgba(0,0,0,0.7);
     backdrop-filter:blur(14px);
-
     display:none;
-
     justify-content:center;
-    align-items:center;
-
+    align-items:flex-start;
     z-index:999;
-
-    padding:20px;
-
+    padding:30px 16px;
+    overflow-y:auto;
 }
 
 .modal-overlay.active{

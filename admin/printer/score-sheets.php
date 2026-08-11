@@ -88,12 +88,14 @@ if ($action === 'print' && $activeEvent) {
     <head>
         <meta charset="UTF-8">
         <title>Judges Score Sheets - <?= e($activeEvent['title']) ?></title>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
         <link rel="stylesheet" href="<?= asset_url('css/event-id-cards.css') ?>">
         <script src="<?= asset_url('js/print-helpers.js') ?>" defer></script>
         <style>
+        <style>
             @page {
                 size: A4 landscape;
-                margin: 6mm 8mm;
+                margin: 15mm 20mm;
             }
             * { box-sizing: border-box; }
             body {
@@ -101,17 +103,81 @@ if ($action === 'print' && $activeEvent) {
                 color: #000;
                 background: #f8fafc;
                 margin: 0;
-                padding: 16px;
+                padding: 24px 32px;
                 line-height: 1.3;
             }
+
+            .no-print-bar {
+                background: #0f172a;
+                padding: 14px 20px;
+                border-radius: 12px;
+                margin: 0 auto 24px auto;
+                max-width: 1200px;
+                color: #fff;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+            }
+            .toolbar-inner {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                flex-wrap: wrap;
+                gap: 14px;
+            }
+            .toolbar-title-group h3 {
+                margin: 0;
+                font-size: 16px;
+                color: #fff;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+            .toolbar-title-group small {
+                color: #94a3b8;
+                font-size: 12px;
+            }
+            .toolbar-controls {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                flex-wrap: wrap;
+            }
+            .control-select, .control-checkbox-label {
+                background: #1e293b;
+                color: #fff;
+                border: 1px solid #334155;
+                padding: 6px 12px;
+                border-radius: 6px;
+                font-size: 12px;
+                font-weight: 600;
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                cursor: pointer;
+            }
+            .control-select:focus {
+                outline: none;
+                border-color: #3b82f6;
+            }
+            .control-checkbox-label input[type="checkbox"] {
+                accent-color: #3b82f6;
+                width: 14px;
+                height: 14px;
+                cursor: pointer;
+            }
+
             .judge-landscape-sheet {
                 border: 1.5px solid #cbd5e1;
-                padding: 18px 24px;
+                padding: 28px 36px;
                 border-radius: 12px;
                 background: #fff;
                 width: 100%;
-                margin-bottom: 24px;
+                max-width: 1200px;
+                margin: 0 auto 32px auto;
+                min-height: calc(100vh - 100px);
                 box-sizing: border-box;
+                display: flex;
+                flex-direction: column;
+                justify-content: space-between;
                 page-break-after: always !important;
                 break-after: page !important;
             }
@@ -123,131 +189,259 @@ if ($action === 'print' && $activeEvent) {
                 page-break-before: always !important;
                 break-before: page !important;
             }
+
             .print-header {
-                border-bottom: 2px solid #000;
+                border-bottom: 2.5px solid #000;
                 padding-bottom: 8px;
                 margin-bottom: 12px;
+                flex-shrink: 0;
             }
             .event-kicker {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
                 font-size: 11px;
                 font-weight: 800;
                 text-transform: uppercase;
-                letter-spacing: 0.1em;
+                letter-spacing: 0.08em;
                 color: #475569;
+                margin-bottom: 3px;
             }
             .program-title-banner {
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
                 flex-wrap: wrap;
-                gap: 12px;
-                margin-top: 2px;
+                gap: 10px;
             }
             .program-title {
-                font-size: 18px;
+                font-size: 22px;
                 font-weight: 900;
                 color: #000;
                 letter-spacing: -0.01em;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+            .program-meta-badges {
+                display: flex;
+                gap: 8px;
+                align-items: center;
+            }
+            .meta-badge {
+                border: 1px solid #000;
+                font-size: 10.5px;
+                font-weight: 800;
+                padding: 2px 8px;
+                border-radius: 4px;
+                text-transform: uppercase;
+                letter-spacing: 0.04em;
             }
             .judge-badge {
                 background: #0f172a;
                 color: #fff;
-                font-size: 12px;
+                font-size: 13px;
                 font-weight: 900;
-                padding: 5px 14px;
+                padding: 6px 16px;
                 border-radius: 6px;
                 text-transform: uppercase;
                 letter-spacing: 0.08em;
             }
+
+            .sheet-table-wrapper {
+                flex: 1 1 auto;
+                display: flex;
+                flex-direction: column;
+                margin-top: 6px;
+                margin-bottom: 8px;
+                min-height: 0;
+            }
             .sheet-table {
                 width: 100%;
+                height: 100%;
                 table-layout: fixed;
                 border-collapse: collapse;
-                margin-top: 8px;
-                margin-bottom: 16px;
             }
             .sheet-table th, .sheet-table td {
                 border: 1.5px solid #000;
-                padding: 6px 8px;
                 text-align: center;
                 vertical-align: middle;
-                font-size: 12.5px;
+                padding: 6px 8px;
+                font-size: 13px;
             }
             .sheet-table th {
                 background: #f1f5f9;
-                font-weight: 800;
+                font-weight: 900;
                 text-transform: uppercase;
-                font-size: 11px;
-                padding: 8px 6px;
+                font-size: 12px;
+                letter-spacing: 0.03em;
+                padding: 10px 8px;
             }
             .chest-col {
-                width: 90px;
-                font-size: 14.5px;
+                width: 120px;
                 font-weight: 900;
+                font-size: 16px;
             }
             .participant-col {
                 text-align: left !important;
                 padding-left: 10px !important;
                 width: 220px;
             }
+            .team-indicator-dot {
+                display: inline-block;
+                width: 10px;
+                height: 10px;
+                border-radius: 50%;
+                margin-right: 6px;
+                vertical-align: middle;
+                border: 1px solid rgba(0,0,0,0.2);
+            }
+            .col-total {
+                width: 80px;
+                font-weight: 900;
+                background: #fafafa;
+            }
+            .col-rank {
+                width: 80px;
+                display: none;
+            }
+            .col-notes {
+                width: 140px;
+            }
+
+            body.hide-participant-names .participant-col {
+                display: none !important;
+            }
+            body.hide-total-column .col-total {
+                display: none !important;
+            }
+            body.show-rank-column .col-rank {
+                display: table-cell !important;
+            }
+            body.hide-notes-column .col-notes {
+                display: none !important;
+            }
+            body.hide-sheet-footer .sheet-footer {
+                display: none !important;
+            }
+
             .sheet-footer {
                 display: flex;
                 justify-content: space-between;
-                align-items: center;
-                margin-top: 18px;
-                padding-top: 12px;
+                align-items: flex-end;
+                margin-top: 10px;
+                padding-top: 10px;
                 border-top: 1.5px solid #cbd5e1;
-                font-size: 13px;
+                font-size: 12.5px;
                 font-weight: 700;
+                flex-shrink: 0;
+            }
+            .signature-box {
+                display: flex;
+                flex-direction: column;
+                gap: 4px;
+            }
+            .signature-label {
+                font-size: 11px;
+                font-weight: 800;
+                text-transform: uppercase;
+                color: #475569;
             }
             .signature-line {
                 border-bottom: 1.5px solid #000;
                 display: inline-block;
-                width: 200px;
-                margin-left: 6px;
+                width: 180px;
+                height: 20px;
             }
+            .confidential-notice {
+                font-size: 10px;
+                color: #64748b;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+                text-align: center;
+                margin-top: 4px;
+            }
+
             @media print {
                 @page {
                     size: A4 landscape;
-                    margin: 6mm 8mm;
+                    margin: 15mm 20mm;
                 }
-                body { padding: 0; background: #fff !important; }
+                html, body {
+                    height: 100% !important;
+                    margin: 0 !important;
+                    padding: 0 !important;
+                    background: #fff !important;
+                }
+                .no-print-bar, .no-print-hide {
+                    display: none !important;
+                }
                 .judge-landscape-sheet {
-                    border: none;
-                    padding: 0;
-                    margin-bottom: 0;
-                    border-radius: 0;
+                    border: none !important;
+                    padding: 4mm 6mm !important;
+                    margin: 0 !important;
+                    border-radius: 0 !important;
+                    box-shadow: none !important;
+                    width: 100% !important;
+                    height: 100vh !important;
+                    max-height: 100vh !important;
+                    display: flex !important;
+                    flex-direction: column !important;
+                    justify-content: space-between !important;
+                    page-break-after: always !important;
+                    break-after: page !important;
+                    box-sizing: border-box !important;
+                }
+                .judge-landscape-sheet:last-child {
+                    page-break-after: auto !important;
+                    break-after: auto !important;
+                }
+                .sheet-table-wrapper {
+                    flex: 1 1 auto !important;
+                    display: flex !important;
+                    flex-direction: column !important;
+                    margin: 4px 0 !important;
+                    min-height: 0 !important;
+                }
+                .sheet-table {
+                    height: 100% !important;
+                }
+                .sheet-footer {
+                    flex-shrink: 0 !important;
+                    margin-top: 6px !important;
+                    padding-top: 6px !important;
                 }
                 .sheet-table th {
                     background: #f1f5f9 !important;
                     -webkit-print-color-adjust: exact;
                     print-color-adjust: exact;
                 }
+                .col-total {
+                    background: #fafafa !important;
+                    -webkit-print-color-adjust: exact;
+                    print-color-adjust: exact;
+                }
             }
         </style>
     </head>
-    <body data-print-orientation="landscape">
-        <div class="no-print-bar" style="background: #0f172a; padding: 12px 20px; border-radius: 12px; margin-bottom: 20px; color: #fff; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
-            <div>
-                <h3 style="margin:0; font-size: 16px; color:#fff;"><i class="fa-solid fa-file-invoice" style="color:#60a5fa;"></i> Judges Score Sheets (Landscape Mode)</h3>
-                <small style="color:#94a3b8;"><?= count($orderedPrograms) ?> Program(s) — Each program & judge on a separate page</small>
-            </div>
-            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-                <select data-print-select="orientation" style="padding: 6px 12px; border-radius: 6px; background: #1e293b; color: #fff; border: 1px solid #334155;">
-                    <option value="landscape" selected>🖼️ Landscape</option>
-                    <option value="portrait">📄 Portrait</option>
-                </select>
-                <select data-print-select="scale" style="padding: 6px 12px; border-radius: 6px; background: #1e293b; color: #fff; border: 1px solid #334155;">
-                    <option value="1">100% Fit</option>
-                    <option value="0.9">90% Fit</option>
-                    <option value="0.8">80% Fit</option>
-                </select>
-                <a href="<?= app_url('/admin/printer/score-sheets.php') ?>" class="btn btn-secondary" style="padding: 6px 14px; text-decoration: none; color: #fff; background: #334155; border-radius: 6px; font-size: 13px; font-weight: 600;">
-                    <i class="fa-solid fa-arrow-left"></i> Selection
-                </a>
-                <button data-print-action="print" class="btn btn-success" style="padding: 6px 16px; background: #10b981; color: #fff; border: none; border-radius: 6px; font-size: 13px; font-weight: 700; cursor: pointer;">
-                    <i class="fa-solid fa-print"></i> Print Sheets (Ctrl+P)
-                </button>
+    <body class="hide-participant-names hide-total-column hide-notes-column hide-sheet-footer" data-print-orientation="landscape">
+        <div class="no-print-bar">
+            <div class="toolbar-inner">
+                <div class="toolbar-title-group">
+                    <h3><i class="fa-solid fa-file-invoice" style="color:#60a5fa;"></i> Judges Score Sheets</h3>
+                    <small><?= count($orderedPrograms) ?> Program(s) — Ready to Print</small>
+                </div>
+                
+                <div class="toolbar-controls">
+                    <a href="<?= app_url('/admin/printer/score-sheets.php') ?>" class="btn btn-secondary" style="padding: 7px 14px; text-decoration: none; color: #fff; background: #334155; border-radius: 6px; font-size: 13px; font-weight: 600;">
+                        <i class="fa-solid fa-arrow-left mr-1"></i> Selection
+                    </a>
+
+                    <button type="button" onclick="window.print()" class="btn btn-success" style="padding: 7px 18px; background: #10b981; color: #fff; border: none; border-radius: 6px; font-size: 13px; font-weight: 700; cursor: pointer;">
+                        <i class="fa-solid fa-print mr-1"></i> Print Sheets (Ctrl+P)
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -260,8 +454,27 @@ if ($action === 'print' && $activeEvent) {
             $pType = strtolower((string)($program['program_type'] ?? 'individual'));
             $categories = $categoriesByProgram[$pId] ?? [];
             $entriesForPrint = $entriesByProgram[$pId] ?? [];
-            $entryCount = count($entriesForPrint);
-            $rowHeight = ($entryCount <= 6) ? 40 : (($entryCount <= 12) ? 32 : 26);
+            $entryCount = max(1, count($entriesForPrint));
+
+            if ($entryCount <= 8) {
+                $cellPadding = '12px 10px';
+                $chestFontSize = '22px';
+                $thCatFontSize = '17px';
+                $thMaxFontSize = '13px';
+                $thChestFontSize = '16px';
+            } elseif ($entryCount <= 14) {
+                $cellPadding = '8px 8px';
+                $chestFontSize = '19px';
+                $thCatFontSize = '15px';
+                $thMaxFontSize = '12px';
+                $thChestFontSize = '15px';
+            } else {
+                $cellPadding = '5px 6px';
+                $chestFontSize = '16px';
+                $thCatFontSize = '13px';
+                $thMaxFontSize = '11px';
+                $thChestFontSize = '13px';
+            }
 
             $tier = admin_class_type_tier_from_name($program['class_type_name'] ?? '');
             $sectionLabel = $tier ? admin_class_type_tier_label($tier) : '';
@@ -280,70 +493,102 @@ if ($action === 'print' && $activeEvent) {
             }
         ?>
             <?php for ($j = 1; $j <= $judgesCount; $j++): ?>
-                <div class="judge-landscape-sheet <?= ($pIdx > 0 || $j > 1) ? 'page-break' : '' ?>">
+                <div class="judge-landscape-sheet <?= ($pIdx > 0 || $j > 1) ? 'page-break' : '' ?>" data-judge-number="<?= $j ?>">
                     <div class="print-header">
-                        <div class="event-kicker"><?= e($activeEvent['title']) ?> — Official Judge Score Sheet</div>
                         <div class="program-title-banner">
-                            <span class="program-title"><?= e($programHeading) ?> <small style="font-weight:700; font-size:13px; color:#475569;">(<?= ucfirst($pType) ?>)</small></span>
-                            <span class="judge-badge">JUDGE <?= $j ?> SCORE SHEET</span>
+                            <span class="program-title" style="font-size: 28px; font-weight: 900; letter-spacing: -0.02em;">
+                                <?= e($programHeading) ?>
+                            </span>
+                            <span class="judge-badge" style="font-size: 16px; font-weight: 900; padding: 8px 22px;">JUDGE <?= $j ?> SCORE SHEET</span>
                         </div>
                     </div>
 
-                    <table class="sheet-table">
-                        <thead>
-                            <tr>
-                                <th class="chest-col">Chest #</th>
-                                <th class="participant-col">Participant / Team Name</th>
-                                <?php foreach ($categories as $cat): ?>
-                                    <th class="score-col">
-                                        <?= e($cat['name']) ?><br>
-                                        <small style="font-weight:700; font-size:9.5px; text-transform:none;">(Max <?= number_format($cat['max_marks'], 0) ?>)</small>
-                                    </th>
-                                <?php endforeach; ?>
-                                <th style="width: 80px;">Total</th>
-                                <th style="width: 140px;">Judge Notes</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php if (empty($entriesForPrint)): ?>
+                    <div class="sheet-table-wrapper">
+                        <table class="sheet-table">
+                            <thead>
                                 <tr>
-                                    <td colspan="<?= 3 + count($categories) + 1 ?>" style="padding: 24px; color: #666; font-size: 14px;">No registered entries found for this program.</td>
+                                    <th class="chest-col" style="font-size: <?= $thChestFontSize ?>; font-weight: 900; padding: 10px 8px; width: 130px;">Chest #</th>
+                                    <th class="participant-col">Participant / Team Name</th>
+                                    <?php foreach ($categories as $cat): ?>
+                                        <th class="score-col" style="font-size: <?= $thCatFontSize ?>; font-weight: 900; padding: 10px 8px;">
+                                            <?= e($cat['name']) ?><br>
+                                            <small style="font-weight: 800; font-size: <?= $thMaxFontSize ?>; text-transform: none; color: #334155;">(Max <?= number_format($cat['max_marks'], 0) ?>)</small>
+                                        </th>
+                                    <?php endforeach; ?>
+                                    <th class="col-total">Total</th>
+                                    <th class="col-rank">Rank</th>
+                                    <th class="col-notes">Judge Notes</th>
                                 </tr>
-                            <?php else: ?>
-                                <?php foreach ($entriesForPrint as $entry): ?>
-                                    <?php
-                                        $chestNo = !empty($entry['chest_number']) ? $entry['chest_number'] : $entry['entry_number'];
-                                        $formattedChest = is_numeric($chestNo) ? str_pad((string)$chestNo, 3, '0', STR_PAD_LEFT) : (string)$chestNo;
-                                        $pName = !empty($entry['participant_name']) ? $entry['participant_name'] : (!empty($entry['team_name']) ? $entry['team_name'] : '—');
-                                    ?>
+                            </thead>
+                            <tbody>
+                                <?php if (empty($entriesForPrint)): ?>
                                     <tr>
-                                        <td class="chest-col" style="font-weight: 900; font-size: 14px; height: <?= $rowHeight ?>px;">
-                                            #<?= e($formattedChest) ?>
-                                        </td>
-                                        <td class="participant-col" style="font-weight: 700; font-size: 13px; height: <?= $rowHeight ?>px;">
-                                            <?= e($pName) ?>
-                                        </td>
+                                        <td colspan="<?= 2 + count($categories) + 3 ?>" style="padding: 24px; color: #666; font-size: 14px;">No registered entries found for this program.</td>
+                                    </tr>
+                                <?php else: ?>
+                                    <?php foreach ($entriesForPrint as $entry): ?>
+                                        <?php
+                                            $chestNo = !empty($entry['chest_number']) ? $entry['chest_number'] : $entry['entry_number'];
+                                            $formattedChest = is_numeric($chestNo) ? str_pad((string)$chestNo, 3, '0', STR_PAD_LEFT) : (string)$chestNo;
+                                            $pName = !empty($entry['participant_name']) ? $entry['participant_name'] : (!empty($entry['team_name']) ? $entry['team_name'] : '—');
+                                            $teamColor = !empty($entry['team_color']) ? $entry['team_color'] : null;
+                                        ?>
+                                        <tr>
+                                            <td class="chest-col" style="font-weight: 900; font-size: <?= $chestFontSize ?>; padding: <?= $cellPadding ?>;">
+                                                #<?= e($formattedChest) ?>
+                                            </td>
+                                            <td class="participant-col" style="font-weight: 700; font-size: 13px; height: <?= $rowHeight ?>px;">
+                                                <?php if ($teamColor): ?>
+                                                    <span class="team-indicator-dot" style="background: <?= e($teamColor) ?>;"></span>
+                                                <?php endif; ?>
+                                                <?= e($pName) ?>
+                                            </td>
+                                            <?php foreach ($categories as $cat): ?>
+                                                <td style="height: <?= $rowHeight ?>px;"></td>
+                                            <?php endforeach; ?>
+                                            <td class="col-total" style="height: <?= $rowHeight ?>px;"></td>
+                                            <td class="col-rank" style="height: <?= $rowHeight ?>px;"></td>
+                                            <td class="col-notes" style="height: <?= $rowHeight ?>px;"></td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+
+                                <?php for ($b = 1; $b <= 10; $b++): ?>
+                                    <tr class="extra-blank-row" data-blank-index="<?= $b ?>" style="display: none;">
+                                        <td class="chest-col" style="height: <?= $rowHeight ?>px;"></td>
+                                        <td class="participant-col" style="height: <?= $rowHeight ?>px;"></td>
                                         <?php foreach ($categories as $cat): ?>
                                             <td style="height: <?= $rowHeight ?>px;"></td>
                                         <?php endforeach; ?>
-                                        <td style="height: <?= $rowHeight ?>px;"></td>
-                                        <td style="height: <?= $rowHeight ?>px;"></td>
+                                        <td class="col-total" style="height: <?= $rowHeight ?>px;"></td>
+                                        <td class="col-rank" style="height: <?= $rowHeight ?>px;"></td>
+                                        <td class="col-notes" style="height: <?= $rowHeight ?>px;"></td>
                                     </tr>
-                                <?php endforeach; ?>
-                            <?php endif; ?>
-                        </tbody>
-                    </table>
+                                <?php endfor; ?>
+                            </tbody>
+                        </table>
+                    </div>
 
                     <div class="sheet-footer">
-                        <div>
-                            <span>Judge Name: <span class="signature-line"></span></span>
+                        <div class="signature-box">
+                            <span class="signature-label">Judge Name:</span>
+                            <span class="signature-line"></span>
                         </div>
-                        <div>
-                            <span>Signature: <span class="signature-line"></span></span>
+                        <div class="signature-box">
+                            <span class="signature-label">Judge Signature:</span>
+                            <span class="signature-line"></span>
                         </div>
-                        <div>
-                            <span>Date: <span class="signature-line" style="width: 130px;"></span></span>
+                        <div class="signature-box">
+                            <span class="signature-label">Date & Time:</span>
+                            <span class="signature-line" style="width: 140px;"></span>
                         </div>
+                        <div class="signature-box">
+                            <span class="signature-label">Chief Judge Sign:</span>
+                            <span class="signature-line" style="width: 140px;"></span>
+                        </div>
+                    </div>
+                    <div class="confidential-notice">
+                        Official Musabaqa Score Document — Scores once written and signed are final. Please submit directly to Tabulation Control.
                     </div>
                 </div>
             <?php endfor; ?>
@@ -352,8 +597,11 @@ if ($action === 'print' && $activeEvent) {
         <script>
             window.addEventListener('DOMContentLoaded', () => {
                 setTimeout(() => {
-                    window.print();
-                }, 500);
+                    const urlParams = new URLSearchParams(window.location.search);
+                    if (urlParams.get('auto_print') === '1') {
+                        window.print();
+                    }
+                }, 400);
             });
         </script>
     </body>

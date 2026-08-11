@@ -709,6 +709,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                             <a href="<?= app_url('/admin/score-entry/program-scores.php?program_id=' . (int)$program['id']) ?>" class="btn btn-success btn-sm"><i class="fa-solid fa-pen-to-square"></i> Score</a>
                                             <button class="btn btn-secondary btn-sm" data-edit-program='<?= e(json_encode($program, JSON_HEX_APOS | JSON_HEX_QUOT)) ?>'><i class="fa-solid fa-pen"></i></button>
                                             <button class="btn btn-info btn-sm" data-categories='<?= e(json_encode(['program' => $program, 'categories' => $programCategories], JSON_HEX_APOS | JSON_HEX_QUOT)) ?>' <?= in_array((string)$program['approval_status'], ['submitted', 'approved'], true) ? 'disabled' : '' ?>><i class="fa-solid fa-sliders"></i> Categories</button>
+                                            <button class="btn btn-secondary btn-sm" data-copy-categories='<?= e(json_encode(['title' => $program['title'], 'categories' => $programCategories], JSON_HEX_APOS | JSON_HEX_QUOT)) ?>' title="Copy Categories"><i class="fa-solid fa-copy"></i></button>
                                             <button class="btn btn-danger btn-sm" data-delete-id="<?= (int)$program['id'] ?>" data-delete-name="<?= e($program['title']) ?>"><i class="fa-solid fa-trash"></i></button>
                                         </div>
                                     </td>
@@ -922,8 +923,8 @@ require_once __DIR__ . '/../../includes/sidebar.php';
 </div>
 
 <div class="modal-overlay" id="categoryModal">
-    <div class="modal-box" style="max-width: 520px; width: 95%; padding: 0; border-radius: 14px; overflow: hidden; border: 1px solid rgba(255,255,255,0.08); background: #0e1726; box-shadow: 0 20px 45px rgba(0,0,0,0.5);">
-        <div class="modal-header" style="padding: 16px 20px; background: rgba(255,255,255,0.02); border-bottom: 1px solid rgba(255,255,255,0.06); display: flex; align-items: center; justify-content: space-between;">
+    <div class="modal-box" style="max-width: 560px; width: 95%; padding: 0; border-radius: 14px; overflow: hidden; border: 1px solid rgba(255,255,255,0.08); background: #0e1726; box-shadow: 0 20px 45px rgba(0,0,0,0.5);">
+        <div class="modal-header" style="padding: 16px 20px; background: rgba(255,255,255,0.02); border-bottom: 1px solid rgba(255,255,255,0.06); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
             <div>
                 <div class="modal-title" style="font-size: 16px; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 8px;">
                     <i class="fa-solid fa-sliders" style="color: #34d399;"></i>
@@ -931,13 +932,54 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                 </div>
                 <div id="categoryModalSubTitle" style="font-size: 12px; color: var(--muted, #94a3b8); margin-top: 2px;">Configure breakdown criteria for judge scoring</div>
             </div>
-            <button class="modal-close" type="button" data-close="categoryModal" style="background: none; border: none; color: var(--muted); font-size: 16px; cursor: pointer;"><i class="fa-solid fa-xmark"></i></button>
+            
+            <div style="display: flex; gap: 8px; align-items: center;">
+                <button type="button" class="btn btn-secondary btn-xs" id="btnCopyCategories" title="Copy categories to clipboard" style="padding: 5px 11px; font-size: 12px; border-radius: 6px; font-weight: 600;">
+                    <i class="fa-solid fa-copy" style="margin-right: 4px;"></i> Copy
+                </button>
+                <button type="button" class="btn btn-secondary btn-xs" id="btnPasteCategories" title="Paste categories from clipboard or buffer" style="padding: 5px 11px; font-size: 12px; border-radius: 6px; font-weight: 600;">
+                    <i class="fa-solid fa-paste" style="margin-right: 4px;"></i> Paste
+                </button>
+                <button class="modal-close" type="button" data-close="categoryModal" style="background: none; border: none; color: var(--muted); font-size: 16px; cursor: pointer; margin-left: 4px;"><i class="fa-solid fa-xmark"></i></button>
+            </div>
         </div>
-        <form method="POST" id="categoryForm" style="padding: 20px;">
+        <form method="POST" id="categoryForm" style="padding: 20px; display: flex; flex-direction: column; max-height: calc(100dvh - 120px); overflow-y: auto;">
             <?= admin_csrf_field() ?>
             <input type="hidden" name="action" value="save_categories">
             <input type="hidden" name="program_id" id="categoryProgramId">
             
+            <!-- Quick Options / Presets Bar -->
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 12px; background: rgba(0,0,0,0.2); padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); flex-wrap: wrap;">
+                <div style="font-size: 11.5px; font-weight: 600; color: #cbd5e1; display: flex; align-items: center; gap: 6px;">
+                    <i class="fa-solid fa-wand-magic-sparkles" style="color: #a855f7;"></i> Quick Presets:
+                </div>
+                <div style="display: flex; gap: 6px; align-items: center;">
+                    <select id="presetCategoriesSelect" style="height: 30px; font-size: 11.5px; padding: 2px 8px; background: #1e293b; border: 1px solid #334155; border-radius: 6px; color: #fff; cursor: pointer;">
+                        <option value="">Select Preset...</option>
+                        <option value="speech">Standard Speech (Pitch 30 / Tajweed 30 / Voice 40)</option>
+                        <option value="qiraat">Qira'at (Tajweed 50 / Voice 30 / Style 20)</option>
+                        <option value="recitation">Recitation (Fluency 40 / Pronunciation 30 / Memory 30)</option>
+                        <option value="quiz">Quiz (Accuracy 60 / Speed 20 / Rules 20)</option>
+                        <option value="single">Single Category (Total 100)</option>
+                    </select>
+                    <button type="button" class="btn btn-secondary btn-xs" id="btnToggleRawPaste" style="height: 30px; font-size: 11px; padding: 0 8px; border-radius: 6px;" title="Open bulk text paste box">
+                        <i class="fa-solid fa-code mr-1"></i> Bulk Text
+                    </button>
+                </div>
+            </div>
+
+            <!-- Bulk Raw Text Paste Box (Hidden by default) -->
+            <div id="rawPasteContainer" style="display: none; margin-bottom: 14px; background: rgba(15, 23, 42, 0.9); padding: 12px; border-radius: 8px; border: 1px dashed rgba(52, 211, 153, 0.4);">
+                <label style="font-size: 11px; font-weight: 700; color: #34d399; display: block; margin-bottom: 4px;">
+                    Paste Categories (JSON or line format like "Pitch 30", "Tajweed 30", "Voice 40"):
+                </label>
+                <textarea id="rawCategoriesTextarea" rows="3" class="form-input" placeholder="Pitch 30&#10;Tajweed 30&#10;Voice 40" style="width: 100%; font-family: monospace; font-size: 12px; padding: 8px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; color: #fff;"></textarea>
+                <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px;">
+                    <button type="button" class="btn btn-secondary btn-xs" id="btnCancelRawPaste">Cancel</button>
+                    <button type="button" class="btn btn-primary btn-xs" id="btnApplyRawPaste"><i class="fa-solid fa-check mr-1"></i> Parse & Apply</button>
+                </div>
+            </div>
+
             <!-- Compact Table Header -->
             <div style="display: grid; grid-template-columns: 1fr 100px 34px; gap: 10px; padding: 0 6px 8px 6px; border-bottom: 1px solid rgba(255,255,255,0.06); margin-bottom: 10px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted, #94a3b8);">
                 <span>Category Name</span>
@@ -1300,6 +1342,199 @@ function bindCategoryRows() {
     });
     document.querySelectorAll('input[name="category_marks[]"]').forEach(input => input.oninput = refreshCategoryTotal);
 }
+
+function getCategoriesData() {
+    const names = Array.from(document.querySelectorAll('input[name="category_name[]"]')).map(i => i.value.trim());
+    const marks = Array.from(document.querySelectorAll('input[name="category_marks[]"]')).map(i => parseFloat(i.value) || 0);
+    const result = [];
+    names.forEach((name, idx) => {
+        if (name !== '' || marks[idx] > 0) {
+            result.push({ name: name || 'Category', max_marks: marks[idx] });
+        }
+    });
+    return result;
+}
+
+function renderCategoryRows(rows) {
+    const catRowsEl = document.getElementById('categoryRows');
+    if (!catRowsEl) return;
+    if (!rows || !rows.length) {
+        rows = [{ name: 'Total', max_marks: 100 }];
+    }
+    catRowsEl.innerHTML = rows.map(r => categoryRow(r.name, r.max_marks)).join('');
+    bindCategoryRows();
+    refreshCategoryTotal();
+}
+
+function parseRawCategoriesText(text) {
+    if (!text || !text.trim()) return null;
+    text = text.trim();
+    
+    // Try JSON first
+    if (text.startsWith('[') || text.startsWith('{')) {
+        try {
+            const data = JSON.parse(text);
+            const list = Array.isArray(data) ? data : [data];
+            const parsed = [];
+            list.forEach(item => {
+                if (typeof item === 'object' && item !== null) {
+                    const name = String(item.name || item.title || item.category || '').trim();
+                    const marks = parseFloat(item.max_marks || item.marks || item.points || 0);
+                    if (name || marks > 0) {
+                        parsed.push({ name: name || 'Category', max_marks: marks });
+                    }
+                }
+            });
+            if (parsed.length) return parsed;
+        } catch(e) {}
+    }
+    
+    // Try multi-line format e.g. "Pitch 30", "Tajweed: 30", "Voice - 40" or tab separated
+    const lines = text.split(/\r?\n/);
+    const parsed = [];
+    lines.forEach(line => {
+        line = line.trim();
+        if (!line) return;
+        const match = line.match(/^(.*?)(?:[:=\-–\t\s]+)(\d+(?:\.\d+)?)$/);
+        if (match) {
+            const name = match[1].trim();
+            const marks = parseFloat(match[2]);
+            if (name && marks > 0) {
+                parsed.push({ name: name, max_marks: marks });
+            }
+        } else {
+            parsed.push({ name: line, max_marks: 10 });
+        }
+    });
+    return parsed.length ? parsed : null;
+}
+
+// Copy Categories button in modal
+document.getElementById('btnCopyCategories')?.addEventListener('click', () => {
+    const cats = getCategoriesData();
+    if (!cats.length) {
+        showAdminToast('No categories to copy.', true);
+        return;
+    }
+    const jsonStr = JSON.stringify(cats, null, 2);
+    try {
+        localStorage.setItem('musabaqa_copied_categories', jsonStr);
+    } catch(e) {}
+    
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(jsonStr).then(() => {
+            showAdminToast(`Copied ${cats.length} categories to clipboard!`);
+        }).catch(() => {
+            showAdminToast(`Saved ${cats.length} categories to buffer!`);
+        });
+    } else {
+        showAdminToast(`Saved ${cats.length} categories to buffer!`);
+    }
+});
+
+// Direct Copy button on table rows
+document.addEventListener('click', (e) => {
+    const copyRowBtn = e.target.closest('[data-copy-categories]');
+    if (copyRowBtn) {
+        try {
+            const payload = JSON.parse(copyRowBtn.dataset.copyCategories);
+            const cats = payload.categories && payload.categories.length ? payload.categories.map(c => ({ name: c.name, max_marks: parseFloat(c.max_marks) })) : [];
+            if (!cats.length) {
+                showAdminToast(`No categories in "${payload.title || 'Program'}" to copy.`, true);
+                return;
+            }
+            const jsonStr = JSON.stringify(cats, null, 2);
+            localStorage.setItem('musabaqa_copied_categories', jsonStr);
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(jsonStr).catch(() => {});
+            }
+            showAdminToast(`Copied ${cats.length} categories from "${payload.title}"!`);
+        } catch(err) {
+            console.error('Error copying row categories:', err);
+        }
+    }
+});
+
+// Paste Categories button in modal
+document.getElementById('btnPasteCategories')?.addEventListener('click', async () => {
+    let textToParse = '';
+    if (navigator.clipboard && navigator.clipboard.readText) {
+        try {
+            textToParse = await navigator.clipboard.readText();
+        } catch(e) {}
+    }
+    if (!textToParse) {
+        try {
+            textToParse = localStorage.getItem('musabaqa_copied_categories') || '';
+        } catch(e) {}
+    }
+    
+    if (textToParse) {
+        const parsed = parseRawCategoriesText(textToParse);
+        if (parsed && parsed.length) {
+            renderCategoryRows(parsed);
+            showAdminToast(`Pasted ${parsed.length} categories!`);
+            return;
+        }
+    }
+    
+    const rawBox = document.getElementById('rawPasteContainer');
+    if (rawBox) {
+        rawBox.style.display = 'block';
+        document.getElementById('rawCategoriesTextarea')?.focus();
+    }
+});
+
+// Presets select
+document.getElementById('presetCategoriesSelect')?.addEventListener('change', (e) => {
+    const val = e.target.value;
+    if (!val) return;
+    let presets = [];
+    if (val === 'speech') {
+        presets = [{name: 'Pitch / Voice Quality', max_marks: 30}, {name: 'Tajweed & Diction', max_marks: 30}, {name: 'Presentation & Style', max_marks: 40}];
+    } else if (val === 'qiraat') {
+        presets = [{name: 'Tajweed Rules', max_marks: 50}, {name: 'Voice & Melody', max_marks: 30}, {name: 'Performance & Style', max_marks: 20}];
+    } else if (val === 'recitation') {
+        presets = [{name: 'Fluency & Memory', max_marks: 40}, {name: 'Pronunciation', max_marks: 30}, {name: 'Voice Modulation', max_marks: 30}];
+    } else if (val === 'quiz') {
+        presets = [{name: 'Accuracy', max_marks: 60}, {name: 'Speed', max_marks: 20}, {name: 'Rule Compliance', max_marks: 20}];
+    } else if (val === 'single') {
+        presets = [{name: 'Total Score', max_marks: 100}];
+    }
+    if (presets.length) {
+        renderCategoryRows(presets);
+        showAdminToast('Preset categories applied.');
+    }
+    e.target.value = '';
+});
+
+// Bulk raw text box toggle and apply
+document.getElementById('btnToggleRawPaste')?.addEventListener('click', () => {
+    const rawBox = document.getElementById('rawPasteContainer');
+    if (rawBox) {
+        rawBox.style.display = rawBox.style.display === 'none' ? 'block' : 'none';
+        if (rawBox.style.display === 'block') {
+            document.getElementById('rawCategoriesTextarea')?.focus();
+        }
+    }
+});
+document.getElementById('btnCancelRawPaste')?.addEventListener('click', () => {
+    const rawBox = document.getElementById('rawPasteContainer');
+    if (rawBox) rawBox.style.display = 'none';
+});
+document.getElementById('btnApplyRawPaste')?.addEventListener('click', () => {
+    const txt = document.getElementById('rawCategoriesTextarea')?.value || '';
+    const parsed = parseRawCategoriesText(txt);
+    if (parsed && parsed.length) {
+        renderCategoryRows(parsed);
+        const area = document.getElementById('rawCategoriesTextarea');
+        if (area) area.value = '';
+        document.getElementById('rawPasteContainer').style.display = 'none';
+        showAdminToast(`Applied ${parsed.length} categories!`);
+    } else {
+        showAdminToast('Could not parse categories. Try line format like "Pitch 30"', true);
+    }
+});
 
 document.getElementById('addCategoryRow')?.addEventListener('click', () => {
     document.getElementById('categoryRows')?.insertAdjacentHTML('beforeend', categoryRow());

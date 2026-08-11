@@ -1010,22 +1010,28 @@ tr:last-child td { border-bottom: 0; }
     display: none;
     position: fixed;
     inset: 0;
-    background: rgba(0,0,0,.62);
-    z-index: 100;
-    align-items: center;
+    background: rgba(0,0,0,.75);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    z-index: 100000;
+    align-items: flex-start;
     justify-content: center;
-    padding: 20px;
+    padding: 30px 16px;
+    overflow-y: auto;
 }
 .modal-overlay.active { display: flex; }
-.modal-box, .modal {
+.modal-box, .modal, .modal-content {
     width: min(720px, 100%);
-    max-height: calc(100vh - 40px);
-    overflow: auto;
+    max-height: calc(100vh - 60px);
+    margin: auto 0;
+    overflow: hidden;
     background: var(--surface);
     border: 1px solid var(--border-strong);
     border-radius: var(--radius);
     box-shadow: var(--shadow);
     padding: 20px;
+    display: flex;
+    flex-direction: column;
 }
 .modal-md { width: min(640px, 100%); }
 .modal-lg { width: min(920px, 100%); }
@@ -3981,10 +3987,12 @@ body.modal-open {
     position: fixed !important;
     inset: 0 !important;
     display: none;
-    align-items: center !important;
+    align-items: flex-start !important;
     justify-content: center !important;
+    padding: 30px 16px !important;
     box-sizing: border-box;
-    overflow-y: auto;
+    overflow-y: auto !important;
+    z-index: 100000 !important;
 }
 
 .modal-overlay.active {
@@ -3992,9 +4000,28 @@ body.modal-open {
 }
 
 .modal-overlay > .modal-box,
-.modal-overlay > .modal {
-    align-self: center !important;
-    max-height: calc(100dvh - 40px);
+.modal-overlay > .modal,
+.modal-overlay > .modal-content {
+    margin: auto 0 !important;
+    align-self: auto !important;
+    max-height: calc(100vh - 60px) !important;
+    max-height: calc(100dvh - 60px) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+}
+
+.modal-overlay .modal-box form,
+.modal-overlay .modal-content form,
+.modal-overlay .modal-body {
+    overflow-y: auto !important;
+    flex: 1 1 auto !important;
+    max-height: 100% !important;
+}
+
+.modal-overlay .modal-header,
+.modal-overlay .modal-footer {
+    flex-shrink: 0 !important;
 }
 
 /* GPU Optimization: Remove heavy backdrop blurs on mobile and low-power displays to prevent lag */

@@ -131,46 +131,6 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                             </div>
                         </a>
 
-                        <a href="<?= app_url('/admin/printer/id-card-designer.php') ?>" class="sidebar-action-btn">
-                            <div class="sidebar-action-icon" style="background: rgba(59, 130, 246, 0.15); color: #3b82f6;">
-                                <i class="fa-solid fa-wand-magic-sparkles"></i>
-                            </div>
-                            <div class="sidebar-action-info">
-                                <div class="sidebar-action-title">ID Card Designer</div>
-                                <div class="sidebar-action-subtitle">Upload raw cards & customize positions</div>
-                            </div>
-                        </a>
-
-                        <a href="<?= app_url('/admin/printer/id-cards-search.php') ?>" class="sidebar-action-btn">
-                            <div class="sidebar-action-icon" style="background: rgba(139, 92, 246, 0.15); color: var(--accent);">
-                                <i class="fa-solid fa-address-card"></i>
-                            </div>
-                            <div class="sidebar-action-info">
-                                <div class="sidebar-action-title">Print ID Cards</div>
-                                <div class="sidebar-action-subtitle">Search & print badges</div>
-                            </div>
-                        </a>
-
-                        <a href="<?= app_url('/admin/printer/chest-numbers.php') ?>" class="sidebar-action-btn">
-                            <div class="sidebar-action-icon" style="background: rgba(139, 92, 246, 0.15); color: var(--accent);">
-                                <i class="fa-solid fa-id-badge"></i>
-                            </div>
-                            <div class="sidebar-action-info">
-                                <div class="sidebar-action-title">Print Chest Numbers</div>
-                                <div class="sidebar-action-subtitle">Bulk print chest slips</div>
-                            </div>
-                        </a>
-
-                        <a href="<?= app_url('/admin/printer/members-export.php') ?>" class="sidebar-action-btn">
-                            <div class="sidebar-action-icon" style="background: rgba(139, 92, 246, 0.15); color: var(--accent);">
-                                <i class="fa-solid fa-file-csv"></i>
-                            </div>
-                            <div class="sidebar-action-info">
-                                <div class="sidebar-action-title">Export Team Roster</div>
-                                <div class="sidebar-action-subtitle">Download CSV datasets</div>
-                            </div>
-                        </a>
-
                         <a href="<?= app_url('/admin/printer/logs.php') ?>" class="sidebar-action-btn">
                             <div class="sidebar-action-icon" style="background: rgba(139, 92, 246, 0.15); color: var(--accent);">
                                 <i class="fa-solid fa-clock-rotate-left"></i>

@@ -235,14 +235,6 @@ if ($activeEventId) {
                 <i data-lucide="chevron-down" class="chevron-icon"></i>
             </div>
             <div class="sidebar-group-content">
-                <a href="<?= app_url('/admin/printer/id-cards-search.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('id-cards-search.php') ?>">
-                    <i data-lucide="printer" class="sidebar-icon"></i>
-                    <span class="sidebar-label">Print ID Cards</span>
-                </a>
-                <a href="<?= app_url('/admin/printer/chest-numbers.php') ?>" class="sidebar-vertical-link <?= str_contains($currentPath, '/printer/chest-numbers.php') ? 'active' : '' ?>">
-                    <i data-lucide="printer" class="sidebar-icon"></i>
-                    <span class="sidebar-label">Print Chest Numbers</span>
-                </a>
                 <a href="<?= app_url('/admin/printer/score-sheets.php') ?>" class="sidebar-vertical-link <?= str_contains($currentPath, '/printer/score-sheets.php') ? 'active' : '' ?>">
                     <i data-lucide="printer" class="sidebar-icon"></i>
                     <span class="sidebar-label">Print Score Sheets</span>
@@ -250,10 +242,6 @@ if ($activeEventId) {
                 <a href="<?= app_url('/admin/printer/mc-sheets.php') ?>" class="sidebar-vertical-link <?= str_contains($currentPath, '/printer/mc-sheets.php') ? 'active' : '' ?>">
                     <i data-lucide="printer" class="sidebar-icon"></i>
                     <span class="sidebar-label">Print MC Sheets</span>
-                </a>
-                <a href="<?= app_url('/admin/printer/members-export.php') ?>" class="sidebar-vertical-link <?= str_contains($currentPath, '/printer/members-export.php') ? 'active' : '' ?>">
-                    <i data-lucide="download" class="sidebar-icon"></i>
-                    <span class="sidebar-label">CSV Export</span>
                 </a>
                 <a href="<?= app_url('/admin/score-update/approval-marks.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('approval-marks.php') ?>">
                     <i data-lucide="trophy" class="sidebar-icon"></i>

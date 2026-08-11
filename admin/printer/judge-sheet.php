@@ -194,8 +194,13 @@ $rowHeight = ($participantsCount <= 6) ? 40 : (($participantsCount <= 12) ? 32 :
         .sheet-card {
             background: #fff;
             color: #000;
-            padding: 12px 14px;
+            padding: 16px 20px;
             box-sizing: border-box;
+            width: 100%;
+            min-height: calc(100vh - 120px);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
         }
 
         /* Printable Header Structure */
@@ -203,6 +208,7 @@ $rowHeight = ($participantsCount <= 6) ? 40 : (($participantsCount <= 12) ? 32 :
             border-bottom: 2px solid #000;
             padding-bottom: 8px;
             margin-bottom: 10px;
+            flex-shrink: 0;
         }
         .brand-title {
             font-size: 18px;
@@ -245,30 +251,34 @@ $rowHeight = ($participantsCount <= 6) ? 40 : (($participantsCount <= 12) ? 32 :
             font-size: 13.5px;
         }
 
+        .sheet-table-wrapper {
+            flex: 1 1 auto;
+            display: flex;
+            flex-direction: column;
+            margin-top: 6px;
+            margin-bottom: 8px;
+            min-height: 0;
+        }
+
         /* Printable Table Structure */
         .judge-table {
             width: 100%;
+            height: 100%;
             table-layout: fixed;
             border-collapse: collapse;
-            margin-top: 8px;
         }
         .judge-table th, .judge-table td {
             border: 1.5px solid #000;
-            padding: 6px 8px;
             text-align: center;
             vertical-align: middle;
-            font-size: 12px;
         }
         .judge-table th {
             background: #f1f5f9;
             font-weight: 800;
             text-transform: uppercase;
-            font-size: 11px;
-            padding: 8px 4px;
         }
         .chest-col {
             width: 95px;
-            font-size: 14.5px;
             font-weight: 900;
             text-align: center !important;
         }
@@ -310,16 +320,55 @@ $rowHeight = ($participantsCount <= 6) ? 40 : (($participantsCount <= 12) ? 32 :
         }
 
         @media print {
+            @page {
+                size: A4 landscape;
+                margin: 15mm 20mm;
+            }
+            html, body {
+                height: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                background: #fff !important;
+            }
             .no-print-controls {
                 display: none !important;
             }
-            body {
-                background: #fff;
-                padding: 0;
-            }
             .sheet-container {
-                box-shadow: none;
-                margin: 0;
+                box-shadow: none !important;
+                margin: 0 !important;
+            }
+            .sheet-card {
+                padding: 4mm 6mm !important;
+                margin: 0 !important;
+                width: 100% !important;
+                height: 100vh !important;
+                max-height: 100vh !important;
+                display: flex !important;
+                flex-direction: column !important;
+                justify-content: space-between !important;
+                page-break-after: always !important;
+                break-after: page !important;
+                box-sizing: border-box !important;
+            }
+            .sheet-card:last-child {
+                page-break-after: auto !important;
+                break-after: auto !important;
+            }
+            .sheet-header {
+                flex-shrink: 0 !important;
+            }
+            .sheet-table-wrapper {
+                flex: 1 1 auto !important;
+                display: flex !important;
+                flex-direction: column !important;
+                margin: 4px 0 !important;
+                min-height: 0 !important;
+            }
+            .judge-table {
+                height: 100% !important;
+            }
+            .judge-table tbody {
+                height: 100% !important;
             }
             .judge-table th {
                 background: #f1f5f9 !important;
@@ -336,99 +385,73 @@ $rowHeight = ($participantsCount <= 6) ? 40 : (($participantsCount <= 12) ? 32 :
         <div class="controls-wrapper">
             <div class="controls-title">
                 <i class="fa-solid fa-clipboard-check" style="color: #38bdf8;"></i>
-                <span>Judge Chest Number Sheet Generator</span>
-                <span class="layout-indicator-badge">
-                    <i class="fa-solid fa-file-invoice"></i>
-                    A4 Landscape Mode (Each Judge on Separate Page)
-                </span>
+                <span>Judge Chest Number Sheet</span>
             </div>
 
-            <form method="GET" class="controls-form">
-                <?php if ($programId > 0): ?>
-                    <input type="hidden" name="program_id" value="<?= $programId ?>">
-                <?php endif; ?>
-
-                <div>
-                    <label style="font-size: 11px; color: #94a3b8; display: block; margin-bottom: 2px;">Program Title</label>
-                    <input type="text" name="program" value="<?= e($programName) ?>" class="control-input" style="width: 200px;">
-                </div>
-
-                <div>
-                    <label style="font-size: 11px; color: #94a3b8; display: block; margin-bottom: 2px;">Participants</label>
-                    <input type="number" name="participants" value="<?= $participantsCount ?>" min="1" max="50" class="control-input" style="width: 75px; text-align: center;">
-                </div>
-
-                <div>
-                    <label style="font-size: 11px; color: #94a3b8; display: block; margin-bottom: 2px;">Judges</label>
-                    <input type="number" name="judges" value="<?= $judgesCount ?>" min="1" max="6" class="control-input" style="width: 65px; text-align: center;">
-                </div>
-
-                <div>
-                    <label style="font-size: 11px; color: #94a3b8; display: block; margin-bottom: 2px;">Categories</label>
-                    <div style="display: flex; gap: 4px;">
-                        <input type="text" name="cat1" value="<?= e($cat1) ?>" class="control-input" style="width: 90px;" placeholder="Cat 1">
-                        <input type="text" name="cat2" value="<?= e($cat2) ?>" class="control-input" style="width: 90px;" placeholder="Cat 2">
-                        <input type="text" name="cat3" value="<?= e($cat3) ?>" class="control-input" style="width: 90px;" placeholder="Cat 3">
-                        <input type="text" name="cat4" value="<?= e($cat4) ?>" class="control-input" style="width: 90px;" placeholder="Cat 4">
-                    </div>
-                </div>
-
-                <button type="submit" class="control-input" style="background: #3b82f6; cursor: pointer; border: none; font-weight: 700; margin-top: 14px;">
-                    Update
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <a href="<?= app_url('/admin/printer/score-sheets.php') ?>" class="control-input" style="padding: 7px 14px; text-decoration: none; color: #fff; background: #334155; border-radius: 6px; font-size: 13px; font-weight: 600;">
+                    <i class="fa-solid fa-arrow-left mr-1"></i> Selection
+                </a>
+                <button type="button" onclick="window.print()" class="print-trigger-btn">
+                    <i class="fa-solid fa-print"></i> Print Sheet (Ctrl+P)
                 </button>
-
-                <button type="button" onclick="window.print()" class="print-trigger-btn" style="margin-top: 14px;">
-                    <i class="fa-solid fa-print"></i> Print Sheet
-                </button>
-            </form>
+            </div>
         </div>
     </div>
 
     <!-- DOCUMENT PRINT CONTAINER -->
     <div class="sheet-container">
+        <?php
+        $entryCount = max(1, count($chestNumbers));
+        if ($entryCount <= 8) {
+            $cellPadding = '12px 10px';
+            $chestFontSize = '22px';
+            $thFontSize = '17px';
+        } elseif ($entryCount <= 14) {
+            $cellPadding = '8px 8px';
+            $chestFontSize = '19px';
+            $thFontSize = '15px';
+        } else {
+            $cellPadding = '5px 6px';
+            $chestFontSize = '16px';
+            $thFontSize = '13px';
+        }
+        ?>
         <?php for ($j = 1; $j <= $judgesCount; $j++): ?>
             <div class="sheet-card <?= ($j > 1) ? 'page-break' : '' ?>">
-                <div class="sheet-header">
-                    <div class="brand-title">KAUZARIYYA MUSABAQA</div>
-                    <div class="sheet-subtitle">Judge Chest Number Sheet</div>
-
-                    <div class="header-meta-lines">
-                        <div class="meta-line">
-                            <span class="meta-label">Program:</span>
-                            <span class="meta-underline"><?= e($programName) ?></span>
-                        </div>
-                        <div style="width: 40px;"></div>
-                        <div class="meta-line" style="max-width: 180px;">
-                            <span class="meta-label">Judge:</span>
-                            <span class="meta-underline">Judge <?= $j ?></span>
-                        </div>
+                <div class="sheet-header" style="border-bottom: 2.5px solid #000; padding-bottom: 8px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+                    <div style="font-size: 28px; font-weight: 900; letter-spacing: -0.02em; color: #000;">
+                        <?= e($programName) ?>
+                    </div>
+                    <div style="background: #0f172a; color: #fff; font-size: 16px; font-weight: 900; padding: 8px 22px; border-radius: 6px; text-transform: uppercase;">
+                        JUDGE <?= $j ?> SCORE SHEET
                     </div>
                 </div>
 
-                <table class="judge-table">
-                    <thead>
-                        <tr>
-                            <th class="chest-col">Chest No.</th>
-                            <th><?= e($cat1) ?></th>
-                            <th><?= e($cat2) ?></th>
-                            <th><?= e($cat3) ?></th>
-                            <th><?= e($cat4) ?></th>
-                            <th style="width: 90px;">Total</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($chestNumbers as $chest): ?>
+                <div class="sheet-table-wrapper">
+                    <table class="judge-table">
+                        <thead>
                             <tr>
-                                <td class="chest-col">#<?= e($chest) ?></td>
-                                <td style="height: <?= $rowHeight ?>px;"></td>
-                                <td style="height: <?= $rowHeight ?>px;"></td>
-                                <td style="height: <?= $rowHeight ?>px;"></td>
-                                <td style="height: <?= $rowHeight ?>px;"></td>
-                                <td style="height: <?= $rowHeight ?>px;"></td>
+                                <th class="chest-col" style="font-size: <?= $thFontSize ?>; font-weight: 900; padding: 10px 8px; width: 130px;">Chest #</th>
+                                <th style="font-size: <?= $thFontSize ?>; font-weight: 900; padding: 10px 8px;"><?= e($cat1) ?></th>
+                                <th style="font-size: <?= $thFontSize ?>; font-weight: 900; padding: 10px 8px;"><?= e($cat2) ?></th>
+                                <th style="font-size: <?= $thFontSize ?>; font-weight: 900; padding: 10px 8px;"><?= e($cat3) ?></th>
+                                <th style="font-size: <?= $thFontSize ?>; font-weight: 900; padding: 10px 8px;"><?= e($cat4) ?></th>
                             </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($chestNumbers as $chest): ?>
+                                <tr>
+                                    <td class="chest-col" style="font-weight: 900; font-size: <?= $chestFontSize ?>; padding: <?= $cellPadding ?>;">#<?= e($chest) ?></td>
+                                    <td style="padding: <?= $cellPadding ?>;"></td>
+                                    <td style="padding: <?= $cellPadding ?>;"></td>
+                                    <td style="padding: <?= $cellPadding ?>;"></td>
+                                    <td style="padding: <?= $cellPadding ?>;"></td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         <?php endfor; ?>
     </div>

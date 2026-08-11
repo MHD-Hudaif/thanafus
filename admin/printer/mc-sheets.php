@@ -216,16 +216,59 @@ if ($action === 'print' && $activeEvent) {
                 page-break-before: always !important;
                 break-before: page !important;
             }
+            .no-print-bar {
+                background: #0f172a;
+                padding: 12px 20px;
+                border-radius: 12px;
+                margin-bottom: 20px;
+                color: #fff;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                flex-wrap: wrap;
+                gap: 12px;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+            }
             @media print {
+                .no-print-bar {
+                    display: none !important;
+                }
+                body {
+                    background: #fff !important;
+                    padding: 0 !important;
+                }
+                .emcee-table th {
+                    background: #f1f5f9 !important;
+                    -webkit-print-color-adjust: exact;
                     print-color-adjust: exact;
                 }
             }
         </style>
     </head>
-    <body>
-        <button onclick="window.print()" class="no-print-btn">
-            <i class="fa-solid fa-print"></i> Print Emcee Side-by-Side Sheets
-        </button>
+    <body data-print-orientation="landscape">
+        <div class="no-print-bar">
+            <div>
+                <h3 style="margin:0; font-size: 16px; color:#fff;"><i class="fa-solid fa-microphone" style="color:#38bdf8;"></i> Emcee Stage Running Order Sheets</h3>
+                <small style="color:#94a3b8;">Side-by-side A4 Landscape Layout</small>
+            </div>
+            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                <select data-print-select="orientation" style="padding: 6px 12px; border-radius: 6px; background: #1e293b; color: #fff; border: 1px solid #334155; font-size: 12px;">
+                    <option value="landscape" selected>🖼️ Landscape</option>
+                    <option value="portrait">📄 Portrait</option>
+                </select>
+                <select data-print-select="scale" style="padding: 6px 12px; border-radius: 6px; background: #1e293b; color: #fff; border: 1px solid #334155; font-size: 12px;">
+                    <option value="1">100% Fit</option>
+                    <option value="0.9">90% Fit</option>
+                    <option value="0.8">80% Fit</option>
+                </select>
+                <a href="<?= app_url('/admin/printer/mc-sheets.php') ?>" class="btn btn-secondary" style="padding: 6px 14px; text-decoration: none; color: #fff; background: #334155; border-radius: 6px; font-size: 12px; font-weight: 600;">
+                    <i class="fa-solid fa-arrow-left"></i> Exit
+                </a>
+                <button data-print-action="print" class="btn btn-success" style="padding: 6px 16px; background: #10b981; color: #fff; border: none; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer;">
+                    <i class="fa-solid fa-print"></i> Print Sheets (Ctrl+P)
+                </button>
+            </div>
+        </div>
 
         <?php
         function render_landscape_program_pair($pair, $entriesByProgram, $titleCounts, $isFirstPage = false) {

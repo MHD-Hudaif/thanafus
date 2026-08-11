@@ -87,7 +87,7 @@ function schedule_validate_gap(PDO $pdo, int $eventId, int $stageTypeId, int $pr
     ");
     $stmt->execute([$eventId, $stageTypeId, $previousProgramId, $nextProgramId, $endSql, $startSql]);
     if ((int)$stmt->fetchColumn() > 0) {
-        throw new RuntimeException('Break time overlaps another program.');
+        throw new RuntimeException('Extra item time overlaps another program.');
     }
 
     $stmt = $pdo->prepare("
@@ -100,7 +100,7 @@ function schedule_validate_gap(PDO $pdo, int $eventId, int $stageTypeId, int $pr
     ");
     $stmt->execute([$eventId, $stageTypeId, $endSql, $startSql]);
     if ((int)$stmt->fetchColumn() > 0) {
-        throw new RuntimeException('A break already exists in this gap.');
+        throw new RuntimeException('An extra item already exists in this gap.');
     }
 
     return [$startSql, $endSql];
@@ -115,7 +115,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = (string)($_POST['action'] ?? '');
 
     try {
-        if ($action === 'add_break') {
+        if ($action === 'add_break' || $action === 'add_extra') {
             $name = trim((string)($_POST['name'] ?? ''));
             $description = trim((string)($_POST['description'] ?? ''));
             $previousProgramId = (int)($_POST['previous_program_id'] ?? 0);
@@ -123,7 +123,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stageTypeId = (int)($_POST['stage_type_id'] ?? 0);
 
             if ($name === '') {
-                throw new RuntimeException('Break name is required.');
+                throw new RuntimeException('Extra title is required.');
             }
             if ($stageTypeId <= 0) {
                 throw new RuntimeException('Stage is required.');
@@ -137,12 +137,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 VALUES (?, ?, ?, ?, ?, ?)
             ");
             $stmt->execute([$activeEventId, $stageTypeId, $name, $description ?: null, $start, $end]);
-            admin_flash('success', 'Break added to timeline.');
-        } elseif ($action === 'delete_break') {
+            admin_flash('success', 'Extra item added to timeline.');
+        } elseif ($action === 'delete_break' || $action === 'delete_extra') {
             $breakId = (int)($_POST['break_id'] ?? 0);
             $stmt = $pdo->prepare('DELETE FROM musabaqa_breaks WHERE id = ? AND event_id = ?');
             $stmt->execute([$breakId, $activeEventId]);
-            admin_flash('success', 'Break removed.');
+            admin_flash('success', 'Extra item removed.');
         } elseif ($action === 'schedule_program') {
             $programId = (int)($_POST['program_id'] ?? 0);
             $stageTypeId = (int)($_POST['stage_type_id'] ?? 0);
@@ -391,7 +391,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
     <div class="topbar">
         <div>
             <div class="page-title">Schedule</div>
-            <div class="page-subtitle">Programs appear chronologically; breaks fill gaps between programs</div>
+            <div class="page-subtitle">Programs appear chronologically; extras fill gaps between programs</div>
         </div>
         <div class="flex gap-2">
             <button class="btn btn-success btn-md" type="button" id="scheduleNewProgramBtn"><i class="fa-solid fa-plus"></i> Schedule Program</button>
@@ -575,14 +575,14 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                                 <div class="panel" style="border-color: rgba(250,204,21,.2); padding: 8px 10px; background: rgba(250,204,21,.03);">
                                                     <div class="flex-between">
                                                         <div>
-                                                            <div class="dashboard-heading" style="font-size: 12.5px; margin: 0;"><i class="fa-solid fa-mug-hot mr-2" style="color: #facc15;"></i> <?= e($break['name']) ?></div>
-                                                            <div class="page-subtitle" style="font-size: 10.5px;"><?= e($break['description'] ?: 'Break') ?></div>
+                                                            <div class="dashboard-heading" style="font-size: 12.5px; margin: 0;"><i class="fa-solid fa-puzzle-piece mr-2" style="color: #facc15;"></i> <?= e($break['name']) ?></div>
+                                                            <div class="page-subtitle" style="font-size: 10.5px;"><?= e($break['description'] ?: 'Extra Item') ?></div>
                                                         </div>
                                                         <div class="flex gap-2 flex-wrap">
                                                             <span class="badge badge-warning" style="font-size: 9.5px; padding: 1.5px 5px;"><?= e(date('h:i A', strtotime($break['start_datetime']))) ?> - <?= e(date('h:i A', strtotime($break['end_datetime']))) ?></span>
                                                             <form method="POST">
                                                                 <?= admin_csrf_field() ?>
-                                                                <input type="hidden" name="action" value="delete_break">
+                                                                <input type="hidden" name="action" value="delete_extra">
                                                                 <input type="hidden" name="stage_type_id" value="<?= $stageId ?>">
                                                                 <input type="hidden" name="break_id" value="<?= (int)$break['id'] ?>">
                                                                 <button class="btn btn-danger btn-sm" type="submit" style="padding: 3px 5px; font-size: 9.5px;"><i class="fa-solid fa-trash"></i></button>
@@ -600,6 +600,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                                     <button
                                                         class="btn btn-success btn-sm"
                                                         type="button"
+                                                        data-open-extra
                                                         data-open-break
                                                         data-stage-id="<?= $stageId ?>"
                                                         data-previous-program="<?= (int)$program['id'] ?>"
@@ -607,7 +608,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                                         data-gap-label="<?= e(date('h:i A', strtotime($gapStartSql)) . ' - ' . date('h:i A', strtotime($gapEndSql))) ?>"
                                                         style="padding: 3px 6px; font-size: 10px;"
                                                     >
-                                                        <i class="fa-solid fa-plus"></i> Break
+                                                        <i class="fa-solid fa-plus"></i> Extra
                                                     </button>
                                                 </div>
                                             </div>
@@ -707,22 +708,22 @@ require_once __DIR__ . '/../../includes/sidebar.php';
     <div class="modal-box modal-md">
         <div class="modal-header">
             <div>
-                <div class="modal-title">Add Break</div>
+                <div class="modal-title"><i class="fa-solid fa-puzzle-piece mr-2" style="color: #facc15;"></i> Add Extra Item</div>
                 <div class="page-subtitle" id="breakGapLabel"></div>
             </div>
             <button class="modal-close" type="button" data-close="breakModal"><i class="fa-solid fa-xmark"></i></button>
         </div>
         <form method="POST">
             <?= admin_csrf_field() ?>
-            <input type="hidden" name="action" value="add_break">
+            <input type="hidden" name="action" value="add_extra">
             <input type="hidden" name="stage_type_id" id="breakStageTypeId">
             <input type="hidden" name="previous_program_id" id="previousProgramId">
             <input type="hidden" name="next_program_id" id="nextProgramId">
             <div class="form-grid">
-                <div class="input-group full-width"><label>Break Name</label><input type="text" name="name" required class="form-input"></div>
-                <div class="input-group full-width"><label>Description</label><textarea name="description" rows="4" class="form-input"></textarea></div>
+                <div class="input-group full-width"><label>Extra Title / Name <span class="required">*</span></label><input type="text" name="name" required class="form-input" placeholder="e.g. Intermission / Segment"></div>
+                <div class="input-group full-width"><label>Description</label><textarea name="description" rows="3" class="form-input" placeholder="Optional details about this extra item"></textarea></div>
             </div>
-            <div class="form-actions"><button class="btn btn-secondary btn-md" type="button" data-close="breakModal">Cancel</button><button class="btn btn-success btn-md" type="submit">Save Break</button></div>
+            <div class="form-actions"><button class="btn btn-secondary btn-md" type="button" data-close="breakModal">Cancel</button><button class="btn btn-success btn-md" type="submit">Save Extra</button></div>
         </form>
     </div>
 </div>
@@ -1154,7 +1155,7 @@ function closeModal(id){document.getElementById(id)?.classList.remove('active')}
 document.querySelectorAll('[data-close]').forEach(btn => btn.addEventListener('click', () => closeModal(btn.dataset.close)));
 document.querySelectorAll('.modal-overlay').forEach(modal => modal.addEventListener('click', e => { if (e.target === modal) closeModal(modal.id); }));
 
-document.querySelectorAll('[data-open-break]').forEach(button => button.addEventListener('click', () => {
+document.querySelectorAll('[data-open-extra], [data-open-break]').forEach(button => button.addEventListener('click', () => {
     document.getElementById('breakStageTypeId').value = button.dataset.stageId || '';
     document.getElementById('previousProgramId').value = button.dataset.previousProgram || '';
     document.getElementById('nextProgramId').value = button.dataset.nextProgram || '';

@@ -60,7 +60,7 @@ $initTeamColor = !empty($initPerf['team_color']) ? live_display_color($initPerf[
 
 $initNextChest = !empty($initNext['chest_number']) ? $initNext['chest_number'] : (!empty($initNext['number']) ? $initNext['number'] : '—');
 
-$nextProgTitle = !empty($initNextProg['title']) ? $initNextProg['title'] : ($isBreak ? 'Upcoming Break' : 'Next Program');
+$nextProgTitle = !empty($initNextProg['title']) ? $initNextProg['title'] : ($isBreak ? 'Upcoming Extra' : 'Next Program');
 $nextProgCategory = tv_format_section_name($initNextProg['category'] ?? null);
 $nextProgTime = !empty($initNextProg['start_label']) ? $initNextProg['start_label'] : (!empty($initNextProg['time']) ? $initNextProg['time'] : 'Scheduled Soon');
 ?>
@@ -658,7 +658,7 @@ $nextProgTime = !empty($initNextProg['start_label']) ? $initNextProg['start_labe
                     </svg>
 
                     <div class="side-box-label" data-next-prog-label>
-                        <?= $isBreak ? 'INTERMISSION / BREAK' : 'NEXT PROGRAM' ?>
+                        <?= $isBreak ? 'INTERMISSION / EXTRA' : 'NEXT PROGRAM' ?>
                     </div>
                     <h3 class="next-prog-title" data-next-prog-title>
                         <?= e($nextProgTitle) ?><?= $nextProgCategory ? ' <span class="next-prog-cat">' . e($nextProgCategory) . '</span>' : '' ?>
@@ -895,11 +895,11 @@ $nextProgTime = !empty($initNextProg['start_label']) ? $initNextProg['start_labe
                     // Update Up Next Box 2 (Next Program / Break)
                     const nextProgLabelEl = document.querySelector('[data-next-prog-label]');
                     if (nextProgLabelEl) {
-                        nextProgLabelEl.textContent = isBreak ? 'INTERMISSION / BREAK' : 'NEXT PROGRAM';
+                        nextProgLabelEl.textContent = isBreak ? 'INTERMISSION / EXTRA' : 'NEXT PROGRAM';
                     }
                     const nextProgTitleEl = document.querySelector('[data-next-prog-title]');
                     if (nextProgTitleEl) {
-                        const npTitle = nextProg.title || (isBreak ? 'Upcoming Break' : 'Next Program');
+                        const npTitle = nextProg.title || (isBreak ? 'Upcoming Extra' : 'Next Program');
                         const npSec = tvFormatSectionName(nextProg.category);
                         nextProgTitleEl.innerHTML = npTitle + (npSec ? ` <span class="next-prog-cat">${npSec}</span>` : '');
                     }

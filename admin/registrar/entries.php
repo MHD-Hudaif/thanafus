@@ -29,14 +29,23 @@ function entries_next_number(PDO $pdo, int $eventId, int $programId): int
 
 function entries_next_performance_order(PDO $pdo, int $eventId, int $programId): int
 {
-    $stmt = $pdo->prepare("
-        SELECT COALESCE(MAX(performance_order), 0) + 1
-        FROM musabaqa_program_entries
-        WHERE event_id = ? AND program_id = ?
-    ");
-    $stmt->execute([$eventId, $programId]);
+    // Assign a random initial performance order so registration order does not dictate candidate sequence
+    return rand(1, 9999);
+}
 
-    return max(1, (int)$stmt->fetchColumn());
+function entries_randomize_program_order(PDO $pdo, int $eventId, int $programId): void
+{
+    $stmt = $pdo->prepare('SELECT id FROM musabaqa_program_entries WHERE event_id = ? AND program_id = ?');
+    $stmt->execute([$eventId, $programId]);
+    $entryIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+    if ($entryIds) {
+        shuffle($entryIds);
+        $updateStmt = $pdo->prepare('UPDATE musabaqa_program_entries SET performance_order = ? WHERE id = ?');
+        foreach ($entryIds as $index => $id) {
+            $updateStmt->execute([$index + 1, $id]);
+        }
+    }
 }
 
 function entries_status_badge(?string $status): string
@@ -229,6 +238,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         }
 
                         admin_recalculate_program_status($pdo, $programId);
+                        entries_randomize_program_order($pdo, $activeEventId, $programId);
                         $msg = "{$addedCount} participant(s) registered successfully.";
                         if (!empty($skippedNames)) {
                             $msg .= " (" . count($skippedNames) . " skipped: " . implode(', ', $skippedNames) . ")";
@@ -250,12 +260,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     $teamMemberIds = array_filter(array_map('intval', $gData['team_member_ids']));
                                 }
 
-                                $entryName = trim((string)($gData['entry_name'] ?? ''));
-
-                                // Skip teams with no entry name and no selected members
-                                if ($entryName === '' && empty($teamMemberIds)) {
+                                // Skip teams where no participants were selected for registration
+                                if (empty($teamMemberIds)) {
                                     continue;
                                 }
+
+                                $entryName = trim((string)($gData['entry_name'] ?? ''));
 
                                 // Load team name
                                 $stmtTeam = $pdo->prepare("SELECT team_name FROM musabaqa_teams WHERE id = ? LIMIT 1");
@@ -331,6 +341,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     $addedMemCount++;
                                 }
 
+                                if ($addedMemCount === 0) {
+                                    $pdo->prepare("DELETE FROM musabaqa_program_entries WHERE id = ?")->execute([$newEntryId]);
+                                    $skippedMessages[] = "{$teamName} (no eligible members assigned)";
+                                    continue;
+                                }
+
                                 $createdCount++;
                             }
 
@@ -343,6 +359,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             }
 
                             admin_recalculate_program_status($pdo, $programId);
+                            entries_randomize_program_order($pdo, $activeEventId, $programId);
                             $msg = "{$createdCount} group entry(ies) created successfully.";
                             if (!empty($skippedMessages)) {
                                 $msg .= " (" . count($skippedMessages) . " skipped: " . implode(', ', $skippedMessages) . ")";
@@ -1768,7 +1785,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
 
                 <div class="input-group">
                     <label style="font-weight: 700; color: #fff; font-size: 13px; margin-bottom: 8px; display: block;">Select Group Members</label>
-                    <div id="editGroupMembersContainer" class="grid gap-2" style="grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); max-height: 300px; overflow-y: auto; padding-right: 4px;">
+                    <div id="editGroupMembersContainer" class="grid gap-3" style="grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); max-height: 350px; overflow-y: auto; padding: 4px;">
                         <!-- Populated dynamically via JS -->
                     </div>
                 </div>
@@ -1923,27 +1940,32 @@ document.addEventListener('DOMContentLoaded', () => {
                 const container = document.getElementById('editGroupMembersContainer');
                 if (container) {
                     const assignedIds = (entry.member_ids || []).map(Number);
-                    container.innerHTML = teamMembers.map(m => {
-                        const mId = Number(m.team_member_id);
-                        const isChecked = assignedIds.includes(mId);
-                        return `
-                            <label class="student-card-selection ${isChecked ? 'selected' : ''}" style="padding: 8px 12px; margin: 0; cursor: pointer;">
-                                <input type="checkbox" name="team_member_ids[]" value="${mId}" class="modal-member-checkbox" ${isChecked ? 'checked' : ''} style="display:none;" onchange="this.closest('.student-card-selection').classList.toggle('selected', this.checked)">
-                                <span class="student-avatar-badge" style="width: 28px; height: 28px; font-size: 11px;">
-                                    <span class="badge-text-chest">#${escapeHtml(m.chest_number || (m.full_name ? m.full_name.charAt(0) : 'M'))}</span>
-                                    <i class="fa-solid fa-check badge-icon-check" style="font-size: 10px;"></i>
-                                </span>
-                                <div style="flex: 1; min-width: 0;">
-                                    <strong style="color: #fff; font-size: 12.5px; font-weight: 600; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                        ${escapeHtml(m.full_name)}
-                                    </strong>
-                                    <div style="font-size: 10.5px; color: var(--muted);">
-                                        ${escapeHtml(m.class_name || 'General')}
+                    if (!teamMembers || teamMembers.length === 0) {
+                        container.innerHTML = `<div style="grid-column: 1 / -1; padding: 20px; text-align: center; color: #94a3b8; font-size: 13px;">No eligible team members found.</div>`;
+                    } else {
+                        container.innerHTML = teamMembers.map(m => {
+                            const mId = Number(m.team_member_id);
+                            const isChecked = assignedIds.includes(mId);
+                            const chestOrInitial = m.chest_number ? '#' + m.chest_number : (m.full_name ? m.full_name.charAt(0) : 'M');
+                            return `
+                                <label class="student-card-selection ${isChecked ? 'selected' : ''}" style="padding: 10px 14px; margin: 0; cursor: pointer; display: flex; align-items: center; gap: 12px; border-radius: 10px; min-height: 52px; background: rgba(15, 23, 42, 0.75); border: 1px solid rgba(255,255,255,0.12);">
+                                    <input type="checkbox" name="team_member_ids[]" value="${mId}" class="modal-member-checkbox" ${isChecked ? 'checked' : ''} style="display:none;" onchange="this.closest('.student-card-selection').classList.toggle('selected', this.checked)">
+                                    <span class="student-avatar-badge" style="width: 32px; height: 32px; min-width: 32px; border-radius: 8px; font-size: 11px; display: grid; place-items: center; flex-shrink: 0;">
+                                        <span class="badge-text-chest">${escapeHtml(chestOrInitial)}</span>
+                                        <i class="fa-solid fa-check badge-icon-check" style="font-size: 11px;"></i>
+                                    </span>
+                                    <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 2px;">
+                                        <strong style="color: #ffffff !important; font-size: 13px; font-weight: 700; display: block; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                            ${escapeHtml(m.full_name)}
+                                        </strong>
+                                        <span style="font-size: 11px; color: #94a3b8; display: block; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                            ${escapeHtml(m.class_name || 'General')}
+                                        </span>
                                     </div>
-                                </div>
-                            </label>
-                        `;
-                    }).join('');
+                                </label>
+                            `;
+                        }).join('');
+                    }
                 }
 
                 openModal('editGroupEntryModal');

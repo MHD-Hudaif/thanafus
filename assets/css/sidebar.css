@@ -482,41 +482,129 @@ body.sidebar-collapsed .sidebar-collapse-trigger svg {
         display: none !important;
     }
 
+    body.sidebar-collapsed .sidebar-vertical-brand {
+        padding: 16px 8px !important;
+        justify-content: center !important;
+        position: relative !important;
+    }
+
+    body.sidebar-collapsed .sidebar-logo-icon {
+        margin: 0 auto !important;
+    }
+
+    body.sidebar-collapsed .sidebar-collapse-trigger {
+        top: 14px !important;
+        right: 8px !important;
+        left: auto !important;
+        transform: none !important;
+        width: 22px !important;
+        height: 22px !important;
+    }
+
+    body.sidebar-collapsed .sidebar-search-launcher-container {
+        padding: 8px !important;
+    }
+
+    body.sidebar-collapsed .sidebar-search-launcher {
+        width: 42px !important;
+        height: 42px !important;
+        padding: 0 !important;
+        margin: 0 auto !important;
+        justify-content: center !important;
+        align-items: center !important;
+        border-radius: 12px !important;
+        flex-shrink: 0 !important;
+    }
+
+    body.sidebar-collapsed .sidebar-search-launcher svg {
+        margin: 0 !important;
+    }
+
+    body.sidebar-collapsed .sidebar-vertical-menu {
+        padding: 8px 6px !important;
+        gap: 6px !important;
+    }
+
     body.sidebar-collapsed .sidebar-group-content {
         max-height: none !important;
         opacity: 1 !important;
         pointer-events: auto !important;
-    }
-
-    body.sidebar-collapsed .sidebar-search-launcher {
-        justify-content: center;
-        padding: 8px 0;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        gap: 4px !important;
     }
 
     body.sidebar-collapsed .sidebar-vertical-link {
-        justify-content: center;
-        padding: 10px 0 !important;
+        width: 44px !important;
+        height: 44px !important;
+        padding: 0 !important;
+        margin: 0 auto !important;
+        justify-content: center !important;
+        align-items: center !important;
+        border-radius: 12px !important;
         transform: none !important;
     }
 
+    body.sidebar-collapsed .sidebar-icon {
+        margin: 0 !important;
+        width: 18px !important;
+        height: 18px !important;
+    }
+
     body.sidebar-collapsed .sidebar-vertical-link::before {
-        left: 2px;
-        height: 60%;
+        left: 0;
         top: 20%;
+        height: 60%;
+        width: 3px;
+        border-radius: 0 3px 3px 0;
+    }
+
+    body.sidebar-collapsed .sidebar-footer {
+        padding: 12px 8px !important;
+        gap: 8px !important;
     }
 
     body.sidebar-collapsed .sidebar-event-panel {
-        justify-content: center;
-        padding: 8px 0;
+        width: 44px !important;
+        height: 44px !important;
+        padding: 0 !important;
+        margin: 0 auto !important;
+        justify-content: center !important;
+        align-items: center !important;
+        border-radius: 12px !important;
+    }
+
+    body.sidebar-collapsed .sidebar-event-icon {
+        margin: 0 !important;
+        width: 20px !important;
+        height: 20px !important;
+        display: grid !important;
+        place-items: center !important;
     }
 
     body.sidebar-collapsed .sidebar-user-panel {
-        justify-content: center;
+        width: 100% !important;
+        padding: 0 !important;
+        margin: 0 auto !important;
+        justify-content: center !important;
+        align-items: center !important;
+        background: transparent !important;
+        border: none !important;
     }
 
-    body.sidebar-collapsed .sidebar-collapse-trigger {
-        right: 50%;
-        transform: translateX(50%);
+    body.sidebar-collapsed .sidebar-user-avatar {
+        width: 40px !important;
+        height: 40px !important;
+        margin: 0 auto !important;
+        flex-shrink: 0 !important;
+    }
+
+    body.sidebar-collapsed .sidebar-user-avatar img {
+        width: 40px !important;
+        height: 40px !important;
+        border-radius: 10px !important;
+        object-fit: cover !important;
     }
 }
 
