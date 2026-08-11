@@ -44,12 +44,13 @@ body:has(#slide-schedule.tv-slide--active) .tv-backdrop {
     background: #f8fafc url('<?= asset_url('images/white-background.png') ?>') center center / cover no-repeat;
     font-family: 'Plus Jakarta Sans', 'Outfit', 'Cairo', system-ui, -apple-system, sans-serif;
     color: #0f172a;
-    width: 100vw;
-    height: 100vh;
+    width: 100% !important;
+    height: 100% !important;
     display: flex;
     align-items: center;
     justify-content: center;
-    position: relative;
+    position: absolute !important;
+    inset: 0 !important;
 }
 
 .tv-schedule-stage-root {
@@ -212,17 +213,31 @@ body:has(#slide-schedule.tv-slide--active) .tv-backdrop {
     display: flex;
     flex-direction: column;
     transition: border-color 1.2s ease;
+    position: relative;
 }
 
-/* Table Header */
+.card-chevrons-svg {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    pointer-events: none !important;
+    z-index: 0 !important;
+    overflow: hidden !important;
+}
+
+/* Table Header - 4 Column Layout */
 .tv-schedule-board-head {
     display: grid;
-    grid-template-columns: 80px 160px minmax(0, 1fr) 220px 180px;
+    grid-template-columns: 90px 180px minmax(0, 1fr) 280px;
     align-items: center;
-    height: 64px;
+    height: 60px;
     background: rgba(15, 23, 42, 0.04);
     border-bottom: 1.5px solid rgba(15, 23, 42, 0.08);
-    padding: 0 36px;
+    padding: 0 40px;
     box-sizing: border-box;
 }
 
@@ -242,24 +257,35 @@ body:has(#slide-schedule.tv-slide--active) .tv-backdrop {
 
 .tv-schedule-row {
     display: grid;
-    grid-template-columns: 80px 160px minmax(0, 1fr) 220px 180px;
+    grid-template-columns: 90px 180px minmax(0, 1fr) 280px;
     align-items: center;
-    min-height: 94px;
-    padding: 12px 36px;
+    min-height: 84px;
+    padding: 12px 40px;
     box-sizing: border-box;
     border-bottom: 1px solid rgba(15, 23, 42, 0.06);
     background: transparent;
-    transition: background 0.3s ease, border-left-color 0.3s ease;
-    border-left: 5px solid transparent;
+    transition: background 0.3s ease, border-left-color 0.3s ease, box-shadow 0.3s ease;
+    border-left: 6px solid transparent;
 }
 
 .tv-schedule-row:last-child {
     border-bottom: none;
 }
 
-.tv-schedule-row.is-first-upcoming {
-    background: rgba(16, 185, 129, 0.06) !important;
-    border-left: 6px solid #10b981 !important;
+/* Highlight Active Running Program */
+.tv-schedule-row.is-running-program {
+    background: rgba(16, 185, 129, 0.09) !important;
+    border-left: 8px solid #10b981 !important;
+    box-shadow: inset 0 0 24px rgba(16, 185, 129, 0.06);
+}
+
+.tv-schedule-row.is-running-program .tv-schedule-row-num {
+    color: #10b981;
+    font-weight: 900;
+}
+
+.tv-schedule-row.is-running-program .tv-schedule-row-program strong {
+    color: #047857;
 }
 
 .tv-schedule-row.is-break {
@@ -274,12 +300,8 @@ body:has(#slide-schedule.tv-slide--active) .tv-backdrop {
     font-family: 'Plus Jakarta Sans', monospace;
 }
 
-.tv-schedule-row.is-first-upcoming .tv-schedule-row-num {
-    color: #10b981;
-}
-
 .tv-schedule-row-time {
-    font-size: 26px;
+    font-size: 24px;
     font-weight: 900;
     color: #0f172a;
     font-family: 'Plus Jakarta Sans', sans-serif;
@@ -290,10 +312,11 @@ body:has(#slide-schedule.tv-slide--active) .tv-backdrop {
     display: flex;
     align-items: center;
     min-width: 0;
+    gap: 12px;
 }
 
 .tv-schedule-row-program strong {
-    font-size: 32px;
+    font-size: 28px;
     font-weight: 900;
     color: #0f172a;
     text-transform: uppercase;
@@ -304,6 +327,36 @@ body:has(#slide-schedule.tv-slide--active) .tv-backdrop {
     letter-spacing: -0.01em;
 }
 
+.tv-schedule-row-live-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(16, 185, 129, 0.15);
+    border: 1px solid rgba(16, 185, 129, 0.4);
+    color: #047857;
+    font-size: 11px;
+    font-weight: 900;
+    padding: 3px 10px;
+    border-radius: 20px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    flex-shrink: 0;
+}
+
+.tv-schedule-row-live-badge .live-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #10b981;
+    box-shadow: 0 0 8px #10b981;
+    animation: live-pulse-dot 1.4s ease-in-out infinite alternate;
+}
+
+@keyframes live-pulse-dot {
+    0% { opacity: 0.4; transform: scale(0.9); }
+    100% { opacity: 1; transform: scale(1.3); }
+}
+
 .tv-schedule-row-location {
     font-size: 20px;
     font-weight: 800;
@@ -311,43 +364,6 @@ body:has(#slide-schedule.tv-slide--active) .tv-backdrop {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-}
-
-.tv-status {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 8px 20px;
-    border-radius: 30px;
-    font-size: 14px;
-    font-weight: 900;
-    text-transform: uppercase;
-    text-align: center;
-    letter-spacing: 0.05em;
-}
-
-.tv-status.completed {
-    background: rgba(148, 163, 184, 0.15);
-    border: 1px solid rgba(148, 163, 184, 0.3);
-    color: #64748b;
-}
-
-.tv-status.inprogress {
-    background: rgba(16, 185, 129, 0.15);
-    border: 1.5px solid rgba(16, 185, 129, 0.4);
-    color: #059669;
-}
-
-.tv-status.upcoming {
-    background: rgba(59, 130, 246, 0.12);
-    border: 1.5px solid rgba(59, 130, 246, 0.3);
-    color: #2563eb;
-}
-
-.tv-status.break {
-    background: rgba(245, 158, 11, 0.12);
-    border: 1.5px solid rgba(245, 158, 11, 0.3);
-    color: #d97706;
 }
 </style>
 
@@ -386,80 +402,7 @@ body:has(#slide-schedule.tv-slide--active) .tv-backdrop {
 </div>
 
 <script>
-    (() => {
-        let activeParticleColor = '';
-
-        function initTopTeamParticles(colorHex) {
-            if (!colorHex || colorHex === activeParticleColor) return;
-            activeParticleColor = colorHex;
-
-            if (typeof particlesJS === 'undefined') {
-                setTimeout(() => initTopTeamParticles(colorHex), 150);
-                return;
-            }
-
-            if (window.pJSDom && window.pJSDom.length > 0) {
-                try {
-                    window.pJSDom[0].pJS.fn.vendors.destroypJS();
-                } catch(e) {}
-                window.pJSDom = [];
-            }
-
-            particlesJS('particles-js', {
-                "particles": {
-                    "number": {
-                        "value": 50,
-                        "density": { "enable": true, "value_area": 900 }
-                    },
-                    "color": {
-                        "value": [colorHex, "#ffffff", colorHex]
-                    },
-                    "shape": { "type": "circle" },
-                    "opacity": {
-                        "value": 0.7,
-                        "random": true,
-                        "anim": { "enable": true, "speed": 1.4, "opacity_min": 0.25, "sync": false }
-                    },
-                    "size": {
-                        "value": 4.5,
-                        "random": true,
-                        "anim": { "enable": true, "speed": 2.2, "size_min": 1.2, "sync": false }
-                    },
-                    "line_linked": {
-                        "enable": true,
-                        "distance": 140,
-                        "color": colorHex,
-                        "opacity": 0.28,
-                        "width": 1.2
-                    },
-                    "move": {
-                        "enable": true,
-                        "speed": 1.6,
-                        "direction": "none",
-                        "random": true,
-                        "straight": false,
-                        "out_mode": "out",
-                        "bounce": false
-                    }
-                },
-                "interactivity": {
-                    "detect_on": "canvas",
-                    "events": {
-                        "onhover": { "enable": true, "mode": "grab" },
-                        "onclick": { "enable": true, "mode": "push" },
-                        "resize": true
-                    },
-                    "modes": {
-                        "grab": { "distance": 180, "line_linked": { "opacity": 0.45 } },
-                        "push": { "particles_nb": 4 }
-                    }
-                },
-                "retina_detect": true
-            });
-        }
-
-        initTopTeamParticles(<?= json_encode($firstTeamColor) ?>);
-    })();
+    // Replaced canvas teardown particlesJS with hardware-accelerated CSS ambient particles
 </script>
 
 <?php

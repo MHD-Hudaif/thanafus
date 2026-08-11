@@ -83,10 +83,6 @@
 /* -----------------------------------------------------
    Styles from chest-numbers.php
    ----------------------------------------------------- */
-body.modal-open {
-    overflow: hidden !important;
-}
-
 .modal-overlay {
     z-index: 10000 !important;
     align-items: flex-start !important;

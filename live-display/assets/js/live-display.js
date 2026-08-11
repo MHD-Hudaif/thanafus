@@ -93,127 +93,73 @@
         state.timers.clock = setInterval(update, 1000);
     }
 
-    function initParticles(teamColor = '#10b981') {
-        const pContainer = document.getElementById('particles-js');
-        if (!pContainer) return;
-
-        if (typeof particlesJS !== 'undefined') {
-            try {
-                const particleColors = [teamColor, '#38bdf8', '#fbbf24', '#ffffff'];
-                particlesJS('particles-js', {
-                    "particles": {
-                        "number": {
-                            "value": 55,
-                            "density": {
-                                "enable": true,
-                                "value_area": 900
-                            }
-                        },
-                        "color": {
-                            "value": particleColors
-                        },
-                        "shape": {
-                            "type": ["circle", "triangle"],
-                            "stroke": {
-                                "width": 0,
-                                "color": "#000000"
-                            }
-                        },
-                        "opacity": {
-                            "value": 0.45,
-                            "random": true,
-                            "anim": {
-                                "enable": true,
-                                "speed": 1.2,
-                                "opacity_min": 0.15,
-                                "sync": false
-                            }
-                        },
-                        "size": {
-                            "value": 4.5,
-                            "random": true,
-                            "anim": {
-                                "enable": true,
-                                "speed": 2,
-                                "size_min": 1,
-                                "sync": false
-                            }
-                        },
-                        "line_linked": {
-                            "enable": true,
-                            "distance": 140,
-                            "color": teamColor,
-                            "opacity": 0.18,
-                            "width": 1.2
-                        },
-                        "move": {
-                            "enable": true,
-                            "speed": 1.4,
-                            "direction": "top-right",
-                            "random": true,
-                            "straight": false,
-                            "out_mode": "out",
-                            "bounce": false
-                        }
-                    },
-                    "interactivity": {
-                        "detect_on": "canvas",
-                        "events": {
-                            "onhover": { "enable": true, "mode": "grab" },
-                            "onclick": { "enable": true, "mode": "push" },
-                            "resize": true
-                        },
-                        "modes": {
-                            "grab": { "distance": 160, "line_linked": { "opacity": 0.35 } },
-                            "push": { "particles_nb": 3 }
-                        }
-                    },
-                    "retina_detect": true
-                });
-            } catch (err) {
-                console.error("particlesJS error:", err);
-            }
-        } else {
-            setTimeout(() => initParticles(teamColor), 100);
-        }
+    function initParticles() {
+        // Replaced canvas teardown particlesJS with hardware-accelerated CSS ambient particles
     }
 
     function getSlideElements() {
         return Array.from(document.querySelectorAll('.tv-slide'));
     }
 
-    function setActiveSlide(name) {
-        if (!name) return;
-        const normalizedName = String(name).replace('_', '-');
-        const slides = getSlideElements();
+    let introVideoIndex = 0;
+    let introTimeline = null;
 
-        els.body.classList.toggle('tv-schedule-active', normalizedName === 'schedule');
+    function playNextIntroVideo() {
+        const videoEl = document.getElementById('introVideoPlayer') || document.querySelector('[data-intro-video]');
+        const videos = window.TV_INTRO_VIDEOS;
+        if (!videoEl || !Array.isArray(videos) || videos.length === 0) return;
 
-        state.activeSlide = normalizedName;
-        slides.forEach((slide) => {
-            const isActive = slide.dataset.slide === normalizedName;
-            slide.classList.toggle('tv-slide--active', isActive);
-        });
+        const src = videos[introVideoIndex % videos.length];
+        introVideoIndex = (introVideoIndex + 1) % videos.length;
 
-        if (normalizedName !== 'schedule') {
-            stopScheduleTimer();
+        if (videoEl.src !== src) {
+            videoEl.src = src;
+            videoEl.load();
         }
 
-        if (normalizedName === 'intro') {
-            const video = document.querySelector('[data-intro-video]');
-            if (video) {
-                try {
-                    video.currentTime = 0;
-                    video.play().catch(() => {});
-                } catch (_) {}
-            }
+        videoEl.play().catch(() => {});
+    }
+
+    function triggerIntroAnimations() {
+        playNextIntroVideo();
+
+        const thanafusLogo = document.getElementById('introThanafusLogo');
+        const kauzariyyaLogo = document.getElementById('introKauzariyyaLogo');
+
+        if (!thanafusLogo || !kauzariyyaLogo || typeof gsap === 'undefined') return;
+
+        if (introTimeline) {
+            introTimeline.kill();
         }
 
-        animateEntrance(`#slide-${normalizedName}`);
+        gsap.killTweensOf([thanafusLogo, kauzariyyaLogo]);
 
-        if (normalizedName === 'schedule') {
-            startSchedulePlayback();
-        }
+        gsap.set([thanafusLogo, kauzariyyaLogo], { opacity: 0, scale: 0.92 });
+
+        introTimeline = gsap.timeline();
+
+        // 1. Fade in Thanafus logo in center
+        introTimeline.to(thanafusLogo, {
+            opacity: 1,
+            scale: 1,
+            duration: 1.2,
+            ease: 'power2.out'
+        })
+        // Hold for 2.2s then fade out
+        .to(thanafusLogo, {
+            opacity: 0,
+            scale: 1.06,
+            duration: 0.8,
+            ease: 'power2.in',
+            delay: 2.2
+        })
+        // 2. Fade in Kauzariyya logo in center
+        .to(kauzariyyaLogo, {
+            opacity: 1,
+            scale: 1,
+            duration: 1.2,
+            ease: 'power2.out'
+        }, '+=0.2');
     }
 
     function animateEntrance(scope) {
@@ -221,6 +167,11 @@
         if (!root || typeof gsap === 'undefined') return;
 
         gsap.killTweensOf(root.querySelectorAll('*'));
+
+        if (scope === '#slide-intro') {
+            triggerIntroAnimations();
+            return;
+        }
 
         if (scope === '#slide-current-program') {
             if (typeof window.triggerCurrentProgramAnimations === 'function') {
@@ -420,7 +371,7 @@
     }
 
 
-    function renderLeaderboard(rows, completionPercent = 0) {
+    function renderLeaderboard(rows, completionPercent = 20) {
         state.leaderboardData = rows;
         const teams = Array.isArray(rows) ? rows : [];
 
@@ -431,65 +382,80 @@
             team?.id, team?.rank, team?.team_name, team?.total_score, team?.team_color
         ]));
 
-        if (state.leaderboardSignature === signature && container.querySelector('.dashboard-grid')) {
+        if (state.leaderboardSignature === signature && container.querySelector('.orbital-stage-container')) {
             return;
         }
         state.leaderboardSignature = signature;
 
-        const firstTeam = teams[0] || {};
-        const firstTeamColor = firstTeam.team_color || '#10b981';
-        const firstTeamName = firstTeam.team_name || firstTeam.short_name || 'Leader';
-        const firstTeamScore = Math.round(Number(firstTeam.total_score || 0));
+        // Lead point gap calculation
+        const score1 = teams[0] ? Math.round(Number(teams[0].total_score || 0)) : 0;
+        const score2 = teams[1] ? Math.round(Number(teams[1].total_score || 0)) : 0;
+        const leadGap = Math.max(0, score1 - score2);
 
-        const secondTeam = teams[1] || {};
-        const secondTeamColor = secondTeam.team_color || '#3b82f6';
-        const secondTeamName = secondTeam.team_name || secondTeam.short_name || '—';
-        const secondTeamScore = Math.round(Number(secondTeam.total_score || 0));
+        // Map top 4 teams to position 1 (Top), 2 (Right), 3 (Left), 4 (Bottom)
+        const posConfigs = [
+            { pos: 1, rankStr: '01', defaultColor: '#10b981', isLeading: true },
+            { pos: 2, rankStr: '02', defaultColor: '#f43f5e', isLeading: false },
+            { pos: 3, rankStr: '03', defaultColor: '#eab308', isLeading: false },
+            { pos: 4, rankStr: '04', defaultColor: '#3b82f6', isLeading: false }
+        ];
 
-        // 1. Dynamic background based on 1st place team color
-        if (teams.length > 0 && typeof gsap !== 'undefined') {
-            const rgb = hexToRgb(firstTeamColor);
-            const rootStyle = getComputedStyle(document.documentElement);
-            const currentR = parseInt(rootStyle.getPropertyValue('--dynamic-r')) || 0;
-            const currentG = parseInt(rootStyle.getPropertyValue('--dynamic-g')) || 255;
-            const currentB = parseInt(rootStyle.getPropertyValue('--dynamic-b')) || 136;
-
-            const colorObj = { r: currentR, g: currentG, b: currentB };
-            gsap.to(colorObj, {
-                r: rgb.r,
-                g: rgb.g,
-                b: rgb.b,
-                duration: 1.8,
-                ease: 'power3.inOut',
-                onUpdate: () => {
-                    document.documentElement.style.setProperty('--dynamic-r', Math.round(colorObj.r));
-                    document.documentElement.style.setProperty('--dynamic-g', Math.round(colorObj.g));
-                    document.documentElement.style.setProperty('--dynamic-b', Math.round(colorObj.b));
-                }
-            });
-        }
-        document.documentElement.style.setProperty('--first-team-color', firstTeamColor);
-
-        // Other teams (3rd, 4th, etc.)
-        const otherTeams = teams.slice(2);
-        const otherRowsHtml = otherTeams.length ? otherTeams.map((team) => {
-            const color = team.team_color || '#64748b';
-            const rank = Number(team.rank || 3);
-            const name = team.team_name || team.short_name || 'Team';
-            const score = Math.round(Number(team.total_score || 0));
-            const medal = rank === 3 ? '🥉 ' : '';
+        const cardsHtml = posConfigs.map((cfg, idx) => {
+            const team = teams[idx] || null;
+            const color = team && team.team_color ? team.team_color : cfg.defaultColor;
+            const name = team ? (team.team_name || team.short_name || '—') : '—';
+            const score = team ? Math.round(Number(team.total_score || 0)) : 0;
+            const leadingBadge = cfg.isLeading ? `<span class="orbital-badge-leading">👑 CHAMPION LEADER</span>` : '';
+            const gapText = cfg.isLeading ? `+${leadGap} PTS LEAD` : `-${Math.max(0, score1 - score)} PTS`;
+            const gapClass = cfg.isLeading ? 'leader-gap' : 'chaser-gap';
 
             return `
-                <div class="standing-row-item">
-                    <span class="st-rank-badge">${medal}${rank}th</span>
-                    <span class="st-team-info">
-                        <span class="tv-team-dot" style="background:${escapeHtml(color)};"></span>
-                        <span>${escapeHtml(name)}</span>
-                    </span>
-                    <span class="st-pts-num">${score} <span style="font-size: 13px; font-weight: 700; color: #64748b;">PTS</span></span>
+                <div class="orbital-card" data-pos="${cfg.pos}" style="--accent-color: ${escapeHtml(color)};">
+                    <!-- Animated Team-Colored Chevron Vectors inside Card -->
+                    <svg class="card-chevrons-svg" viewBox="0 0 320 255" preserveAspectRatio="none" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <g class="animated-card-group">
+                            <path class="animated-dash-line" d="M-30 255 L160 100 L-30 -55" stroke="${escapeHtml(color)}" stroke-width="2.5" opacity="0.65" stroke-linecap="round"/>
+                            <path class="animated-dash-line" d="M350 255 L160 100 L350 -55" stroke="${escapeHtml(color)}" stroke-width="2.5" opacity="0.65" stroke-linecap="round"/>
+                            <line class="animated-cross-line" x1="20" y1="210" x2="140" y2="120" stroke="${escapeHtml(color)}" stroke-width="1.5" opacity="0.5"/>
+                            <line class="animated-cross-line" x1="300" y1="210" x2="180" y2="120" stroke="${escapeHtml(color)}" stroke-width="1.5" opacity="0.5"/>
+                        </g>
+                    </svg>
+                    <div class="orbital-card-dark-wave"></div>
+                    <div class="orbital-card-header">
+                        ${leadingBadge}
+                        <span class="orbital-gap-pill ${gapClass}">${gapText}</span>
+                        <span class="orbital-rank-index">${cfg.rankStr}</span>
+                    </div>
+                    <div class="orbital-team-title" title="${escapeHtml(name)}">${escapeHtml(name)}</div>
+                    <div class="orbital-score-wrapper">
+                        <span class="orbital-score-digit" data-score="${score}">0</span>
+                        <span class="orbital-score-label">MARKS</span>
+                    </div>
                 </div>
             `;
-        }).join('') : `<div style="color: #64748b; font-size: 16px; text-align: center;">No additional teams</div>`;
+        }).join('');
+
+        // Progress percentage for central ring
+        const pct = Math.min(100, Math.max(0, Math.round(Number(completionPercent || 20))));
+        const dashoffset = 326.72 - (326.72 * pct / 100);
+
+        // Extra teams (Rank 5+)
+        const extraTeams = teams.slice(4);
+        const extraHtml = extraTeams.length > 0 ? `
+            <div class="orbital-extra-teams-bar">
+                ${extraTeams.map((t, i) => `
+                    <div class="orbital-extra-team-item">
+                        <span class="tv-team-dot" style="background:${escapeHtml(t.team_color || '#94a3b8')};"></span>
+                        <span>0${i + 5} ${escapeHtml(t.team_name || t.short_name)}:</span>
+                        <strong style="color: #10b981">${Math.round(Number(t.total_score || 0))}</strong>
+                    </div>
+                `).join('<span style="color:rgba(15,23,42,0.2)">|</span>')}
+            </div>
+        ` : '';
+
+        // Top team color for ambient aura
+        const firstTeamColor = teams[0]?.team_color || '#10b981';
+        document.documentElement.style.setProperty('--first-team-color', firstTeamColor);
 
         container.className = 'tv-leaderboard-stage-root';
         container.innerHTML = `
@@ -504,91 +470,80 @@
                 <polygon points="2020,1050 1440,540 2020,30" fill="rgba(250,250,252,0.92)" filter="url(#cutShadow)" />
             </svg>
 
-            <!-- Dynamic 1st Rank Team Geometric Chevron Vectors -->
+            <!-- Dynamic Geometric Chevron Vectors -->
             <svg class="side-chevrons-svg full-screen" viewBox="0 0 1920 1080" preserveAspectRatio="none" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <g class="animated-chevron-group">
-                    <path class="animated-dash-line" d="M-100 1200 L650 540 L-100 -100" stroke="var(--first-team-color, #10b981)" stroke-width="3" stroke-linecap="round" />
-                    <path class="animated-dash-line" d="M-150 1050 L480 540 L-150 30" stroke="var(--first-team-color, #10b981)" stroke-width="2" opacity="0.8" stroke-linecap="round" />
-                    <line class="animated-cross-line" x1="200" y1="900" x2="420" y2="680" stroke="var(--first-team-color, #10b981)" stroke-width="2" opacity="0.75" />
-                    <line class="animated-cross-line" x1="320" y1="780" x2="540" y2="560" stroke="var(--first-team-color, #10b981)" stroke-width="2" opacity="0.75" />
+                    <path class="animated-dash-line" d="M-100 1200 L650 540 L-100 -100" stroke="#cbd5e1" stroke-width="3" stroke-linecap="round" />
+                    <path class="animated-dash-line" d="M-150 1050 L480 540 L-150 30" stroke="#cbd5e1" stroke-width="2" opacity="0.8" stroke-linecap="round" />
+                    <line class="animated-cross-line" x1="200" y1="900" x2="420" y2="680" stroke="#cbd5e1" stroke-width="2" opacity="0.75" />
+                    <line class="animated-cross-line" x1="320" y1="780" x2="540" y2="560" stroke="#cbd5e1" stroke-width="2" opacity="0.75" />
 
-                    <path class="animated-dash-line" d="M2020 1200 L1270 540 L2020 -100" stroke="var(--first-team-color, #10b981)" stroke-width="3" stroke-linecap="round" />
-                    <path class="animated-dash-line" d="M2070 1050 L1440 540 L2070 30" stroke="var(--first-team-color, #10b981)" stroke-width="2" opacity="0.8" stroke-linecap="round" />
-                    <line class="animated-cross-line" x1="1720" y1="900" x2="1500" y2="680" stroke="var(--first-team-color, #10b981)" stroke-width="2" opacity="0.75" />
+                    <path class="animated-dash-line" d="M2020 1200 L1270 540 L2020 -100" stroke="#cbd5e1" stroke-width="3" stroke-linecap="round" />
+                    <path class="animated-dash-line" d="M2070 1050 L1440 540 L2070 30" stroke="#cbd5e1" stroke-width="2" opacity="0.8" stroke-linecap="round" />
+                    <line class="animated-cross-line" x1="1720" y1="900" x2="1500" y2="680" stroke="#cbd5e1" stroke-width="2" opacity="0.75" />
                 </g>
             </svg>
 
             <div class="ambient-mesh-bg"></div>
 
-            <div class="leaderboard-slide-container" style="--first-team-color: ${escapeHtml(firstTeamColor)};">
-                <div class="leaderboard-slide-title">
-                    <span>Team Standings & Points</span>
-                    <span class="first-team-rank-pill">
-                        <span class="rank-crown">👑</span>
-                        <span class="rank-label">CHAMPION LEADER:</span>
-                        <span class="rank-name">${escapeHtml(firstTeamName)}</span>
-                    </span>
+            <div class="orbital-stage-container">
+                <!-- Glowing Background Auras behind each card direction -->
+                <div class="orbital-aura-bg">
+                    <div class="orbital-aura-spot top" style="--card-1-color: ${escapeHtml(teams[0]?.team_color || '#10b981')}"></div>
+                    <div class="orbital-aura-spot right" style="--card-2-color: ${escapeHtml(teams[1]?.team_color || '#f43f5e')}"></div>
+                    <div class="orbital-aura-spot left" style="--card-3-color: ${escapeHtml(teams[2]?.team_color || '#eab308')}"></div>
+                    <div class="orbital-aura-spot bottom" style="--card-4-color: ${escapeHtml(teams[3]?.team_color || '#3b82f6')}"></div>
                 </div>
 
-                <div class="dashboard-grid">
-                    <!-- Main Card (1st Place Hero) -->
-                    <main class="glass-panel leaderboard-hero-card">
-                        <svg class="card-chevrons-svg" viewBox="0 0 800 500" preserveAspectRatio="none" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <g class="animated-card-group">
-                                <path class="animated-dash-line" d="M-50 480 L350 80 L-50 -320" stroke="var(--first-team-color, #10b981)" stroke-width="2.5" opacity="0.6" stroke-linecap="round"/>
-                                <path class="animated-dash-line" d="M850 480 L450 80 L850 -320" stroke="var(--first-team-color, #10b981)" stroke-width="2.5" opacity="0.6" stroke-linecap="round"/>
-                            </g>
-                        </svg>
+                <!-- SVG Connecting Vector Lines, Outer Ring & Pulsing Lasers -->
+                <svg class="orbital-vector-canvas" viewBox="0 0 1050 820" preserveAspectRatio="none">
+                    <!-- Outer Connection Ring -->
+                    <circle class="orbital-ring-path" cx="525" cy="410" r="290" fill="none" stroke="rgba(15, 23, 42, 0.16)" stroke-width="1.5" />
+                    
+                    <!-- Horizontal Crosshair -->
+                    <line class="orbital-crosshair-line" x1="60" y1="410" x2="990" y2="410" stroke="rgba(15, 23, 42, 0.12)" stroke-width="1.5" />
+                    
+                    <!-- Vertical Crosshair -->
+                    <line class="orbital-crosshair-line" x1="525" y1="50" x2="525" y2="770" stroke="rgba(15, 23, 42, 0.12)" stroke-width="1.5" />
 
-                        <div>
-                            <div class="hero-leader-badge">
-                                <span>👑</span> 1st Place Leader
-                            </div>
-                            <h1 class="hero-team-name">${escapeHtml(firstTeamName)}</h1>
-                            <div class="st-team-info">
-                                <span class="tv-team-dot" style="background:${escapeHtml(firstTeamColor)};"></span>
-                                <span style="font-size: 16px; color: #475569; font-weight: 700;">Leading Musabaqa Standings</span>
-                            </div>
-                        </div>
+                    <!-- Pulsing Radial Laser Connector Beams -->
+                    <g class="constellation-lasers">
+                        <line class="constellation-laser-line" x1="525" y1="330" x2="525" y2="135" stroke="${escapeHtml(teams[0]?.team_color || '#10b981')}" stroke-width="3" stroke-dasharray="16 12" />
+                        <line class="constellation-laser-line" x1="605" y1="410" x2="880" y2="410" stroke="${escapeHtml(teams[1]?.team_color || '#f43f5e')}" stroke-width="3" stroke-dasharray="16 12" />
+                        <line class="constellation-laser-line" x1="445" y1="410" x2="170" y2="410" stroke="${escapeHtml(teams[2]?.team_color || '#eab308')}" stroke-width="3" stroke-dasharray="16 12" />
+                        <line class="constellation-laser-line" x1="525" y1="490" x2="525" y2="685" stroke="${escapeHtml(teams[3]?.team_color || '#3b82f6')}" stroke-width="3" stroke-dasharray="16 12" />
+                    </g>
+                </svg>
 
-                        <div class="hero-score-box">
-                            <span class="hero-score-label">TOTAL OVERALL SCORE</span>
-                            <span class="hero-score-num">${firstTeamScore}</span>
-                        </div>
-                    </main>
-
-                    <!-- Sidebar Column: 2nd Place & Other Teams -->
-                    <aside class="sidebar-column">
-                        <!-- Top Card: 2nd Place Runner Up -->
-                        <div class="glass-panel side-card-top runner-up-card">
-                            <svg class="card-chevrons-svg" viewBox="0 0 500 260" preserveAspectRatio="none" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <g class="animated-card-group">
-                                    <path class="animated-dash-line" d="M-30 260 L280 80 L-30 -100" stroke="${escapeHtml(secondTeamColor)}" stroke-width="2" opacity="0.55" stroke-linecap="round"/>
-                                </g>
-                            </svg>
-
-                            <div class="side-box-label">
-                                🥈 2nd Place Runner-Up
-                            </div>
-                            <h2 class="runner-team-name">${escapeHtml(secondTeamName)}</h2>
-                            <div class="runner-score-big">
-                                <span style="color:${escapeHtml(secondTeamColor)}">${secondTeamScore}</span> <span style="font-size: 20px; color: #64748b; font-weight: 700;">PTS</span>
-                            </div>
-                        </div>
-
-                        <!-- Bottom Card: Remaining Standings -->
-                        <div class="glass-panel side-card-bottom standings-list-card">
-                            <div class="side-box-label" style="text-align: left; margin-bottom: 14px;">
-                                Other Team Standings
-                            </div>
-                            <div class="standings-rows-list">
-                                ${otherRowsHtml}
-                            </div>
-                        </div>
-                    </aside>
+                <!-- Center Islamic 8-Point Star Medallion Node -->
+                <div class="orbital-center-node constellation-star-node">
+                    <svg class="constellation-star-svg" viewBox="0 0 160 160">
+                        <!-- Rotating Outer 8-Point Star Medallion -->
+                        <g class="star-rotation-group">
+                            <rect x="25" y="25" width="110" height="110" rx="14" fill="none" stroke="${escapeHtml(teams[0]?.team_color || '#10b981')}" stroke-width="2.5" opacity="0.5" />
+                            <rect x="25" y="25" width="110" height="110" rx="14" transform="rotate(45 80 80)" fill="none" stroke="${escapeHtml(teams[0]?.team_color || '#10b981')}" stroke-width="2.5" opacity="0.5" />
+                            <circle cx="80" cy="80" r="68" fill="none" stroke="rgba(15, 23, 42, 0.12)" stroke-width="1.5" stroke-dasharray="6 4" />
+                        </g>
+                        <!-- Inner Progress Arc -->
+                        <circle cx="80" cy="80" r="52" fill="none" stroke="rgba(15, 23, 42, 0.08)" stroke-width="6" />
+                        <circle class="orbital-progress-bar" cx="80" cy="80" r="52" fill="none" stroke="${escapeHtml(teams[0]?.team_color || '#10b981')}" stroke-width="6" stroke-linecap="round" stroke-dasharray="326.72" stroke-dashoffset="${dashoffset}" transform="rotate(-90 80 80)" />
+                    </svg>
+                    <div class="constellation-center-content">
+                        <span class="constellation-kicker">LEAD GAP</span>
+                        <span class="constellation-lead-num">+${leadGap}</span>
+                        <span class="constellation-unit">PTS</span>
+                    </div>
                 </div>
+
+                <!-- 4 Quadrant Cards -->
+                ${cardsHtml}
+
+                <!-- Extra Teams Bar if 5+ teams -->
+                ${extraHtml}
             </div>
         `;
+
+        window.renderLeaderboard = renderLeaderboard;
 
         triggerLeaderboardAnimations(container);
     }
@@ -597,53 +552,53 @@
         const root = customContainer || document.querySelector('[data-leaderboard], [data-leaderboard-stage]');
         if (!root || typeof gsap === 'undefined') return;
 
-        const heroCard = root.querySelector('.leaderboard-hero-card');
-        const sideTopCard = root.querySelector('.runner-up-card');
-        const sideBottomCard = root.querySelector('.standings-list-card');
+        const centerNode = root.querySelector('.orbital-center-node');
+        const ringPath = root.querySelector('.orbital-ring-path');
+        const crosshairLines = root.querySelectorAll('.orbital-crosshair-line');
+        const card1 = root.querySelector('.orbital-card[data-pos="1"]');
+        const card2 = root.querySelector('.orbital-card[data-pos="2"]');
+        const card3 = root.querySelector('.orbital-card[data-pos="3"]');
+        const card4 = root.querySelector('.orbital-card[data-pos="4"]');
+        const scoreEls = root.querySelectorAll('.orbital-score-digit');
 
-        if (heroCard) {
-            gsap.fromTo(heroCard, {
-                opacity: 0.85,
-                scale: 0.98,
-                x: -30
-            }, {
-                opacity: 1,
-                scale: 1,
-                x: 0,
-                duration: 0.8,
-                ease: 'power3.out'
-            });
+        if (centerNode) {
+            gsap.fromTo(centerNode, { scale: 0.5, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.9, ease: 'back.out(1.6)' });
         }
 
-        if (sideTopCard) {
-            gsap.fromTo(sideTopCard, {
-                opacity: 0.85,
-                scale: 0.98,
-                x: 30
-            }, {
-                opacity: 1,
-                scale: 1,
-                x: 0,
-                duration: 0.8,
+        if (ringPath) {
+            gsap.fromTo(ringPath, { opacity: 0, scale: 0.9 }, { opacity: 1, scale: 1, duration: 1.1, ease: 'power2.out' });
+        }
+
+        if (crosshairLines.length) {
+            gsap.fromTo(crosshairLines, { opacity: 0 }, { opacity: 1, duration: 0.8, delay: 0.2 });
+        }
+
+        if (card1) {
+            gsap.fromTo(card1, { y: -80, opacity: 0 }, { y: 0, opacity: 1, duration: 0.85, delay: 0.15, ease: 'power3.out' });
+        }
+        if (card2) {
+            gsap.fromTo(card2, { x: 80, opacity: 0 }, { x: 0, opacity: 1, duration: 0.85, delay: 0.25, ease: 'power3.out' });
+        }
+        if (card3) {
+            gsap.fromTo(card3, { x: -80, opacity: 0 }, { x: 0, opacity: 1, duration: 0.85, delay: 0.35, ease: 'power3.out' });
+        }
+        if (card4) {
+            gsap.fromTo(card4, { y: 80, opacity: 0 }, { y: 0, opacity: 1, duration: 0.85, delay: 0.45, ease: 'power3.out' });
+        }
+
+        scoreEls.forEach(el => {
+            const targetScore = parseInt(el.dataset.score || '0', 10);
+            const counter = { val: 0 };
+            gsap.to(counter, {
+                val: targetScore,
+                duration: 1.4,
+                delay: 0.3,
                 ease: 'power3.out',
-                delay: 0.08
+                onUpdate: () => {
+                    el.textContent = Math.round(counter.val);
+                }
             });
-        }
-
-        if (sideBottomCard) {
-            gsap.fromTo(sideBottomCard, {
-                opacity: 0.85,
-                scale: 0.98,
-                x: 30
-            }, {
-                opacity: 1,
-                scale: 1,
-                x: 0,
-                duration: 0.8,
-                ease: 'power3.out',
-                delay: 0.16
-            });
-        }
+        });
     }
 
     function scheduleRowsPerPage() {
@@ -751,8 +706,7 @@
                         <span>#</span>
                         <span>Time</span>
                         <span>Program</span>
-                        <span>Stage / Venue</span>
-                        <span style="text-align: center;">Status</span>
+                        <span>Venue</span>
                     </div>
                     <div class="tv-schedule-page-wrapper" style="overflow: hidden; position: relative; z-index: 2;">
                         <div class="tv-schedule-page" data-schedule-page></div>
@@ -818,13 +772,22 @@
             }
 
             const allRows = state.schedule.allRows || flattenScheduleItems(state.schedule.data);
-            const firstUpcomingIndex = allRows.findIndex(item => {
-                const s = getScheduleStatus(item);
-                return s.className === 'upcoming' || s.className === 'inprogress';
-            });
+            const liveProgramId = state.currentData?.program?.id || state.schedule.data?.live_program_id || null;
+
+            let runningGlobalIndex = -1;
+            if (liveProgramId) {
+                runningGlobalIndex = allRows.findIndex(item => Number(item.id) === Number(liveProgramId));
+            }
+            if (runningGlobalIndex === -1) {
+                runningGlobalIndex = allRows.findIndex(item => {
+                    return item.status === 'scoring' || item.status === 'active-stage';
+                });
+            }
 
             pageEl.innerHTML = page.map((item, rowIndex) => {
-                const status = getScheduleStatus(item);
+                const globalIndex = (index * scheduleRowsPerPage()) + rowIndex;
+                const isCurrentRunning = (globalIndex === runningGlobalIndex && item.type !== 'break');
+                const isBreak = (item.type === 'break');
                 const time = item.start_label || item.start_time || '--';
                 const rawCategory = item.category || item.class_type_name || item.class_name || item.section_name || '';
                 const title = item.title || item.name || 'Program';
@@ -835,26 +798,23 @@
                     programLabel = `${title} ${secName}`;
                 }
 
-                const globalIndex = (index * scheduleRowsPerPage()) + rowIndex;
                 const rowNumber = String(globalIndex + 1).padStart(2, '0');
-                const isFirstUpcoming = (globalIndex === firstUpcomingIndex && status.className !== 'break');
-                const isBreak = (status.className === 'break');
-                const isInProgress = (status.className === 'inprogress');
 
                 let rowClasses = ['tv-schedule-row'];
                 let rowAccent = '#3b82f6';
 
-                if (isInProgress || isFirstUpcoming) {
-                    rowClasses.push('is-first-upcoming');
+                if (isCurrentRunning) {
+                    rowClasses.push('is-running-program');
                     rowAccent = '#10b981';
                 } else if (isBreak) {
                     rowClasses.push('is-break');
                     rowAccent = '#f59e0b';
-                } else if (status.className === 'completed') {
-                    rowAccent = '#94a3b8';
                 }
 
-                const stageName = item.stage || item.location || item.stage_name || item.stage_type_name || item.section_time_label || 'Main Stage';
+                let venueName = item.location || item.venue || '';
+                if (!venueName || venueName.trim() === '' || venueName.toLowerCase() === 'normal stage') {
+                    venueName = (item.stage && item.stage.toLowerCase() !== 'normal stage') ? item.stage : 'Main Stage';
+                }
 
                 return `
                     <article class="${rowClasses.join(' ')}" style="--row-neon:${escapeHtml(rowAccent)}">
@@ -862,11 +822,9 @@
                         <div class="tv-schedule-row-time">${escapeHtml(time)}</div>
                         <div class="tv-schedule-row-program">
                             <strong>${escapeHtml(programLabel)}</strong>
+                            ${isCurrentRunning ? '<span class="tv-schedule-row-live-badge"><span class="live-dot"></span> LIVE</span>' : ''}
                         </div>
-                        <div class="tv-schedule-row-location">${escapeHtml(stageName)}</div>
-                        <div class="tv-schedule-row-status">
-                            <span class="tv-status ${status.className}">${escapeHtml(status.label)}</span>
-                        </div>
+                        <div class="tv-schedule-row-location">${escapeHtml(venueName)}</div>
                     </article>
                 `;
             }).join('');
@@ -875,15 +833,18 @@
                 const rows = pageEl.querySelectorAll('.tv-schedule-row');
                 gsap.fromTo(rows, {
                     opacity: 0,
-                    x: 60,
-                    scale: 0.98
+                    x: 35,
+                    scale: 0.99
                 }, {
                     opacity: 1,
                     x: 0,
                     scale: 1,
-                    duration: 0.65,
-                    stagger: 0.05,
-                    ease: 'power3.out'
+                    duration: 0.5,
+                    stagger: 0.04,
+                    ease: 'power2.out',
+                    onComplete: () => {
+                        gsap.set(rows, { clearProps: 'transform,opacity' });
+                    }
                 });
             }
         };
@@ -891,9 +852,9 @@
         if (animateOut && typeof gsap !== 'undefined' && currentRows.length > 0) {
             gsap.to(currentRows, {
                 opacity: 0,
-                x: -60,
-                duration: 0.35,
-                stagger: 0.03,
+                x: -35,
+                duration: 0.28,
+                stagger: 0.025,
                 ease: 'power2.in',
                 onComplete: updateAndAnimateIn
             });
@@ -910,17 +871,23 @@
             return;
         }
 
-        stopScheduleTimer();
+        const wasPlaying = state.schedule.playing;
         state.schedule.signature = signature;
         state.schedule.data = scheduleData || { sections: [] };
         state.schedule.pages = buildSchedulePages(state.schedule.data);
-        state.schedule.currentPage = 0;
-        renderScheduleFrame(state.schedule.data);
-        updateScheduleClock();
-        renderSchedulePage(0, false);
 
-        if (state.activeSlide === 'schedule') {
-            startSchedulePlayback();
+        if (!wasPlaying || !els.schedule.querySelector('[data-schedule-page]')) {
+            stopScheduleTimer();
+            state.schedule.currentPage = 0;
+            renderScheduleFrame(state.schedule.data);
+            updateScheduleClock();
+            renderSchedulePage(0, false);
+
+            if (state.activeSlide === 'schedule') {
+                startSchedulePlayback();
+            }
+        } else {
+            renderSchedulePage(state.schedule.currentPage, false);
         }
     }
 
@@ -1178,6 +1145,169 @@
         state.schedule.timer = setTimeout(tick, pageDuration);
     }
 
+    function initViewportScaler() {
+        const scaler = document.getElementById('tvViewportScaler');
+        if (!scaler) return;
+
+        const updateScale = () => {
+            const vw = window.innerWidth;
+            const vh = window.innerHeight;
+
+            if (vw > 768) {
+                const baseW = 1920;
+                const baseH = 1080;
+                const scale = Math.min(vw / baseW, vh / baseH);
+
+                if (scale < 0.96 || scale > 1.04) {
+                    scaler.style.transform = `scale(${scale.toFixed(4)})`;
+                    scaler.style.width = `${baseW}px`;
+                    scaler.style.height = `${baseH}px`;
+                    scaler.style.margin = 'auto';
+                } else {
+                    scaler.style.transform = 'none';
+                    scaler.style.width = '100%';
+                    scaler.style.height = '100%';
+                    scaler.style.margin = '0';
+                }
+            } else {
+                scaler.style.transform = 'none';
+                scaler.style.width = '100%';
+                scaler.style.height = '100%';
+                scaler.style.margin = '0';
+            }
+        };
+
+        updateScale();
+        window.addEventListener('resize', updateScale, { passive: true });
+    }
+
+    let tvWakeLock = null;
+    async function initWakeLock() {
+        if ('wakeLock' in navigator) {
+            try {
+                tvWakeLock = await navigator.wakeLock.request('screen');
+            } catch (_) {}
+        }
+    }
+
+    function initIdleCursor() {
+        let idleTimer = null;
+        const resetTimer = () => {
+            document.body.classList.remove('tv-idle-cursor');
+            clearTimeout(idleTimer);
+            idleTimer = setTimeout(() => {
+                document.body.classList.add('tv-idle-cursor');
+            }, 3000);
+        };
+
+        window.addEventListener('mousemove', resetTimer, { passive: true });
+        window.addEventListener('touchstart', resetTimer, { passive: true });
+        resetTimer();
+    }
+
+    function initBroadcastChannel() {
+        if (typeof BroadcastChannel !== 'undefined') {
+            try {
+                window.tvBroadcastChannel = new BroadcastChannel('musabaqa_tv_sync');
+                window.tvBroadcastChannel.onmessage = (event) => {
+                    if (event.data && event.data.type === 'SLIDE_CHANGE') {
+                        setActiveSlide(event.data.slide);
+                    }
+                };
+            } catch (_) {}
+        }
+    }
+
+    function setActiveSlide(key) {
+        if (!key) return;
+        let normalizedKey = String(key).replace('_', '-');
+        if (normalizedKey === 'current-programs') {
+            normalizedKey = 'current-program';
+        }
+
+        const currentActive = document.querySelector('.tv-slide.tv-slide--active');
+        const nextTarget = document.querySelector(`.tv-slide[data-slide="${normalizedKey}"]`) || document.getElementById(`slide-${normalizedKey}`);
+
+        if (state.activeSlide === normalizedKey && currentActive === nextTarget) {
+            return;
+        }
+
+        const slides = Array.from(document.querySelectorAll('.tv-slide'));
+        els.body.classList.toggle('tv-schedule-active', normalizedKey === 'schedule');
+        state.activeSlide = normalizedKey;
+
+        if (window.tvBroadcastChannel) {
+            try {
+                window.tvBroadcastChannel.postMessage({ type: 'SLIDE_CHANGE', slide: normalizedKey });
+            } catch (_) {}
+        }
+
+        if (currentActive && nextTarget && currentActive !== nextTarget) {
+            currentActive.classList.add('tv-slide--exiting');
+            currentActive.classList.remove('tv-slide--active');
+
+            setTimeout(() => {
+                currentActive.classList.remove('tv-slide--exiting');
+                slides.forEach(s => {
+                    if (s !== nextTarget) {
+                        s.classList.remove('tv-slide--active', 'tv-slide--exiting');
+                    }
+                });
+
+                nextTarget.classList.add('tv-slide--active');
+
+                if (normalizedKey !== 'schedule') {
+                    stopScheduleTimer();
+                }
+
+                if (normalizedKey === 'intro') {
+                    const video = document.querySelector('[data-intro-video]') || document.querySelector('.tv-intro-video video');
+                    if (video) {
+                        try {
+                            video.currentTime = 0;
+                            video.play().catch(() => {});
+                        } catch (_) {}
+                    }
+                }
+
+                animateEntrance(`#slide-${normalizedKey}`);
+
+                if (normalizedKey === 'schedule') {
+                    startSchedulePlayback();
+                }
+            }, 400);
+        } else {
+            slides.forEach(slide => {
+                const slideKey = slide.dataset.slide || (slide.id ? slide.id.replace('slide-', '') : '');
+                if (slideKey === normalizedKey || slide.id === `slide-${normalizedKey}`) {
+                    slide.classList.add('tv-slide--active');
+                } else {
+                    slide.classList.remove('tv-slide--active', 'tv-slide--exiting');
+                }
+            });
+
+            if (normalizedKey !== 'schedule') {
+                stopScheduleTimer();
+            }
+
+            if (normalizedKey === 'intro') {
+                const video = document.querySelector('[data-intro-video]') || document.querySelector('.tv-intro-video video');
+                if (video) {
+                    try {
+                        video.currentTime = 0;
+                        video.play().catch(() => {});
+                    } catch (_) {}
+                }
+            }
+
+            animateEntrance(`#slide-${normalizedKey}`);
+
+            if (normalizedKey === 'schedule') {
+                startSchedulePlayback();
+            }
+        }
+    }
+
     function getNextEnabledSlide() {
         const enabledKeys = state.slideOrder.filter(key => {
             const slideConf = state.slides[key];
@@ -1231,6 +1361,10 @@
     function boot() {
         startClock();
         initParticles();
+        initViewportScaler();
+        initWakeLock();
+        initIdleCursor();
+        initBroadcastChannel();
 
         if (TV_BOOT.initial) {
             applyBootstrap(TV_BOOT.initial);
@@ -1248,6 +1382,7 @@
                     state.timers.refresh = null;
                 }
             } else {
+                initWakeLock();
                 syncSettings().then(() => {
                     startRefreshLoop();
                     if (state.mode === 'auto' && !state.isCelebrating) {

@@ -36,13 +36,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         admin_flash('success', "Live Stage updated successfully!");
         admin_redirect('/emcee/index.php');
     }
+
+    if ($action === 'save_recorded_time') {
+        $programId = (int)($_POST['program_id'] ?? 0);
+        $entryId = (int)($_POST['entry_id'] ?? 0);
+        $durationSeconds = (int)($_POST['duration_seconds'] ?? 0);
+        $formattedTime = trim((string)($_POST['formatted_time'] ?? '00:00'));
+
+        if ($programId > 0) {
+            admin_save_recorded_time($pdo, $programId, $entryId, $durationSeconds, $formattedTime);
+        }
+
+        header('Content-Type: application/json');
+        echo json_encode([
+            'success' => true,
+            'program_id' => $programId,
+            'entry_id' => $entryId,
+            'duration_seconds' => $durationSeconds,
+            'formatted_time' => $formattedTime,
+            'message' => 'Participant duration saved successfully!'
+        ]);
+        exit;
+    }
 }
 
 // Live Status Query API (for polling)
 if (isset($_GET['ajax_status'])) {
     header('Content-Type: application/json');
     $status = admin_get_live_stage_control($pdo);
-    echo json_encode(['success' => true, 'live_control' => $status]);
+    $recordedTimes = admin_get_recorded_times($pdo);
+    echo json_encode(['success' => true, 'live_control' => $status, 'recorded_times' => $recordedTimes]);
     exit;
 }
 
@@ -50,6 +73,7 @@ $flash = admin_take_flash();
 $liveControl = admin_get_live_stage_control($pdo);
 $liveProgramId = $liveControl['program_id'];
 $liveEntryId = $liveControl['entry_id'];
+$recordedTimes = admin_get_recorded_times($pdo);
 
 // 1. Fetch All Programs in Schedule Order
 $stmtProg = $pdo->prepare("
@@ -98,6 +122,9 @@ foreach ($programs as $prog) {
     $totalEntries = count($entries);
 
     // SLIDE A: Program Intro Slide
+    $introKey = "p{$pId}_e0";
+    $introRec = $recordedTimes[$introKey] ?? null;
+
     $introItem = [
         'queue_index' => $queueCounter,
         'program_id' => $pId,
@@ -115,7 +142,9 @@ foreach ($programs as $prog) {
         'team_color' => '#10b981',
         'participant_order' => 0,
         'total_participants' => $totalEntries,
-        'has_entries' => ($totalEntries > 0)
+        'has_entries' => ($totalEntries > 0),
+        'recorded_time' => $introRec['formatted_time'] ?? null,
+        'duration_seconds' => (int)($introRec['duration_seconds'] ?? 0)
     ];
 
     if ($pId === $liveProgramId && $liveEntryId === 0) {
@@ -132,6 +161,9 @@ foreach ($programs as $prog) {
         $chestDisplay = $isGroupProg ? ($eRow['team_name'] ?: 'Team ' . ($partIdx + 1)) : ($eRow['chest_number'] ?: '-');
         $entryDisplay = $isGroupProg ? ($eRow['team_name'] ?: 'Team ' . ($partIdx + 1)) : ($eRow['entry_name'] ?: 'Unnamed Participant');
 
+        $recKey = "p{$pId}_e{$eId}";
+        $recInfo = $recordedTimes[$recKey] ?? null;
+
         $item = [
             'queue_index' => $queueCounter,
             'program_id' => $pId,
@@ -147,7 +179,9 @@ foreach ($programs as $prog) {
             'team_color' => $eRow['team_color'] ?: '#64748b',
             'participant_order' => $partIdx + 1,
             'total_participants' => $totalEntries,
-            'has_entries' => true
+            'has_entries' => true,
+            'recorded_time' => $recInfo['formatted_time'] ?? null,
+            'duration_seconds' => (int)($recInfo['duration_seconds'] ?? 0)
         ];
 
         if ($pId === $liveProgramId && $eId === $liveEntryId) {
@@ -167,80 +201,197 @@ require_once __DIR__ . '/../includes/header.php';
 ?>
 
 <style>
-    body, body.layout-sidebar-enabled {
+    /* SCROLL-PROOF FULL VIEWPORT CONTAINER */
+    html, body {
+        height: 100vh !important;
+        overflow: hidden !important;
         background: #020804 !important;
         background-image: 
             radial-gradient(circle at 50% 0%, rgba(16, 185, 129, 0.15) 0%, transparent 65%),
             radial-gradient(circle at 10% 90%, rgba(6, 78, 42, 0.2) 0%, transparent 50%),
             radial-gradient(circle at 90% 90%, rgba(6, 78, 42, 0.2) 0%, transparent 50%),
-            linear-gradient(to bottom, rgba(0, 0, 0, 0.7), #020804) !important;
+            linear-gradient(to bottom, rgba(0, 0, 0, 0.85), #020804) !important;
         background-attachment: fixed !important;
-        overflow-x: hidden;
         padding-left: 0 !important;
-        font-family: 'Inter', sans-serif !important;
+        font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
     }
+    
     .admin-layout {
         display: flex !important;
         flex-direction: column !important;
         align-items: center !important;
         width: 100% !important;
+        height: 100vh !important;
         max-width: 100% !important;
         margin: 0 !important;
         padding: 0 !important;
-        min-height: 100vh !important;
+        overflow: hidden !important;
     }
+
     .main-content {
         margin: 0 auto !important;
         width: 100% !important;
-        max-width: 1180px !important;
-        padding: 24px 20px 48px 20px !important;
+        max-width: 1200px !important;
+        height: 100vh !important;
+        padding: 14px 16px 14px 16px !important;
         display: flex !important;
         flex-direction: column !important;
         align-items: center !important;
         box-sizing: border-box !important;
+        overflow-y: auto !important;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(16,185,129,0.3) transparent;
     }
+
+    /* TOP STUDIO BAR */
     .studio-navbar {
         width: 100% !important;
-        background: rgba(5, 25, 14, 0.75) !important;
-        border: 1px solid rgba(16, 185, 129, 0.25) !important;
-        border-radius: 20px !important;
-        padding: 16px 24px !important;
-        margin-bottom: 24px !important;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), 0 0 20px rgba(16, 185, 129, 0.1) !important;
+        background: rgba(5, 25, 14, 0.85) !important;
+        border: 1px solid rgba(16, 185, 129, 0.3) !important;
+        border-radius: 18px !important;
+        padding: 12px 20px !important;
+        margin-bottom: 12px !important;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.7), 0 0 20px rgba(16, 185, 129, 0.1) !important;
         backdrop-filter: blur(16px) !important;
         display: flex !important;
         justify-content: space-between !important;
         align-items: center !important;
         flex-wrap: wrap !important;
-        gap: 16px !important;
+        gap: 12px !important;
         box-sizing: border-box !important;
+        flex-shrink: 0 !important;
     }
-    .emcee-deck-container {
+
+    /* PPT SLIDE CANVAS STYLING */
+    .ppt-deck-container {
         width: 100% !important;
         box-sizing: border-box !important;
-        background: linear-gradient(160deg, rgba(6, 40, 22, 0.8) 0%, rgba(2, 12, 6, 0.95) 100%);
-        border: 1px solid rgba(16, 185, 129, 0.35);
-        border-radius: 28px;
-        padding: 36px 32px;
-        box-shadow: 0 25px 70px rgba(0, 0, 0, 0.85), 0 0 50px rgba(16, 185, 129, 0.15);
+        background: linear-gradient(160deg, rgba(6, 38, 21, 0.9) 0%, rgba(2, 12, 6, 0.98) 100%);
+        border: 1px solid rgba(16, 185, 129, 0.4);
+        border-radius: 22px;
+        padding: 20px 20px 16px 20px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.9), 0 0 45px rgba(16, 185, 129, 0.15);
         text-align: center;
         position: relative;
         backdrop-filter: blur(20px);
         touch-action: pan-y;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        min-height: 0;
     }
+
+    /* PPT Slide Widescreen Viewport */
+    .ppt-slide-viewport {
+        background: radial-gradient(circle at 50% 10%, rgba(16, 185, 129, 0.15) 0%, rgba(3, 16, 9, 0.95) 80%);
+        border: 2px solid rgba(16, 185, 129, 0.35);
+        border-radius: 18px;
+        padding: 20px 16px 16px 16px;
+        box-shadow: inset 0 2px 25px rgba(0,0,0,0.9), 0 10px 30px rgba(0,0,0,0.5);
+        transition: border-color 0.3s ease, background 0.3s ease, box-shadow 0.3s ease;
+        width: 100%;
+        max-width: 680px;
+        margin: 0 auto;
+        position: relative;
+        overflow: hidden;
+        cursor: pointer;
+    }
+
+    /* SLIDING TRANSITION ANIMATIONS */
+    .slide-enter-next {
+        animation: slideNext 0.32s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+    }
+    .slide-enter-prev {
+        animation: slidePrev 0.32s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+    }
+
+    @keyframes slideNext {
+        0% {
+            opacity: 0.15;
+            transform: translateX(55px) scale(0.96);
+        }
+        100% {
+            opacity: 1;
+            transform: translateX(0) scale(1);
+        }
+    }
+
+    @keyframes slidePrev {
+        0% {
+            opacity: 0.15;
+            transform: translateX(-55px) scale(0.96);
+        }
+        100% {
+            opacity: 1;
+            transform: translateX(0) scale(1);
+        }
+    }
+
+    .ppt-slide-viewport.is-live-box {
+        border-color: #34d399;
+        background: radial-gradient(circle at 50% 10%, rgba(16, 185, 129, 0.3) 0%, rgba(2, 18, 9, 0.98) 85%);
+        box-shadow: 0 0 50px rgba(16, 185, 129, 0.45), inset 0 2px 25px rgba(16, 185, 129, 0.25);
+    }
+
+    .slide-number-badge {
+        position: absolute;
+        top: 12px;
+        left: 14px;
+        background: rgba(0, 0, 0, 0.65);
+        border: 1px solid rgba(16, 185, 129, 0.4);
+        color: #34d399;
+        font-size: 10.5px;
+        font-weight: 800;
+        letter-spacing: 1px;
+        padding: 3px 9px;
+        border-radius: 999px;
+        text-transform: uppercase;
+    }
+
+    .slide-mode-badge {
+        position: absolute;
+        top: 12px;
+        right: 14px;
+        background: rgba(0, 0, 0, 0.65);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        color: rgba(255, 255, 255, 0.7);
+        font-size: 10.5px;
+        font-weight: 700;
+        padding: 3px 9px;
+        border-radius: 999px;
+    }
+
+    .chest-number-title {
+        font-size: 52px;
+        font-weight: 900;
+        color: #34d399;
+        letter-spacing: 2px;
+        line-height: 1.05;
+        margin: 8px 0 4px 0;
+        text-shadow: 0 0 25px rgba(52, 211, 153, 0.45);
+    }
+
+    .participant-name-title {
+        font-size: 22px;
+        font-weight: 800;
+        color: #fff;
+        margin-top: 2px;
+    }
+
     .arrow-btn {
-        width: 80px;
-        height: 155px;
-        border-radius: 22px;
-        background: linear-gradient(145deg, rgba(0, 0, 0, 0.8) 0%, rgba(5, 30, 16, 0.9) 100%);
+        width: 68px;
+        height: 145px;
+        border-radius: 18px;
+        background: linear-gradient(145deg, rgba(0, 0, 0, 0.85) 0%, rgba(5, 30, 16, 0.95) 100%);
         border: 1px solid rgba(16, 185, 129, 0.35);
         color: #34d399;
-        font-size: 36px;
+        font-size: 30px;
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        gap: 8px;
+        gap: 4px;
         cursor: pointer;
         transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
         user-select: none;
@@ -248,100 +399,63 @@ require_once __DIR__ . '/../includes/header.php';
         box-shadow: 0 10px 25px rgba(0,0,0,0.6);
         flex-shrink: 0;
     }
+
     .arrow-btn:hover:not(.disabled) {
-        background: linear-gradient(145deg, rgba(16, 185, 129, 0.3) 0%, rgba(4, 40, 22, 0.95) 100%);
+        background: linear-gradient(145deg, rgba(16, 185, 129, 0.35) 0%, rgba(4, 40, 22, 0.98) 100%);
         border-color: #34d399;
         color: #fff;
-        transform: translateY(-3px) scale(1.04);
+        transform: translateY(-3px) scale(1.03);
         box-shadow: 0 14px 35px rgba(16, 185, 129, 0.4);
     }
+
     .arrow-btn:active:not(.disabled) {
         transform: scale(0.96);
     }
+
     .arrow-btn.disabled {
         opacity: 0.18;
         cursor: not-allowed;
         border-color: rgba(255, 255, 255, 0.08);
         color: #64748b;
     }
+
     .arrow-key-hint {
-        font-size: 10px;
+        font-size: 9px;
         font-weight: 800;
         letter-spacing: 1px;
         text-transform: uppercase;
         color: rgba(52, 211, 153, 0.7);
-        background: rgba(0, 0, 0, 0.5);
+        background: rgba(0, 0, 0, 0.6);
         padding: 2px 6px;
         border-radius: 4px;
         border: 1px solid rgba(16, 185, 129, 0.3);
     }
-    .chest-display-box {
-        background: radial-gradient(circle at 50% 0%, rgba(16, 185, 129, 0.12) 0%, rgba(0, 0, 0, 0.92) 80%);
-        border: 2px solid rgba(16, 185, 129, 0.35);
-        border-radius: 24px;
-        padding: 28px 36px;
-        min-height: 240px;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        box-shadow: inset 0 2px 20px rgba(0,0,0,0.9), 0 10px 30px rgba(0,0,0,0.4);
-        transition: all 0.3s ease;
-        width: 100%;
-        max-width: 520px;
-        cursor: pointer;
-        user-select: none;
-    }
-    .chest-display-box:hover {
-        border-color: #34d399;
-        box-shadow: inset 0 2px 20px rgba(16, 185, 129, 0.25), 0 12px 35px rgba(16, 185, 129, 0.3);
-        transform: translateY(-2px);
-    }
-    .chest-display-box.is-live-box {
-        border-color: #34d399;
-        background: radial-gradient(circle at 50% 0%, rgba(16, 185, 129, 0.3) 0%, rgba(0, 0, 0, 0.95) 85%);
-        box-shadow: 0 0 50px rgba(16, 185, 129, 0.4), inset 0 2px 20px rgba(16, 185, 129, 0.2);
-    }
-    .chest-number-title {
-        font-size: 64px;
-        font-weight: 900;
-        color: #34d399;
-        letter-spacing: 2px;
-        line-height: 1.05;
-        margin: 6px 0;
-        text-shadow: 0 0 25px rgba(52, 211, 153, 0.4);
-    }
-    .participant-name-title {
-        font-size: 26px;
-        font-weight: 800;
-        color: #fff;
-        margin-top: 4px;
-    }
+
+    /* ACTION BUTTONS */
     .select-btn {
-        width: 100%;
-        max-width: 520px;
-        padding: 20px 38px;
-        border-radius: 18px;
-        font-size: 21px;
-        font-weight: 900;
-        letter-spacing: 1px;
+        padding: 8px 16px;
+        border-radius: 10px;
+        font-size: 12.5px;
+        font-weight: 800;
+        letter-spacing: 0.5px;
         text-transform: uppercase;
         border: none;
         cursor: pointer;
         transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.7);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
         outline: none;
-        margin: 0 auto;
-        display: flex;
+        display: inline-flex;
         align-items: center;
         justify-content: center;
-        gap: 12px;
+        gap: 8px;
     }
+
     .select-btn-unselected {
-        background: linear-gradient(135deg, rgba(6, 60, 32, 0.8) 0%, rgba(0, 0, 0, 0.95) 100%);
+        background: linear-gradient(135deg, rgba(6, 60, 32, 0.85) 0%, rgba(0, 0, 0, 0.95) 100%);
         color: #34d399;
         border: 2px solid rgba(16, 185, 129, 0.5);
     }
+
     .select-btn-unselected:hover {
         background: linear-gradient(135deg, rgba(16, 185, 129, 0.35) 0%, rgba(0, 0, 0, 0.95) 100%);
         box-shadow: 0 15px 35px rgba(16, 185, 129, 0.4);
@@ -349,27 +463,116 @@ require_once __DIR__ . '/../includes/header.php';
         border-color: #34d399;
         color: #fff;
     }
+
     .select-btn-live {
         background: linear-gradient(135deg, #10b981 0%, #047857 100%);
         color: #fff;
         border: 2px solid #34d399;
         box-shadow: 0 0 35px rgba(16, 185, 129, 0.6);
     }
+
     .select-btn-live:hover {
         background: linear-gradient(135deg, #34d399 0%, #10b981 100%);
         transform: translateY(-2px);
         box-shadow: 0 16px 40px rgba(16, 185, 129, 0.7);
     }
+
+    /* RECORD TIME / STAGE TIMER WIDGET */
+    .timer-card-panel {
+        width: 100%;
+        max-width: 680px;
+        margin: 14px auto 0 auto;
+        background: rgba(4, 20, 11, 0.9);
+        border: 2px solid rgba(16, 185, 129, 0.35);
+        border-radius: 18px;
+        padding: 14px 18px;
+        box-sizing: border-box;
+        text-align: center;
+        box-shadow: 0 8px 25px rgba(0,0,0,0.6);
+        position: relative;
+    }
+
+    .timer-card-panel.is-active-stage {
+        border-color: #34d399;
+        box-shadow: 0 0 30px rgba(16, 185, 129, 0.3);
+    }
+
+    .timer-display-clock {
+        font-family: 'Courier New', Courier, monospace, sans-serif;
+        font-size: 42px;
+        font-weight: 900;
+        color: #34d399;
+        letter-spacing: 3px;
+        margin: 4px 0;
+        text-shadow: 0 0 20px rgba(52, 211, 153, 0.5);
+    }
+
+    .timer-display-clock.is-running {
+        color: #ef4444;
+        text-shadow: 0 0 25px rgba(239, 68, 68, 0.7);
+        animation: timerPulse 1s infinite alternate;
+    }
+
+    @keyframes timerPulse {
+        0% { opacity: 1; }
+        100% { opacity: 0.85; }
+    }
+
+    .btn-timer-trigger {
+        padding: 12px 24px;
+        border-radius: 12px;
+        font-size: 16px;
+        font-weight: 800;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        border: none;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        box-shadow: 0 6px 20px rgba(0,0,0,0.6);
+    }
+
+    .btn-timer-start {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: #fff;
+        border: 2px solid #34d399;
+    }
+    .btn-timer-start:hover {
+        background: linear-gradient(135deg, #34d399 0%, #10b981 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 12px 30px rgba(16, 185, 129, 0.5);
+    }
+
+    .btn-timer-stop {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        color: #fff;
+        border: 2px solid #f87171;
+        animation: stopPulse 1.2s infinite alternate;
+    }
+    .btn-timer-stop:hover {
+        background: linear-gradient(135deg, #f87171 0%, #ef4444 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 12px 30px rgba(239, 68, 68, 0.6);
+    }
+
+    @keyframes stopPulse {
+        0% { box-shadow: 0 0 15px rgba(239, 68, 68, 0.4); }
+        100% { box-shadow: 0 0 35px rgba(239, 68, 68, 0.8); }
+    }
+
     .next-ribbon-card {
-        background: rgba(0, 0, 0, 0.6);
-        border: 1px solid rgba(16, 185, 129, 0.2);
-        border-radius: 14px;
-        padding: 12px 18px;
+        background: rgba(0, 0, 0, 0.65);
+        border: 1px solid rgba(16, 185, 129, 0.25);
+        border-radius: 12px;
+        padding: 10px 14px;
         text-align: left;
         cursor: pointer;
         transition: all 0.2s ease;
         flex: 1;
-        min-width: 180px;
+        min-width: 160px;
     }
     .next-ribbon-card:hover {
         background: rgba(16, 185, 129, 0.25);
@@ -377,6 +580,7 @@ require_once __DIR__ . '/../includes/header.php';
         transform: translateY(-2px);
         box-shadow: 0 6px 20px rgba(16, 185, 129, 0.3);
     }
+
     .toast-notify {
         position: fixed;
         bottom: 24px;
@@ -394,105 +598,109 @@ require_once __DIR__ . '/../includes/header.php';
         gap: 10px;
         backdrop-filter: blur(8px);
     }
-    #cardsGridContainer::-webkit-scrollbar {
-        width: 8px;
-    }
-    #cardsGridContainer::-webkit-scrollbar-track {
-        background: rgba(0, 0, 0, 0.3);
-        border-radius: 4px;
-    }
-    #cardsGridContainer::-webkit-scrollbar-thumb {
-        background: rgba(16, 185, 129, 0.4);
-        border-radius: 4px;
-    }
-    #cardsGridContainer::-webkit-scrollbar-thumb:hover {
-        background: rgba(16, 185, 129, 0.7);
+
+    /* MOBILE STICKY BOTTOM ACTION BAR */
+    .mobile-sticky-bar {
+        display: none;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: rgba(3, 16, 9, 0.96);
+        border-top: 2px solid rgba(16, 185, 129, 0.4);
+        padding: 12px 16px;
+        z-index: 9999;
+        backdrop-filter: blur(16px);
+        box-shadow: 0 -10px 30px rgba(0,0,0,0.8);
+        gap: 12px;
+        justify-content: center;
+        align-items: center;
     }
 
-    /* MOBILE RESPONSIVE MEDIA QUERIES */
+    /* RESPONSIVE MEDIA QUERIES */
     @media (max-width: 768px) {
+        html, body, .admin-layout {
+            height: auto !important;
+            overflow-y: auto !important;
+        }
         .main-content {
-            padding: 12px 10px 32px 10px !important;
+            height: auto !important;
+            padding: 10px 10px 90px 10px !important;
         }
         .studio-navbar {
-            padding: 14px 16px !important;
+            padding: 12px 14px !important;
             flex-direction: column !important;
             align-items: stretch !important;
-            gap: 12px !important;
+            gap: 10px !important;
             border-radius: 16px !important;
         }
         .studio-navbar > div:first-child {
             justify-content: center !important;
         }
-        .emcee-deck-container {
-            padding: 24px 14px !important;
-            border-radius: 20px !important;
-        }
-        #textProgramTitle {
-            font-size: 24px !important;
+        .ppt-deck-container {
+            padding: 16px 12px !important;
+            border-radius: 18px !important;
         }
         .stage-deck-row {
-            gap: 10px !important;
+            gap: 8px !important;
         }
         .arrow-btn {
-            width: 52px !important;
-            height: 120px !important;
+            width: 46px !important;
+            height: 110px !important;
             border-radius: 14px !important;
-            font-size: 26px !important;
+            font-size: 22px !important;
         }
         .arrow-key-hint {
             display: none !important;
         }
-        .chest-display-box {
-            padding: 18px 12px !important;
-            min-height: 190px !important;
+        .ppt-slide-viewport {
+            padding: 16px 10px !important;
+            min-height: 170px !important;
         }
         .chest-number-title {
-            font-size: 42px !important;
+            font-size: 38px !important;
         }
         .participant-name-title {
-            font-size: 19px !important;
+            font-size: 18px !important;
+        }
+        .timer-display-clock {
+            font-size: 34px !important;
         }
         .select-btn {
-            padding: 16px 20px !important;
-            font-size: 17px !important;
-            border-radius: 14px !important;
+            padding: 12px 16px !important;
+            font-size: 15px !important;
+            border-radius: 12px !important;
         }
-        #cardsModal {
-            padding: 10px !important;
+        .btn-timer-trigger {
+            padding: 10px 18px !important;
+            font-size: 14px !important;
         }
-        #cardsModal > div {
-            max-height: calc(100vh - 20px) !important;
-            padding: 16px 12px !important;
-            border-radius: 18px !important;
+        .mobile-sticky-bar {
+            display: flex !important;
         }
         #cardsGridContainer {
             grid-template-columns: repeat(auto-fill, minmax(135px, 1fr)) !important;
             gap: 10px !important;
         }
-        .next-ribbon-card {
-            min-width: 140px !important;
-        }
     }
 
     @media (max-width: 480px) {
         #textProgramTitle {
-            font-size: 20px !important;
+            font-size: 18px !important;
         }
         .chest-number-title {
-            font-size: 32px !important;
+            font-size: 30px !important;
         }
         .participant-name-title {
-            font-size: 16px !important;
+            font-size: 15px !important;
+        }
+        .timer-display-clock {
+            font-size: 30px !important;
         }
         .arrow-btn {
-            width: 44px !important;
-            height: 100px !important;
-            font-size: 20px !important;
-        }
-        .select-btn {
-            font-size: 15px !important;
-            padding: 14px 16px !important;
+            width: 38px !important;
+            height: 95px !important;
+            font-size: 18px !important;
         }
     }
 </style>
@@ -501,51 +709,53 @@ require_once __DIR__ . '/../includes/header.php';
     
     <!-- STUDIO TOPBAR & METRICS BAR -->
     <div class="studio-navbar">
-        <div style="display: flex; align-items: center; gap: 16px;">
-            <div style="background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.35); padding: 10px 14px; border-radius: 14px; display: flex; align-items: center; justify-content: center;">
-                <i class="fa-solid fa-tower-broadcast" style="font-size: 24px; color: #34d399; filter: drop-shadow(0 0 10px rgba(52, 211, 153, 0.6));"></i>
+        <div style="display: flex; align-items: center; gap: 14px;">
+            <div style="background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.35); padding: 8px 12px; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+                <i class="fa-solid fa-tower-broadcast" style="font-size: 22px; color: #34d399; filter: drop-shadow(0 0 10px rgba(52, 211, 153, 0.6));"></i>
             </div>
             <div>
-                <div style="font-size: 18px; font-weight: 800; color: #fff; display: flex; align-items: center; gap: 10px;">
-                    Emcee Stage Control Deck
+                <div style="font-size: 17px; font-weight: 800; color: #fff; display: flex; align-items: center; gap: 8px;">
+                    Emcee Master Stage Deck
                     <span style="background: rgba(16, 185, 129, 0.2); border: 1px solid rgba(16, 185, 129, 0.4); color: #34d399; font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 999px; text-transform: uppercase;">
-                        Studio Master
+                        PPT Deck
                     </span>
                 </div>
-                <div style="font-size: 12px; color: rgba(255,255,255,0.6); margin-top: 2px;">
+                <div style="font-size: 11.5px; color: rgba(255,255,255,0.6); margin-top: 2px;">
                     <?= e($activeEvent['name'] ?? 'Kauzariyya Musabaqa Event') ?>
                 </div>
             </div>
         </div>
 
         <!-- STAGE METRICS & CONTROLS -->
-        <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap; justify-content: center;">
+        <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap; justify-content: center;">
             
-            <div style="display: flex; gap: 14px; border-right: 1px solid rgba(16,185,129,0.2); padding-right: 16px;">
+            <div style="display: flex; gap: 14px; border-right: 1px solid rgba(16,185,129,0.2); padding-right: 14px;">
                 <div style="text-align: right;">
-                    <div style="font-size: 10px; text-transform: uppercase; color: rgba(255,255,255,0.5); font-weight: 700;">Progress</div>
-                    <div style="font-size: 13.5px; font-weight: 800; color: #34d399;">
+                    <div style="font-size: 9.5px; text-transform: uppercase; color: rgba(255,255,255,0.5); font-weight: 700;">Progress</div>
+                    <div style="font-size: 13px; font-weight: 800; color: #34d399;">
                         <?= $completedProgramsCount ?> / <?= $totalProgramsCount ?> Done
                     </div>
                 </div>
                 <div style="text-align: right;">
-                    <div style="font-size: 10px; text-transform: uppercase; color: rgba(255,255,255,0.5); font-weight: 700;">Queue</div>
-                    <div style="font-size: 13.5px; font-weight: 800; color: #fff;">
+                    <div style="font-size: 9.5px; text-transform: uppercase; color: rgba(255,255,255,0.5); font-weight: 700;">Deck Queue</div>
+                    <div style="font-size: 13px; font-weight: 800; color: #fff;">
                         <?= $totalQueueItems ?> Slides
                     </div>
                 </div>
             </div>
 
-            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                <button type="button" class="btn btn-primary btn-sm" onclick="openCardsModal()" style="background: linear-gradient(135deg, #10b981, #047857); border: 1px solid #34d399; font-weight: 800; padding: 8px 14px; border-radius: 10px; box-shadow: 0 0 15px rgba(16,185,129,0.3);">
-                    <i class="fa-solid fa-border-all mr-1"></i> Stage Cards
-                </button>
-                <a href="<?= app_url('/judges/index.php') ?>" class="btn btn-secondary btn-sm" target="_blank" style="background: rgba(0,0,0,0.6); border: 1px solid rgba(16,185,129,0.3); color: #fff; padding: 8px 12px; border-radius: 10px;">
-                    <i class="fa-solid fa-gavel mr-1"></i> Judges
-                </a>
-                <a href="<?= app_url('/live-display/dashboard.php') ?>" class="btn btn-secondary btn-sm" target="_blank" style="background: rgba(0,0,0,0.6); border: 1px solid rgba(16,185,129,0.3); color: #fff; padding: 8px 12px; border-radius: 10px;">
+            <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 6px;">
+                <a href="<?= app_url('/live-display/dashboard.php') ?>" class="btn btn-secondary btn-sm" target="_blank" style="background: rgba(0,0,0,0.6); border: 1px solid rgba(16,185,129,0.3); color: #fff; padding: 5px 12px; border-radius: 8px; font-size: 12px; font-weight: 700;">
                     <i class="fa-solid fa-tv mr-1"></i> Live TV
                 </a>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <button type="button" id="btnSelect" class="select-btn select-btn-unselected" onclick="broadcastLiveStage()">
+                        ⚡ BROADCAST LIVE TO STAGE
+                    </button>
+                    <button type="button" class="btn btn-primary btn-sm" onclick="openCardsModal()" style="background: linear-gradient(135deg, #10b981, #047857); border: 1px solid #34d399; font-weight: 800; padding: 7px 13px; border-radius: 9px; box-shadow: 0 0 15px rgba(16,185,129,0.3); font-size: 12px;">
+                        <i class="fa-solid fa-border-all mr-1"></i> Stage Cards
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -555,104 +765,98 @@ require_once __DIR__ . '/../includes/header.php';
         <i class="fa-solid fa-circle-check"></i> <span id="toastText">Live Stage Updated!</span>
     </div>
 
-    <!-- HERO MASTER STAGE DECK CONTAINER -->
-    <div class="emcee-deck-container">
+    <!-- HERO PPT MASTER DECK CONTAINER -->
+    <div class="ppt-deck-container">
         
         <!-- PROGRAM HEADER BAR -->
-        <div style="margin-bottom: 24px;">
-            <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap;">
-                <span id="badgeStatus" class="badge" style="font-size: 11px; padding: 4px 14px; text-transform: uppercase; font-weight: 800;">
+        <div style="margin-bottom: 12px;">
+            <div style="display: flex; align-items: center; justify-content: center; gap: 6px; margin-bottom: 6px; flex-wrap: wrap;">
+                <span id="badgeStatus" class="badge" style="font-size: 10.5px; padding: 3px 12px; text-transform: uppercase; font-weight: 800;">
                     --
                 </span>
 
-                <span id="badgeClassType" class="badge badge-info" style="font-size: 11px; padding: 4px 12px; background: rgba(16,185,129,0.18); color: #34d399; border: 1px solid rgba(16,185,129,0.35); font-weight: 700;">
+                <span id="badgeClassType" class="badge badge-info" style="font-size: 10.5px; padding: 3px 10px; background: rgba(16,185,129,0.18); color: #34d399; border: 1px solid rgba(16,185,129,0.35); font-weight: 700;">
                     --
                 </span>
 
-                <span id="badgeSection" class="badge badge-neutral" style="font-size: 11px; padding: 4px 12px; display: none; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.15); color: #ccc;">
+                <span id="badgeSection" class="badge badge-neutral" style="font-size: 10.5px; padding: 3px 10px; display: none; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.15); color: #ccc;">
                     <i class="fa-solid fa-clock mr-1"></i> <span id="textSection">--</span>
                 </span>
             </div>
 
-            <h1 id="textProgramTitle" style="margin: 0; font-size: 32px; font-weight: 900; color: #fff; line-height: 1.2; letter-spacing: -0.5px;">
+            <h1 id="textProgramTitle" style="margin: 0; font-size: 26px; font-weight: 900; color: #fff; line-height: 1.2; letter-spacing: -0.5px;">
                 --
             </h1>
 
-            <div id="textParticipantProgress" style="font-size: 13.5px; color: rgba(255,255,255,0.65); margin-top: 6px; font-weight: 500;">
+            <div id="textParticipantProgress" style="font-size: 13px; color: rgba(255,255,255,0.65); margin-top: 4px; font-weight: 500;">
                 --
-            </div>
-            <div style="font-size: 11px; color: rgba(52,211,153,0.7); margin-top: 4px; font-weight: 600;">
-                <i class="fa-solid fa-hand-pointer mr-1"></i> Click Card or Broadcast Button to Put Live · Swipe Left/Right
             </div>
         </div>
 
-        <!-- CENTERED ARROW NAVIGATION & CHEST DISPLAY CARD -->
-        <div class="stage-deck-row" style="display: flex; align-items: center; justify-content: center; gap: 16px; max-width: 720px; margin: 0 auto 28px auto;">
+        <!-- PPT CANVAS DECK ROW (ARROWS + SLIDE CANVAS) -->
+        <div class="stage-deck-row" style="display: flex; align-items: center; justify-content: center; gap: 14px; max-width: 860px; margin: 0 auto;">
             
-            <!-- PREVIOUS ARROW BUTTON (<-) -->
-            <button type="button" id="btnPrev" class="arrow-btn" title="Previous Slide / Program (Swipe Right or Left Arrow)" onclick="navigateStage(-1)">
+            <!-- PREVIOUS SLIDE ARROW BUTTON (<-) -->
+            <button type="button" id="btnPrev" class="arrow-btn" title="Previous Slide (Swipe Right or Left Arrow)" onclick="navigateStage(-1)">
                 <i class="fa-solid fa-chevron-left"></i>
                 <span class="arrow-key-hint">LEFT</span>
             </button>
 
-            <!-- CENTER DISPLAY CARD (Clicking also broadcasts live!) -->
-            <div id="chestBox" class="chest-display-box" onclick="broadcastLiveStage()" title="Click to Broadcast Live to Stage">
-                <div id="textChestHeader" style="font-size: 12px; font-weight: 800; text-transform: uppercase; color: rgba(255,255,255,0.5); letter-spacing: 2px;">
+            <!-- WIDESCREEN PPT SLIDE CANVAS (With Sliding Animation) -->
+            <div id="chestBox" class="ppt-slide-viewport" onclick="handleSlideClick()" title="Click to Broadcast Live to Stage">
+                
+                <span id="textSlideBadge" class="slide-number-badge">
+                    SLIDE 1 / 1
+                </span>
+
+                <span id="textSlideMode" class="slide-mode-badge">
+                    STAGE DECK
+                </span>
+
+                <div id="textChestHeader" style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: rgba(255,255,255,0.5); letter-spacing: 2px; margin-top: 14px;">
                     CHEST NUMBER
                 </div>
+
                 <div id="textChestNumber" class="chest-number-title">
                     --
                 </div>
+
                 <div id="textParticipantName" class="participant-name-title">
                     --
                 </div>
-                <div style="margin-top: 12px;">
-                    <span id="pillTeam" class="team-color-pill" style="padding: 5px 16px; border-radius: 999px; font-size: 13px; font-weight: 700;">
+
+                <div style="margin-top: 8px;">
+                    <span id="pillTeam" class="team-color-pill" style="padding: 3px 14px; border-radius: 999px; font-size: 12.5px; font-weight: 700;">
                         --
                     </span>
                 </div>
+
+                <!-- SLIDE BROADCAST TIP -->
+                <div style="font-size: 10.5px; color: rgba(52,211,153,0.7); margin-top: 10px; font-weight: 600;">
+                    <i class="fa-solid fa-hand-pointer mr-1"></i> Click slide or button below to broadcast live on stage
+                </div>
             </div>
 
-            <!-- NEXT ARROW BUTTON (->) -->
-            <button type="button" id="btnNext" class="arrow-btn" title="Next Slide / Program (Swipe Left or Right Arrow)" onclick="navigateStage(1)">
+            <!-- NEXT SLIDE ARROW BUTTON (->) -->
+            <button type="button" id="btnNext" class="arrow-btn" title="Next Slide (Swipe Left or Right Arrow)" onclick="navigateStage(1)">
                 <i class="fa-solid fa-chevron-right"></i>
                 <span class="arrow-key-hint">RIGHT</span>
             </button>
 
         </div>
 
-        <!-- SELECT / BROADCAST LIVE BUTTON -->
-        <button type="button" id="btnSelect" class="select-btn" onclick="broadcastLiveStage()">
-            ⚡ BROADCAST LIVE TO STAGE
-        </button>
-
-        <!-- UPCOMING ON STAGE REEL STRIP -->
-        <div style="margin-top: 32px; padding-top: 20px; border-top: 1px solid rgba(16,185,129,0.18); text-align: left;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
-                <div style="font-size: 11.5px; font-weight: 800; text-transform: uppercase; color: #34d399; letter-spacing: 1.5px; display: flex; align-items: center; gap: 8px;">
-                    <i class="fa-solid fa-forward-step"></i> Next Up On Stage (Click to Broadcast)
-                </div>
-                <label style="font-size: 12px; color: rgba(255,255,255,0.5); font-weight: 600;">Direct Stage Jump:</label>
-            </div>
-
-            <div style="display: flex; gap: 14px; flex-wrap: wrap; align-items: center;">
-                <div id="upcomingRibbon" style="display: flex; gap: 10px; flex: 1; flex-wrap: wrap;">
-                </div>
-                <select id="selectStageJump" onchange="jumpToQueueIndex(parseInt(this.value, 10))" 
-                        class="form-control" 
-                        style="width: 100%; max-width: 380px; background: rgba(0,0,0,0.85); border: 1px solid rgba(16,185,129,0.35); color: #fff; padding: 10px 14px; border-radius: 12px; font-size: 13.5px;">
-                </select>
-            </div>
-        </div>
-
     </div>
+</div>
 
-    <!-- BOTTOM KEYBOARD COMMAND BAR -->
-    <div style="margin-top: 20px; width: 100%; display: flex; justify-content: center; gap: 20px; font-size: 12px; color: rgba(255,255,255,0.5); font-weight: 600; flex-wrap: wrap; text-align: center;">
-        <span><kbd style="background: rgba(0,0,0,0.6); border: 1px solid rgba(16,185,129,0.3); color: #34d399; padding: 2px 8px; border-radius: 4px; font-size: 11px;">← / → or SWIPE</kbd> Navigate</span>
-        <span><kbd style="background: rgba(0,0,0,0.6); border: 1px solid rgba(16,185,129,0.3); color: #34d399; padding: 2px 8px; border-radius: 4px; font-size: 11px;">SPACE / ENTER</kbd> Broadcast Live</span>
-        <span><kbd style="background: rgba(0,0,0,0.6); border: 1px solid rgba(16,185,129,0.3); color: #34d399; padding: 2px 8px; border-radius: 4px; font-size: 11px;">ESC</kbd> Close Modal</span>
-    </div>
+<!-- MOBILE STICKY BOTTOM ACTION BAR -->
+<div id="mobileStickyBar" class="mobile-sticky-bar">
+    <button type="button" id="btnMobileActivate" class="btn btn-success" onclick="broadcastLiveStage()" style="flex: 1; padding: 12px; font-weight: 800; font-size: 15px; border-radius: 12px; background: linear-gradient(135deg, #10b981, #047857); border: 1px solid #34d399;">
+        ⚡ ACTIVATE ON STAGE
+    </button>
+    
+    <button type="button" id="btnMobileTimer" class="btn btn-primary" onclick="toggleTimerFromMobile()" style="padding: 12px 18px; font-weight: 800; font-size: 15px; border-radius: 12px; background: #059669; border: 1px solid #34d399; display: flex; align-items: center; gap: 6px;">
+        <i class="fa-solid fa-stopwatch"></i> <span id="textMobileTimer">TIMER</span>
+    </button>
 </div>
 
 <!-- FULL SCREEN FIXED STAGE CARDS GRID GALLERY MODAL -->
@@ -665,7 +869,7 @@ require_once __DIR__ . '/../includes/header.php';
                 <h2 style="margin: 0; font-size: 20px; color: #fff; display: flex; align-items: center; gap: 10px;">
                     <i class="fa-solid fa-border-all" style="color: #34d399;"></i> Stage Cards Grid
                 </h2>
-                <div style="font-size: 12px; color: rgba(255,255,255,0.6); margin-top: 2px;">Click any card to enter &amp; broadcast live on stage</div>
+                <div style="font-size: 12px; color: rgba(255,255,255,0.6); margin-top: 2px;">Click any card to preview &amp; broadcast live on stage</div>
             </div>
 
             <div style="display: flex; align-items: center; gap: 12px; width: 100%; max-width: 460px;">
@@ -691,11 +895,28 @@ let currentIndex = <?= (int)$selectedIndex ?>;
 let liveProgramId = <?= (int)$liveProgramId ?>;
 let liveEntryId = <?= (int)$liveEntryId ?>;
 
-function renderStageDeck(index) {
+// TIMER STATE VARIABLES
+let timerInterval = null;
+let timerStartTime = 0;
+let timerElapsedTime = 0;
+let isTimerRunning = false;
+
+function renderStageDeck(index, direction = 'next') {
     if (!stageQueue || stageQueue.length === 0) return;
     
     currentIndex = Math.max(0, Math.min(stageQueue.length - 1, index));
     const item = stageQueue[currentIndex];
+
+    // Trigger Slide Sliding Transition Animation
+    const chestBox = document.getElementById('chestBox');
+    if (chestBox) {
+        chestBox.classList.remove('slide-enter-next', 'slide-enter-prev');
+        void chestBox.offsetWidth; // Trigger DOM Reflow
+        chestBox.classList.add(direction === 'prev' ? 'slide-enter-prev' : 'slide-enter-next');
+    }
+
+    // Slide Counter
+    document.getElementById('textSlideBadge').innerText = `SLIDE ${currentIndex + 1} / ${stageQueue.length}`;
 
     // Program Info
     document.getElementById('textProgramTitle').innerText = item.program_title;
@@ -713,14 +934,16 @@ function renderStageDeck(index) {
     const textChestNum = document.getElementById('textChestNumber');
     const textPartName = document.getElementById('textParticipantName');
     const pillTeam = document.getElementById('pillTeam');
+    const textSlideMode = document.getElementById('textSlideMode');
 
     if (item.is_intro) {
         document.getElementById('textParticipantProgress').innerHTML = 
             `Program Intro Slide · <strong>${item.total_participants} ${item.is_group ? 'Teams' : 'Participants'} Registered</strong>`;
         textChestHeader.innerText = 'STAGE DISPLAY SLIDE';
         textChestNum.innerText = item.is_group ? '👥 GROUP INTRO' : '📋 PROGRAM INTRO';
-        textChestNum.style.fontSize = window.innerWidth <= 480 ? '26px' : '34px';
+        textChestNum.style.fontSize = window.innerWidth <= 480 ? '24px' : '32px';
         textPartName.innerText = item.entry_name;
+        textSlideMode.innerText = 'PROGRAM INTRO';
         
         pillTeam.innerText = item.is_group ? 'Group Team Program' : 'Program Overview Mode';
         pillTeam.style.background = 'rgba(16, 185, 129, 0.2)';
@@ -733,8 +956,9 @@ function renderStageDeck(index) {
             `Team <strong>${item.participant_order}</strong> of <strong>${item.total_participants}</strong>`;
         textChestHeader.innerText = 'STAGE GROUP TEAM';
         textChestNum.innerText = item.team_name;
-        textChestNum.style.fontSize = window.innerWidth <= 480 ? '30px' : '42px';
+        textChestNum.style.fontSize = window.innerWidth <= 480 ? '26px' : '38px';
         textPartName.innerText = 'Team Performance';
+        textSlideMode.innerText = `TEAM #${item.participant_order}`;
         
         pillTeam.innerText = item.team_name;
         pillTeam.style.background = item.team_color + '22';
@@ -747,8 +971,9 @@ function renderStageDeck(index) {
             `Participant <strong>${item.participant_order}</strong> of <strong>${item.total_participants}</strong>`;
         textChestHeader.innerText = 'CHEST NUMBER';
         textChestNum.innerText = item.chest_number;
-        textChestNum.style.fontSize = window.innerWidth <= 480 ? '36px' : '56px';
+        textChestNum.style.fontSize = window.innerWidth <= 480 ? '32px' : '52px';
         textPartName.innerText = item.entry_name;
+        textSlideMode.innerText = `ENTRY #${item.participant_order}`;
         
         pillTeam.innerText = item.team_name;
         pillTeam.style.background = item.team_color + '22';
@@ -759,8 +984,9 @@ function renderStageDeck(index) {
         document.getElementById('textParticipantProgress').innerText = 'No entries registered for this program';
         textChestHeader.innerText = 'CHEST NUMBER';
         textChestNum.innerText = '-';
-        textChestNum.style.fontSize = '56px';
+        textChestNum.style.fontSize = '52px';
         textPartName.innerText = 'No Participants Registered';
+        textSlideMode.innerText = 'EMPTY INTRO';
         pillTeam.style.display = 'none';
     }
 
@@ -768,8 +994,8 @@ function renderStageDeck(index) {
     const isLiveItem = (item.program_id === liveProgramId && item.entry_id === liveEntryId);
 
     const badgeStatus = document.getElementById('badgeStatus');
-    const chestBox = document.getElementById('chestBox');
     const btnSelect = document.getElementById('btnSelect');
+    const btnMobileActivate = document.getElementById('btnMobileActivate');
 
     if (isLiveItem) {
         badgeStatus.className = 'badge badge-success';
@@ -778,11 +1004,16 @@ function renderStageDeck(index) {
 
         btnSelect.className = 'select-btn select-btn-live';
         btnSelect.innerHTML = item.is_intro 
-            ? '<i class="fa-solid fa-circle-check"></i> PROGRAM INTRO LIVE' 
-            : '<i class="fa-solid fa-circle-check"></i> CURRENTLY ON STAGE LIVE';
+            ? '<i class="fa-solid fa-circle-check"></i> PROGRAM INTRO CURRENTLY LIVE ON STAGE' 
+            : '<i class="fa-solid fa-circle-check"></i> PARTICIPANT CURRENTLY LIVE ON STAGE';
+            
+        if (btnMobileActivate) {
+            btnMobileActivate.className = 'btn btn-success';
+            btnMobileActivate.innerHTML = '<i class="fa-solid fa-circle-check mr-1"></i> LIVE ON STAGE';
+        }
     } else {
         badgeStatus.className = 'badge badge-neutral';
-        badgeStatus.innerText = 'PREVIEWING';
+        badgeStatus.innerText = 'PREVIEWING SLIDE';
         badgeStatus.style.background = 'rgba(0,0,0,0.6)';
         badgeStatus.style.border = '1px solid rgba(255,255,255,0.15)';
         badgeStatus.style.color = '#aaa';
@@ -790,9 +1021,17 @@ function renderStageDeck(index) {
 
         btnSelect.className = 'select-btn select-btn-unselected';
         btnSelect.innerHTML = item.is_intro 
-            ? '⚡ SELECT &amp; SHOW PROGRAM INTRO' 
-            : '⚡ BROADCAST LIVE TO STAGE';
+            ? '⚡ ACTIVATE &amp; SHOW PROGRAM INTRO ON STAGE' 
+            : '⚡ ACTIVATE PARTICIPANT ON STAGE';
+
+        if (btnMobileActivate) {
+            btnMobileActivate.className = 'btn btn-success';
+            btnMobileActivate.innerHTML = '⚡ ACTIVATE ON STAGE';
+        }
     }
+
+    // Update Stage Timer State
+    syncTimerUI(item, isLiveItem);
 
     // Arrows Disable State
     const btnPrev = document.getElementById('btnPrev');
@@ -819,6 +1058,190 @@ function renderStageDeck(index) {
     renderUpcomingRibbon();
 }
 
+function handleSlideClick() {
+    broadcastLiveStage();
+}
+
+function syncTimerUI(item, isLiveItem) {
+    const timerPanel = document.getElementById('timerPanel');
+    if (!timerPanel) return;
+    const timerStatusBadge = document.getElementById('timerStatusBadge');
+    const timerClock = document.getElementById('timerClock');
+    const timerSubtext = document.getElementById('timerSubtext');
+    const btnStart = document.getElementById('btnStartTimer');
+    const btnStop = document.getElementById('btnStopTimer');
+    const btnReset = document.getElementById('btnResetTimer');
+    const textMobileTimer = document.getElementById('textMobileTimer');
+
+    if (isLiveItem) {
+        timerPanel.classList.add('is-active-stage');
+    } else {
+        timerPanel.classList.remove('is-active-stage');
+    }
+
+    if (isTimerRunning) {
+        // Active Running Timer
+        timerStatusBadge.style.background = 'rgba(239, 68, 68, 0.25)';
+        timerStatusBadge.style.color = '#f87171';
+        timerStatusBadge.style.border = '1px solid rgba(239, 68, 68, 0.5)';
+        timerStatusBadge.innerHTML = '<i class="fa-solid fa-circle-dot mr-1"></i> RECORDING TIME';
+        
+        timerClock.classList.add('is-running');
+        timerSubtext.innerText = 'Stopwatch actively recording performance time...';
+
+        btnStart.style.display = 'none';
+        btnStop.style.display = 'inline-flex';
+        btnReset.style.display = 'none';
+
+        if (textMobileTimer) textMobileTimer.innerText = 'STOP TIMER';
+        return;
+    }
+
+    timerClock.classList.remove('is-running');
+
+    if (item.recorded_time) {
+        // Has Saved Recorded Time
+        timerStatusBadge.style.background = 'rgba(16, 185, 129, 0.25)';
+        timerStatusBadge.style.color = '#34d399';
+        timerStatusBadge.style.border = '1px solid rgba(16, 185, 129, 0.5)';
+        timerStatusBadge.innerHTML = '<i class="fa-solid fa-check mr-1"></i> TIME RECORDED';
+
+        timerClock.innerText = item.recorded_time;
+        timerSubtext.innerHTML = `Saved Duration: <strong>${item.recorded_time}</strong> (${item.duration_seconds}s)`;
+
+        btnStart.style.display = 'inline-flex';
+        btnStart.innerHTML = '<i class="fa-solid fa-play"></i> RE-RECORD TIME';
+        btnStop.style.display = 'none';
+        btnReset.style.display = 'inline-block';
+
+        if (textMobileTimer) textMobileTimer.innerText = 'RECORDED';
+    } else {
+        // No Time Recorded Yet
+        timerStatusBadge.style.background = 'rgba(255, 255, 255, 0.1)';
+        timerStatusBadge.style.color = '#ccc';
+        timerStatusBadge.style.border = '1px solid rgba(255, 255, 255, 0.15)';
+        timerStatusBadge.innerText = isLiveItem ? 'READY TO RECORD' : 'PREVIEW MODE';
+
+        timerClock.innerText = formatTimeMs(timerElapsedTime);
+        
+        if (isLiveItem) {
+            timerSubtext.innerText = 'Participant active on stage. Click Start Timer when performance begins.';
+            btnStart.style.display = 'inline-flex';
+            btnStart.innerHTML = '<i class="fa-solid fa-play"></i> START TIMER';
+            btnStop.style.display = 'none';
+            btnReset.style.display = (timerElapsedTime > 0) ? 'inline-block' : 'none';
+            if (textMobileTimer) textMobileTimer.innerText = 'START TIMER';
+        } else {
+            timerSubtext.innerText = 'Activate participant on stage to start recording time.';
+            btnStart.style.display = 'inline-flex';
+            btnStart.innerHTML = '<i class="fa-solid fa-bolt"></i> ACTIVATE TO RECORD';
+            btnStop.style.display = 'none';
+            btnReset.style.display = 'none';
+            if (textMobileTimer) textMobileTimer.innerText = 'TIMER';
+        }
+    }
+}
+
+// TIMER ENGINE FUNCTIONS
+function startTimer() {
+    const item = stageQueue[currentIndex];
+    const isLiveItem = (item.program_id === liveProgramId && item.entry_id === liveEntryId);
+
+    if (!isLiveItem) {
+        broadcastLiveStage();
+    }
+
+    if (isTimerRunning) return;
+
+    isTimerRunning = true;
+    timerStartTime = performance.now() - timerElapsedTime;
+
+    timerInterval = setInterval(() => {
+        timerElapsedTime = performance.now() - timerStartTime;
+        document.getElementById('timerClock').innerText = formatTimeMs(timerElapsedTime);
+    }, 90);
+
+    syncTimerUI(item, true);
+}
+
+function stopTimer() {
+    if (!isTimerRunning) return;
+
+    clearInterval(timerInterval);
+    timerInterval = null;
+    isTimerRunning = false;
+
+    const item = stageQueue[currentIndex];
+    const durationSec = Math.round(timerElapsedTime / 1000);
+    const formatted = formatTimeMs(timerElapsedTime, false);
+
+    item.recorded_time = formatted;
+    item.duration_seconds = durationSec;
+
+    // Save to backend via AJAX
+    saveRecordedTimeBackend(item.program_id, item.entry_id, durationSec, formatted);
+
+    syncTimerUI(item, true);
+    showToast(`Recorded time: ${formatted} saved!`);
+}
+
+function resetTimer() {
+    if (isTimerRunning) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+        isTimerRunning = false;
+    }
+    timerElapsedTime = 0;
+    const item = stageQueue[currentIndex];
+    item.recorded_time = null;
+    item.duration_seconds = 0;
+
+    syncTimerUI(item, (item.program_id === liveProgramId && item.entry_id === liveEntryId));
+}
+
+function toggleTimerFromMobile() {
+    if (isTimerRunning) {
+        stopTimer();
+    } else {
+        startTimer();
+    }
+}
+
+function saveRecordedTimeBackend(programId, entryId, durationSec, formattedTime) {
+    const formData = new FormData();
+    formData.append('action', 'save_recorded_time');
+    formData.append('program_id', programId);
+    formData.append('entry_id', entryId);
+    formData.append('duration_seconds', durationSec);
+    formData.append('formatted_time', formattedTime);
+    formData.append('csrf_token', csrfToken);
+
+    fetch(window.location.pathname + '?ajax=1', {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        body: formData
+    })
+    .then(r => r.json())
+    .then(data => {
+        console.log('Timer saved:', data);
+    })
+    .catch(err => {
+        console.error('Failed to save timer:', err);
+    });
+}
+
+function formatTimeMs(ms, includeTenths = true) {
+    const totalSec = Math.floor(ms / 1000);
+    const mins = Math.floor(totalSec / 60);
+    const secs = totalSec % 60;
+    const tenths = Math.floor((ms % 1000) / 100);
+
+    const mm = String(mins).padStart(2, '0');
+    const ss = String(secs).padStart(2, '0');
+
+    return includeTenths ? `${mm}:${ss}.${tenths}` : `${mm}:${ss}`;
+}
+
 function renderUpcomingRibbon() {
     const upcomingContainer = document.getElementById('upcomingRibbon');
     if (!upcomingContainer || !stageQueue) return;
@@ -827,7 +1250,7 @@ function renderUpcomingRibbon() {
     const nextItems = stageQueue.slice(currentIndex + 1, currentIndex + 4);
 
     if (nextItems.length === 0) {
-        upcomingContainer.innerHTML = '<div style="font-size: 12px; color: rgba(255,255,255,0.4); padding: 8px;">End of Stage Queue</div>';
+        upcomingContainer.innerHTML = '<div style="font-size: 11.5px; color: rgba(255,255,255,0.4); padding: 6px;">End of Stage Queue</div>';
         return;
     }
 
@@ -838,10 +1261,14 @@ function renderUpcomingRibbon() {
 
         let titleText = item.is_intro ? ('📋 INTRO: ' + item.program_title) : (item.is_group ? item.team_name : ('Chest #' + item.chest_number + ' (' + item.entry_name + ')'));
         
+        let timerBadge = item.recorded_time ? `<span style="font-size: 9px; color: #34d399; border: 1px solid rgba(16,185,129,0.4); padding: 1px 4px; border-radius: 4px; margin-left: 4px;">⏱ ${item.recorded_time}</span>` : '';
+
         card.innerHTML = `
-            <div style="font-size: 10px; font-weight: 800; color: #34d399; text-transform: uppercase; margin-bottom: 2px;">Slide #${item.queue_index + 1}</div>
-            <div style="font-size: 12px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px;">${escapeHtml(titleText)}</div>
-            <div style="font-size: 9.5px; font-weight: 700; color: rgba(52,211,153,0.8); margin-top: 4px; text-transform: uppercase;">Click to Broadcast</div>
+            <div style="font-size: 9.5px; font-weight: 800; color: #34d399; text-transform: uppercase; margin-bottom: 2px;">
+                Slide #${item.queue_index + 1} ${timerBadge}
+            </div>
+            <div style="font-size: 11.5px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px;">${escapeHtml(titleText)}</div>
+            <div style="font-size: 9px; font-weight: 700; color: rgba(52,211,153,0.8); margin-top: 3px; text-transform: uppercase;">Click to Activate</div>
         `;
         upcomingContainer.appendChild(card);
     });
@@ -858,6 +1285,10 @@ function populateJumpDropdown() {
         const isLive = (qItem.program_id === liveProgramId && qItem.entry_id === liveEntryId);
         
         let label = (isLive ? '🔴 ' : '');
+        if (qItem.recorded_time) {
+            label += `[⏱ ${qItem.recorded_time}] `;
+        }
+
         if (qItem.is_intro) {
             label += `📋 [INTRO] ${qItem.program_title} (${qItem.total_participants} ${qItem.is_group ? 'Teams' : 'Entries'})`;
         } else if (qItem.is_group) {
@@ -939,6 +1370,10 @@ function renderCardsGrid(filterText = '') {
             badgeHtml = '<span class="badge badge-neutral" style="font-size: 9px; margin-bottom: 4px; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.15); color: #aaa;">#' + escapeHtml(item.chest_number) + '</span>';
         }
 
+        if (item.recorded_time) {
+            badgeHtml += ` <span style="font-size: 9px; background: rgba(16,185,129,0.25); color: #34d399; border: 1px solid rgba(16,185,129,0.4); padding: 1px 5px; border-radius: 4px;">⏱ ${escapeHtml(item.recorded_time)}</span>`;
+        }
+
         let mainDisplay = '';
         if (item.is_intro) {
             mainDisplay = `<div style="font-size: 16px; font-weight: 800; color: #34d399; margin: 4px 0;">📋 PROGRAM INTRO</div>`;
@@ -962,7 +1397,7 @@ function renderCardsGrid(filterText = '') {
                 </div>
             </div>
             <div style="font-size: 10px; font-weight: 700; color: #34d399; margin-top: 8px; opacity: 0.8; text-transform: uppercase;">
-                Click to Broadcast
+                Click to Activate
             </div>
         `;
 
@@ -975,7 +1410,12 @@ function renderCardsGrid(filterText = '') {
 }
 
 function selectCardIndex(idx, broadcastNow = true) {
-    renderStageDeck(idx);
+    if (isTimerRunning) {
+        stopTimer();
+    }
+    timerElapsedTime = 0;
+    const direction = idx > currentIndex ? 'next' : 'prev';
+    renderStageDeck(idx, direction);
     closeCardsModal();
     if (broadcastNow) {
         broadcastLiveStage();
@@ -988,9 +1428,13 @@ function escapeHtml(str) {
 }
 
 function navigateStage(delta) {
+    if (isTimerRunning) {
+        stopTimer();
+    }
+    timerElapsedTime = 0;
     const targetIdx = currentIndex + delta;
     if (targetIdx >= 0 && targetIdx < stageQueue.length) {
-        renderStageDeck(targetIdx);
+        renderStageDeck(targetIdx, delta > 0 ? 'next' : 'prev');
     }
 }
 
@@ -1055,7 +1499,7 @@ let touchStartY = 0;
 let touchEndX = 0;
 let touchEndY = 0;
 
-const deckElement = document.querySelector('.emcee-deck-container');
+const deckElement = document.querySelector('.ppt-deck-container');
 
 if (deckElement) {
     deckElement.addEventListener('touchstart', (e) => {
@@ -1120,7 +1564,7 @@ document.addEventListener('keydown', (e) => {
 
 document.addEventListener('DOMContentLoaded', () => {
     populateJumpDropdown();
-    renderStageDeck(currentIndex);
+    renderStageDeck(currentIndex, 'next');
 });
 </script>
 

@@ -150,10 +150,7 @@ foreach ($programs as $pIdx => $prog) {
     // Fetch entries
     $stmtEntries = $pdo->prepare("
         SELECT pe.*, t.team_name, t.team_color,
-               (SELECT GROUP_CONCAT(tm.chest_number SEPARATOR ', ')
-                FROM musabaqa_entry_members em
-                JOIN musabaqa_team_members tm ON tm.id = em.team_member_id
-                WHERE em.entry_id = pe.id AND tm.chest_number IS NOT NULL AND tm.chest_number <> '') AS chest_number,
+               " . admin_entry_chest_number_subquery() . ",
                (SELECT GROUP_CONCAT(COALESCE(NULLIF(s.display_name, ''), s.full_name) SEPARATOR ', ')
                 FROM musabaqa_entry_members em
                 JOIN musabaqa_team_members tm ON tm.id = em.team_member_id

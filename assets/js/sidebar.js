@@ -101,14 +101,77 @@
             });
         });
 
-        // 6. Setup Operations Workspace Trigger
+        // 6. Setup Command Palette Modal Controls
+        const cmdPalette = document.getElementById('sidebarCommandPalette');
+        const searchInput = document.getElementById('sidebarCommandInput');
         const openTrigger = document.getElementById('sidebarSearchLauncher');
+        const closeBtn = document.getElementById('sidebarCommandClose');
 
-        if (openTrigger) {
-            openTrigger.addEventListener('click', function(e) {
-                e.preventDefault();
-                if (typeof openCmdPalette === 'function') {
-                    openCmdPalette();
+        function openPalette() {
+            if (cmdPalette) {
+                cmdPalette.classList.add('visible');
+                if (searchInput) {
+                    searchInput.value = '';
+                    searchInput.focus();
+                }
+                filterCommandItems('');
+            }
+        }
+
+        function closePalette() {
+            if (cmdPalette) {
+                cmdPalette.classList.remove('visible');
+            }
+        }
+
+        if (openTrigger) openTrigger.addEventListener('click', openPalette);
+        if (closeBtn) closeBtn.addEventListener('click', closePalette);
+
+        if (cmdPalette) {
+            // Close palette if clicking backdrop
+            cmdPalette.addEventListener('click', function(e) {
+                if (e.target === this) closePalette();
+            });
+        }
+
+        // 7. Keydown listeners for Command Palette search results navigation
+        if (searchInput) {
+            searchInput.addEventListener('input', function() {
+                filterCommandItems(this.value);
+            });
+
+            searchInput.addEventListener('keydown', function(e) {
+                const resultsContainer = document.getElementById('sidebarCommandResults');
+                if (!resultsContainer) return;
+
+                const items = Array.from(resultsContainer.querySelectorAll('.sidebar-command-item'));
+                if (!items.length) return;
+
+                const activeIdx = items.findIndex(item => item.classList.contains('selected'));
+
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    let nextIdx = activeIdx + 1;
+                    if (nextIdx >= items.length) nextIdx = 0;
+                    
+                    items.forEach(it => it.classList.remove('selected'));
+                    items[nextIdx].classList.add('selected');
+                    items[nextIdx].scrollIntoView({ block: 'nearest' });
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    let prevIdx = activeIdx - 1;
+                    if (prevIdx < 0) prevIdx = items.length - 1;
+
+                    items.forEach(it => it.classList.remove('selected'));
+                    items[prevIdx].classList.add('selected');
+                    items[prevIdx].scrollIntoView({ block: 'nearest' });
+                } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const selectedItem = items[activeIdx] || items[0];
+                    if (selectedItem) {
+                        closePalette();
+                        selectedItem.click(); // Trigger navigation link click
+                    }
                 }
             });
         }
@@ -117,14 +180,10 @@
         window.addEventListener('keydown', function(e) {
             if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
                 e.preventDefault();
-                if (typeof openCmdPalette === 'function') {
-                    openCmdPalette();
-                }
+                openPalette();
             }
             if (e.key === 'Escape') {
-                if (typeof closeCmdPalette === 'function') {
-                    closeCmdPalette();
-                }
+                closePalette();
                 // Escape key also closes mobile sidebar drawer if open
                 if (window.innerWidth <= 920 && document.body.classList.contains('sidebar-open')) {
                     document.body.classList.remove('sidebar-open');
@@ -135,6 +194,76 @@
         // Initialize Lucide SVG icons rendering
         if (window.lucide) {
             window.lucide.createIcons();
+        }
+    }
+
+    // Match links and filter search results inside Command Palette modal
+    function filterCommandItems(query) {
+        const resultsContainer = document.getElementById('sidebarCommandResults');
+        if (!resultsContainer) return;
+
+        const term = query.trim().toLowerCase();
+        
+        // Fetch all navigation items from the sidebar HTML markup directly
+        const sourceLinks = Array.from(document.querySelectorAll('.sidebar-vertical-link'));
+        resultsContainer.innerHTML = '';
+
+        if (!sourceLinks.length) {
+            resultsContainer.innerHTML = '<div class="sidebar-command-empty">No items configured.</div>';
+            return;
+        }
+
+        const filtered = sourceLinks.filter(link => {
+            const text = link.querySelector('.sidebar-label')?.textContent.toLowerCase() || '';
+            const href = link.getAttribute('href') || '';
+            return text.includes(term) || href.includes(term);
+        });
+
+        if (!filtered.length) {
+            resultsContainer.innerHTML = '<div class="sidebar-command-empty">No matching links found.</div>';
+            return;
+        }
+
+        // Render matched links into command list (re-using matching layout styles)
+        filtered.forEach((link, idx) => {
+            const text = link.querySelector('.sidebar-label')?.textContent || '';
+            const href = link.getAttribute('href') || '';
+            const iconTag = link.querySelector('.sidebar-icon')?.cloneNode(true);
+            const iconHtml = iconTag ? iconTag.outerHTML : '<i data-lucide="link-2"></i>';
+            const groupHeader = link.closest('.sidebar-group')?.querySelector('.sidebar-group-header')?.textContent.trim() || 'Links';
+
+            const item = document.createElement('a');
+            item.className = `sidebar-command-item ${idx === 0 ? 'selected' : ''}`;
+            item.setAttribute('href', href);
+            
+            // Respect SPA transitions (use native AJAX interception) unless target _blank
+            if (link.getAttribute('target') === '_blank') {
+                item.setAttribute('target', '_blank');
+                item.setAttribute('data-ajax-ignore', 'true');
+            }
+
+            item.innerHTML = `
+                ${iconHtml}
+                <span class="sidebar-command-item-label">${text}</span>
+                <span class="sidebar-command-item-category">${groupHeader}</span>
+            `;
+
+            // Close dialog overlay on link click
+            item.addEventListener('click', () => {
+                const cmdPalette = document.getElementById('sidebarCommandPalette');
+                if (cmdPalette) cmdPalette.classList.remove('visible');
+            });
+
+            resultsContainer.appendChild(item);
+        });
+
+        // Initialize Lucide icons on newly generated result cards
+        if (window.lucide) {
+            window.lucide.createIcons({
+                attrs: {
+                    class: 'sidebar-icon'
+                }
+            });
         }
     }
 

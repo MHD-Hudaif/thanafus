@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#061009">
+  <meta name="description" content="The official Kauzariyya Musabaqa companion for live scores, schedules, participants and festival results.">
+  <title>Kauzariyya Musabaqa · Al Jamiathul Kauzariyya</title>
+  <link rel="icon" type="image/png" href="assets/kauzariyya-brand-icon.png">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+  <link rel="stylesheet" href="styles.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+
+  <!-- ════════════════════════════════════════ BACKGROUND VIDEO ═══ -->
+  <div class="home-video-bg">
+    <video id="bgVideo" autoplay muted loop playsinline fetchpriority="high">
+      <source src="assets/video.mp4" type="video/mp4">
+      <source src="assets/intro.mp4" type="video/mp4">
+    </video>
+  </div>
+  <div class="home-video-overlay" aria-hidden="true"></div>
+
+  <!-- ════════════════════════════════════════ SITE HEADER ═══ -->
+  <header class="site-header">
+    <a href="#" class="site-logo">
+      <img src="assets/kauzariyya-brand-icon.png" alt="Kauzariyya Logo">
+      <span>
+        <b>Al-Jamiathul Kauzariyya</b>
+        <small>Management Platform</small>
+      </span>
+    </a>
+
+    <nav class="site-nav">
+      <a href="#hero" class="active">Home</a>
+      <a href="#access">Scoreboard</a>
+      <a href="#schedule">Schedule</a>
+      <a href="#access">Participants</a>
+      <a href="#highlights">Highlights</a>
+      <a href="#about">About</a>
+    </nav>
+
+    <div class="header-account-actions">
+      <div class="festival-date">
+        <span>FESTIVAL DAY</span>
+        <b>05 JULY 2026</b>
+      </div>
+    </div>
+  </header>
+
+  <!-- ════════════════════════════════════════ MAIN CONTENT ═══ -->
+  <main id="hero">
+
+    <!-- HERO SECTION -->
+    <section class="home-redesign-hero">
+      <div class="home-redesign-copy">
+        <span class="home-hero-eyebrow">FAITH · KNOWLEDGE · CREATIVITY</span>
+        <h1>Kauzariyya <em>Arts Festival.</em></h1>
+        <p class="home-hero-intro">
+          A celebration where students discover their voice, share their talent and grow through meaningful competition.
+        </p>
+      </div>
+    </section>
+
+    <!-- PLATFORM STATEMENT -->
+    <section class="home-platform-statement section-wrap">
+      <p>
+        Competing in excellence, growing in knowledge, and standing together in faith. The official digital platform for Kauzariyya’s student competitions, live scores, schedules, teams and results.
+      </p>
+      <strong>
+        EXCELLENCE THROUGH KNOWLEDGE <i></i> UNITY THROUGH FAITH <i></i> SUCCESS THROUGH SINCERITY
+      </strong>
+    </section>
+
+    <!-- ABOUT MUSABAQA -->
+    <section class="home-musabaqa-about section-wrap" id="about">
+      <article class="home-about-copy">
+        <span class="overline">ABOUT THE MUSABAQA</span>
+        <h2>A stage for knowledge, discipline and sincere competition.</h2>
+        <p>
+          The Kauzariyya Musabaqa is an annual inter-class festival hosted by Al Jamiathul Kauzariyya, bringing together students across all years to compete in religious, literary, and academic programs.
+        </p>
+        <p>
+          From recitation and Arabic composition to general knowledge and debate, every program is a testament to the dedication of our students and teachers.
+        </p>
+      </article>
+
+      <article class="home-musabaqa-prayer">
+        <div class="bismillah-mark">بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ</div>
+        <p>
+          May this gathering ignite beneficial knowledge, deep brotherhood, and lifelong sincerity in the hearts of all participants.
+        </p>
+      </article>
+    </section>
+
+    <!-- CAMPUS STORY & QURANIC VERSE -->
+    <section class="home-story section-wrap">
+      <figure class="home-story-visual">
+        <img src="assets/kauzariyya3.png" alt="Al Jamiathul Kauzariyya Campus at Twilight">
+        <figcaption>Al Jamiathul Kauzariyya · Edathala</figcaption>
+      </figure>
+
+      <article class="home-story-content">
+        <span class="home-story-kicker">MORE THAN A COMPETITION</span>
+        <h2>Knowledge in action.<br>Character in every moment.</h2>
+        <p class="home-story-copy">
+          Designed to encourage healthy rivalry while building humility, confidence and public speaking skills across generations of students.
+        </p>
+
+        <blockquote class="home-story-verse">
+          <div class="home-story-verse-head">
+            <b>Qur'anic Inspiration</b>
+            <span>Surah Al-Mutaffifin</span>
+          </div>
+          <p lang="ar">وَفِي ذَٰلِكَ فَلْيَتَنَافَسِ الْمُتَنَافِسُونَ</p>
+          <footer>
+            <span>"And for this let those specify who would strive to compete."</span>
+            <cite>Surah 83 · Verse 26</cite>
+          </footer>
+        </blockquote>
+      </article>
+    </section>
+
+    <!-- FESTIVAL ACCESS CARDS -->
+    <section class="home-access section-wrap" id="access">
+      <header>
+        <div>
+          <span class="overline">FESTIVAL ACCESS</span>
+          <h2>Explore the platform</h2>
+        </div>
+        <span>Live updates, student directory, schedule blocks and community feedback.</span>
+      </header>
+
+      <div class="home-access-grid">
+        <article class="feature-card">
+          <div>
+            <div class="feature-card-icon">
+              <i class="fa-solid fa-trophy"></i>
+            </div>
+            <h3>Scoreboard</h3>
+            <p>Live team rankings, total points accumulated, and instant competition standings.</p>
+          </div>
+          <a href="#access" class="feature-card-link">View Scores <i class="fa-solid fa-arrow-right"></i></a>
+        </article>
+
+        <article class="feature-card">
+          <div>
+            <div class="feature-card-icon">
+              <i class="fa-solid fa-calendar-days"></i>
+            </div>
+            <h3>Schedule</h3>
+            <p>Real-time timeline of ongoing and upcoming stage performances and events.</p>
+          </div>
+          <a href="#schedule" class="feature-card-link">View Timetable <i class="fa-solid fa-arrow-right"></i></a>
+        </article>
+
+        <article class="feature-card">
+          <div>
+            <div class="feature-card-icon">
+              <i class="fa-solid fa-users"></i>
+            </div>
+            <h3>Participants</h3>
+            <p>Complete directory of registered competitors, chest numbers and categories.</p>
+          </div>
+          <a href="#access" class="feature-card-link">Explore Roster <i class="fa-solid fa-arrow-right"></i></a>
+        </article>
+
+        <article class="feature-card">
+          <div>
+            <div class="feature-card-icon">
+              <i class="fa-solid fa-star"></i>
+            </div>
+            <h3>Reviews</h3>
+            <p>Feedback, visitor impressions, and official judge highlights from the festival.</p>
+          </div>
+          <a href="#access" class="feature-card-link">Read Feedback <i class="fa-solid fa-arrow-right"></i></a>
+        </article>
+      </div>
+    </section>
+
+    <!-- 3D SCHEDULE DECK -->
+    <section class="home-schedule-3d-deck section-wrap" id="schedule">
+      <header class="schedule-3d-head">
+        <div>
+          <span class="overline">SCHEDULE DETAILS</span>
+          <h2>Information of Event Schedules</h2>
+        </div>
+        <a href="#schedule" class="schedule-3d-action-btn">
+          Explore Full Schedule <i class="fa-solid fa-arrow-right"></i>
+        </a>
+      </header>
+
+      <div class="schedule-3d-grid">
+        <article class="schedule-3d-card">
+          <header class="card-3d-head">
+            <span class="card-3d-badge">DAY 01</span>
+            <span class="card-3d-pill">12 PROGRAMMES</span>
+          </header>
+          <div class="card-3d-body">
+            <span class="card-3d-number">18</span>
+            <div class="card-3d-date-meta">
+              <strong>AUGUST 2026</strong>
+              <small>TUESDAY · STAGE 1 &amp; 2</small>
+            </div>
+          </div>
+          <footer class="card-3d-foot">
+            <span>Qur'an Recitation, Oratory &amp; Literary Arts</span>
+            <i class="fa-solid fa-arrow-right"></i>
+          </footer>
+        </article>
+
+        <article class="schedule-3d-card">
+          <header class="card-3d-head">
+            <span class="card-3d-badge">DAY 02</span>
+            <span class="card-3d-pill">14 PROGRAMMES</span>
+          </header>
+          <div class="card-3d-body">
+            <span class="card-3d-number">19</span>
+            <div class="card-3d-date-meta">
+              <strong>AUGUST 2026</strong>
+              <small>WEDNESDAY · STAGE 1 &amp; 2</small>
+            </div>
+          </div>
+          <footer class="card-3d-foot">
+            <span>Grand Finale, Cultural Arts &amp; Awards</span>
+            <i class="fa-solid fa-arrow-right"></i>
+          </footer>
+        </article>
+      </div>
+    </section>
+
+    <!-- EVENT HIGHLIGHTS -->
+    <section class="home-event-highlights section-wrap" id="highlights">
+      <header>
+        <span class="overline">EVENT HIGHLIGHTS</span>
+        <h2>Where faith, knowledge and creativity take the stage.</h2>
+      </header>
+
+      <div>
+        <article>
+          <div class="highlight-card-head">
+            <i class="fa-solid fa-book-quran"></i>
+          </div>
+          <h3>Qur’an &amp; Recitation</h3>
+          <p>Celebrating memorisation, precise Tajweed and the beauty of Qur’anic recitation.</p>
+        </article>
+
+        <article>
+          <div class="highlight-card-head">
+            <i class="fa-solid fa-microphone-lines"></i>
+          </div>
+          <h3>Oratory &amp; Expression</h3>
+          <p>Inspiring confident voices through thoughtful speeches, debates and presentations.</p>
+        </article>
+
+        <article>
+          <div class="highlight-card-head">
+            <i class="fa-solid fa-kaaba"></i>
+          </div>
+          <h3>Islamic Knowledge</h3>
+          <p>Exploring the Qur’an, Seerah and Islamic heritage through engaging challenges.</p>
+        </article>
+
+        <article>
+          <div class="highlight-card-head">
+            <i class="fa-solid fa-feather-pointed"></i>
+          </div>
+          <h3>Language &amp; Literature</h3>
+          <p>Showcasing imagination through Arabic, Malayalam and creative writing.</p>
+        </article>
+      </div>
+    </section>
+
+    <!-- LOCATION & COMMUNITY FOOTER -->
+    <footer class="site-footer">
+      <section class="home-footer-location">
+        <div class="footer-location-map">
+          <iframe
+            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3928.2718105021235!2d76.37042571479483!3d10.073042992801452!2m3!1f0!0f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3b0809b4d8ec11ab%3A0x6b4fb6c178f5ff60!2sAl%20Jamiathul%20Kauzariyya!5e0!3m2!1sen!2sin!4v1680000000000!5m2!1sen!2sin"
+            loading="lazy"
+            referrerpolicy="no-referrer-when-downgrade"
+            title="Campus Location Map">
+          </iframe>
+        </div>
+
+        <div class="footer-pulse-copy">
+          <span class="overline">OUR PLACE · OUR COMMUNITY</span>
+          <h2>Rooted in Edathala.</h2>
+          <p>
+            A welcoming campus in Aluva, fostering sacred knowledge, community unity, and lifelong guidance.
+          </p>
+          <a href="https://maps.google.com/?q=Al+Jamiathul+Kauzariyya+Edathala" target="_blank" rel="noopener" class="footer-directions-link">
+            Open in Google Maps <i class="fa-solid fa-arrow-up-right-from-square"></i>
+          </a>
+        </div>
+      </section>
+
+      <div class="home-footer-identity">
+        <h2>AL JAMIATHUL KAUZARIYYA</h2>
+        <address>
+          Edathala North P.O., Aluva, Ernakulam District, Kerala 683561, India
+        </address>
+      </div>
+
+      <div class="simple-social-icons">
+        <a href="#" aria-label="Instagram"><i class="fa-brands fa-instagram"></i></a>
+        <a href="#" aria-label="YouTube"><i class="fa-brands fa-youtube"></i></a>
+        <a href="#" aria-label="WhatsApp"><i class="fa-brands fa-whatsapp"></i></a>
+        <a href="#" aria-label="X (Twitter)"><i class="fa-brands fa-x-twitter"></i></a>
+        <a href="#" aria-label="Facebook"><i class="fa-brands fa-facebook-f"></i></a>
+      </div>
+
+      <div class="home-footer-copyright">
+        &copy; 2026 Al Jamiathul Kauzariyya · All rights reserved
+      </div>
+    </footer>
+
+  </main>
+
+</body>
+</html>

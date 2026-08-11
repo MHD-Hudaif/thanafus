@@ -62,6 +62,11 @@ function admin_csrf_field(): string
     return '<input type="hidden" name="csrf_token" value="' . e(generate_csrf_token()) . '">';
 }
 
+function admin_csrf_value(): string
+{
+    return generate_csrf_token();
+}
+
 function admin_class_type_tiers(): array
 {
     return [
@@ -1146,6 +1151,30 @@ function admin_get_live_stage_control(PDO $pdo): array
     ];
 }
 
+function admin_save_recorded_time(PDO $pdo, int $programId, int $entryId, int $durationSeconds, string $formattedTime): void
+{
+    $settings = admin_get_settings($pdo);
+    if (!isset($settings['recorded_times']) || !is_array($settings['recorded_times'])) {
+        $settings['recorded_times'] = [];
+    }
+    $key = "p{$programId}_e{$entryId}";
+    $settings['recorded_times'][$key] = [
+        'program_id' => $programId,
+        'entry_id' => $entryId,
+        'duration_seconds' => $durationSeconds,
+        'formatted_time' => $formattedTime,
+        'updated_at' => date('Y-m-d H:i:s')
+    ];
+    save_musabaqa_settings($pdo, $settings);
+}
+
+function admin_get_recorded_times(PDO $pdo): array
+{
+    $settings = admin_get_settings($pdo);
+    return is_array($settings['recorded_times'] ?? null) ? $settings['recorded_times'] : [];
+}
+
+
 function admin_validate_member_program_limits(PDO $pdo, int $eventId, int $programId, int $teamMemberId, ?int $excludeEntryId = null): void
 {
     // 1. Load settings
@@ -1429,4 +1458,33 @@ function admin_check_program_scoring_locked(PDO $pdo, int $eventId, int $targetP
 
     return null;
 }
+
+/**
+ * Returns subquery string to select an entry's chest number with multi-tier fallback.
+ */
+function admin_entry_chest_number_subquery(string $peAlias = 'pe'): string
+{
+    return "
+        COALESCE(
+            NULLIF(TRIM($peAlias.entry_number), ''),
+            NULLIF(TRIM((
+                SELECT tm.chest_number
+                FROM musabaqa_entry_members mem
+                JOIN musabaqa_team_members tm ON tm.id = mem.team_member_id
+                WHERE mem.entry_id = $peAlias.id
+                LIMIT 1
+            )), ''),
+            NULLIF(TRIM((
+                SELECT tm.chest_number
+                FROM musabaqa_team_members tm
+                JOIN " . DB_MAIN_NAME . ".students s ON s.id = tm.student_id
+                WHERE tm.team_id = $peAlias.team_id
+                  AND TRIM(LOWER(s.full_name)) = TRIM(LOWER($peAlias.entry_name))
+                LIMIT 1
+            )), ''),
+            '-'
+        ) AS chest_number
+    ";
+}
+
 

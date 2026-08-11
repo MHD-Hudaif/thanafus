@@ -14,9 +14,16 @@
   --home-shadow: 0 28px 80px rgba(0, 0, 0, .34);
 }
 
-.page-home,
-.page-home * {
-  font-family: "Manrope", Arial, sans-serif !important;
+.page-home {
+  font-family: "Plus Jakarta Sans", "Inter", sans-serif;
+}
+
+.page-home h1,
+.page-home h2,
+.page-home h3 {
+  font-family: "Outfit", "Plus Jakarta Sans", sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.03em;
 }
 
 .page-home {

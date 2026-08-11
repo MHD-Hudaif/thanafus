@@ -3974,7 +3974,6 @@ body.layout-sidebar-enabled .page-nav-group,
 /* Shared modal layout: dialogs stay centered in the viewport and only the dialog may scroll. */
 html.modal-scroll-locked,
 body.modal-open {
-    overflow: hidden !important;
     overscroll-behavior: none;
 }
 

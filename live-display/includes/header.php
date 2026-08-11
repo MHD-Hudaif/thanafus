@@ -15,10 +15,9 @@ $assetBase = live_display_asset_url();
     <title><?= e($eventPayload['title']) ?> | Live Display</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400;1,700&family=Cairo:wght@500;600;700;800;900&family=Inter:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400;1,700&family=Cairo:wght@600;700;800;900&family=Inter:wght@400;500;600;700;800;900&family=Outfit:wght@600;700;800;900&family=Plus+Jakarta+Sans:wght@500;600;700;800;900&family=Space+Grotesk:wght@600;700&family=Noto+Naskh+Arabic:wght@500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="<?= e(live_display_asset_url('css/live-display.css')) ?>?v=<?= filemtime(app_path('live-display/assets/css/live-display.css')) ?>">
     <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js" defer></script>
     <style>
         .tv-app { animation: tv-page-in .5s ease both; }
         @keyframes tv-page-in {
@@ -36,7 +35,16 @@ $assetBase = live_display_asset_url();
 <body class="tv-body theme-<?= e($settings['theme']) ?> <?= e($tvBodyClass ?? '') ?>">
 <div class="tv-app" id="tvApp">
     <div class="tv-backdrop" aria-hidden="true">
-        <div id="particles-js" class="tv-particles"></div>
+        <div class="tv-ambient-particles" aria-hidden="true">
+            <div class="tv-particle p1"></div>
+            <div class="tv-particle p2"></div>
+            <div class="tv-particle p3"></div>
+            <div class="tv-particle p4"></div>
+            <div class="tv-particle p5"></div>
+            <div class="tv-particle p6"></div>
+            <div class="tv-particle p7"></div>
+            <div class="tv-particle p8"></div>
+        </div>
         <div class="tv-geometric"></div>
         <div class="tv-spotlight tv-spotlight-a"></div>
         <div class="tv-spotlight tv-spotlight-b"></div>
@@ -56,5 +64,6 @@ $assetBase = live_display_asset_url();
         </div>
     </header>
 
-    <main class="tv-stage" id="tvStage">
+    <div class="tv-viewport-scaler" id="tvViewportScaler">
+        <main class="tv-stage" id="tvStage">
 

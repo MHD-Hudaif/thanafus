@@ -88,12 +88,13 @@ $nextProgTime = !empty($initNextProg['start_label']) ? $initNextProg['start_labe
         background: #f8fafc url('<?= asset_url('images/white-background.png') ?>') center center / cover no-repeat;
         font-family: 'Plus Jakarta Sans', 'Outfit', 'Cairo', system-ui, -apple-system, sans-serif;
         color: #0f172a;
-        width: 100vw;
-        height: 100vh;
+        width: 100% !important;
+        height: 100% !important;
         display: flex;
         align-items: center;
         justify-content: center;
-        position: relative;
+        position: absolute !important;
+        inset: 0 !important;
     }
 
     .current-programs-stage-root {

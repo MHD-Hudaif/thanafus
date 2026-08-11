@@ -211,7 +211,13 @@ function result_items(): array
     $sql = "SELECT 
                 pe.id AS result_id,
                 COALESCE(NULLIF(pe.entry_name, ''), GROUP_CONCAT(COALESCE(NULLIF(s.display_name, ''), s.full_name) ORDER BY s.full_name ASC SEPARATOR ', ')) AS participant_name,
-                GROUP_CONCAT(tm.chest_number ORDER BY tm.chest_number ASC SEPARATOR ', ') AS participant_code,
+                COALESCE(
+                    NULLIF(GROUP_CONCAT(tm.chest_number ORDER BY tm.chest_number ASC SEPARATOR ', '), ''),
+                    (SELECT tm2.chest_number 
+                     FROM musabaqa_team_members tm2 
+                     JOIN " . DB_MAIN_NAME . ".students s2 ON s2.id = tm2.student_id 
+                     WHERE tm2.team_id = pe.team_id AND (s2.full_name = pe.entry_name OR s2.display_name = pe.entry_name) AND tm2.chest_number IS NOT NULL AND tm2.chest_number <> '' LIMIT 1)
+                ) AS participant_code,
                 p.title AS program_title,
                 ct.name AS category_name,
                 t.team_name,

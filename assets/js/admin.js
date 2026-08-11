@@ -247,10 +247,34 @@
         });
     }
 
+    let lastPageScrollY = 0;
+
     function syncModalScrollLock() {
         const hasOpenModal = Boolean(document.querySelector('.modal-overlay.active, .chat-modal-overlay.active'));
-        document.documentElement.classList.toggle('modal-scroll-locked', hasOpenModal);
-        document.body.classList.toggle('modal-open', hasOpenModal);
+        if (hasOpenModal) {
+            if (!document.body.classList.contains('modal-open')) {
+                lastPageScrollY = window.scrollY || document.documentElement.scrollTop || 0;
+                document.documentElement.classList.add('modal-scroll-locked');
+                document.body.classList.add('modal-open');
+                document.body.style.position = 'fixed';
+                document.body.style.top = `-${lastPageScrollY}px`;
+                document.body.style.left = '0';
+                document.body.style.right = '0';
+                document.body.style.overflow = 'hidden';
+            }
+        } else {
+            if (document.body.classList.contains('modal-open')) {
+                const savedTop = Math.abs(parseInt(document.body.style.top || '0', 10)) || lastPageScrollY;
+                document.body.style.position = '';
+                document.body.style.top = '';
+                document.body.style.left = '';
+                document.body.style.right = '';
+                document.body.style.overflow = '';
+                document.documentElement.classList.remove('modal-scroll-locked');
+                document.body.classList.remove('modal-open');
+                window.scrollTo(0, savedTop);
+            }
+        }
     }
 
     function initModalScrollLock() {
@@ -720,8 +744,13 @@
 
                 hideLoader();
 
-                /* Scroll to top of main content */
-                mainContent.scrollTo({ top: 0, behavior: 'smooth' });
+                /* Scroll to top of main content only when navigating to a different page */
+                const isSamePage = Boolean(url && location.href && url.split('?')[0] === location.href.split('?')[0]);
+                if (!isSamePage) {
+                    mainContent.scrollTo({ top: 0, behavior: 'smooth' });
+                } else {
+                    window.scrollTo(0, lastPageScrollY);
+                }
         };
 
         /* Trigger content swap immediately without transparent blank blinking screen */
@@ -1272,6 +1301,7 @@
     window.openModal = function (id) {
         const modal = document.getElementById(id);
         if (!modal) return;
+        lastPageScrollY = window.scrollY || document.documentElement.scrollTop || 0;
         modal.classList.add('active');
         syncModalScrollLock();
         gsap.fromTo(
@@ -1285,6 +1315,7 @@
         const modal = document.getElementById(id);
         if (modal) modal.classList.remove('active');
         syncModalScrollLock();
+        window.scrollTo(0, lastPageScrollY);
     };
 
 
@@ -1464,8 +1495,13 @@
                 updateSidebarActive(url);
                 closeSidebarOnMobile();
 
-                // Scroll to top of main content
-                mainContent.scrollTo({ top: 0, behavior: 'smooth' });
+                // Scroll to top of main content only for new page navigation
+                const isSamePageSwapped = Boolean(url && location.href && url.split('?')[0] === location.href.split('?')[0]);
+                if (!isSamePageSwapped) {
+                    mainContent.scrollTo({ top: 0, behavior: 'smooth' });
+                } else {
+                    window.scrollTo(0, lastPageScrollY);
+                }
             }
         });
 
@@ -1497,6 +1533,23 @@
         }
         updateSidebarActive(location.href);
         initAlertsAndToasts();
+
+        // Restore scroll position after reload / submit if saved
+        try {
+            const pageKey = 'admin_scroll_' + window.location.pathname;
+            const savedScroll = sessionStorage.getItem(pageKey);
+            if (savedScroll !== null) {
+                sessionStorage.removeItem(pageKey);
+                window.scrollTo(0, parseInt(savedScroll, 10));
+            }
+        } catch (e) {}
+    });
+
+    window.addEventListener('beforeunload', () => {
+        try {
+            const pageKey = 'admin_scroll_' + window.location.pathname;
+            sessionStorage.setItem(pageKey, String(window.scrollY || 0));
+        } catch (e) {}
     });
 
 })();
