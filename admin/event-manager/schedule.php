@@ -1313,6 +1313,12 @@ document.querySelectorAll('.modal-overlay').forEach(modal => modal.addEventListe
 // Click topbar "Add Extra Item" button
 document.getElementById('addNewExtraBtn')?.addEventListener('click', () => {
     document.getElementById('breakForm').reset();
+    const submitBtn = document.querySelector('#breakForm button[type="submit"]');
+    if (submitBtn) {
+        submitBtn.style.pointerEvents = '';
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = 'Save Extra Item';
+    }
     document.getElementById('previousProgramId').value = '';
     document.getElementById('nextProgramId').value = '';
     document.getElementById('breakGapLabel').textContent = 'Custom Extra Item / Intermission';
@@ -1334,6 +1340,12 @@ document.getElementById('addNewExtraBtn')?.addEventListener('click', () => {
 // Click timeline gap "Add Extra Item" button
 document.querySelectorAll('[data-open-extra], [data-open-break]').forEach(button => button.addEventListener('click', () => {
     document.getElementById('breakForm').reset();
+    const submitBtn = document.querySelector('#breakForm button[type="submit"]');
+    if (submitBtn) {
+        submitBtn.style.pointerEvents = '';
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = 'Save Extra Item';
+    }
     document.getElementById('breakStageTypeId').value = button.dataset.stageId || '';
     document.getElementById('previousProgramId').value = button.dataset.previousProgram || '';
     document.getElementById('nextProgramId').value = button.dataset.nextProgram || '';
@@ -1357,6 +1369,13 @@ function setModalCreateMode() {
     document.getElementById('scheduleForm').reset();
     document.getElementById('scheduleModalTitle').textContent = 'Schedule Program';
     
+    const submitBtn = document.querySelector('#scheduleForm button[type="submit"]');
+    if (submitBtn) {
+        submitBtn.style.pointerEvents = '';
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = 'Save Schedule';
+    }
+    
     document.getElementById('modalProgramSelectGroup').style.display = '';
     const selectEl = document.getElementById('scheduleProgramSelect');
     selectEl.disabled = false;
@@ -1376,6 +1395,13 @@ function setModalCreateMode() {
 function setModalEditMode(p) {
     document.getElementById('scheduleForm').reset();
     document.getElementById('scheduleModalTitle').textContent = 'Edit Program Schedule';
+    
+    const submitBtn = document.querySelector('#scheduleForm button[type="submit"]');
+    if (submitBtn) {
+        submitBtn.style.pointerEvents = '';
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = 'Save Schedule';
+    }
     
     document.getElementById('modalProgramSelectGroup').style.display = 'none';
     const selectEl = document.getElementById('scheduleProgramSelect');
@@ -1442,5 +1468,24 @@ document.querySelectorAll('[data-edit-schedule-btn]').forEach(btn => btn.addEven
     setModalEditMode(p);
     openModal('scheduleModal');
 }));
+
+// Submit handlers to close modals immediately and show saving progress
+document.getElementById('scheduleForm')?.addEventListener('submit', function() {
+    const submitBtn = this.querySelector('button[type="submit"]');
+    if (submitBtn) {
+        submitBtn.style.pointerEvents = 'none';
+        submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Saving...';
+    }
+    setTimeout(() => closeModal('scheduleModal'), 50);
+});
+
+document.getElementById('breakForm')?.addEventListener('submit', function() {
+    const submitBtn = this.querySelector('button[type="submit"]');
+    if (submitBtn) {
+        submitBtn.style.pointerEvents = 'none';
+        submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Saving...';
+    }
+    setTimeout(() => closeModal('breakModal'), 50);
+});
 </script>
 <?php admin_close_page(); ?>
