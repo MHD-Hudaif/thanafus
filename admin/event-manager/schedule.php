@@ -1399,6 +1399,16 @@ function closeModal(id){document.getElementById(id)?.classList.remove('active')}
 document.querySelectorAll('[data-close]').forEach(btn => btn.addEventListener('click', () => closeModal(btn.dataset.close)));
 document.querySelectorAll('.modal-overlay').forEach(modal => modal.addEventListener('click', e => { if (e.target === modal) closeModal(modal.id); }));
 
+// Automatically close modal when submitting any form inside modal
+document.querySelectorAll('.modal-overlay form').forEach(form => {
+    form.addEventListener('submit', () => {
+        const modalOverlay = form.closest('.modal-overlay');
+        if (modalOverlay && modalOverlay.id) {
+            closeModal(modalOverlay.id);
+        }
+    });
+});
+
 // Click topbar "Add Extra Item" button
 document.getElementById('addNewExtraBtn')?.addEventListener('click', () => {
     document.getElementById('breakForm').reset();

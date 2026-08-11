@@ -137,6 +137,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $sectionDate !== '' ? $sectionDate : null,
                 $sortOrder
             ]);
+            admin_auto_assign_programs_to_sections($pdo, $activeEventId);
             admin_flash('success', 'Session added successfully.');
         } elseif ($action === 'update') {
             $sectionId = (int)($_POST['section_id'] ?? 0);
@@ -167,6 +168,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $sectionId,
                 $activeEventId
             ]);
+            admin_auto_assign_programs_to_sections($pdo, $activeEventId);
             admin_flash('success', 'Session updated successfully.');
         } elseif ($action === 'delete') {
             $sectionId = (int)($_POST['section_id'] ?? 0);
@@ -244,6 +246,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $flash = admin_take_flash();
+
+// Automatically auto-assign scheduled programs (main stage & offstage) to matching sections
+admin_auto_assign_programs_to_sections($pdo, $activeEventId);
 
 // Load all sessions
 $stmt = $pdo->prepare("
@@ -345,18 +350,6 @@ window.ALL_PROGRAMS = <?= json_encode($allProgramsPayload, JSON_HEX_APOS | JSON_
             <div class="page-subtitle">Map programs into Morning, Evening, and Night blocks for each day. Drag & drop to assign.</div>
         </div>
         <div class="flex gap-2" style="flex-wrap: wrap;">
-            <form method="POST" style="display:inline;" onsubmit="return confirm('Generating default sessions will replace existing configurations and auto-assign scheduled programs. Proceed?');">
-                <?= admin_csrf_field() ?>
-                <input type="hidden" name="action" value="generate_defaults">
-                <button type="submit" class="btn btn-secondary btn-md"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i> Generate Defaults</button>
-            </form>
-
-            <form method="POST" style="display:inline;">
-                <?= admin_csrf_field() ?>
-                <input type="hidden" name="action" value="auto_assign">
-                <button type="submit" class="btn btn-secondary btn-md"><i class="fa-solid fa-clock-rotate-left mr-1"></i> Auto-Assign by Time</button>
-            </form>
-
             <button class="btn btn-success btn-md" type="button" data-open-add><i class="fa-solid fa-plus mr-1"></i> Add Session</button>
         </div>
     </div>
@@ -744,6 +737,16 @@ window.ALL_PROGRAMS = <?= json_encode($allProgramsPayload, JSON_HEX_APOS | JSON_
     }
 
     document.querySelectorAll('.modal-overlay').forEach(modal => modal.addEventListener('click', e => { if (e.target === modal) closeModal(modal.id); }));
+
+    // Automatically close modal when submitting form inside modal (Save / Delete actions)
+    document.querySelectorAll('.modal-overlay form').forEach(form => {
+        form.addEventListener('submit', () => {
+            const modalOverlay = form.closest('.modal-overlay');
+            if (modalOverlay && modalOverlay.id) {
+                closeModal(modalOverlay.id);
+            }
+        });
+    });
 
     document.addEventListener('click', (e) => {
         const closeBtn = e.target.closest('[data-close]');
