@@ -12,7 +12,7 @@ $activeEventId = (int)$activeEvent['id'];
 function schedule_redirect(int $stageTypeId = 0): void
 {
     $query = $stageTypeId > 0 ? ['stage_id' => $stageTypeId] : [];
-    admin_redirect('/admin/event-manager/schedule.php', $query);
+    admin_redirect('/admin/event-manager/schedule', $query);
 }
 
 function schedule_program_datetime_columns(PDO $pdo): array
@@ -22,19 +22,16 @@ function schedule_program_datetime_columns(PDO $pdo): array
         return $columns;
     }
 
-    $stmt = $pdo->prepare("
-        SELECT column_name
-        FROM information_schema.columns
-        WHERE table_schema = DATABASE()
-          AND table_name = 'musabaqa_programs'
-    ");
-    $stmt->execute();
-    $available = $stmt->fetchAll(PDO::FETCH_COLUMN);
+    try {
+        $cols = $pdo->query("SHOW COLUMNS FROM musabaqa_programs")->fetchAll(PDO::FETCH_COLUMN);
+        $available = array_map('strtolower', $cols);
 
-    $start = in_array('start_datetime', $available, true) ? 'start_datetime' : 'start_time';
-    $end = in_array('end_datetime', $available, true) ? 'end_datetime' : 'end_time';
-
-    return $columns = [$start, $end];
+        $start = in_array('start_datetime', $available, true) ? 'start_datetime' : 'start_time';
+        $end = in_array('end_datetime', $available, true) ? 'end_datetime' : 'end_time';
+        return $columns = [$start, $end];
+    } catch (Throwable $e) {
+        return $columns = ['start_time', 'end_time'];
+    }
 }
 
 function schedule_load_program(PDO $pdo, int $eventId, int $programId): ?array
@@ -202,6 +199,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $startSql = $startDt->format('Y-m-d H:i:s');
             $endSql = $endDt->format('Y-m-d H:i:s');
 
+            // Always resolve column names (needed for UPDATE regardless of stage type)
+            [$startExpr, $endExpr] = schedule_program_datetime_columns($pdo);
+
             // Overlap check (Bypassed for Off Stage so programs can run concurrently)
             $stageStmt = $pdo->prepare("SELECT name FROM musabaqa_stage_types WHERE id = ?");
             $stageStmt->execute([$stageTypeId]);
@@ -209,7 +209,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $isOffStage = (stripos($stageName, 'off') !== false);
 
             if (!$isOffStage) {
-                [$startExpr, $endExpr] = schedule_program_datetime_columns($pdo);
                 $stmt = $pdo->prepare("
                     SELECT id
                     FROM musabaqa_programs
@@ -423,6 +422,19 @@ require_once __DIR__ . '/../../includes/header.php';
 require_once __DIR__ . '/../../includes/sidebar.php';
 ?>
 
+<style>
+.modal-box select,
+.modal-box option,
+.modal-box optgroup {
+    background-color: #0f172a !important;
+    color: #ffffff !important;
+}
+.modal-box optgroup {
+    color: #38bdf8 !important;
+    font-weight: 700;
+}
+</style>
+
 <div class="main-content">
     <div class="topbar" style="background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(255, 255, 255, 0.08); padding: 16px 24px; border-radius: 14px; margin-bottom: 20px;">
         <div style="display: flex; align-items: center; gap: 14px;">
@@ -435,7 +447,6 @@ require_once __DIR__ . '/../../includes/sidebar.php';
             </div>
         </div>
         <div class="flex gap-2" style="flex-wrap: wrap;">
-            <button class="btn btn-success btn-md" type="button" id="scheduleNewProgramBtn" style="border-radius: 10px; font-weight: 700; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.25);"><i class="fa-solid fa-plus mr-1"></i> Schedule Program</button>
             <button class="btn btn-warning btn-md" type="button" id="addNewExtraBtn" style="border-radius: 10px; font-weight: 700; background: linear-gradient(135deg, rgba(245,158,11,0.2), rgba(217,119,6,0.2)); color: #facc15; border: 1px solid rgba(245,158,11,0.35); box-shadow: 0 4px 14px rgba(245,158,11,0.15);"><i class="fa-solid fa-puzzle-piece mr-1"></i> Add Extra Item</button>
             <button class="btn btn-secondary btn-md" type="button" id="openUnscheduledModalBtn" style="border-radius: 10px; font-weight: 700; background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.1);"><i class="fa-solid fa-clock mr-1" style="color: var(--warning);"></i> Unscheduled (<span id="topbarUnscheduledBadge"><?= count($unscheduledPrograms) ?></span>)</button>
             <a href="<?= app_url('/admin/event-manager/programs.php') ?>" class="btn btn-secondary btn-md" style="border-radius: 10px; font-weight: 700; background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.1);"><i class="fa-solid fa-microphone-lines mr-1" style="color: #38bdf8;"></i> All Programs</a>
@@ -1167,9 +1178,16 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // HTML5 Drag and Drop for Unscheduled Programs
+let currentDraggedProgramData = null;
+
 document.querySelectorAll('.draggable-program-card[draggable="true"]').forEach(card => {
     card.addEventListener('dragstart', (e) => {
-        e.dataTransfer.setData('text/plain', card.dataset.programJson);
+        try {
+            currentDraggedProgramData = JSON.parse(card.dataset.programJson);
+        } catch(err) {
+            currentDraggedProgramData = null;
+        }
+        e.dataTransfer.setData('text/plain', card.dataset.programJson || '');
         card.style.opacity = '0.5';
     });
     card.addEventListener('dragend', () => {
@@ -1191,34 +1209,69 @@ document.querySelectorAll('.stage-panel-item').forEach(stagePanel => {
         e.preventDefault();
         stagePanel.style.borderColor = 'rgba(255,255,255,0.08)';
         stagePanel.style.background = 'rgba(15,23,42,0.4)';
-        try {
-            const p = JSON.parse(e.dataTransfer.getData('text/plain'));
-            setModalCreateMode();
-            
-            const stageId = stagePanel.dataset.stageId;
-            if (stageId) {
-                document.getElementById('scheduleStageTypeId').value = stageId;
-            }
-            filterModalProgramOptions();
-            
-            const selectEl = document.getElementById('scheduleProgramSelect');
-            selectEl.value = p.id;
-            if (p.location) {
-                document.getElementById('scheduleLocation').value = p.location;
-            }
-            
-            const lastEndAt = stagePanel.dataset.lastEndAt;
-            if (lastEndAt) {
-                document.getElementById('scheduleStartTime').value = toLocalDatetime(lastEndAt);
-            } else {
-                document.getElementById('scheduleStartTime').value = formatLocalDatetime(new Date());
-            }
-            
-            document.getElementById('scheduleDurationMinutes').value = '30';
-            updateScheduleEndTime();
-            
-            openModal('scheduleModal');
-        } catch(err) {}
+        
+        let p = currentDraggedProgramData;
+        if (!p) {
+            try {
+                const raw = e.dataTransfer.getData('text/plain');
+                if (raw) p = JSON.parse(raw);
+            } catch(err) {}
+        }
+        
+        if (!p || !p.id) {
+            return;
+        }
+
+        // Reset form cleanly
+        document.getElementById('scheduleForm').reset();
+        document.getElementById('scheduleModalTitle').textContent = 'Schedule Program';
+
+        const submitBtn = document.querySelector('#scheduleForm button[type="submit"]');
+        if (submitBtn) {
+            submitBtn.style.pointerEvents = '';
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = 'Save Schedule';
+        }
+
+        // Show static program display (no dropdown needed — user already picked via drag)
+        document.getElementById('modalProgramSelectGroup').style.display = 'none';
+        const selectEl = document.getElementById('scheduleProgramSelect');
+        selectEl.disabled = true;
+        selectEl.required = false;
+        selectEl.name = 'program_id_select_unused';
+
+        document.getElementById('modalProgramStaticGroup').style.display = '';
+        document.getElementById('scheduleProgramTitle').textContent = p.title || ('Program #' + p.id);
+        const hiddenEl = document.getElementById('scheduleProgramId');
+        hiddenEl.disabled = false;
+        hiddenEl.name = 'program_id';
+        hiddenEl.value = p.id;
+
+        // Set the stage from the drop target
+        const stageId = stagePanel.dataset.stageId;
+        if (stageId) {
+            document.getElementById('scheduleStageTypeId').value = stageId;
+        } else if (p.stage_type_id) {
+            document.getElementById('scheduleStageTypeId').value = p.stage_type_id;
+        }
+
+        // Set location from program data
+        if (p.location) {
+            document.getElementById('scheduleLocation').value = p.location;
+        }
+
+        // Set start time to the next available slot for this stage
+        const lastEndAt = stagePanel.dataset.lastEndAt;
+        if (lastEndAt) {
+            document.getElementById('scheduleStartTime').value = toLocalDatetime(lastEndAt);
+        } else {
+            document.getElementById('scheduleStartTime').value = formatLocalDatetime(new Date());
+        }
+
+        document.getElementById('scheduleDurationMinutes').value = '30';
+        updateScheduleEndTime();
+
+        openModal('scheduleModal');
     });
 });
 
@@ -1356,13 +1409,57 @@ document.querySelectorAll('[data-open-extra], [data-open-break]').forEach(button
     openModal('breakModal');
 }));
 
-// Auto-fill location when selecting a program in dropdown
+// Auto-fill location and venue stage when selecting a program in dropdown
 document.getElementById('scheduleProgramSelect')?.addEventListener('change', (e) => {
     const opt = e.target.options[e.target.selectedIndex];
-    if (opt && opt.dataset && opt.dataset.location !== undefined) {
-        document.getElementById('scheduleLocation').value = opt.dataset.location;
+    if (opt && opt.dataset) {
+        if (opt.dataset.location !== undefined && opt.dataset.location !== '') {
+            document.getElementById('scheduleLocation').value = opt.dataset.location;
+        }
+        if (opt.dataset.stageTypeId && Number(opt.dataset.stageTypeId) > 0) {
+            const stageSelect = document.getElementById('scheduleStageTypeId');
+            if (stageSelect && stageSelect.querySelector(`option[value="${opt.dataset.stageTypeId}"]`)) {
+                stageSelect.value = opt.dataset.stageTypeId;
+                applyNextAvailableSlotForStage();
+            }
+        }
     }
 });
+
+function applyNextAvailableSlotForStage() {
+    const stageSelect = document.getElementById('scheduleStageTypeId');
+    const stageId = stageSelect ? stageSelect.value : currentActiveStageId;
+    const stagePanel = document.querySelector(`.stage-panel-item[data-stage-id="${stageId}"]`);
+    
+    if (stagePanel && stagePanel.dataset.lastEndAt) {
+        document.getElementById('scheduleStartTime').value = toLocalDatetime(stagePanel.dataset.lastEndAt);
+    } else {
+        document.getElementById('scheduleStartTime').value = formatLocalDatetime(new Date());
+    }
+    document.getElementById('scheduleDurationMinutes').value = '30';
+    updateScheduleEndTime();
+}
+
+document.getElementById('scheduleUseNextSlotBtn')?.addEventListener('click', applyNextAvailableSlotForStage);
+document.getElementById('scheduleStageTypeId')?.addEventListener('change', () => {
+    filterModalProgramOptions();
+    applyNextAvailableSlotForStage();
+});
+
+function filterModalProgramOptions() {
+    const selectEl = document.getElementById('scheduleProgramSelect');
+    const stageSelect = document.getElementById('scheduleStageTypeId');
+    if (!selectEl || !stageSelect) return;
+    
+    const selectedStage = stageSelect.value;
+    const options = Array.from(selectEl.options);
+    
+    options.forEach(opt => {
+        if (!opt.value) return;
+        opt.disabled = false;
+        opt.style.display = '';
+    });
+}
 
 // Modal Form configurations (Toggles select dropdown vs static display)
 function setModalCreateMode() {
@@ -1432,6 +1529,10 @@ function setModalEditMode(p) {
 // 1. Click main button
 document.getElementById('scheduleNewProgramBtn')?.addEventListener('click', () => {
     setModalCreateMode();
+    const selectEl = document.getElementById('scheduleProgramSelect');
+    if (selectEl) {
+        selectEl.dispatchEvent(new Event('change'));
+    }
     applyNextAvailableSlotForStage();
     openModal('scheduleModal');
 });
@@ -1453,7 +1554,15 @@ document.querySelectorAll('[data-schedule-btn]').forEach(btn => btn.addEventList
     filterModalProgramOptions();
     
     const selectEl = document.getElementById('scheduleProgramSelect');
-    selectEl.value = p.id;
+    if (selectEl && p && p.id) {
+        const targetOpt = selectEl.querySelector(`option[value="${p.id}"]`);
+        if (targetOpt) {
+            targetOpt.disabled = false;
+            targetOpt.style.display = '';
+        }
+        selectEl.value = String(p.id);
+    }
+
     if (p.location) {
         document.getElementById('scheduleLocation').value = p.location;
     }
