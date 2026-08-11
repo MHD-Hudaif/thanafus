@@ -317,8 +317,22 @@ require_once __DIR__ . '/../../includes/sidebar.php';
 window.ALL_PROGRAMS = <?= json_encode($allProgramsPayload, JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
 </script>
 
-<link rel="stylesheet" href="<?= asset_url('css/musabaqa-categories.css') ?>">
-<script src="<?= asset_url('js/musabaqa-animated-bg.js') ?>"></script>
+<style>
+/* Force modals to always be viewport-fixed regardless of parent stacking context */
+.modal-overlay {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 100000 !important;
+    overflow-y: auto !important;
+    display: none;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 30px 16px;
+}
+.modal-overlay.active {
+    display: flex !important;
+}
+</style>
 
 
 <!-- Toast notification container -->
@@ -688,6 +702,15 @@ window.ALL_PROGRAMS = <?= json_encode($allProgramsPayload, JSON_HEX_APOS | JSON_
 
 <script>
 (() => {
+    // Move all modal overlays to <body> to escape any CSS stacking context trap
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('.modal-overlay').forEach(el => {
+            if (el.parentElement !== document.body) {
+                document.body.appendChild(el);
+            }
+        });
+    });
+
     // ----------------------------------------------------
     // Modal Helpers
     // ----------------------------------------------------
@@ -695,6 +718,7 @@ window.ALL_PROGRAMS = <?= json_encode($allProgramsPayload, JSON_HEX_APOS | JSON_
         const modal = document.getElementById(id);
         if (modal) {
             modal.classList.add('active');
+            modal.scrollTop = 0;
         }
         if (typeof window.openModal === 'function' && window.openModal !== openModal) {
             try {
