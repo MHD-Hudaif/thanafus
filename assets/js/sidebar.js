@@ -77,27 +77,34 @@
         }
 
         // 5. Setup Collapsed Mode Tooltips (hovering icons only)
-        document.querySelectorAll('.sidebar-vertical-link').forEach(link => {
-            link.addEventListener('mouseenter', function() {
-                // Only show tooltips if sidebar is collapsed on desktop, or in tablet viewport (width between 768px and 1024px)
-                const isTablet = (window.innerWidth >= 768 && window.innerWidth <= 1024);
-                if (isCollapsed() || isTablet) {
-                    const label = this.querySelector('.sidebar-label')?.textContent || '';
-                    if (!label) return;
+        const tooltipTargets = [
+            { selector: '.sidebar-vertical-link', getText: el => el.querySelector('.sidebar-label')?.textContent?.trim() },
+            { selector: '#sidebarSearchLauncher', getText: el => 'Search (Ctrl+K)' },
+            { selector: '.sidebar-event-panel', getText: el => el.querySelector('.sidebar-event-title')?.textContent?.trim() ? `Event: ${el.querySelector('.sidebar-event-title').textContent.trim()}` : 'Active Event' },
+            { selector: '.sidebar-user-panel', getText: el => el.querySelector('.sidebar-user-name')?.textContent?.trim() || 'User Profile' }
+        ];
 
-                    initTooltip();
-                    tooltipEl.textContent = label;
-                    tooltipEl.classList.add('visible');
+        tooltipTargets.forEach(target => {
+            document.querySelectorAll(target.selector).forEach(el => {
+                el.addEventListener('mouseenter', function() {
+                    const isTablet = (window.innerWidth >= 768 && window.innerWidth <= 1024);
+                    if (isCollapsed() || isTablet) {
+                        const label = target.getText(this);
+                        if (!label) return;
 
-                    // Position tooltip relative to hovered link bounding rectangle
-                    const rect = this.getBoundingClientRect();
-                    tooltipEl.style.top = `${rect.top + (rect.height - tooltipEl.offsetHeight) / 2}px`;
-                    tooltipEl.style.left = `${rect.right + 12}px`;
-                }
-            });
+                        initTooltip();
+                        tooltipEl.textContent = label;
+                        tooltipEl.classList.add('visible');
 
-            link.addEventListener('mouseleave', () => {
-                if (tooltipEl) tooltipEl.classList.remove('visible');
+                        const rect = this.getBoundingClientRect();
+                        tooltipEl.style.top = `${rect.top + (rect.height - tooltipEl.offsetHeight) / 2}px`;
+                        tooltipEl.style.left = `${rect.right + 12}px`;
+                    }
+                });
+
+                el.addEventListener('mouseleave', () => {
+                    if (tooltipEl) tooltipEl.classList.remove('visible');
+                });
             });
         });
 

@@ -570,6 +570,16 @@ function live_display_latest_score_update(?int $eventId = null): ?array
     ];
 }
 
+function live_display_score_reveal_event(?int $eventId = null): ?array
+{
+    $pdo = live_display_pdo();
+    $stmt = $pdo->prepare("SELECT setting_value FROM musabaqa_settings WHERE setting_key = 'live_score_reveal_event' LIMIT 1");
+    $stmt->execute();
+    $raw = $stmt->fetchColumn();
+
+    return $raw ? json_decode((string)$raw, true) : null;
+}
+
 function live_display_program_rows(int $eventId): array
 {
     if ($eventId <= 0) {
@@ -1223,6 +1233,7 @@ function live_display_bootstrap_data(): array
         'stats' => live_display_stats($eventId),
         'leaderboard' => live_display_leaderboard($eventId),
         'latest_score_update' => live_display_latest_score_update($eventId),
+        'score_reveal' => live_display_score_reveal_event($eventId),
         'current' => live_display_current_program($eventId),
         'schedule' => live_display_schedule($eventId),
         'winners' => live_display_winners($eventId),

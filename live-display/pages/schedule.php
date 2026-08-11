@@ -17,7 +17,7 @@ if (!defined('LIVE_DISPLAY_STAGE')) {
 // Fetch current leader info for dynamic background aura
 $leaderboard = tv_leaderboard((int)($event['id'] ?? 0));
 $firstTeam = !empty($leaderboard) ? $leaderboard[0] : null;
-$firstTeamColor = !empty($firstTeam['team_color']) ? live_display_color($firstTeam['team_color']) : '#10b981';
+$firstTeamColor = !empty($firstTeam['team_color']) ? live_display_color($firstTeam['team_color']) : '#6400a6';
 $firstTeamName = !empty($firstTeam['team_name']) ? $firstTeam['team_name'] : 'Leader';
 ?>
 <?php if (!defined('LIVE_DISPLAY_STAGE')): ?>
@@ -73,8 +73,8 @@ body:has(#slide-schedule.tv-slide--active) .tv-backdrop {
 
 .schedule-slide-container {
     --first-team-color: <?= e($firstTeamColor) ?>;
-    --current-neon: #10b981;
-    --panel-glow: rgba(16, 185, 129, 0.12);
+    --current-neon: var(--first-team-color, #6400a6);
+    --panel-glow: color-mix(in srgb, var(--first-team-color, #6400a6) 12%, transparent);
     width: 100%;
     max-width: 1650px;
     height: 100vh;
@@ -94,8 +94,8 @@ body:has(#slide-schedule.tv-slide--active) .tv-backdrop {
     pointer-events: none;
     z-index: 0;
     background: 
-        radial-gradient(circle at 18% 25%, color-mix(in srgb, var(--first-team-color, #10b981) 22%, transparent) 0%, transparent 55%),
-        radial-gradient(circle at 82% 75%, color-mix(in srgb, var(--first-team-color, #10b981) 14%, transparent) 0%, transparent 48%);
+        radial-gradient(circle at 18% 25%, color-mix(in srgb, var(--first-team-color, #6400a6) 22%, transparent) 0%, transparent 55%),
+        radial-gradient(circle at 82% 75%, color-mix(in srgb, var(--first-team-color, #6400a6) 14%, transparent) 0%, transparent 48%);
     animation: ambient-pulse 12s ease-in-out infinite alternate;
 }
 
@@ -237,19 +237,17 @@ body:has(#slide-schedule.tv-slide--active) .tv-backdrop {
     height: 60px;
     background: rgba(15, 23, 42, 0.04);
     border-bottom: 1.5px solid rgba(15, 23, 42, 0.08);
-    padding: 0 40px;
-    box-sizing: border-box;
-}
-
-.tv-schedule-board-head span {
+    grid-template-columns: 80px 220px 1fr 240px;
+    padding: 16px 36px;
+    background: rgba(241, 245, 249, 0.7);
+    border-bottom: 2px solid color-mix(in srgb, var(--first-team-color, #6400a6) 30%, transparent);
     font-size: 14px;
     font-weight: 900;
+    color: #64748b;
+    letter-spacing: 0.1em;
     text-transform: uppercase;
-    letter-spacing: 0.15em;
-    color: #475569;
 }
 
-/* Table Body rows list */
 .tv-schedule-page {
     display: flex;
     flex-direction: column;
@@ -257,15 +255,11 @@ body:has(#slide-schedule.tv-slide--active) .tv-backdrop {
 
 .tv-schedule-row {
     display: grid;
-    grid-template-columns: 90px 180px minmax(0, 1fr) 280px;
+    grid-template-columns: 80px 220px 1fr 240px;
     align-items: center;
-    min-height: 84px;
-    padding: 12px 40px;
-    box-sizing: border-box;
-    border-bottom: 1px solid rgba(15, 23, 42, 0.06);
-    background: transparent;
-    transition: background 0.3s ease, border-left-color 0.3s ease, box-shadow 0.3s ease;
-    border-left: 6px solid transparent;
+    padding: 16px 36px;
+    border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+    transition: background 0.25s ease;
 }
 
 .tv-schedule-row:last-child {
@@ -274,18 +268,18 @@ body:has(#slide-schedule.tv-slide--active) .tv-backdrop {
 
 /* Highlight Active Running Program */
 .tv-schedule-row.is-running-program {
-    background: rgba(16, 185, 129, 0.09) !important;
-    border-left: 8px solid #10b981 !important;
-    box-shadow: inset 0 0 24px rgba(16, 185, 129, 0.06);
+    background: color-mix(in srgb, var(--first-team-color, #6400a6) 10%, transparent) !important;
+    border-left: 8px solid var(--first-team-color, #6400a6) !important;
+    box-shadow: inset 0 0 24px color-mix(in srgb, var(--first-team-color, #6400a6) 8%, transparent);
 }
 
 .tv-schedule-row.is-running-program .tv-schedule-row-num {
-    color: #10b981;
+    color: var(--first-team-color, #6400a6);
     font-weight: 900;
 }
 
 .tv-schedule-row.is-running-program .tv-schedule-row-program strong {
-    color: #047857;
+    color: var(--first-team-color, #6400a6);
 }
 
 .tv-schedule-row.is-break {
@@ -293,47 +287,13 @@ body:has(#slide-schedule.tv-slide--active) .tv-backdrop {
     border-left: 6px solid #f59e0b !important;
 }
 
-.tv-schedule-row-num {
-    font-size: 20px;
-    font-weight: 900;
-    color: #64748b;
-    font-family: 'Plus Jakarta Sans', monospace;
-}
-
-.tv-schedule-row-time {
-    font-size: 24px;
-    font-weight: 900;
-    color: #0f172a;
-    font-family: 'Plus Jakarta Sans', sans-serif;
-    font-variant-numeric: tabular-nums;
-}
-
-.tv-schedule-row-program {
-    display: flex;
-    align-items: center;
-    min-width: 0;
-    gap: 12px;
-}
-
-.tv-schedule-row-program strong {
-    font-size: 28px;
-    font-weight: 900;
-    color: #0f172a;
-    text-transform: uppercase;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-family: 'Plus Jakarta Sans', 'Cairo', sans-serif;
-    letter-spacing: -0.01em;
-}
-
 .tv-schedule-row-live-badge {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    background: rgba(16, 185, 129, 0.15);
-    border: 1px solid rgba(16, 185, 129, 0.4);
-    color: #047857;
+    background: color-mix(in srgb, var(--first-team-color, #6400a6) 18%, transparent);
+    border: 1px solid color-mix(in srgb, var(--first-team-color, #6400a6) 45%, transparent);
+    color: var(--first-team-color, #6400a6);
     font-size: 11px;
     font-weight: 900;
     padding: 3px 10px;
@@ -347,8 +307,8 @@ body:has(#slide-schedule.tv-slide--active) .tv-backdrop {
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background: #10b981;
-    box-shadow: 0 0 8px #10b981;
+    background: var(--first-team-color, #6400a6);
+    box-shadow: 0 0 8px var(--first-team-color, #6400a6);
     animation: live-pulse-dot 1.4s ease-in-out infinite alternate;
 }
 
@@ -384,14 +344,14 @@ body:has(#slide-schedule.tv-slide--active) .tv-backdrop {
     <!-- Dynamic 1st Rank Team Geometric Chevron Vectors -->
     <svg class="side-chevrons-svg full-screen" viewBox="0 0 1920 1080" preserveAspectRatio="none" fill="none" xmlns="http://www.w3.org/2000/svg">
         <g class="animated-chevron-group">
-            <path class="animated-dash-line" d="M-100 1200 L650 540 L-100 -100" stroke="var(--first-team-color, #10b981)" stroke-width="3" stroke-linecap="round" />
-            <path class="animated-dash-line" d="M-150 1050 L480 540 L-150 30" stroke="var(--first-team-color, #10b981)" stroke-width="2" opacity="0.8" stroke-linecap="round" />
-            <line class="animated-cross-line" x1="200" y1="900" x2="420" y2="680" stroke="var(--first-team-color, #10b981)" stroke-width="2" opacity="0.75" />
-            <line class="animated-cross-line" x1="320" y1="780" x2="540" y2="560" stroke="var(--first-team-color, #10b981)" stroke-width="2" opacity="0.75" />
+            <path class="animated-dash-line" d="M-100 1200 L650 540 L-100 -100" stroke="var(--first-team-color)" stroke-width="3" stroke-linecap="round" />
+            <path class="animated-dash-line" d="M-150 1050 L480 540 L-150 30" stroke="var(--first-team-color)" stroke-width="2" opacity="0.8" stroke-linecap="round" />
+            <line class="animated-cross-line" x1="200" y1="900" x2="420" y2="680" stroke="var(--first-team-color)" stroke-width="2" opacity="0.75" />
+            <line class="animated-cross-line" x1="320" y1="780" x2="540" y2="560" stroke="var(--first-team-color)" stroke-width="2" opacity="0.75" />
 
-            <path class="animated-dash-line" d="M2020 1200 L1270 540 L2020 -100" stroke="var(--first-team-color, #10b981)" stroke-width="3" stroke-linecap="round" />
-            <path class="animated-dash-line" d="M2070 1050 L1440 540 L2070 30" stroke="var(--first-team-color, #10b981)" stroke-width="2" opacity="0.8" stroke-linecap="round" />
-            <line class="animated-cross-line" x1="1720" y1="900" x2="1500" y2="680" stroke="var(--first-team-color, #10b981)" stroke-width="2" opacity="0.75" />
+            <path class="animated-dash-line" d="M2020 1200 L1270 540 L2020 -100" stroke="var(--first-team-color)" stroke-width="3" stroke-linecap="round" />
+            <path class="animated-dash-line" d="M2070 1050 L1440 540 L2070 30" stroke="var(--first-team-color)" stroke-width="2" opacity="0.8" stroke-linecap="round" />
+            <line class="animated-cross-line" x1="1720" y1="900" x2="1500" y2="680" stroke="var(--first-team-color)" stroke-width="2" opacity="0.75" />
         </g>
     </svg>
 

@@ -13,7 +13,8 @@ window.TV_BOOT = {
         current:       <?= json_encode(app_url('/live-display/api/current-program.php'),  JSON_UNESCAPED_SLASHES) ?>,
         schedule:      <?= json_encode(app_url('/live-display/api/schedule.php'),         JSON_UNESCAPED_SLASHES) ?>,
         winners:       <?= json_encode(app_url('/live-display/api/winners.php'),          JSON_UNESCAPED_SLASHES) ?>,
-        announcements: <?= json_encode(app_url('/live-display/api/announcements.php'),    JSON_UNESCAPED_SLASHES) ?>
+        announcements: <?= json_encode(app_url('/live-display/api/announcements.php'),    JSON_UNESCAPED_SLASHES) ?>,
+        score_reveal:  <?= json_encode(app_url('/live-display/api/score-update-event.php'), JSON_UNESCAPED_SLASHES) ?>
     },
     initial: <?= json_encode($tvBootstrapData ?? tv_bootstrap_data(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>
 };

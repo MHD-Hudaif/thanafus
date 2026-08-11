@@ -453,9 +453,15 @@
             </div>
         ` : '';
 
-        // Top team color for ambient aura
-        const firstTeamColor = teams[0]?.team_color || '#10b981';
+        // Top team color for ambient background lines & aura
+        const rawTopColor = teams[0]?.team_color || '#6400a6';
+        const firstTeamColor = rawTopColor.startsWith('#') ? rawTopColor : (colorMap[rawTopColor.toLowerCase()] || rawTopColor);
         document.documentElement.style.setProperty('--first-team-color', firstTeamColor);
+        document.documentElement.style.setProperty('--top-team-color', firstTeamColor);
+        if (container) {
+            container.style.setProperty('--first-team-color', firstTeamColor);
+            container.style.setProperty('--top-team-color', firstTeamColor);
+        }
 
         container.className = 'tv-leaderboard-stage-root';
         container.innerHTML = `
@@ -473,14 +479,14 @@
             <!-- Dynamic Geometric Chevron Vectors -->
             <svg class="side-chevrons-svg full-screen" viewBox="0 0 1920 1080" preserveAspectRatio="none" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <g class="animated-chevron-group">
-                    <path class="animated-dash-line" d="M-100 1200 L650 540 L-100 -100" stroke="#cbd5e1" stroke-width="3" stroke-linecap="round" />
-                    <path class="animated-dash-line" d="M-150 1050 L480 540 L-150 30" stroke="#cbd5e1" stroke-width="2" opacity="0.8" stroke-linecap="round" />
-                    <line class="animated-cross-line" x1="200" y1="900" x2="420" y2="680" stroke="#cbd5e1" stroke-width="2" opacity="0.75" />
-                    <line class="animated-cross-line" x1="320" y1="780" x2="540" y2="560" stroke="#cbd5e1" stroke-width="2" opacity="0.75" />
+                    <path class="animated-dash-line" d="M-100 1200 L650 540 L-100 -100" stroke="var(--first-team-color, ${firstTeamColor})" stroke-width="3" stroke-linecap="round" />
+                    <path class="animated-dash-line" d="M-150 1050 L480 540 L-150 30" stroke="var(--first-team-color, ${firstTeamColor})" stroke-width="2" opacity="0.8" stroke-linecap="round" />
+                    <line class="animated-cross-line" x1="200" y1="900" x2="420" y2="680" stroke="var(--first-team-color, ${firstTeamColor})" stroke-width="2" opacity="0.75" />
+                    <line class="animated-cross-line" x1="320" y1="780" x2="540" y2="560" stroke="var(--first-team-color, ${firstTeamColor})" stroke-width="2" opacity="0.75" />
 
-                    <path class="animated-dash-line" d="M2020 1200 L1270 540 L2020 -100" stroke="#cbd5e1" stroke-width="3" stroke-linecap="round" />
-                    <path class="animated-dash-line" d="M2070 1050 L1440 540 L2070 30" stroke="#cbd5e1" stroke-width="2" opacity="0.8" stroke-linecap="round" />
-                    <line class="animated-cross-line" x1="1720" y1="900" x2="1500" y2="680" stroke="#cbd5e1" stroke-width="2" opacity="0.75" />
+                    <path class="animated-dash-line" d="M2020 1200 L1270 540 L2020 -100" stroke="var(--first-team-color, ${firstTeamColor})" stroke-width="3" stroke-linecap="round" />
+                    <path class="animated-dash-line" d="M2070 1050 L1440 540 L2070 30" stroke="var(--first-team-color, ${firstTeamColor})" stroke-width="2" opacity="0.8" stroke-linecap="round" />
+                    <line class="animated-cross-line" x1="1720" y1="900" x2="1500" y2="680" stroke="var(--first-team-color, ${firstTeamColor})" stroke-width="2" opacity="0.75" />
                 </g>
             </svg>
 
@@ -698,8 +704,8 @@
                 <div class="tv-schedule-board">
                     <svg class="card-chevrons-svg" viewBox="0 0 800 500" preserveAspectRatio="none" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <g class="animated-card-group">
-                            <path class="animated-dash-line" d="M-50 480 L350 80 L-50 -320" stroke="var(--first-team-color, #10b981)" stroke-width="2.5" opacity="0.4" stroke-linecap="round"/>
-                            <path class="animated-dash-line" d="M850 480 L450 80 L850 -320" stroke="var(--first-team-color, #10b981)" stroke-width="2.5" opacity="0.4" stroke-linecap="round"/>
+                            <path class="animated-dash-line" d="M-50 480 L350 80 L-50 -320" stroke="var(--first-team-color, #6400a6)" stroke-width="2.5" opacity="0.4" stroke-linecap="round"/>
+                            <path class="animated-dash-line" d="M850 480 L450 80 L850 -320" stroke="var(--first-team-color, #6400a6)" stroke-width="2.5" opacity="0.4" stroke-linecap="round"/>
                         </g>
                     </svg>
                     <div class="tv-schedule-board-head" style="position: relative; z-index: 2;">
@@ -805,7 +811,7 @@
 
                 if (isCurrentRunning) {
                     rowClasses.push('is-running-program');
-                    rowAccent = '#10b981';
+                    rowAccent = state.leaderboardData?.[0]?.team_color || '#6400a6';
                 } else if (isBreak) {
                     rowClasses.push('is-break');
                     rowAccent = '#f59e0b';
@@ -978,6 +984,341 @@
         }
     }
 
+    // ----------------------------------------------------
+    // Web Audio Synthesizer for Countdown & Celebration
+    // ----------------------------------------------------
+    function playTone(freq = 440, type = 'sine', duration = 0.15, gainVal = 0.1) {
+        try {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (!AudioCtx) return;
+            if (!window.tvAudioCtx) {
+                window.tvAudioCtx = new AudioCtx();
+            }
+            if (window.tvAudioCtx.state === 'suspended') {
+                window.tvAudioCtx.resume();
+            }
+            const osc = window.tvAudioCtx.createOscillator();
+            const gain = window.tvAudioCtx.createGain();
+            osc.type = type;
+            osc.frequency.value = freq;
+            gain.gain.setValueAtTime(gainVal, window.tvAudioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.0001, window.tvAudioCtx.currentTime + duration);
+            osc.connect(gain);
+            gain.connect(window.tvAudioCtx.destination);
+            osc.start();
+            osc.stop(window.tvAudioCtx.currentTime + duration);
+        } catch (_) {}
+    }
+
+    function playCelebrationFanfare() {
+        setTimeout(() => playTone(523.25, 'triangle', 0.25, 0.15), 0);   // C5
+        setTimeout(() => playTone(659.25, 'triangle', 0.25, 0.15), 200); // E5
+        setTimeout(() => playTone(783.99, 'triangle', 0.45, 0.25), 400); // G5
+        setTimeout(() => playTone(1046.50, 'triangle', 0.6, 0.3), 700);  // C6
+    }
+
+    // ----------------------------------------------------
+    // 3-Phase Score Update Reveal Overlay Controller
+    // ----------------------------------------------------
+    let activeRevealTimer = null;
+    let isScoreRevealActive = false;
+
+    function checkScoreRevealEvent(revealData) {
+        if (!revealData || !revealData.timestamp || isScoreRevealActive) return;
+
+        const storedTs = Number(sessionStorage.getItem('last_score_reveal_ts') || window.LAST_REVEALED_TS || 0);
+        if (revealData.timestamp > storedTs) {
+            sessionStorage.setItem('last_score_reveal_ts', String(revealData.timestamp));
+            window.LAST_REVEALED_TS = revealData.timestamp;
+            launchScoreUpdateReveal(revealData);
+        }
+    }
+
+    function launchScoreUpdateReveal(reveal) {
+        isScoreRevealActive = true;
+        state.isCelebrating = true;
+        stopSlideTimer();
+        stopScheduleTimer();
+
+        let overlay = document.getElementById('scoreRevealOverlay');
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.id = 'scoreRevealOverlay';
+            overlay.className = 'score-reveal-overlay';
+            document.body.appendChild(overlay);
+        }
+
+        let countdownSec = 10;
+        const totalCircumference = 283;
+
+        // Shuffle teams randomly for phase 2 reveal
+        const originalTeams = Array.isArray(reveal.teams) ? reveal.teams : [];
+        const randomTeams = [...originalTeams].sort(() => Math.random() - 0.5);
+
+        // Programs list included in this update
+        const programsList = Array.isArray(reveal.programs) && reveal.programs.length > 0 
+            ? reveal.programs 
+            : [{ title: reveal.program_title || 'Updated Program', category_name: reveal.category_name || '' }];
+
+        const programCountLabel = programsList.length > 1 
+            ? `${programsList.length} UPDATED PROGRAMS APPROVED` 
+            : 'NEW PROGRAM SCORES APPROVED';
+
+        // Render Phase 1 HTML: 10-Second Suspense Countdown with List of Included Programs
+        overlay.innerHTML = `
+            <button type="button" class="reveal-close-btn" id="btnCloseReveal"><i class="fa-solid fa-xmark mr-1"></i> Close</button>
+            <div class="reveal-header-badge">
+                <span class="pulse-dot-red"></span> ${escapeHtml(programCountLabel)}
+            </div>
+            <h1 class="reveal-title">SCORE REVEAL & UPDATE</h1>
+            
+            <div class="reveal-programs-list">
+                ${programsList.map(p => `
+                    <div class="reveal-program-chip">
+                        <i class="fa-solid fa-trophy" style="color: #f59e0b;"></i>
+                        <span>${escapeHtml(p.title)}</span>
+                        ${p.category_name ? `<small>(${escapeHtml(p.category_name)})</small>` : ''}
+                    </div>
+                `).join('')}
+            </div>
+
+            <div class="reveal-countdown-box" id="revealCountdownBox">
+                <svg viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r="45" class="reveal-circle-bg"></circle>
+                    <circle cx="50" cy="50" r="45" class="reveal-circle-progress" id="revealProgressCircle"></circle>
+                </svg>
+                <div class="reveal-countdown-num" id="revealCountdownNum">10</div>
+            </div>
+            
+            <div style="font-size: 15px; font-weight: 800; color: #64748b; letter-spacing: 2px; text-transform: uppercase;" id="revealStatusText">
+                STAND BY FOR UPDATED TEAM SCORES...
+            </div>
+        `;
+
+        requestAnimationFrame(() => overlay.classList.add('is-active'));
+
+        document.getElementById('btnCloseReveal')?.addEventListener('click', closeScoreRevealOverlay);
+
+        // Start 10-Second Countdown Timer
+        const countInterval = setInterval(() => {
+            countdownSec--;
+            const numEl = document.getElementById('revealCountdownNum');
+            const circleEl = document.getElementById('revealProgressCircle');
+
+            if (numEl) {
+                numEl.textContent = countdownSec;
+                numEl.style.animation = 'none';
+                void numEl.offsetWidth; // trigger reflow
+                numEl.style.animation = 'countdown-pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+            }
+
+            if (circleEl) {
+                const offset = totalCircumference * (1 - (countdownSec / 10));
+                circleEl.style.strokeDashoffset = String(offset);
+                if (countdownSec <= 3) {
+                    circleEl.style.stroke = '#ef4444';
+                }
+            }
+
+            if (countdownSec > 0) {
+                playTone(countdownSec <= 3 ? 880 : 580, 'sine', 0.1, 0.12);
+            } else {
+                clearInterval(countInterval);
+                playTone(1100, 'triangle', 0.4, 0.25);
+                // Transition to Team Scores Reveal (Shows points gained per team from this list of programs)
+                startPhase2TeamReveal(overlay, reveal, randomTeams, programsList);
+            }
+        }, 1000);
+    }
+
+    function startPhase2TeamReveal(overlay, reveal, randomTeams, programsList) {
+        const titleEl = overlay.querySelector('.reveal-title');
+        const countBox = document.getElementById('revealCountdownBox');
+        const statusText = document.getElementById('revealStatusText');
+
+        if (titleEl) titleEl.textContent = 'UPDATED TEAM STANDINGS';
+        if (statusText) statusText.textContent = 'REVEALING UPDATED TEAM SCORES...';
+
+        if (countBox) countBox.style.display = 'none';
+
+        // Sort teams by total score for final ranking display
+        const sortedTeams = [...randomTeams].sort((a, b) => (Number(b.total_score) || 0) - (Number(a.total_score) || 0));
+        const highestGainer = [...randomTeams].sort((a, b) => (Number(b.program_points) || 0) - (Number(a.program_points) || 0))[0];
+
+        // Build Team Cards HTML
+        const gridHtml = `
+            <div class="reveal-teams-grid" id="revealTeamsGrid">
+                ${randomTeams.map((t, idx) => {
+                    const gainedPts = Number(t.program_points || 0);
+                    const breakdownEntries = t.breakdown && typeof t.breakdown === 'object' ? Object.entries(t.breakdown) : [];
+                    return `
+                        <div class="reveal-team-card reveal-card-stagger" data-team-id="${t.id}" style="animation-delay: ${idx * 0.15}s;">
+                            <div class="reveal-team-header">
+                                ${colorDot(t.team_color)} ${escapeHtml(t.team_name)}
+                            </div>
+                            <div class="reveal-team-score" data-target-score="${t.total_score}">0</div>
+                            <div style="margin-top: 6px;">
+                                ${gainedPts > 0 
+                                    ? `<span class="reveal-gained-pts-badge"><i class="fa-solid fa-arrow-up-right mr-1"></i> +${gainedPts} Pts Total Gained</span>`
+                                    : `<span style="font-size: 12px; font-weight: 700; color: #94a3b8;">No Points Added</span>`
+                                }
+                            </div>
+                            ${breakdownEntries.length > 0 ? `
+                                <div class="reveal-breakdown-box">
+                                    ${breakdownEntries.map(([pTitle, pPts]) => `
+                                        <div class="reveal-breakdown-item">
+                                            <span>${escapeHtml(pTitle)}</span>
+                                            <strong>+${pPts}</strong>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+            
+            <div style="margin-top: 28px; text-align: center;" id="revealDoneContainer">
+                <button type="button" class="btn btn-primary btn-md" id="btnDoneReveal" style="padding: 12px 40px; border-radius: 999px; font-weight: 800; font-size: 15px; background: linear-gradient(135deg, #4f46e5, #3b82f6); color: #fff; border: none; box-shadow: 0 8px 24px rgba(79, 70, 229, 0.35); cursor: pointer; transition: all 0.2s ease;">
+                    Done & Return to Live Display
+                </button>
+            </div>
+        `;
+
+        const existingGrid = overlay.querySelector('.reveal-teams-grid');
+        if (existingGrid) existingGrid.remove();
+        const existingDone = document.getElementById('revealDoneContainer');
+        if (existingDone) existingDone.remove();
+
+        overlay.insertAdjacentHTML('beforeend', gridHtml);
+        document.getElementById('btnDoneReveal')?.addEventListener('click', closeScoreRevealOverlay);
+
+        // Stage 1: Slot Counter Roll Animation for Scores (0s - 4.5s)
+        overlay.querySelectorAll('.reveal-team-score').forEach(el => {
+            const target = Number(el.dataset.targetScore || 0);
+            let current = 0;
+            const step = Math.max(1, target / 40);
+            const rollTimer = setInterval(() => {
+                current += step;
+                if (current >= target) {
+                    current = target;
+                    clearInterval(rollTimer);
+                }
+                el.textContent = Math.round(current);
+            }, 50);
+        });
+
+        // Stage 2: Highlight Points Gainers (At 5.0 seconds)
+        setTimeout(() => {
+            if (statusText) statusText.textContent = '⚡ HIGHLIGHTING PROGRAM SCORE GAINS...';
+            
+            if (highestGainer && Number(highestGainer.program_points || 0) > 0) {
+                const gainerCard = overlay.querySelector(`.reveal-team-card[data-team-id="${highestGainer.id}"]`);
+                if (gainerCard) {
+                    gainerCard.classList.add('is-highest-gainer');
+                    gainerCard.insertAdjacentHTML('afterbegin', `<div class="reveal-top-gainer-badge"><i class="fa-solid fa-bolt mr-1"></i> TOP POINTS GAINER (+${highestGainer.program_points} PTS)</div>`);
+                    playTone(784, 'triangle', 0.2, 0.15);
+                }
+            }
+
+            // Stage 3: Grand Coronation of #1 Overall Rank Leader (At 10.0 seconds)
+            setTimeout(() => {
+                if (statusText) statusText.textContent = '👑 ANNOUNCING OVERALL LEADERBOARD CHAMPION...';
+
+                const topTeam = reveal.top_team || sortedTeams[0];
+                if (topTeam) {
+                    const topCard = overlay.querySelector(`.reveal-team-card[data-team-id="${topTeam.id}"]`);
+                    if (topCard) {
+                        topCard.classList.add('is-top-rank');
+                        topCard.insertAdjacentHTML('afterbegin', `<div class="reveal-rank1-banner">👑 OVERALL RANK #1 LEADER</div>`);
+                        playCelebrationFanfare();
+                    }
+                }
+
+                // Stage 4: Showcase Complete & Final Status (At 15.0 seconds)
+                setTimeout(() => {
+                    if (statusText) statusText.textContent = '🎉 SCORE REVEAL COMPLETE · LEADERBOARD UPDATED';
+                }, 5000);
+
+            }, 5000);
+
+        }, 5000);
+
+        // Auto-close overlay after 20 seconds
+        activeRevealTimer = setTimeout(() => {
+            closeScoreRevealOverlay();
+        }, 20000);
+    }
+
+    function startPhase3ProgramBreakdown(overlay, reveal) {
+        const titleEl = overlay.querySelector('.reveal-title');
+        const statusText = document.getElementById('revealStatusText');
+        const teamsGrid = overlay.querySelector('.reveal-teams-grid');
+
+        if (titleEl) titleEl.textContent = 'PROGRAM MARKS & WINNERS';
+        if (statusText) statusText.style.display = 'none';
+        if (teamsGrid) teamsGrid.style.display = 'none';
+
+        const entries = Array.isArray(reveal.entries) ? reveal.entries : [];
+
+        const winnersHtml = `
+            <div class="reveal-winners-container">
+                <div class="reveal-winners-grid">
+                    ${entries.map((e) => {
+                        const rank = Number(e.final_rank || 0);
+                        const badge = rank === 1 ? '🥇 1st Rank' : (rank === 2 ? '🥈 2nd Rank' : (rank === 3 ? '🥉 3rd Rank' : `⭐ Rank ${rank} (+3 Bonus)`));
+                        return `
+                            <div class="reveal-winner-card">
+                                <div>
+                                    <div style="font-size: 11px; font-weight: 800; color: #38bdf8; text-transform: uppercase;">${badge}</div>
+                                    <div style="font-size: 16px; font-weight: 800; color: #fff; margin: 2px 0;">${escapeHtml(e.entry_name)}</div>
+                                    <div style="font-size: 12px; color: rgba(255,255,255,0.7); display: flex; align-items: center; gap: 6px;">
+                                        ${colorDot(e.team_color)} ${escapeHtml(e.team_name)} ${e.entry_number ? `&bull; Chest #${escapeHtml(e.entry_number)}` : ''}
+                                    </div>
+                                </div>
+                                <div style="text-align: right;">
+                                    <div style="font-size: 18px; font-weight: 900; color: #10b981;">+${e.team_score} Pts</div>
+                                    <div style="font-size: 11px; color: rgba(255,255,255,0.6);">${Number(e.final_score).toFixed(2)} Marks</div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+
+                <div style="margin-top: 24px; text-align: center;">
+                    <button type="button" class="btn btn-primary btn-md" id="btnDoneReveal" style="padding: 10px 30px; border-radius: 999px; font-weight: 800; font-size: 14px;">
+                        Done & Return to Live Display
+                    </button>
+                </div>
+            </div>
+        `;
+
+        overlay.insertAdjacentHTML('beforeend', winnersHtml);
+
+        document.getElementById('btnDoneReveal')?.addEventListener('click', closeScoreRevealOverlay);
+
+        // Auto-close overlay after 16 seconds
+        activeRevealTimer = setTimeout(() => {
+            closeScoreRevealOverlay();
+        }, 16000);
+    }
+
+    function closeScoreRevealOverlay() {
+        if (activeRevealTimer) clearTimeout(activeRevealTimer);
+        const overlay = document.getElementById('scoreRevealOverlay');
+        if (overlay) {
+            overlay.classList.remove('is-active');
+            setTimeout(() => {
+                overlay.remove();
+                isScoreRevealActive = false;
+                state.isCelebrating = false;
+                if (state.mode === 'auto') {
+                    startRotation();
+                }
+            }, 500);
+        }
+    }
+
     function applyBootstrap(data) {
         if (!data) return;
 
@@ -1037,6 +1378,7 @@
         if (data.leaderboard) renderLeaderboard(data.leaderboard);
         if (data.current)     renderCurrent(data.current);
         if (data.schedule)    renderSchedule(data.schedule);
+        if (data.score_reveal) checkScoreRevealEvent(data.score_reveal);
 
         // Control slideshow flow based on mode settings
         if (state.mode === 'manual') {

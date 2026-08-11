@@ -81,6 +81,8 @@ function get_musabaqa_settings($pdo) {
         'first_place_points' => 10,
         'second_place_points' => 7,
         'third_place_points' => 5,
+        'grade_85_plus_bonus_points' => 3,
+        'grade_85_plus_threshold' => 85,
         'tied_rank_mode' => 'shared_full',
         'active_sections' => [],
         'section_limits' => []
@@ -270,6 +272,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $firstPlacePoints = max(0, min(1000, (int)($_POST['first_place_points'] ?? 10)));
         $secondPlacePoints = max(0, min(1000, (int)($_POST['second_place_points'] ?? 7)));
         $thirdPlacePoints = max(0, min(1000, (int)($_POST['third_place_points'] ?? 5)));
+        $grade85BonusPoints = max(0, min(100, (int)($_POST['grade_85_plus_bonus_points'] ?? 3)));
+        $grade85Threshold = max(0, min(100, (int)($_POST['grade_85_plus_threshold'] ?? 85)));
         $tiedRankMode = isset($_POST['tied_rank_mode']) && in_array($_POST['tied_rank_mode'], ['shared_full', 'shared_split', 'shared_sequential', 'tie_breaker'], true)
             ? $_POST['tied_rank_mode']
             : ($settings['tied_rank_mode'] ?? 'shared_full');
@@ -295,6 +299,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'first_place_points' => $firstPlacePoints,
             'second_place_points' => $secondPlacePoints,
             'third_place_points' => $thirdPlacePoints,
+            'grade_85_plus_bonus_points' => $grade85BonusPoints,
+            'grade_85_plus_threshold' => $grade85Threshold,
             'tied_rank_mode' => $tiedRankMode,
             'active_sections' => $activeSections,
             'section_limits' => $sectionLimits,
@@ -506,6 +512,23 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                 <button type="button" class="stepper-btn btn-step-down" data-target="thirdPlacePoints"><i class="fa-solid fa-minus"></i></button>
                                 <input type="number" name="third_place_points" id="thirdPlacePoints" value="<?= (int)($settings['third_place_points'] ?? 5) ?>" min="0" max="1000" required>
                                 <button type="button" class="stepper-btn btn-step-up" data-target="thirdPlacePoints"><i class="fa-solid fa-plus"></i></button>
+                            </div>
+                        </div>
+
+                        <!-- Card 4: 85+ Marks Extra Bonus Points -->
+                        <div class="setting-card-v2">
+                            <div>
+                                <div class="setting-card-icon">
+                                    <i class="fa-solid fa-star" style="color: #10b981;"></i>
+                                </div>
+                                <strong style="font-size: 16px; color: #fff; display: block;">85+ Marks Bonus Points</strong>
+                                <span style="font-size: 12.5px; color: var(--muted); display: block; margin-top: 4px;">Extra points awarded to team for scoring 85+ marks in mark-based programs.</span>
+                            </div>
+                            
+                            <div class="number-stepper">
+                                <button type="button" class="stepper-btn btn-step-down" data-target="grade85PlusBonusPoints"><i class="fa-solid fa-minus"></i></button>
+                                <input type="number" name="grade_85_plus_bonus_points" id="grade85PlusBonusPoints" value="<?= (int)($settings['grade_85_plus_bonus_points'] ?? 3) ?>" min="0" max="100" required>
+                                <button type="button" class="stepper-btn btn-step-up" data-target="grade85PlusBonusPoints"><i class="fa-solid fa-plus"></i></button>
                             </div>
                         </div>
                     </div>

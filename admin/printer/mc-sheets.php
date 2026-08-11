@@ -96,22 +96,7 @@ if ($action === 'print' && $activeEvent) {
         }
     }
 
-    // Function to pair programs that have the SAME participant/entry count together
-    $pairByMatchingCount = function($programList) use ($entriesByProgram) {
-        usort($programList, function($a, $b) use ($entriesByProgram) {
-            $cntA = count($entriesByProgram[(int)$a['id']] ?? []);
-            $cntB = count($entriesByProgram[(int)$b['id']] ?? []);
-            if ($cntA === $cntB) {
-                return (int)($a['id']) <=> (int)($b['id']);
-            }
-            return $cntA <=> $cntB;
-        });
-
-        return array_chunk($programList, 2);
-    };
-
-    $individualPairs = $pairByMatchingCount($individualPrograms);
-    $groupPairs = $pairByMatchingCount($groupPrograms);
+    $orderedPrograms = array_merge($individualPrograms, $groupPrograms);
     ?>
     <!DOCTYPE html>
     <html lang="en">
@@ -122,8 +107,8 @@ if ($action === 'print' && $activeEvent) {
         <script src="<?= asset_url('js/print-helpers.js') ?>" defer></script>
         <style>
             @page {
-                size: A4 landscape;
-                margin: 5mm 7mm;
+                size: A4 portrait;
+                margin: 10mm 12mm;
             }
             * {
                 box-sizing: border-box;
@@ -133,81 +118,76 @@ if ($action === 'print' && $activeEvent) {
                 color: #000;
                 background: #f8fafc;
                 margin: 0;
-                padding: 16px;
+                padding: 20px;
                 line-height: 1.2;
             }
-            .landscape-page {
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 24px;
-                position: relative;
-                width: 100%;
-                min-height: 90vh;
+            .portrait-mc-page {
+                width: 92%;
+                max-width: 92%;
+                margin: 0 auto 30px auto;
+                background: #fff;
+                border: 1.5px solid #cbd5e1;
+                padding: 24px 28px;
+                border-radius: 12px;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.08);
                 box-sizing: border-box;
-            }
-            @media (max-width: 800px) {
-                .landscape-page {
-                    grid-template-columns: 1fr;
-                }
-                .vertical-divider {
-                    display: none;
-                }
-            }
-            .vertical-divider {
-                position: absolute;
-                left: 50%;
-                top: 0;
-                bottom: 0;
-                border-left: 2px solid #000;
-                transform: translateX(-50%);
-            }
-            .program-half {
-                padding: 6px 10px;
+                min-height: 88vh;
                 display: flex;
                 flex-direction: column;
+                justify-content: space-between;
+                page-break-after: always !important;
+                break-after: page !important;
+            }
+            .portrait-mc-page:last-child {
+                page-break-after: auto !important;
+                break-after: auto !important;
             }
             .sheet-header {
-                margin-bottom: 10px;
+                margin-bottom: 16px;
+                text-align: center;
+                flex-shrink: 0;
             }
             .single-program-title {
-                font-size: 21px;
+                font-size: 32px;
                 font-weight: 900;
                 text-transform: uppercase;
-                letter-spacing: 0.05em;
+                letter-spacing: 0.04em;
                 text-align: center;
                 color: #000;
-                padding-bottom: 5px;
-                border-bottom: 3px double #000;
+                padding-bottom: 8px;
+                border-bottom: 4px solid #000;
+                line-height: 1.2;
             }
             .emcee-table {
                 width: 100%;
+                height: 100%;
+                flex: 1 1 auto;
                 table-layout: fixed;
                 border-collapse: collapse;
-                margin-top: 4px;
-                border: 2px solid #000;
+                margin-top: 6px;
+                border: 3px solid #000;
             }
             .emcee-table th, .emcee-table td {
-                border: 2px solid #000;
-                padding: 8px 10px;
+                border: 2.5px solid #000;
+                padding: 8px 12px;
                 text-align: center;
                 vertical-align: middle;
             }
             .emcee-table th {
-                background: #f1f5f9;
+                background: #ffffff;
                 font-weight: 900;
                 text-transform: uppercase;
-                font-size: 13px;
+                font-size: 16px;
                 letter-spacing: 0.06em;
-                padding: 9px 4px;
+                padding: 12px 8px;
             }
             .order-col {
-                width: 35%;
-                font-size: 22px;
+                width: 30%;
                 font-weight: 900;
                 text-align: center;
             }
             .chest-col {
-                font-size: 26px;
+                width: 70%;
                 font-weight: 900;
                 letter-spacing: 0.04em;
                 text-align: center;
@@ -221,6 +201,10 @@ if ($action === 'print' && $activeEvent) {
                 padding: 12px 20px;
                 border-radius: 12px;
                 margin-bottom: 20px;
+                width: 92%;
+                max-width: 92%;
+                margin-left: auto;
+                margin-right: auto;
                 color: #fff;
                 display: flex;
                 justify-content: space-between;
@@ -230,6 +214,10 @@ if ($action === 'print' && $activeEvent) {
                 box-shadow: 0 4px 20px rgba(0,0,0,0.25);
             }
             @media print {
+                @page {
+                    size: A4 portrait;
+                    margin: 8mm 10mm;
+                }
                 .no-print-bar {
                     display: none !important;
                 }
@@ -237,30 +225,40 @@ if ($action === 'print' && $activeEvent) {
                     background: #fff !important;
                     padding: 0 !important;
                 }
+                .portrait-mc-page {
+                    border: none !important;
+                    padding: 0 !important;
+                    margin: 0 auto !important;
+                    box-shadow: none !important;
+                    border-radius: 0 !important;
+                    width: 92% !important;
+                    max-width: 92% !important;
+                    height: 88vh !important;
+                    min-height: 88vh !important;
+                    max-height: 88vh !important;
+                    display: flex !important;
+                    flex-direction: column !important;
+                    justify-content: space-between !important;
+                }
+                .emcee-table {
+                    height: 100% !important;
+                    flex: 1 1 auto !important;
+                }
                 .emcee-table th {
-                    background: #f1f5f9 !important;
+                    background: #ffffff !important;
                     -webkit-print-color-adjust: exact;
                     print-color-adjust: exact;
                 }
             }
         </style>
     </head>
-    <body data-print-orientation="landscape">
+    <body data-print-orientation="portrait">
         <div class="no-print-bar">
             <div>
                 <h3 style="margin:0; font-size: 16px; color:#fff;"><i class="fa-solid fa-microphone" style="color:#38bdf8;"></i> Emcee Stage Running Order Sheets</h3>
-                <small style="color:#94a3b8;">Side-by-side A4 Landscape Layout</small>
+                <small style="color:#94a3b8;">Full-Page A4 Portrait Layout (90% Page Area)</small>
             </div>
             <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-                <select data-print-select="orientation" style="padding: 6px 12px; border-radius: 6px; background: #1e293b; color: #fff; border: 1px solid #334155; font-size: 12px;">
-                    <option value="landscape" selected>🖼️ Landscape</option>
-                    <option value="portrait">📄 Portrait</option>
-                </select>
-                <select data-print-select="scale" style="padding: 6px 12px; border-radius: 6px; background: #1e293b; color: #fff; border: 1px solid #334155; font-size: 12px;">
-                    <option value="1">100% Fit</option>
-                    <option value="0.9">90% Fit</option>
-                    <option value="0.8">80% Fit</option>
-                </select>
                 <a href="<?= app_url('/admin/printer/mc-sheets.php') ?>" class="btn btn-secondary" style="padding: 6px 14px; text-decoration: none; color: #fff; background: #334155; border-radius: 6px; font-size: 12px; font-weight: 600;">
                     <i class="fa-solid fa-arrow-left"></i> Exit
                 </a>
@@ -271,98 +269,91 @@ if ($action === 'print' && $activeEvent) {
         </div>
 
         <?php
-        function render_landscape_program_pair($pair, $entriesByProgram, $titleCounts, $isFirstPage = false) {
-            ?>
-            <div class="landscape-page <?= !$isFirstPage ? 'page-break' : '' ?>">
-                <div class="vertical-divider"></div>
+        $pageIdx = 0;
+        foreach ($orderedPrograms as $program):
+            $pId = (int)$program['id'];
+            $entriesForPrint = $entriesByProgram[$pId] ?? [];
+            $entryCount = count($entriesForPrint);
 
-                <?php for ($idx = 0; $idx < 2; $idx++): ?>
-                    <?php if (isset($pair[$idx])): ?>
-                        <?php
-                            $program = $pair[$idx];
-                            $pId = (int)$program['id'];
-                            $entriesForPrint = $entriesByProgram[$pId] ?? [];
-                            $entryCount = count($entriesForPrint);
-                            $rowHeight = $entryCount <= 5 ? 48 : ($entryCount <= 10 ? 36 : 24);
+            if ($entryCount <= 6) {
+                $rowHeight = 72;
+                $chestFontSize = '52px';
+                $orderFontSize = '38px';
+                $thFontSize = '18px';
+            } elseif ($entryCount <= 12) {
+                $rowHeight = 48;
+                $chestFontSize = '40px';
+                $orderFontSize = '30px';
+                $thFontSize = '16px';
+            } elseif ($entryCount <= 20) {
+                $rowHeight = 36;
+                $chestFontSize = '30px';
+                $orderFontSize = '22px';
+                $thFontSize = '15px';
+            } else {
+                $rowHeight = 28;
+                $chestFontSize = '24px';
+                $orderFontSize = '18px';
+                $thFontSize = '13px';
+            }
 
-                            $rawTitle = trim($program['title']);
-                            $tKey = strtolower($rawTitle);
-                            $hasMultipleSectionsWithSameTitle = ($titleCounts[$tKey] ?? 0) > 1;
+            $rawTitle = trim($program['title']);
+            $tKey = strtolower($rawTitle);
+            $hasMultipleSectionsWithSameTitle = ($titleCounts[$tKey] ?? 0) > 1;
 
-                            $tier = admin_class_type_tier_from_name($program['class_type_name'] ?? '');
-                            $sectionLabel = $tier ? admin_class_type_tier_label($tier) : '';
+            $tier = admin_class_type_tier_from_name($program['class_type_name'] ?? '');
+            $sectionLabel = $tier ? admin_class_type_tier_label($tier) : '';
 
-                            if (!$sectionLabel && !empty($program['allowed_sections'])) {
-                                $secParts = array_filter(array_map('trim', explode(',', $program['allowed_sections'])));
-                                if (count($secParts) === 1) {
-                                    $sectionLabel = reset($secParts);
-                                }
-                            }
+            if (!$sectionLabel && !empty($program['allowed_sections'])) {
+                $secParts = array_filter(array_map('trim', explode(',', $program['allowed_sections'])));
+                if (count($secParts) === 1) {
+                    $sectionLabel = reset($secParts);
+                }
+            }
 
-                            $isGeneral = !$sectionLabel || in_array(strtolower($sectionLabel), ['general', 'all classes', 'general / multi-section'], true);
+            $isGeneral = !$sectionLabel || in_array(strtolower($sectionLabel), ['general', 'all classes', 'general / multi-section'], true);
 
-                            if (!$isGeneral && $hasMultipleSectionsWithSameTitle) {
-                                $programHeading = $rawTitle . ' - ' . $sectionLabel;
-                            } else {
-                                $programHeading = $rawTitle;
-                            }
-                        ?>
-                        <div class="program-half">
-                            <div class="sheet-header">
-                                <div class="single-program-title"><?= e($programHeading) ?></div>
-                            </div>
-
-                            <table class="emcee-table">
-                                <thead>
-                                    <tr>
-                                        <th class="order-col">ORDER</th>
-                                        <th class="chest-col">CHEST NUMBER</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php if (empty($entriesForPrint)): ?>
-                                        <tr>
-                                            <td colspan="2" style="text-align: center; padding: 25px; color: #64748b;">No entries registered for this program.</td>
-                                        </tr>
-                                    <?php else: ?>
-                                        <?php $orderIdx = 1; ?>
-                                        <?php foreach ($entriesForPrint as $entry): ?>
-                                            <?php
-                                                $chestNo = !empty($entry['chest_number']) ? $entry['chest_number'] : $entry['entry_number'];
-                                                $formattedChest = is_numeric($chestNo) ? str_pad((string)$chestNo, 3, '0', STR_PAD_LEFT) : (string)$chestNo;
-                                            ?>
-                                            <tr>
-                                                <td class="order-col" style="height: <?= $rowHeight ?>px;"><?= $orderIdx++ ?></td>
-                                                <td class="chest-col" style="height: <?= $rowHeight ?>px;">#<?= e($formattedChest) ?></td>
-                                            </tr>
-                                        <?php endforeach; ?>
-                                    <?php endif; ?>
-                                </tbody>
-                            </table>
-                        </div>
-                    <?php else: ?>
-                        <!-- Blank placeholder if odd count -->
-                        <div class="program-half"></div>
-                    <?php endif; ?>
-                <?php endfor; ?>
-            </div>
-            <?php
-        }
-
-        $pageCount = 0;
-
-        // 1. Print Individual Programs Pairs Side-by-Side First (Paired by matching entry count)
-        foreach ($individualPairs as $pair) {
-            render_landscape_program_pair($pair, $entriesByProgram, $titleCounts, ($pageCount === 0));
-            $pageCount++;
-        }
-
-        // 2. Print Group Programs Pairs Side-by-Side Separately (Paired by matching entry count)
-        foreach ($groupPairs as $pair) {
-            render_landscape_program_pair($pair, $entriesByProgram, $titleCounts, ($pageCount === 0));
-            $pageCount++;
-        }
+            if (!$isGeneral && $hasMultipleSectionsWithSameTitle) {
+                $programHeading = $rawTitle . ' - ' . $sectionLabel;
+            } else {
+                $programHeading = $rawTitle;
+            }
         ?>
+            <div class="portrait-mc-page <?= $pageIdx > 0 ? 'page-break' : '' ?>">
+                <div class="sheet-header">
+                    <div class="single-program-title"><?= e($programHeading) ?></div>
+                </div>
+
+                <table class="emcee-table">
+                    <thead>
+                        <tr>
+                            <th class="order-col" style="font-size: <?= $thFontSize ?>;">ORDER</th>
+                            <th class="chest-col" style="font-size: <?= $thFontSize ?>;">CHEST NUMBER</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if (empty($entriesForPrint)): ?>
+                            <tr>
+                                <td colspan="2" style="text-align: center; padding: 40px; color: #64748b; font-size: 16px;">No entries registered for this program.</td>
+                            </tr>
+                        <?php else: ?>
+                            <?php $orderIdx = 1; ?>
+                            <?php foreach ($entriesForPrint as $entry): ?>
+                                <?php
+                                    $chestNo = !empty($entry['chest_number']) ? $entry['chest_number'] : $entry['entry_number'];
+                                    $formattedChest = is_numeric($chestNo) ? str_pad((string)$chestNo, 3, '0', STR_PAD_LEFT) : (string)$chestNo;
+                                ?>
+                                <tr>
+                                    <td class="order-col" style="height: <?= $rowHeight ?>px; font-size: <?= $orderFontSize ?>; font-weight: 900;"><?= $orderIdx++ ?></td>
+                                    <td class="chest-col" style="height: <?= $rowHeight ?>px; font-size: <?= $chestFontSize ?>; font-weight: 900; letter-spacing: 0.04em;">#<?= e($formattedChest) ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+            <?php $pageIdx++; ?>
+        <?php endforeach; ?>
 
         <script>
             window.addEventListener('DOMContentLoaded', () => {
@@ -416,30 +407,101 @@ if ($activeEvent) {
         <?php render_no_active_event_guard(); ?>
     <?php else: ?>
         <div class="panel">
-            <div class="flex-between mb-6" style="border-bottom: 1px solid var(--border); padding-bottom: 16px; flex-wrap: wrap; gap: 12px;">
-                <h3 style="margin: 0; color: #fff;"><i class="fa-solid fa-list-check mr-2" style="color: #38bdf8;"></i> On-Stage Event Programs Selection</h3>
-                
-                <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
-                    <div class="btn-group" style="display: flex; gap: 6px; background: rgba(0,0,0,0.25); padding: 3px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08);">
-                        <button type="button" class="btn btn-xs btn-primary filter-tab active" data-type="all">All On-Stage</button>
-                        <button type="button" class="btn btn-xs btn-secondary filter-tab" data-type="individual"><i class="fa-solid fa-user mr-1"></i> Individual Only</button>
-                        <button type="button" class="btn btn-xs btn-secondary filter-tab" data-type="group"><i class="fa-solid fa-users mr-1"></i> Group Only</button>
-                    </div>
-
-                    <input type="text" id="programSearch" class="form-input" placeholder="Search programs..." style="width: 200px; height: 34px; font-size: 13px;">
-                    <button class="btn btn-secondary btn-sm" id="btnSelectAll" type="button">Select All</button>
-                    <button class="btn btn-secondary btn-sm" id="btnDeselectAll" type="button">Deselect All</button>
-                </div>
-            </div>
-
             <form action="<?= app_url('/admin/printer/mc-sheets.php') ?>" method="GET" target="_blank" id="printForm">
                 <input type="hidden" name="action" value="print">
+
+                <div class="flex-between mb-6" style="border-bottom: 1px solid var(--border); padding-bottom: 16px; flex-wrap: wrap; gap: 12px;">
+                    <h3 style="margin: 0; color: #fff;"><i class="fa-solid fa-list-check mr-2" style="color: #38bdf8;"></i> On-Stage Event Programs Selection</h3>
+                    
+                    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                        <div class="btn-group" style="display: flex; gap: 6px; background: rgba(0,0,0,0.25); padding: 3px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08);">
+                            <button type="button" class="btn btn-xs btn-primary filter-tab active" data-type="all">All On-Stage</button>
+                            <button type="button" class="btn btn-xs btn-secondary filter-tab" data-type="individual"><i class="fa-solid fa-user mr-1"></i> Individual Only</button>
+                            <button type="button" class="btn btn-xs btn-secondary filter-tab" data-type="group"><i class="fa-solid fa-users mr-1"></i> Group Only</button>
+                        </div>
+
+                        <input type="text" id="programSearch" class="form-input" placeholder="Search programs..." style="width: 170px; height: 34px; font-size: 13px;">
+                        <button class="btn btn-secondary btn-sm" id="btnSelectAll" type="button">Select All</button>
+                        <button class="btn btn-secondary btn-sm" id="btnDeselectAll" type="button">Deselect All</button>
+                        <button type="submit" class="btn btn-primary btn-sm" style="background: #0284c7; border-color: #0284c7; font-weight: 700;">
+                            <i class="fa-solid fa-print mr-1"></i> Print Selected Sheets
+                        </button>
+                    </div>
+                </div>
+
+<style>
+.pro-checkbox-wrap {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    position: relative !important;
+    cursor: pointer !important;
+    vertical-align: middle !important;
+    width: 20px !important;
+    height: 20px !important;
+    min-width: 20px !important;
+    max-width: 20px !important;
+    min-height: 20px !important;
+    max-height: 20px !important;
+    flex-shrink: 0 !important;
+}
+.pro-checkbox {
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    width: 20px !important;
+    height: 20px !important;
+    min-width: 20px !important;
+    max-width: 20px !important;
+    min-height: 20px !important;
+    max-height: 20px !important;
+    border: 2px solid rgba(255, 255, 255, 0.3) !important;
+    border-radius: 5px !important;
+    background: rgba(15, 23, 42, 0.6) !important;
+    outline: none !important;
+    cursor: pointer !important;
+    transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    position: relative !important;
+    vertical-align: middle !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-sizing: border-box !important;
+    flex-shrink: 0 !important;
+}
+.pro-checkbox:hover {
+    border-color: #38bdf8 !important;
+    background: rgba(56, 189, 248, 0.15) !important;
+    box-shadow: 0 0 10px rgba(56, 189, 248, 0.3) !important;
+}
+.pro-checkbox:checked {
+    background: linear-gradient(135deg, #0284c7, #38bdf8) !important;
+    border-color: #38bdf8 !important;
+    box-shadow: 0 0 12px rgba(56, 189, 248, 0.4) !important;
+}
+.pro-checkbox:checked::after {
+    content: '' !important;
+    position: absolute !important;
+    top: 50% !important;
+    left: 50% !important;
+    width: 5px !important;
+    height: 10px !important;
+    border: solid #ffffff !important;
+    border-width: 0 2.5px 2.5px 0 !important;
+    transform: translate(-50%, -60%) rotate(45deg) !important;
+}
+.pro-checkbox:focus-visible {
+    box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.4) !important;
+}
+</style>
                 
                 <div class="table-wrapper">
                     <table class="table">
                         <thead>
                             <tr>
-                                <th style="width: 40px; text-align: center;"><input type="checkbox" id="headerCheckbox" style="width:16px; height:16px; accent-color:#38bdf8;"></th>
+                                <th style="width: 44px; text-align: center;">
+                                    <label class="pro-checkbox-wrap">
+                                        <input type="checkbox" id="headerCheckbox" class="pro-checkbox">
+                                    </label>
+                                </th>
                                 <th style="width: 80px;">Sched Order</th>
                                 <th>Program Title</th>
                                 <th>Category / Tier</th>
@@ -467,7 +529,9 @@ if ($activeEvent) {
                                     ?>
                                     <tr data-title="<?= e(strtolower($p['title'])) ?>" data-class="<?= e(strtolower($p['class_type_name'] ?? '')) ?>" data-type="<?= e($pType) ?>" data-offstage="<?= $isOffstage ? '1' : '0' ?>" style="<?= $isOffstage ? 'opacity:0.5;' : '' ?>">
                                         <td style="text-align: center;">
-                                            <input type="checkbox" name="program_ids[]" value="<?= $pId ?>" class="program-checkbox" <?= !$isOffstage ? 'checked' : '' ?> style="width:16px; height:16px; accent-color:#38bdf8;">
+                                            <label class="pro-checkbox-wrap">
+                                                <input type="checkbox" name="program_ids[]" value="<?= $pId ?>" class="program-checkbox pro-checkbox" <?= !$isOffstage ? 'checked' : '' ?>>
+                                            </label>
                                         </td>
                                         <td><strong>#<?= (int)($p['schedule_order'] ?? $pId) ?></strong></td>
                                         <td><strong><?= e($p['title']) ?></strong></td>
@@ -505,12 +569,6 @@ if ($activeEvent) {
                         </tbody>
                     </table>
                 </div>
-
-                <div style="margin-top: 20px; display: flex; justify-content: flex-end; gap: 12px;">
-                    <button type="submit" class="btn btn-primary btn-md" style="background: #0284c7; border-color: #0284c7;">
-                        <i class="fa-solid fa-microphone mr-1"></i> Batch Print Side-by-Side
-                    </button>
-                </div>
             </form>
         </div>
     <?php endif; ?>
@@ -524,8 +582,49 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnSelectAll = document.getElementById('btnSelectAll');
     const btnDeselectAll = document.getElementById('btnDeselectAll');
     const filterTabs = document.querySelectorAll('.filter-tab');
+    const STORAGE_KEY = 'mc_sheets_selected_programs_<?= (int)($activeEvent['id'] ?? 0) ?>';
 
     let currentTypeFilter = 'all';
+
+    function saveCheckedState() {
+        if (!tableBody) return;
+        const checkboxes = tableBody.querySelectorAll('.program-checkbox');
+        const checkedValues = [];
+        checkboxes.forEach(cb => {
+            if (cb.checked) {
+                checkedValues.push(cb.value);
+            }
+        });
+        try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(checkedValues));
+        } catch(e) {}
+    }
+
+    function loadCheckedState() {
+        if (!tableBody) return;
+        try {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved !== null) {
+                const checkedSet = new Set(JSON.parse(saved));
+                const checkboxes = tableBody.querySelectorAll('.program-checkbox');
+                checkboxes.forEach(cb => {
+                    cb.checked = checkedSet.has(cb.value);
+                });
+            }
+        } catch(e) {}
+        updateHeaderCheckboxState();
+    }
+
+    function updateHeaderCheckboxState() {
+        if (!headerCheckbox || !tableBody) return;
+        const visibleCheckboxes = Array.from(tableBody.querySelectorAll('.program-checkbox'))
+            .filter(cb => cb.closest('tr').style.display !== 'none');
+        if (visibleCheckboxes.length > 0 && visibleCheckboxes.every(cb => cb.checked)) {
+            headerCheckbox.checked = true;
+        } else {
+            headerCheckbox.checked = false;
+        }
+    }
 
     function applyTableFilters() {
         const term = searchInput ? searchInput.value.trim().toLowerCase() : '';
@@ -545,9 +644,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 r.style.display = 'none';
             }
         });
+        updateHeaderCheckboxState();
     }
 
     applyTableFilters();
+    loadCheckedState();
 
     if (filterTabs) {
         filterTabs.forEach(tab => {
@@ -568,6 +669,15 @@ document.addEventListener('DOMContentLoaded', () => {
         searchInput.addEventListener('input', applyTableFilters);
     }
 
+    if (tableBody) {
+        tableBody.addEventListener('change', (e) => {
+            if (e.target && e.target.classList.contains('program-checkbox')) {
+                updateHeaderCheckboxState();
+                saveCheckedState();
+            }
+        });
+    }
+
     if (headerCheckbox) {
         headerCheckbox.addEventListener('change', () => {
             const checkboxes = tableBody.querySelectorAll('.program-checkbox');
@@ -576,6 +686,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     cb.checked = headerCheckbox.checked;
                 }
             });
+            saveCheckedState();
         });
     }
 
@@ -588,6 +699,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
             if (headerCheckbox) headerCheckbox.checked = true;
+            saveCheckedState();
         });
     }
 
@@ -596,6 +708,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const checkboxes = tableBody.querySelectorAll('.program-checkbox');
             checkboxes.forEach(cb => cb.checked = false);
             if (headerCheckbox) headerCheckbox.checked = false;
+            saveCheckedState();
         });
     }
 });

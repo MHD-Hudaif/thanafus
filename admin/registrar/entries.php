@@ -27,13 +27,7 @@ function entries_next_number(PDO $pdo, int $eventId, int $programId): int
     return max(1, (int)$stmt->fetchColumn());
 }
 
-function entries_next_performance_order(PDO $pdo, int $eventId, int $programId): int
-{
-    // Assign a random initial performance order so registration order does not dictate candidate sequence
-    return rand(1, 9999);
-}
-
-function entries_randomize_program_order(PDO $pdo, int $eventId, int $programId): void
+function entries_randomize_program_performance_order(PDO $pdo, int $eventId, int $programId): void
 {
     $stmt = $pdo->prepare('SELECT id FROM musabaqa_program_entries WHERE event_id = ? AND program_id = ?');
     $stmt->execute([$eventId, $programId]);
@@ -46,6 +40,11 @@ function entries_randomize_program_order(PDO $pdo, int $eventId, int $programId)
             $updateStmt->execute([$index + 1, $id]);
         }
     }
+}
+
+function entries_next_performance_order(PDO $pdo, int $eventId, int $programId): int
+{
+    return mt_rand(1, 999999);
 }
 
 function entries_status_badge(?string $status): string
@@ -237,8 +236,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             throw new RuntimeException($err);
                         }
 
+                        entries_randomize_program_performance_order($pdo, $activeEventId, $programId);
                         admin_recalculate_program_status($pdo, $programId);
-                        entries_randomize_program_order($pdo, $activeEventId, $programId);
                         $msg = "{$addedCount} participant(s) registered successfully.";
                         if (!empty($skippedNames)) {
                             $msg .= " (" . count($skippedNames) . " skipped: " . implode(', ', $skippedNames) . ")";
@@ -358,8 +357,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 throw new RuntimeException($err);
                             }
 
+                            entries_randomize_program_performance_order($pdo, $activeEventId, $programId);
                             admin_recalculate_program_status($pdo, $programId);
-                            entries_randomize_program_order($pdo, $activeEventId, $programId);
                             $msg = "{$createdCount} group entry(ies) created successfully.";
                             if (!empty($skippedMessages)) {
                                 $msg .= " (" . count($skippedMessages) . " skipped: " . implode(', ', $skippedMessages) . ")";
@@ -458,6 +457,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 $addedCount++;
                             }
 
+                            entries_randomize_program_performance_order($pdo, $activeEventId, $programId);
                             admin_recalculate_program_status($pdo, $programId);
                             $msg = "Group entry '{$entryName}' created successfully with {$addedCount} member(s).";
                             if (!empty($skippedNames)) {

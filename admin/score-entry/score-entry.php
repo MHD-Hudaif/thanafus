@@ -268,8 +268,10 @@ if ($programId > 0) {
             }
             $newSheetStatus = $allJudgesDone ? 'completed' : 'draft';
             $finalTotal = round(array_sum($judgeTotals), 2);
+            $settings = admin_get_settings($pdo);
+            $gradeInfo = admin_calculate_grade_info($finalTotal, $judgesCount, $settings);
 
-            admin_db_transaction($pdo, function ($pdo) use ($entryId, $program, $judgeTotals, $judgesCount, $finalCategoryScores, $categoryMap, $programId, $activeEventId, $currentUserId, $finalTotal, $newSheetStatus) {
+            admin_db_transaction($pdo, function ($pdo) use ($entryId, $program, $judgeTotals, $judgesCount, $finalCategoryScores, $categoryMap, $programId, $activeEventId, $currentUserId, $finalTotal, $newSheetStatus, $gradeInfo) {
                 $stmt = $pdo->prepare('SELECT * FROM musabaqa_score_sheets WHERE entry_id = ? LIMIT 1');
                 $stmt->execute([$entryId]);
                 $existingSheet = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
@@ -298,13 +300,22 @@ if ($programId > 0) {
                     }
                 }
 
+                $stmtGrade = $pdo->prepare("UPDATE musabaqa_program_entries SET grade = ?, grade_points = ? WHERE id = ?");
+                $stmtGrade->execute([$gradeInfo['grade'], $gradeInfo['grade_points'], $entryId]);
+
                 admin_recalculate_entry_status($pdo, $entryId);
                 admin_recalculate_program_status($pdo, $programId);
             });
 
             if ($isAjax) {
                 header('Content-Type: application/json; charset=utf-8');
-                echo json_encode(['success' => true, 'final_total' => number_format($finalTotal, 2)]);
+                echo json_encode([
+                    'success' => true,
+                    'final_total' => number_format($finalTotal, 0),
+                    'percentage' => number_format($gradeInfo['percentage'], 1) . '%',
+                    'grade' => $gradeInfo['grade'] ?: '—',
+                    'grade_points' => $gradeInfo['grade_points'],
+                ]);
                 exit;
             }
 
@@ -408,6 +419,7 @@ if ($programId > 0) {
                                 <th colspan="<?= count($categories) ?>" style="text-align: center; border-bottom: 1px solid rgba(255,255,255,0.08); font-weight: 700; <?= $j > 1 ? 'border-left: 2px solid rgba(99, 102, 241, 0.5);' : 'border-left: 1px solid rgba(255,255,255,0.1);' ?>">Judge <?= $j ?></th>
                             <?php endfor; ?>
                             <th rowspan="2" style="width: 100px; text-align: center; vertical-align: middle; border-left: 1px solid rgba(255,255,255,0.1);">Final Score</th>
+                            <th rowspan="2" style="width: 90px; text-align: center; vertical-align: middle;">Percentage</th>
                             <th rowspan="2" style="width: 90px; text-align: center; vertical-align: middle;">Grade</th>
                             <th rowspan="2" style="width: 80px; text-align: center; vertical-align: middle;">Status</th>
                         </tr>
@@ -428,6 +440,15 @@ if ($programId > 0) {
                         <?php
                             $entryId = (int)$entry['id'];
                             $hasSheet = !empty($entry['score_sheet_id']);
+                            $finalScoreVal = (float)($entry['final_total'] ?? 0);
+                            $pctVal = ($hasSheet && $judgesCount > 0) ? round(($finalScoreVal / ($judgesCount * 100)) * 100, 1) : null;
+                            $entryGrade = $entry['grade'];
+                            $gradePts = (float)($entry['grade_points'] ?? 0);
+                            if (empty($entryGrade) && $hasSheet && $pctVal !== null) {
+                                $gInfo = admin_calculate_grade_info($finalScoreVal, $judgesCount);
+                                $entryGrade = $gInfo['grade'];
+                                $gradePts = $gInfo['grade_points'];
+                            }
                         ?>
                         <tr data-entry-row="<?= $entryId ?>">
                             <td><strong><?= $orderIdx++ ?></strong></td>
@@ -479,17 +500,18 @@ if ($programId > 0) {
                             <?php endif; ?>
 
                             <td class="row-total-score" id="total-score-<?= $entryId ?>" style="font-weight: 700; color: #34d399; font-size: 14px; text-align: center; vertical-align: middle; border-left: 1px solid rgba(255,255,255,0.1);">
-                                <?= $hasSheet ? number_format((float)$entry['final_total'], 0) : '0' ?>
+                                <?= $hasSheet ? number_format($finalScoreVal, 0) : '0' ?>
+                            </td>
+
+                            <td class="row-percentage" id="percentage-<?= $entryId ?>" style="font-weight: 600; color: #60a5fa; font-size: 13px; text-align: center; vertical-align: middle;">
+                                <?= $pctVal !== null ? number_format($pctVal, 1) . '%' : '—' ?>
                             </td>
 
                             <td class="row-grade-badge" id="grade-badge-<?= $entryId ?>" style="text-align: center; vertical-align: middle;">
-                                <?php if (!empty($entry['grade'])): ?>
-                                    <span class="badge badge-<?= match($entry['grade']) { 'A' => 'success', 'B' => 'info', 'C' => 'warning', default => 'neutral' } ?>" style="font-size: 11px; padding: 3px 8px; font-weight: 800;">
-                                        Grade <?= e($entry['grade']) ?>
+                                <?php if (!empty($entryGrade)): ?>
+                                    <span class="badge badge-<?= match($entryGrade) { 'A' => 'success', 'B' => 'info', 'C' => 'warning', 'D' => 'neutral', default => 'neutral' } ?>" style="font-size: 11px; padding: 3px 8px; font-weight: 800;">
+                                        Grade <?= e($entryGrade) ?>
                                     </span>
-                                    <?php if ((float)($entry['grade_points'] ?? 0) > 0): ?>
-                                        <div style="color: #34d399; font-weight: 700; font-size: 11px; margin-top: 2px;">+<?= number_format((float)$entry['grade_points'], 0) ?> Bonus</div>
-                                    <?php endif; ?>
                                 <?php else: ?>
                                     <span class="text-muted">—</span>
                                 <?php endif; ?>
@@ -718,10 +740,25 @@ if ($programId > 0) {
                     statusEl.innerHTML = '<i class="fa-solid fa-circle-check text-success" title="Saved"></i>';
                 }
                 clearEntryDraftFromCache(entryId);
+
                 const totalEl = document.getElementById(`total-score-${entryId}`);
-                if (totalEl && data.final_total) {
+                if (totalEl && data.final_total !== undefined) {
                     totalEl.textContent = data.final_total;
                 }
+                const pctEl = document.getElementById(`percentage-${entryId}`);
+                if (pctEl && data.percentage !== undefined) {
+                    pctEl.textContent = data.percentage;
+                }
+                const gradeEl = document.getElementById(`grade-badge-${entryId}`);
+                if (gradeEl && data.grade !== undefined) {
+                    if (data.grade && data.grade !== '—') {
+                        const badgeClass = data.grade === 'A' ? 'success' : (data.grade === 'B' ? 'info' : (data.grade === 'C' ? 'warning' : 'neutral'));
+                        gradeEl.innerHTML = `<span class="badge badge-${badgeClass}" style="font-size: 11px; padding: 3px 8px; font-weight: 800;">Grade ${escapeHtml(data.grade)}</span>`;
+                    } else {
+                        gradeEl.innerHTML = '<span class="text-muted">—</span>';
+                    }
+                }
+
                 updateSendApprovalButtonState();
             } else {
                 throw new Error(data.message || 'Error saving score');
@@ -729,6 +766,51 @@ if ($programId > 0) {
         } catch (err) {
             if (statusEl) {
                 statusEl.innerHTML = '<i class="fa-solid fa-circle-exclamation text-danger" title="' + escapeHtml(err.message) + '"></i>';
+            }
+        }
+    }
+
+    const JUDGES_COUNT = <?= (int)$judgesCount ?>;
+
+    function recalculateRowLocally(entryId) {
+        const row = document.querySelector(`tr[data-entry-row="${entryId}"]`);
+        if (!row) return;
+
+        let rowSum = 0;
+        let hasInput = false;
+        row.querySelectorAll('.score-grid-input').forEach(input => {
+            const v = parseFloat(input.value);
+            if (!isNaN(v)) {
+                rowSum += v;
+                hasInput = true;
+            }
+        });
+
+        const totalEl = document.getElementById(`total-score-${entryId}`);
+        const pctEl = document.getElementById(`percentage-${entryId}`);
+        const gradeEl = document.getElementById(`grade-badge-${entryId}`);
+
+        if (hasInput && JUDGES_COUNT > 0) {
+            if (totalEl) totalEl.textContent = Math.round(rowSum);
+            
+            const pct = (rowSum / (JUDGES_COUNT * 100)) * 100;
+            if (pctEl) pctEl.textContent = pct.toFixed(1) + '%';
+
+            let grade = 'D';
+            let badgeClass = 'neutral';
+            if (pct >= 85) {
+                grade = 'A';
+                badgeClass = 'success';
+            } else if (pct >= 75) {
+                grade = 'B';
+                badgeClass = 'info';
+            } else if (pct >= 65) {
+                grade = 'C';
+                badgeClass = 'warning';
+            }
+
+            if (gradeEl) {
+                gradeEl.innerHTML = `<span class="badge badge-${badgeClass}" style="font-size: 11px; padding: 3px 8px; font-weight: 800;">Grade ${grade}</span>`;
             }
         }
     }
@@ -763,6 +845,7 @@ if ($programId > 0) {
             const row = input.closest('tr[data-entry-row]');
             if (row) {
                 const entryId = row.dataset.entryRow;
+                recalculateRowLocally(entryId);
                 const fieldKey = input.dataset.judge ? `j${input.dataset.judge}_c${input.dataset.categoryId}` : 'rank';
                 saveDraftInputToCache(entryId, fieldKey, input.value);
                 updateSendApprovalButtonState();
@@ -782,34 +865,62 @@ if ($programId > 0) {
         });
     });
 
-    // Arrow key navigation
+    // Arrow key & Enter cell navigation (Excel-style)
     document.addEventListener('keydown', (e) => {
         if (!e.target.classList.contains('score-grid-input')) return;
 
         const input = e.target;
         const row = input.closest('tr');
-        const tbody = row.closest('tbody');
+        const tbody = row ? row.closest('tbody') : null;
+        if (!row || !tbody) return;
+
         const inputsInRow = Array.from(row.querySelectorAll('.score-grid-input'));
         const inputColIndex = inputsInRow.indexOf(input);
         const rows = Array.from(tbody.querySelectorAll('tr[data-entry-row]'));
         const rowIndex = rows.indexOf(row);
 
-        if (e.key === 'ArrowDown' || e.key === 'Enter') {
+        if (e.key === 'ArrowRight') {
+            e.preventDefault();
+            if (inputColIndex < inputsInRow.length - 1) {
+                inputsInRow[inputColIndex + 1].focus();
+                inputsInRow[inputColIndex + 1].select();
+            } else if (rowIndex < rows.length - 1) {
+                const nextRowInputs = rows[rowIndex + 1].querySelectorAll('.score-grid-input');
+                if (nextRowInputs.length > 0) {
+                    nextRowInputs[0].focus();
+                    nextRowInputs[0].select();
+                }
+            }
+        } else if (e.key === 'ArrowLeft') {
+            e.preventDefault();
+            if (inputColIndex > 0) {
+                inputsInRow[inputColIndex - 1].focus();
+                inputsInRow[inputColIndex - 1].select();
+            } else if (rowIndex > 0) {
+                const prevRowInputs = rows[rowIndex - 1].querySelectorAll('.score-grid-input');
+                if (prevRowInputs.length > 0) {
+                    prevRowInputs[prevRowInputs.length - 1].focus();
+                    prevRowInputs[prevRowInputs.length - 1].select();
+                }
+            }
+        } else if (e.key === 'ArrowDown' || e.key === 'Enter') {
             e.preventDefault();
             if (rowIndex < rows.length - 1) {
                 const nextRowInputs = rows[rowIndex + 1].querySelectorAll('.score-grid-input');
-                if (nextRowInputs[inputColIndex]) {
-                    nextRowInputs[inputColIndex].focus();
-                    nextRowInputs[inputColIndex].select();
+                const targetInput = nextRowInputs[inputColIndex] || nextRowInputs[0];
+                if (targetInput) {
+                    targetInput.focus();
+                    targetInput.select();
                 }
             }
         } else if (e.key === 'ArrowUp') {
             e.preventDefault();
             if (rowIndex > 0) {
                 const prevRowInputs = rows[rowIndex - 1].querySelectorAll('.score-grid-input');
-                if (prevRowInputs[inputColIndex]) {
-                    prevRowInputs[inputColIndex].focus();
-                    prevRowInputs[inputColIndex].select();
+                const targetInput = prevRowInputs[inputColIndex] || prevRowInputs[0];
+                if (targetInput) {
+                    targetInput.focus();
+                    targetInput.select();
                 }
             }
         }

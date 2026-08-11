@@ -357,10 +357,36 @@ function admin_recalculate_program_status(PDO $pdo, int $programId): void
     $stmt->execute([$status, $programId]);
 }
 
+function admin_calculate_grade_info(float $finalTotal, int $judgesCount = 2, array $settings = []): array
+{
+    $judgesCount = max(1, $judgesCount);
+    $percentage = round(($finalTotal / ($judgesCount * 100)) * 100, 2);
+
+    if ($percentage >= 85.0) {
+        $grade = 'A';
+    } elseif ($percentage >= 75.0) {
+        $grade = 'B';
+    } elseif ($percentage >= 65.0) {
+        $grade = 'C';
+    } else {
+        $grade = 'D';
+    }
+
+    return [
+        'percentage' => $percentage,
+        'grade' => $grade,
+        'grade_points' => 0,
+    ];
+}
+
 function admin_recalculate_program_results(PDO $pdo, int $eventId, int $programId): void
 {
     $settings = admin_get_settings($pdo);
     $tiedMode = $settings['tied_rank_mode'] ?? 'shared_full';
+
+    $stmtProg = $pdo->prepare("SELECT judges_count FROM musabaqa_programs WHERE id = ? LIMIT 1");
+    $stmtProg->execute([$programId]);
+    $judgesCount = (int)($stmtProg->fetchColumn() ?: 2);
 
     $orderClause = "ms.total_mark DESC, mpe.entry_number ASC, mpe.id ASC";
     if ($tiedMode === 'tie_breaker') {
@@ -415,6 +441,9 @@ function admin_recalculate_program_results(PDO $pdo, int $eventId, int $programI
         $pointConfig[3] = $thirdPoints;
     }
 
+    $bonusThreshold = (float)($settings['grade_85_plus_threshold'] ?? 85.0);
+    $bonusPoints = (int)($settings['grade_85_plus_bonus_points'] ?? 3);
+
     $update = $pdo->prepare("
         UPDATE musabaqa_program_entries
         SET final_score = ?, final_rank = ?, team_score = ?, status = ?
@@ -450,6 +479,7 @@ function admin_recalculate_program_results(PDO $pdo, int $eventId, int $programI
     $position = 1;
     $seqRank = 1;
     $idx = 0;
+    $isMarkBased = ($onlyTeamMarks === 0);
 
     foreach ($scoreGroups as $scoreStr => $groupEntries) {
         $count = count($groupEntries);
@@ -466,7 +496,10 @@ function admin_recalculate_program_results(PDO $pdo, int $eventId, int $programI
             $rank = $position;
 
             foreach ($groupEntries as $e) {
-                $update->execute([$finalScore, $rank, $teamScore, 'completed', (int)$e['id'], $eventId, $programId]);
+                $eMark = (float)($e['total_mark'] ?? $score);
+                $eBonus = ($isMarkBased && $eMark >= $bonusThreshold) ? $bonusPoints : 0;
+                $entryTeamScore = ($teamScore > 0) ? $teamScore : $eBonus;
+                $update->execute([$finalScore, $rank, $entryTeamScore, 'completed', (int)$e['id'], $eventId, $programId]);
             }
             $position += $count;
         } elseif ($tiedMode === 'shared_sequential') {
@@ -474,7 +507,10 @@ function admin_recalculate_program_results(PDO $pdo, int $eventId, int $programI
             $teamScore = isset($pointConfig[$rank]) ? $pointConfig[$rank] : 0;
 
             foreach ($groupEntries as $e) {
-                $update->execute([$finalScore, $rank, $teamScore, 'completed', (int)$e['id'], $eventId, $programId]);
+                $eMark = (float)($e['total_mark'] ?? $score);
+                $eBonus = ($isMarkBased && $eMark >= $bonusThreshold) ? $bonusPoints : 0;
+                $entryTeamScore = ($teamScore > 0) ? $teamScore : $eBonus;
+                $update->execute([$finalScore, $rank, $entryTeamScore, 'completed', (int)$e['id'], $eventId, $programId]);
             }
             $position += $count;
             $seqRank++;
@@ -482,7 +518,10 @@ function admin_recalculate_program_results(PDO $pdo, int $eventId, int $programI
             foreach ($groupEntries as $e) {
                 $rank = $position;
                 $teamScore = isset($pointConfig[$rank]) ? $pointConfig[$rank] : 0;
-                $update->execute([$finalScore, $rank, $teamScore, 'completed', (int)$e['id'], $eventId, $programId]);
+                $eMark = (float)($e['total_mark'] ?? $score);
+                $eBonus = ($isMarkBased && $eMark >= $bonusThreshold) ? $bonusPoints : 0;
+                $entryTeamScore = ($teamScore > 0) ? $teamScore : $eBonus;
+                $update->execute([$finalScore, $rank, $entryTeamScore, 'completed', (int)$e['id'], $eventId, $programId]);
                 $position++;
             }
         } else {
@@ -512,7 +551,10 @@ function admin_recalculate_program_results(PDO $pdo, int $eventId, int $programI
             }
 
             foreach ($groupEntries as $e) {
-                $update->execute([$finalScore, $rank, $teamScore, 'completed', (int)$e['id'], $eventId, $programId]);
+                $eMark = (float)($e['total_mark'] ?? $score);
+                $eBonus = ($isMarkBased && $eMark >= $bonusThreshold) ? $bonusPoints : 0;
+                $entryTeamScore = ($teamScore > 0) ? $teamScore : $eBonus;
+                $update->execute([$finalScore, $rank, $entryTeamScore, 'completed', (int)$e['id'], $eventId, $programId]);
             }
             $position += $count;
         }
@@ -741,10 +783,139 @@ function admin_approve_program_scores(PDO $pdo, int $eventId, int $programId, in
         admin_recalculate_participant_totals($pdo, $eventId, $programId);
         admin_recalculate_program_results($pdo, $eventId, $programId);
         admin_recalculate_team_totals($pdo, $eventId);
+        admin_trigger_live_score_reveal($pdo, $eventId, $programId);
 
         admin_log_activity($pdo, $userId, $eventId, 'approve_program_scores', 'musabaqa_programs', $programId, 'Program scores approved and finalized.');
         admin_log_activity($pdo, $userId, $eventId, 'leaderboard_update', 'musabaqa_teams', null, 'Leaderboard totals recalculated from approved program scores.');
     });
+}
+
+function admin_trigger_live_score_reveal(PDO $pdo, int $eventId, $programIds = []): void
+{
+    try {
+        if (!is_array($programIds)) {
+            $programIds = $programIds ? [(int)$programIds] : [];
+        }
+        $programIds = array_values(array_filter(array_map('intval', $programIds)));
+
+        $whereCond = "p.event_id = ? AND (p.approval_status = 'approved'";
+        if (!empty($programIds)) {
+            $whereCond .= " OR p.id IN (" . implode(',', $programIds) . ")";
+        }
+        $whereCond .= ")";
+
+        $stmt = $pdo->prepare("
+            SELECT p.id, p.title, p.program_type, ct.name AS class_type_name
+            FROM musabaqa_programs p
+            LEFT JOIN " . DB_MAIN_NAME . ".class_types ct ON ct.id = p.class_type_id
+            WHERE {$whereCond}
+            ORDER BY p.id ASC
+        ");
+        $stmt->execute([$eventId]);
+        $programs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        if (!$programs) return;
+
+        $allProgIds = array_column($programs, 'id');
+        $inClauseAll = implode(',', array_fill(0, count($allProgIds), '?'));
+
+        $stmt = $pdo->prepare("
+            SELECT 
+                pe.id AS entry_id,
+                pe.program_id,
+                pe.entry_name,
+                pe.entry_number,
+                pe.final_score,
+                pe.final_rank,
+                pe.team_score,
+                t.id AS team_id,
+                t.team_name,
+                t.short_name,
+                t.team_color
+            FROM musabaqa_program_entries pe
+            JOIN musabaqa_teams t ON t.id = pe.team_id
+            WHERE pe.event_id = ? AND pe.program_id IN ({$inClauseAll}) AND pe.team_score > 0
+            ORDER BY pe.program_id ASC, pe.final_rank ASC, pe.id ASC
+        ");
+        $stmt->execute(array_merge([$eventId], $allProgIds));
+        $entries = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $stmt = $pdo->prepare("
+            SELECT id, team_name, short_name, team_color, total_score
+            FROM musabaqa_teams
+            WHERE event_id = ?
+            ORDER BY total_score DESC, team_name ASC
+        ");
+        $stmt->execute([$eventId]);
+        $teams = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $teamProgramPoints = [];
+        $teamProgramBreakdown = [];
+        $programMap = [];
+        foreach ($programs as $prog) {
+            $programMap[(int)$prog['id']] = $prog['title'];
+        }
+
+        foreach ($entries as $e) {
+            $tId = (int)$e['team_id'];
+            $pId = (int)$e['program_id'];
+            $pts = (float)$e['team_score'];
+            $teamProgramPoints[$tId] = ($teamProgramPoints[$tId] ?? 0) + $pts;
+            $pTitle = $programMap[$pId] ?? 'Program';
+            $teamProgramBreakdown[$tId][$pTitle] = ($teamProgramBreakdown[$tId][$pTitle] ?? 0) + $pts;
+        }
+
+        $formattedTeams = [];
+        foreach ($teams as $idx => $t) {
+            $tId = (int)$t['id'];
+            $formattedTeams[] = [
+                'id' => $tId,
+                'team_name' => $t['team_name'],
+                'short_name' => $t['short_name'] ?: $t['team_name'],
+                'team_color' => $t['team_color'] ?: '#6366f1',
+                'total_score' => (float)$t['total_score'],
+                'program_points' => (float)($teamProgramPoints[$tId] ?? 0),
+                'breakdown' => $teamProgramBreakdown[$tId] ?? [],
+                'rank' => $idx + 1
+            ];
+        }
+
+        $topTeam = $formattedTeams[0] ?? null;
+
+        $formattedPrograms = [];
+        foreach ($programs as $prog) {
+            $formattedPrograms[] = [
+                'id' => (int)$prog['id'],
+                'title' => $prog['title'],
+                'program_type' => ucfirst($prog['program_type'] ?: 'Individual'),
+                'category_name' => $prog['class_type_name'] ?: '',
+            ];
+        }
+
+        $payload = [
+            'event_id' => $eventId,
+            'programs' => $formattedPrograms,
+            'program_id' => $formattedPrograms[0]['id'] ?? 0,
+            'program_title' => count($formattedPrograms) === 1 
+                ? $formattedPrograms[0]['title'] 
+                : count($formattedPrograms) . ' Updated Programs',
+            'category_name' => count($formattedPrograms) === 1 ? ($formattedPrograms[0]['category_name'] ?? '') : '',
+            'timestamp' => round(microtime(true) * 1000),
+            'top_team' => $topTeam,
+            'teams' => $formattedTeams,
+            'entries' => $entries
+        ];
+
+        $stmt = $pdo->prepare("
+            INSERT INTO musabaqa_settings (setting_key, setting_value)
+            VALUES ('live_score_reveal_event', ?)
+            ON DUPLICATE KEY UPDATE
+                setting_value = VALUES(setting_value),
+                updated_at = CURRENT_TIMESTAMP
+        ");
+        $stmt->execute([json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)]);
+    } catch (Throwable $e) {
+        error_log('admin_trigger_live_score_reveal error: ' . $e->getMessage());
+    }
 }
 
 function admin_reject_program_scores(PDO $pdo, int $eventId, int $programId, int $userId, string $notes = ''): void
@@ -1486,5 +1657,28 @@ function admin_entry_chest_number_subquery(string $peAlias = 'pe'): string
         ) AS chest_number
     ";
 }
+
+/**
+ * Resolves category label from class type name or class type ID.
+ */
+if (!function_exists('id_card_category_label')) {
+    function id_card_category_label(?string $classTypeName, int $classTypeId = 0): string
+    {
+        $name = trim((string)$classTypeName);
+        if ($name !== '') {
+            return $name;
+        }
+
+        return match ($classTypeId) {
+            1 => 'Bidaya',
+            2 => 'Uula',
+            3 => 'Thaniya',
+            4 => 'Thalisa',
+            5 => 'Aliya',
+            default => 'General',
+        };
+    }
+}
+
 
 

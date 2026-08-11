@@ -173,10 +173,35 @@ function program_scores_render_row(array $entry, array $categories, int $judgesC
             <?php endfor; ?>
         <?php endif; ?>
         
+        <?php
+            $finalScoreVal = (float)($entry['final_total'] ?? 0);
+            $pctVal = ($hasSheet && $judgesCount > 0) ? round(($finalScoreVal / ($judgesCount * 100)) * 100, 1) : null;
+            $entryGrade = $entry['grade'] ?? '';
+            $gradePts = (float)($entry['grade_points'] ?? 0);
+            if (empty($entryGrade) && $hasSheet && $pctVal !== null) {
+                $gInfo = admin_calculate_grade_info($finalScoreVal, $judgesCount);
+                $entryGrade = $gInfo['grade'];
+                $gradePts = $gInfo['grade_points'];
+            }
+        ?>
         <td class="row-total-score" id="total-score-<?= $entryId ?>" style="font-weight: 700; color: #34d399; font-size: 14px; text-align: center; vertical-align: middle;">
-            <?= $hasSheet ? number_format((float)$entry['final_total'], 2) : '0.00' ?>
+            <?= $hasSheet ? number_format($finalScoreVal, 0) : '0' ?>
         </td>
         
+        <td class="row-percentage" id="percentage-<?= $entryId ?>" style="font-weight: 600; color: #60a5fa; font-size: 13px; text-align: center; vertical-align: middle;">
+            <?= $pctVal !== null ? number_format($pctVal, 1) . '%' : '—' ?>
+        </td>
+
+        <td class="row-grade-badge" id="grade-badge-<?= $entryId ?>" style="text-align: center; vertical-align: middle;">
+            <?php if (!empty($entryGrade)): ?>
+                <span class="badge badge-<?= match($entryGrade) { 'A' => 'success', 'B' => 'info', 'C' => 'warning', 'D' => 'neutral', default => 'neutral' } ?>" style="font-size: 11px; padding: 3px 8px; font-weight: 800;">
+                    Grade <?= e($entryGrade) ?>
+                </span>
+            <?php else: ?>
+                <span class="text-muted">—</span>
+            <?php endif; ?>
+        </td>
+
         <td class="row-save-status" id="save-status-<?= $entryId ?>" style="text-align: center; vertical-align: middle;">
             <?php if ($scoresLocked): ?>
                 <i class="fa-solid fa-lock text-muted" title="Locked"></i>
@@ -1784,6 +1809,8 @@ require_once __DIR__ . '/../includes/header.php';
                                 </th>
                             <?php endfor; ?>
                             <th rowspan="2" style="width: 100px; text-align: center; vertical-align: middle;">Final Score</th>
+                            <th rowspan="2" style="width: 90px; text-align: center; vertical-align: middle;">Percentage</th>
+                            <th rowspan="2" style="width: 90px; text-align: center; vertical-align: middle;">Grade</th>
                             <th rowspan="2" style="width: 80px; text-align: center; vertical-align: middle;">Status</th>
                         </tr>
                         <tr>
@@ -1975,18 +2002,48 @@ document.addEventListener('change', (e) => {
     }
 });
 
+const JUDGES_COUNT = <?= (int)$judgesCount ?>;
+
 function recalculateRowTotal(entryId) {
     const row = document.querySelector(`tr[data-entry-row="${entryId}"]`);
     if (!row) return;
 
     let sum = 0.0;
+    let hasInput = false;
     row.querySelectorAll('.score-grid-input').forEach(input => {
-        sum += parseFloat(input.value || 0);
+        const val = parseFloat(input.value);
+        if (!isNaN(val)) {
+            sum += val;
+            hasInput = true;
+        }
     });
 
     const totalEl = document.getElementById(`total-score-${entryId}`);
-    if (totalEl) {
-        totalEl.textContent = sum.toFixed(2);
+    const pctEl = document.getElementById(`percentage-${entryId}`);
+    const gradeEl = document.getElementById(`grade-badge-${entryId}`);
+
+    if (hasInput && JUDGES_COUNT > 0) {
+        if (totalEl) totalEl.textContent = Math.round(sum);
+
+        const pct = (sum / (JUDGES_COUNT * 100)) * 100;
+        if (pctEl) pctEl.textContent = pct.toFixed(1) + '%';
+
+        let grade = 'D';
+        let badgeClass = 'neutral';
+        if (pct >= 85) {
+            grade = 'A';
+            badgeClass = 'success';
+        } else if (pct >= 75) {
+            grade = 'B';
+            badgeClass = 'info';
+        } else if (pct >= 65) {
+            grade = 'C';
+            badgeClass = 'warning';
+        }
+
+        if (gradeEl) {
+            gradeEl.innerHTML = `<span class="badge badge-${badgeClass}" style="font-size: 11px; padding: 3px 8px; font-weight: 800;">Grade ${grade}</span>`;
+        }
     }
 }
 
@@ -2038,10 +2095,23 @@ async function saveRowScore(entryId) {
             // Clear entry draft cache upon successful server save
             clearEntryDraftFromCache(entryId);
 
-            // Update final total from server response
+            // Update final total, percentage & grade from server response
             const totalEl = document.getElementById(`total-score-${entryId}`);
-            if (totalEl && data.final_total) {
+            if (totalEl && data.final_total !== undefined) {
                 totalEl.textContent = data.final_total;
+            }
+            const pctEl = document.getElementById(`percentage-${entryId}`);
+            if (pctEl && data.percentage !== undefined) {
+                pctEl.textContent = data.percentage;
+            }
+            const gradeEl = document.getElementById(`grade-badge-${entryId}`);
+            if (gradeEl && data.grade !== undefined) {
+                if (data.grade && data.grade !== '—') {
+                    const badgeClass = data.grade === 'A' ? 'success' : (data.grade === 'B' ? 'info' : (data.grade === 'C' ? 'warning' : 'neutral'));
+                    gradeEl.innerHTML = `<span class="badge badge-${badgeClass}" style="font-size: 11px; padding: 3px 8px; font-weight: 800;">Grade ${data.grade}</span>`;
+                } else {
+                    gradeEl.innerHTML = '<span class="text-muted">—</span>';
+                }
             }
             
             checkProgramCompletion();
@@ -2097,45 +2167,63 @@ if (sendApprovalBtn) {
     }
 }
 
-// Arrow and Enter key cell navigation (Excel-like)
+// Arrow and Enter key cell navigation (Excel-style)
 document.addEventListener('keydown', (e) => {
     if (!e.target.classList.contains('score-grid-input')) return;
 
     const input = e.target;
     const row = input.closest('tr');
-    const tbody = row.closest('tbody');
+    const tbody = row ? row.closest('tbody') : null;
+    if (!row || !tbody) return;
+
     const inputsInRow = Array.from(row.querySelectorAll('.score-grid-input'));
     const inputColIndex = inputsInRow.indexOf(input);
     const rows = Array.from(tbody.querySelectorAll('tr[data-entry-row]'));
     const rowIndex = rows.indexOf(row);
 
-    if (e.key === 'ArrowDown' || e.key === 'Enter') {
+    if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        if (inputColIndex < inputsInRow.length - 1) {
+            inputsInRow[inputColIndex + 1].focus();
+            inputsInRow[inputColIndex + 1].select();
+        } else if (rowIndex < rows.length - 1) {
+            const nextRowInputs = rows[rowIndex + 1].querySelectorAll('.score-grid-input');
+            if (nextRowInputs.length > 0) {
+                nextRowInputs[0].focus();
+                nextRowInputs[0].select();
+            }
+        }
+    } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        if (inputColIndex > 0) {
+            inputsInRow[inputColIndex - 1].focus();
+            inputsInRow[inputColIndex - 1].select();
+        } else if (rowIndex > 0) {
+            const prevRowInputs = rows[rowIndex - 1].querySelectorAll('.score-grid-input');
+            if (prevRowInputs.length > 0) {
+                prevRowInputs[prevRowInputs.length - 1].focus();
+                prevRowInputs[prevRowInputs.length - 1].select();
+            }
+        }
+    } else if (e.key === 'ArrowDown' || e.key === 'Enter') {
         e.preventDefault();
         if (rowIndex < rows.length - 1) {
             const nextRowInputs = rows[rowIndex + 1].querySelectorAll('.score-grid-input');
-            if (nextRowInputs[inputColIndex]) {
-                nextRowInputs[inputColIndex].focus();
-                nextRowInputs[inputColIndex].select();
+            const targetInput = nextRowInputs[inputColIndex] || nextRowInputs[0];
+            if (targetInput) {
+                targetInput.focus();
+                targetInput.select();
             }
         }
     } else if (e.key === 'ArrowUp') {
         e.preventDefault();
         if (rowIndex > 0) {
             const prevRowInputs = rows[rowIndex - 1].querySelectorAll('.score-grid-input');
-            if (prevRowInputs[inputColIndex]) {
-                prevRowInputs[inputColIndex].focus();
-                prevRowInputs[inputColIndex].select();
+            const targetInput = prevRowInputs[inputColIndex] || prevRowInputs[0];
+            if (targetInput) {
+                targetInput.focus();
+                targetInput.select();
             }
-        }
-    } else if (e.key === 'ArrowRight' && input.selectionEnd === input.value.length) {
-        if (inputColIndex < inputsInRow.length - 1) {
-            inputsInRow[inputColIndex + 1].focus();
-            inputsInRow[inputColIndex + 1].select();
-        }
-    } else if (e.key === 'ArrowLeft' && input.selectionStart === 0) {
-        if (inputColIndex > 0) {
-            inputsInRow[inputColIndex - 1].focus();
-            inputsInRow[inputColIndex - 1].select();
         }
     }
 });

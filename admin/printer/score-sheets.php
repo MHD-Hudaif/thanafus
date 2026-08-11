@@ -297,8 +297,9 @@ if ($action === 'print' && $activeEvent) {
                 border: 1px solid rgba(0,0,0,0.2);
             }
             .col-total {
-                width: 80px;
+                width: 150px;
                 font-weight: 900;
+                font-size: 16px;
                 background: #fafafa;
             }
             .col-rank {
@@ -425,7 +426,7 @@ if ($action === 'print' && $activeEvent) {
             }
         </style>
     </head>
-    <body class="hide-participant-names hide-total-column hide-notes-column hide-sheet-footer" data-print-orientation="landscape">
+    <body class="hide-participant-names hide-notes-column hide-sheet-footer" data-print-orientation="landscape">
         <div class="no-print-bar">
             <div class="toolbar-inner">
                 <div class="toolbar-title-group">
@@ -455,6 +456,11 @@ if ($action === 'print' && $activeEvent) {
             $categories = $categoriesByProgram[$pId] ?? [];
             $entriesForPrint = $entriesByProgram[$pId] ?? [];
             $entryCount = max(1, count($entriesForPrint));
+
+            $totalMaxMarks = 0;
+            foreach ($categories as $cat) {
+                $totalMaxMarks += (float)($cat['max_marks'] ?? 0);
+            }
 
             if ($entryCount <= 8) {
                 $cellPadding = '12px 10px';
@@ -515,7 +521,12 @@ if ($action === 'print' && $activeEvent) {
                                             <small style="font-weight: 800; font-size: <?= $thMaxFontSize ?>; text-transform: none; color: #334155;">(Max <?= number_format($cat['max_marks'], 0) ?>)</small>
                                         </th>
                                     <?php endforeach; ?>
-                                    <th class="col-total">Total</th>
+                                    <th class="col-total" style="font-size: <?= $thCatFontSize ?>; font-weight: 900; padding: 10px 8px;">
+                                        Total
+                                        <?php if ($totalMaxMarks > 0): ?>
+                                            <br><small style="font-weight: 800; font-size: <?= $thMaxFontSize ?>; text-transform: none; color: #334155;">(Max <?= number_format($totalMaxMarks, 0) ?>)</small>
+                                        <?php endif; ?>
+                                    </th>
                                     <th class="col-rank">Rank</th>
                                     <th class="col-notes">Judge Notes</th>
                                 </tr>
@@ -632,7 +643,7 @@ if ($activeEvent) {
 ?>
 
 <div class="main-content">
-    <div class="musabaqa-hub-header">
+<div class="musabaqa-hub-header">
         <div>
             <h1><i class="fa-solid fa-file-invoice" style="color:#2563eb;"></i> Bulk Score Sheets Printer</h1>
             <p>Batch print customized judges' score sheets (Individual and Group programs separated)</p>
@@ -648,48 +659,108 @@ if ($activeEvent) {
         <?php render_no_active_event_guard(); ?>
     <?php else: ?>
         <div class="panel">
-            <div class="flex-between mb-6" style="border-bottom: 1px solid var(--border); padding-bottom: 16px; flex-wrap: wrap; gap: 12px;">
-                <h3 style="margin: 0; color: #fff;"><i class="fa-solid fa-list-check mr-2" style="color: #60a5fa;"></i> Event Programs Selection (Schedule Order)</h3>
-                
-                <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
-                    <div class="btn-group" style="display: flex; gap: 6px; background: rgba(0,0,0,0.25); padding: 3px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08);">
-                        <button type="button" class="btn btn-xs btn-primary filter-tab active" data-type="all">All Programs</button>
-                        <button type="button" class="btn btn-xs btn-secondary filter-tab" data-type="individual"><i class="fa-solid fa-user mr-1"></i> Individual Only</button>
-                        <button type="button" class="btn btn-xs btn-secondary filter-tab" data-type="group"><i class="fa-solid fa-users mr-1"></i> Group Only</button>
-                    </div>
-
-                    <input type="text" id="programSearch" class="form-input" placeholder="Search programs..." style="width: 200px; height: 34px; font-size: 13px;">
-                    <button class="btn btn-secondary btn-sm" id="btnSelectAll" type="button">Select All</button>
-                    <button class="btn btn-secondary btn-sm" id="btnDeselectAll" type="button">Deselect All</button>
-                </div>
-            </div>
-
             <form action="<?= app_url('/admin/printer/score-sheets.php') ?>" method="GET" target="_blank" id="printForm">
                 <input type="hidden" name="action" value="print">
-                
-                <div style="margin-bottom: 20px; display: flex; gap: 16px; align-items: center; background: rgba(15, 23, 42, 0.6); padding: 14px 18px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.08);">
-                    <strong style="color: #fff; font-size: 14px;"><i class="fa-solid fa-print mr-2" style="color: #a855f7;"></i> Select Print Target:</strong>
-                    <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; color: #cbd5e1; font-weight: 600; font-size: 13px;">
-                        <input type="radio" name="print_type" value="scores" checked style="accent-color: #a855f7; width: 16px; height: 16px;">
-                        Judges Score Sheets
-                    </label>
-                    <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; color: #cbd5e1; font-weight: 600; font-size: 13px; margin-left: 12px;">
-                        <input type="radio" name="print_type" value="emcee" style="accent-color: #38bdf8; width: 16px; height: 16px;">
-                        Emcee Stage Sheets
-                    </label>
+                <input type="hidden" name="print_type" value="scores">
+
+                <div class="flex-between mb-6" style="border-bottom: 1px solid var(--border); padding-bottom: 16px; flex-wrap: wrap; gap: 12px;">
+                    <h3 style="margin: 0; color: #fff;"><i class="fa-solid fa-list-check mr-2" style="color: #60a5fa;"></i> Event Programs Selection (Schedule Order)</h3>
+                    
+                    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                        <div class="btn-group" style="display: flex; gap: 6px; background: rgba(0,0,0,0.25); padding: 3px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08);">
+                            <button type="button" class="btn btn-xs btn-primary filter-tab active" data-type="all">All Programs</button>
+                            <button type="button" class="btn btn-xs btn-secondary filter-tab" data-type="individual"><i class="fa-solid fa-user mr-1"></i> Individual Only</button>
+                            <button type="button" class="btn btn-xs btn-secondary filter-tab" data-type="group"><i class="fa-solid fa-users mr-1"></i> Group Only</button>
+                        </div>
+
+                        <input type="text" id="programSearch" class="form-input" placeholder="Search programs..." style="width: 170px; height: 34px; font-size: 13px;">
+                        <button class="btn btn-secondary btn-sm" id="btnSelectAll" type="button">Select All</button>
+                        <button class="btn btn-secondary btn-sm" id="btnDeselectAll" type="button">Deselect All</button>
+                        <button type="submit" class="btn btn-primary btn-sm" style="background: #3b82f6; border-color: #3b82f6; font-weight: 700;">
+                            <i class="fa-solid fa-print mr-1"></i> Print Selected Sheets
+                        </button>
+                    </div>
                 </div>
-                
+
+<style>
+.pro-checkbox-wrap {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    position: relative !important;
+    cursor: pointer !important;
+    vertical-align: middle !important;
+    width: 20px !important;
+    height: 20px !important;
+    min-width: 20px !important;
+    max-width: 20px !important;
+    min-height: 20px !important;
+    max-height: 20px !important;
+    flex-shrink: 0 !important;
+}
+.pro-checkbox {
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    width: 20px !important;
+    height: 20px !important;
+    min-width: 20px !important;
+    max-width: 20px !important;
+    min-height: 20px !important;
+    max-height: 20px !important;
+    border: 2px solid rgba(255, 255, 255, 0.3) !important;
+    border-radius: 5px !important;
+    background: rgba(15, 23, 42, 0.6) !important;
+    outline: none !important;
+    cursor: pointer !important;
+    transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    position: relative !important;
+    vertical-align: middle !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-sizing: border-box !important;
+    flex-shrink: 0 !important;
+}
+.pro-checkbox:hover {
+    border-color: #a855f7 !important;
+    background: rgba(168, 85, 247, 0.15) !important;
+    box-shadow: 0 0 10px rgba(168, 85, 247, 0.3) !important;
+}
+.pro-checkbox:checked {
+    background: linear-gradient(135deg, #7e22ce, #a855f7) !important;
+    border-color: #a855f7 !important;
+    box-shadow: 0 0 12px rgba(168, 85, 247, 0.4) !important;
+}
+.pro-checkbox:checked::after {
+    content: '' !important;
+    position: absolute !important;
+    top: 50% !important;
+    left: 50% !important;
+    width: 5px !important;
+    height: 10px !important;
+    border: solid #ffffff !important;
+    border-width: 0 2.5px 2.5px 0 !important;
+    transform: translate(-50%, -60%) rotate(45deg) !important;
+}
+.pro-checkbox:focus-visible {
+    box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.4) !important;
+}
+</style>
+
                 <div class="table-wrapper">
                     <table class="table">
                         <thead>
                             <tr>
-                                <th style="width: 40px; text-align: center;"><input type="checkbox" id="headerCheckbox" style="width:16px; height:16px; accent-color:#3b82f6;"></th>
+                                <th style="width: 44px; text-align: center;">
+                                    <label class="pro-checkbox-wrap">
+                                        <input type="checkbox" id="headerCheckbox" class="pro-checkbox">
+                                    </label>
+                                </th>
                                 <th style="width: 80px;">Sched Order</th>
                                 <th>Program Title</th>
                                 <th>Category / Tier</th>
                                 <th>Type</th>
                                 <th>Entries Count</th>
-                                <th style="width: 220px; text-align: right;">Action</th>
+                                <th style="width: 140px; text-align: right;">Action</th>
                             </tr>
                         </thead>
                         <tbody id="programsTableBody">
@@ -705,7 +776,9 @@ if ($activeEvent) {
                                     ?>
                                     <tr data-title="<?= e(strtolower($p['title'])) ?>" data-class="<?= e(strtolower($p['class_type_name'] ?? '')) ?>" data-type="<?= e($pType) ?>">
                                         <td style="text-align: center;">
-                                            <input type="checkbox" name="program_ids[]" value="<?= $pId ?>" class="program-checkbox" style="width:16px; height:16px; accent-color:#3b82f6;">
+                                            <label class="pro-checkbox-wrap">
+                                                <input type="checkbox" name="program_ids[]" value="<?= $pId ?>" class="program-checkbox pro-checkbox" checked>
+                                            </label>
                                         </td>
                                         <td><strong>#<?= (int)($p['schedule_order'] ?? $pId) ?></strong></td>
                                         <td><strong><?= e($p['title']) ?></strong></td>
@@ -722,26 +795,15 @@ if ($activeEvent) {
                                             </span>
                                         </td>
                                         <td style="text-align: right;">
-                                            <div class="flex gap-2" style="justify-content: flex-end;">
-                                                <a href="<?= app_url('/admin/printer/score-sheets.php') ?>?action=print&print_type=emcee&program_ids[]=<?= $pId ?>" target="_blank" class="btn btn-secondary btn-xs">
-                                                    <i class="fa-solid fa-microphone mr-1"></i> MC Sheet
-                                                </a>
-                                                <a href="<?= app_url('/admin/printer/score-sheets.php') ?>?action=print&print_type=scores&program_ids[]=<?= $pId ?>" target="_blank" class="btn btn-primary btn-xs">
-                                                    <i class="fa-solid fa-print mr-1"></i> Score Sheet
-                                                </a>
-                                            </div>
+                                            <a href="<?= app_url('/admin/printer/score-sheets.php') ?>?action=print&print_type=scores&program_ids[]=<?= $pId ?>" target="_blank" class="btn btn-primary btn-xs">
+                                                <i class="fa-solid fa-print mr-1"></i> Score Sheet
+                                            </a>
                                         </td>
                                     </tr>
                                 <?php endforeach; ?>
                             <?php endif; ?>
                         </tbody>
                     </table>
-                </div>
-
-                <div style="margin-top: 20px; display: flex; justify-content: flex-end; gap: 12px;">
-                    <button type="submit" class="btn btn-primary btn-md">
-                        <i class="fa-solid fa-print mr-1"></i> Batch Print Selected (Separated by Type)
-                    </button>
                 </div>
             </form>
         </div>
@@ -750,14 +812,55 @@ if ($activeEvent) {
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    const searchInput = document.getElementById('programSearch');
     const tableBody = document.getElementById('programsTableBody');
     const headerCheckbox = document.getElementById('headerCheckbox');
     const btnSelectAll = document.getElementById('btnSelectAll');
     const btnDeselectAll = document.getElementById('btnDeselectAll');
     const filterTabs = document.querySelectorAll('.filter-tab');
+    const searchInput = document.getElementById('programSearch');
+    const STORAGE_KEY = 'score_sheets_selected_programs_<?= (int)($activeEvent['id'] ?? 0) ?>';
 
     let currentTypeFilter = 'all';
+
+    function saveCheckedState() {
+        if (!tableBody) return;
+        const checkboxes = tableBody.querySelectorAll('.program-checkbox');
+        const checkedValues = [];
+        checkboxes.forEach(cb => {
+            if (cb.checked) {
+                checkedValues.push(cb.value);
+            }
+        });
+        try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(checkedValues));
+        } catch(e) {}
+    }
+
+    function loadCheckedState() {
+        if (!tableBody) return;
+        try {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved !== null) {
+                const checkedSet = new Set(JSON.parse(saved));
+                const checkboxes = tableBody.querySelectorAll('.program-checkbox');
+                checkboxes.forEach(cb => {
+                    cb.checked = checkedSet.has(cb.value);
+                });
+            }
+        } catch(e) {}
+        updateHeaderCheckboxState();
+    }
+
+    function updateHeaderCheckboxState() {
+        if (!headerCheckbox || !tableBody) return;
+        const visibleCheckboxes = Array.from(tableBody.querySelectorAll('.program-checkbox'))
+            .filter(cb => cb.closest('tr').style.display !== 'none');
+        if (visibleCheckboxes.length > 0 && visibleCheckboxes.every(cb => cb.checked)) {
+            headerCheckbox.checked = true;
+        } else {
+            headerCheckbox.checked = false;
+        }
+    }
 
     function applyTableFilters() {
         const term = searchInput ? searchInput.value.trim().toLowerCase() : '';
@@ -776,7 +879,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 r.style.display = 'none';
             }
         });
+        updateHeaderCheckboxState();
     }
+
+    applyTableFilters();
+    loadCheckedState();
 
     if (filterTabs) {
         filterTabs.forEach(tab => {
@@ -797,6 +904,15 @@ document.addEventListener('DOMContentLoaded', () => {
         searchInput.addEventListener('input', applyTableFilters);
     }
 
+    if (tableBody) {
+        tableBody.addEventListener('change', (e) => {
+            if (e.target && e.target.classList.contains('program-checkbox')) {
+                updateHeaderCheckboxState();
+                saveCheckedState();
+            }
+        });
+    }
+
     if (headerCheckbox) {
         headerCheckbox.addEventListener('change', () => {
             const checkboxes = tableBody.querySelectorAll('.program-checkbox');
@@ -805,6 +921,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     cb.checked = headerCheckbox.checked;
                 }
             });
+            saveCheckedState();
         });
     }
 
@@ -817,6 +934,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
             if (headerCheckbox) headerCheckbox.checked = true;
+            saveCheckedState();
         });
     }
 
@@ -825,6 +943,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const checkboxes = tableBody.querySelectorAll('.program-checkbox');
             checkboxes.forEach(cb => cb.checked = false);
             if (headerCheckbox) headerCheckbox.checked = false;
+            saveCheckedState();
         });
     }
 });

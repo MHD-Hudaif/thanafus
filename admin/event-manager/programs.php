@@ -726,161 +726,163 @@ require_once __DIR__ . '/../../includes/sidebar.php';
 
 
 <div class="modal-overlay" id="programModal">
-    <div class="modal-box modal-lg">
-        <div class="modal-header">
+    <div class="modal-box modal-lg" style="max-height: calc(100vh - 50px); display: flex; flex-direction: column; overflow: hidden; padding: 20px;">
+        <div class="modal-header" style="flex-shrink: 0; margin-bottom: 14px;">
             <div class="modal-title" id="programModalTitle">Add Program</div>
             <button class="modal-close" type="button" data-close="programModal"><i class="fa-solid fa-xmark"></i></button>
         </div>
-        <form method="POST" id="programForm">
+        <form method="POST" id="programForm" style="display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden;">
             <?= admin_csrf_field() ?>
             <input type="hidden" name="action" id="programAction" value="create">
             <input type="hidden" name="program_id" id="programId">
-            <div class="form-grid">
-                <div class="input-group">
-                    <label>Program Title <span class="required">*</span></label>
-                    <input type="text" name="title" id="programTitle" required>
-                </div>
-                <div class="input-group">
-                    <label>Program Type <span class="required">*</span></label>
-                    <select name="program_type" id="programType" required>
-                        <option value="">Select Type</option>
-                        <option value="individual">Individual</option>
-                        <option value="group">Group</option>
-                    </select>
-                </div>
-                <div class="input-group full-width" style="grid-column: span 2;">
-                    <label>Schedule Section (Timing Group)</label>
-                    <select name="section_id" id="programSectionId">
-                        <option value="">-- No Section (Auto-detect by Timing) --</option>
-                        <?php foreach ($scheduleSections as $sec): ?>
-                            <option value="<?= (int)$sec['id'] ?>"><?= e($sec['name']) ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                    <div class="field-help" style="margin-top: 4px;">Assign to group programs into Morning, Evening, or Night slots. If set to Auto-detect, the TV display will place it based on program timing.</div>
-                </div>
-
-                <?php
-                $defaultStageId = $latestProgramData ? $latestProgramData['stage_type_id'] : 1;
-                $defaultLocation = $latestProgramData ? $latestProgramData['location'] : '';
-                ?>
-                <div class="input-group">
-                    <label>Stage Category <span class="required">*</span></label>
-                    <select name="stage_type_id" id="programStageTypeId" required>
-                        <?php foreach ($stageTypes as $st): ?>
-                            <option value="<?= (int)$st['id'] ?>" <?= (int)$st['id'] === (int)$defaultStageId ? 'selected' : '' ?>><?= e($st['name']) ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <div class="input-group">
-                    <label>Specific Venue/Location</label>
-                    <select name="location" id="programLocation">
-                        <option value="">-- Select Stage --</option>
-                        <option value="Darul Quran" <?= $defaultLocation === 'Darul Quran' ? 'selected' : '' ?>>Darul Quran (Normal Stage)</option>
-                        <option value="Kauzariyya Library" <?= $defaultLocation === 'Kauzariyya Library' ? 'selected' : '' ?>>Kauzariyya Library (Off Stage)</option>
-                    </select>
-                </div>
-                <div class="input-group full-width" style="grid-column: span 2;">
-                    <label style="font-weight: 600; margin-bottom: 8px; display: block; color: var(--muted);">Allowed Sections (Class Types) <span class="required">*</span></label>
-                    <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 5px;">
-                        <?php 
-                        $activeSections = $settings['active_sections'] ?? [];
-                        $allSectionsActive = empty($activeSections);
-                        foreach ($classTypes as $type): 
-                            $classTypeId = (int)$type['id'];
-                            if (!$allSectionsActive && !in_array($classTypeId, $activeSections, true)) {
-                                continue;
-                            }
-                            ?>
-                            <label class="section-toggle-card">
-                                <input type="checkbox" name="allowed_sections[]" value="<?= $classTypeId ?>" class="allowed-section-chk">
-                                <div class="card-inner">
-                                    <i class="fa-solid fa-circle-check check-icon"></i>
-                                    <span><?= e(admin_class_type_display($type['name'] ?? null, $classTypeId)) ?></span>
-                                </div>
-                            </label>
-                        <?php endforeach; ?>
+            
+            <div style="flex: 1; overflow-y: auto; padding-right: 6px; padding-bottom: 8px;">
+                <div class="form-grid">
+                    <div class="input-group">
+                        <label>Program Title <span class="required">*</span></label>
+                        <input type="text" name="title" id="programTitle" required>
                     </div>
-                </div>
-
-                <div class="input-group full-width" style="grid-column: span 2;">
-                    <label style="font-weight: 600; margin-bottom: 8px; display: block; color: var(--muted);">Responsible Teachers (Incharges)</label>
-                    <div style="display: flex; align-items: center; gap: 15px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.04); padding: 10px 14px; border-radius: 10px;">
-                        <button type="button" class="btn btn-secondary btn-sm" onclick="openModal('teacherSelectModal')">
-                            <i class="fa-solid fa-user-plus"></i> Select Teachers
-                        </button>
-                        <span id="selectedTeachersSummary" style="font-size: 13px; color: var(--muted); font-weight: 500;">No teachers selected</span>
+                    <div class="input-group">
+                        <label>Program Type <span class="required">*</span></label>
+                        <select name="program_type" id="programType" required>
+                            <option value="">Select Type</option>
+                            <option value="individual">Individual</option>
+                            <option value="group">Group</option>
+                        </select>
                     </div>
-                </div>
-                
-                <div id="specialFields" style="border-top: 1px solid var(--border); padding-top: 15px; margin-top: 15px; grid-column: span 2; width: 100%;">
-                    <h4 style="font-size: 14px; font-weight: 700; margin-bottom: 12px; color: var(--accent, #14b8a6);"><i class="fa-solid fa-gear"></i> Customization & Scoring Rules</h4>
-                    <div class="form-grid-3" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
-                        <div class="input-group">
-                            <label>Judges Count</label>
-                            <input type="number" name="judges_count" id="judgesCount" min="1" max="10" value="2">
-                        </div>
-                        <div class="input-group">
-                            <label>Total Marks (per Judge)</label>
-                            <input type="number" name="total_marks" id="totalMarks" min="1" max="1000" value="100">
-                        </div>
-                        <div class="input-group">
-                            <label>Entries Limit</label>
-                            <input type="number" name="entries_limit" id="entriesLimit" min="1" max="1000" value="10">
+                    <div class="input-group full-width" style="grid-column: span 2;">
+                        <label>Schedule Section (Timing Group)</label>
+                        <select name="section_id" id="programSectionId">
+                            <option value="">-- No Section (Auto-detect by Timing) --</option>
+                            <?php foreach ($scheduleSections as $sec): ?>
+                                <option value="<?= (int)$sec['id'] ?>"><?= e($sec['name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <div class="field-help" style="margin-top: 4px;">Assign to group programs into Morning, Evening, or Night slots. If set to Auto-detect, the TV display will place it based on program timing.</div>
+                    </div>
+
+                    <?php
+                    $defaultStageId = $latestProgramData ? $latestProgramData['stage_type_id'] : 1;
+                    $defaultLocation = $latestProgramData ? $latestProgramData['location'] : '';
+                    ?>
+                    <div class="input-group">
+                        <label>Stage Category <span class="required">*</span></label>
+                        <select name="stage_type_id" id="programStageTypeId" required>
+                            <?php foreach ($stageTypes as $st): ?>
+                                <option value="<?= (int)$st['id'] ?>" <?= (int)$st['id'] === (int)$defaultStageId ? 'selected' : '' ?>><?= e($st['name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Specific Venue/Location</label>
+                        <select name="location" id="programLocation">
+                            <option value="">-- Select Stage --</option>
+                            <option value="Darul Quran" <?= $defaultLocation === 'Darul Quran' ? 'selected' : '' ?>>Darul Quran (Normal Stage)</option>
+                            <option value="Kauzariyya Library" <?= $defaultLocation === 'Kauzariyya Library' ? 'selected' : '' ?>>Kauzariyya Library (Off Stage)</option>
+                        </select>
+                    </div>
+                    <div class="input-group full-width" style="grid-column: span 2;">
+                        <label style="font-weight: 600; margin-bottom: 8px; display: block; color: var(--muted);">Allowed Sections (Class Types) <span class="required">*</span></label>
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 5px;">
+                            <?php 
+                            $activeSections = $settings['active_sections'] ?? [];
+                            $allSectionsActive = empty($activeSections);
+                            foreach ($classTypes as $type): 
+                                $classTypeId = (int)$type['id'];
+                                if (!$allSectionsActive && !in_array($classTypeId, $activeSections, true)) {
+                                    continue;
+                                }
+                                ?>
+                                <label class="section-toggle-card">
+                                    <input type="checkbox" name="allowed_sections[]" value="<?= $classTypeId ?>" class="allowed-section-chk">
+                                    <div class="card-inner">
+                                        <i class="fa-solid fa-circle-check check-icon"></i>
+                                        <span><?= e(admin_class_type_display($type['name'] ?? null, $classTypeId)) ?></span>
+                                    </div>
+                                </label>
+                            <?php endforeach; ?>
                         </div>
                     </div>
-                    <div style="display: grid; gap: 12px; margin-top: 15px;">
-                        <div id="rowDisableScores" style="display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.04); padding: 10px 14px; border-radius: 10px;">
-                            <div>
-                                <strong style="font-size: 13.5px; display: block; color: var(--text);">Disable Scores</strong>
-                                <span style="font-size: 11.5px; color: var(--muted);">Disable/hide scores (useful for semi-finales/hiding)</span>
-                            </div>
-                            <label class="toggle-switch" style="position: relative; display: inline-block;">
-                                <input type="checkbox" name="disable_scores" id="disableScores" value="1">
-                                <span class="toggle-slider"></span>
-                            </label>
-                        </div>
 
-                        <div id="rowRedirectToTeam" style="display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.04); padding: 10px 14px; border-radius: 10px;">
-                            <div>
-                                <strong style="font-size: 13.5px; display: block; color: var(--text);">Redirect to Team Total</strong>
-                                <span style="font-size: 11.5px; color: var(--muted);">Redirect participants' scores to team total points</span>
-                            </div>
-                            <label class="toggle-switch" style="position: relative; display: inline-block;">
-                                <input type="checkbox" name="redirect_to_team" id="redirectToTeam" value="1" checked>
-                                <span class="toggle-slider"></span>
-                            </label>
-                        </div>
-
-                        <div id="rowOnlyTeamMarks" style="display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.04); padding: 10px 14px; border-radius: 10px;">
-                            <div>
-                                <strong style="font-size: 13.5px; display: block; color: var(--text);">Only Team Marks (No Individual Marks)</strong>
-                                <span style="font-size: 11.5px; color: var(--muted);">Award team placement points only, skip student individual score calculation</span>
-                            </div>
-                            <label class="toggle-switch" style="position: relative; display: inline-block;">
-                                <input type="checkbox" name="only_team_marks" id="onlyTeamMarks" value="1">
-                                <span class="toggle-slider"></span>
-                            </label>
-                        </div>
-
-                        <!-- Rank configurations -->
-                        <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.04); padding: 14px; border-radius: 10px;">
-                            <strong style="font-size: 13.5px; display: block; color: var(--text); margin-bottom: 4px;">Placement Team Points Configuration</strong>
-                            <span style="font-size: 11.5px; color: var(--muted); display: block; margin-bottom: 12px;">Define team points awarded for each placing rank.</span>
-                            
-                            <input type="hidden" name="team_points_config" id="teamPointsConfigInput">
-                            <div id="ranksContainer" style="display: grid; gap: 8px;">
-                                <!-- Ranks dynamic rows go here -->
-                            </div>
-                            
-                            <button type="button" class="btn btn-secondary btn-xs mt-3" id="addRankBtn" style="padding: 6px 12px; font-size:11.5px;">
-                                <i class="fa-solid fa-plus mr-1"></i> Add Rank Position
+                    <div class="input-group full-width" style="grid-column: span 2;">
+                        <label style="font-weight: 600; margin-bottom: 8px; display: block; color: var(--muted);">Responsible Teachers (Incharges)</label>
+                        <div style="display: flex; align-items: center; gap: 15px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.04); padding: 10px 14px; border-radius: 10px;">
+                            <button type="button" class="btn btn-secondary btn-sm" onclick="openModal('teacherSelectModal')">
+                                <i class="fa-solid fa-user-plus"></i> Select Teachers
                             </button>
+                            <span id="selectedTeachersSummary" style="font-size: 13px; color: var(--muted); font-weight: 500;">No teachers selected</span>
+                        </div>
+                    </div>
+                    
+                    <div id="specialFields" style="border-top: 1px solid var(--border); padding-top: 15px; margin-top: 15px; grid-column: span 2; width: 100%;">
+                        <h4 style="font-size: 14px; font-weight: 700; margin-bottom: 12px; color: var(--accent, #14b8a6);"><i class="fa-solid fa-gear"></i> Customization & Scoring Rules</h4>
+                        <div class="form-grid-3" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                            <div class="input-group">
+                                <label>Judges Count</label>
+                                <input type="number" name="judges_count" id="judgesCount" min="1" max="10" value="2">
+                            </div>
+                            <div class="input-group">
+                                <label>Total Marks (per Judge)</label>
+                                <input type="number" name="total_marks" id="totalMarks" min="1" max="1000" value="100">
+                            </div>
+                            <div class="input-group">
+                                <label>Entries Limit</label>
+                                <input type="number" name="entries_limit" id="entriesLimit" min="1" max="1000" value="10">
+                            </div>
+                        </div>
+                        <div style="display: grid; gap: 12px; margin-top: 15px;">
+                            <div id="rowDisableScores" style="display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.04); padding: 10px 14px; border-radius: 10px;">
+                                <div>
+                                    <strong style="font-size: 13.5px; display: block; color: var(--text);">Disable Scores</strong>
+                                    <span style="font-size: 11.5px; color: var(--muted);">Disable/hide scores (useful for semi-finales/hiding)</span>
+                                </div>
+                                <label class="toggle-switch" style="position: relative; display: inline-block;">
+                                    <input type="checkbox" name="disable_scores" id="disableScores" value="1">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+
+                            <div id="rowRedirectToTeam" style="display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.04); padding: 10px 14px; border-radius: 10px;">
+                                <div>
+                                    <strong style="font-size: 13.5px; display: block; color: var(--text);">Redirect to Team Total</strong>
+                                    <span style="font-size: 11.5px; color: var(--muted);">Redirect participants' scores to team total points</span>
+                                </div>
+                                <label class="toggle-switch" style="position: relative; display: inline-block;">
+                                    <input type="checkbox" name="redirect_to_team" id="redirectToTeam" value="1" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+
+                            <div id="rowOnlyTeamMarks" style="display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.04); padding: 10px 14px; border-radius: 10px;">
+                                <div>
+                                    <strong style="font-size: 13.5px; display: block; color: var(--text);">Only Team Marks (No Individual Marks)</strong>
+                                    <span style="font-size: 11.5px; color: var(--muted);">Award team placement points only, skip student individual score calculation</span>
+                                </div>
+                                <label class="toggle-switch" style="position: relative; display: inline-block;">
+                                    <input type="checkbox" name="only_team_marks" id="onlyTeamMarks" value="1">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+
+                            <!-- Rank configurations -->
+                            <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.04); padding: 14px; border-radius: 10px;">
+                                <strong style="font-size: 13.5px; display: block; color: var(--text); margin-bottom: 4px;">Placement Team Points Configuration</strong>
+                                <span style="font-size: 11.5px; color: var(--muted); display: block; margin-bottom: 12px;">Define team points awarded for each placing rank.</span>
+                                
+                                <input type="hidden" name="team_points_config" id="teamPointsConfigInput">
+                                <div id="ranksContainer" style="display: grid; gap: 8px;">
+                                    <!-- Ranks dynamic rows go here -->
+                                </div>
+                                
+                                <button type="button" class="btn btn-secondary btn-xs mt-3" id="addRankBtn" style="padding: 6px 12px; font-size:11.5px;">
+                                    <i class="fa-solid fa-plus mr-1"></i> Add Rank Position
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="field-help mt-4">Set a duration to auto-calculate the end time.</div>
-            <div class="form-actions">
+            <div class="form-actions" style="flex-shrink: 0; padding-top: 14px; margin-top: 12px; border-top: 1px solid rgba(255,255,255,0.08); display: flex; justify-content: flex-end; gap: 10px;">
                 <button type="button" class="btn btn-secondary btn-md" data-close="programModal">Cancel</button>
                 <button class="btn btn-success btn-md" type="submit">Save Program</button>
             </div>
@@ -890,7 +892,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
 </div>
 
 <!-- TEACHER SELECT SUB-MODAL (INDEPENDENT STANDALONE MODAL OVERLAY) -->
-<div class="modal-overlay" id="teacherSelectModal" style="z-index: 2000;">
+<div class="modal-overlay" id="teacherSelectModal" style="z-index: 100005;">
     <div class="modal-box modal-md" style="max-width: 500px; width: 95%; border-radius: 14px; overflow: hidden; border: 1px solid rgba(255,255,255,0.08); background: #0e1726; box-shadow: 0 25px 50px rgba(0,0,0,0.6);">
         <div class="modal-header" style="padding: 16px 20px; background: rgba(255,255,255,0.02); border-bottom: 1px solid rgba(255,255,255,0.06); display: flex; align-items: center; justify-content: space-between;">
             <div class="modal-title" style="font-size: 16px; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 8px;">

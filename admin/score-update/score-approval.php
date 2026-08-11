@@ -31,420 +31,492 @@ function approval_can_approve(?string $status): bool
     return admin_program_approvable($status);
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
-        admin_flash('error', 'Invalid security token.');
+/**
+ * Fetch schedule sessions with program counts and submission statistics
+ */
+function admin_get_sessions_approval_stats(PDO $pdo, int $eventId): array
+{
+    $stmt = $pdo->prepare("
+        SELECT 
+            mss.id AS session_id,
+            mss.name AS session_name,
+            mss.section_date,
+            mss.start_time,
+            mss.end_time,
+            mss.sort_order,
+            COUNT(p.id) AS total_programs,
+            SUM(CASE WHEN p.approval_status = 'submitted' THEN 1 ELSE 0 END) AS submitted_count,
+            SUM(CASE WHEN p.approval_status = 'approved' THEN 1 ELSE 0 END) AS approved_count,
+            SUM(CASE WHEN p.approval_status = 'rejected' THEN 1 ELSE 0 END) AS rejected_count,
+            SUM(CASE WHEN p.approval_status IS NULL OR p.approval_status NOT IN ('submitted', 'approved', 'rejected') THEN 1 ELSE 0 END) AS pending_count
+        FROM musabaqa_schedule_sections mss
+        JOIN musabaqa_programs p ON p.section_id = mss.id AND p.event_id = mss.event_id
+        WHERE mss.event_id = ?
+        GROUP BY mss.id, mss.name, mss.section_date, mss.start_time, mss.end_time, mss.sort_order
+        HAVING COUNT(p.id) > 0
+        ORDER BY mss.sort_order ASC, mss.section_date ASC, mss.start_time ASC
+    ");
+    $stmt->execute([$eventId]);
+    $sessions = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Fetch unscheduled / off-stage programs stats
+    $stmtUnscheduled = $pdo->prepare("
+        SELECT 
+            0 AS session_id,
+            'Unscheduled / Off-Stage' AS session_name,
+            NULL AS section_date,
+            NULL AS start_time,
+            NULL AS end_time,
+            99999 AS sort_order,
+            COUNT(p.id) AS total_programs,
+            SUM(CASE WHEN p.approval_status = 'submitted' THEN 1 ELSE 0 END) AS submitted_count,
+            SUM(CASE WHEN p.approval_status = 'approved' THEN 1 ELSE 0 END) AS approved_count,
+            SUM(CASE WHEN p.approval_status = 'rejected' THEN 1 ELSE 0 END) AS rejected_count,
+            SUM(CASE WHEN p.approval_status IS NULL OR p.approval_status NOT IN ('submitted', 'approved', 'rejected') THEN 1 ELSE 0 END) AS pending_count
+        FROM musabaqa_programs p
+        WHERE p.event_id = ? AND (p.section_id IS NULL OR p.section_id = 0)
+    ");
+    $stmtUnscheduled->execute([$eventId]);
+    $unscheduled = $stmtUnscheduled->fetch(PDO::FETCH_ASSOC);
+
+    if ($unscheduled && (int)$unscheduled['total_programs'] > 0) {
+        $sessions[] = $unscheduled;
+    }
+
+    return $sessions;
+}
+
+// ----------------------------------------------------
+// AJAX / POST ENDPOINT HANDLERS
+// ----------------------------------------------------
+if ($_SERVER['REQUEST_METHOD'] === 'POST' || isset($_GET['ajax']) || isset($_GET['action'])) {
+    $action = (string)($_REQUEST['action'] ?? $_POST['approval_action'] ?? '');
+    
+    // AJAX: Fetch Programs inside a Schedule Session for Modal View
+    if ($action === 'fetch_session_programs') {
+        header('Content-Type: application/json; charset=utf-8');
+        try {
+            $sessionId = (int)($_GET['session_id'] ?? $_POST['session_id'] ?? 0);
+            
+            // Get session info
+            $sessionInfo = null;
+            if ($sessionId > 0) {
+                $sStmt = $pdo->prepare("SELECT * FROM musabaqa_schedule_sections WHERE id = ? AND event_id = ? LIMIT 1");
+                $sStmt->execute([$sessionId, $activeEventId]);
+                $sessionInfo = $sStmt->fetch(PDO::FETCH_ASSOC);
+            }
+
+            // Fetch programs for session
+            if ($sessionId > 0) {
+                $pStmt = $pdo->prepare("
+                    SELECT 
+                        p.*, 
+                        ct.name AS class_type_name, 
+                        submitter.full_name AS submitted_name, 
+                        submitter.username AS submitted_username, 
+                        COUNT(DISTINCT pe.id) AS entry_count
+                    FROM musabaqa_programs p
+                    LEFT JOIN " . DB_MAIN_NAME . ".class_types ct ON ct.id = p.class_type_id
+                    LEFT JOIN musabaqa_program_entries pe ON pe.program_id = p.id
+                    LEFT JOIN " . DB_MAIN_NAME . ".users submitter ON submitter.id = p.submitted_by
+                    WHERE p.event_id = ? AND p.section_id = ?
+                    GROUP BY p.id, ct.id, submitter.id
+                    ORDER BY p.title ASC
+                ");
+                $pStmt->execute([$activeEventId, $sessionId]);
+            } else {
+                $pStmt = $pdo->prepare("
+                    SELECT 
+                        p.*, 
+                        ct.name AS class_type_name, 
+                        submitter.full_name AS submitted_name, 
+                        submitter.username AS submitted_username, 
+                        COUNT(DISTINCT pe.id) AS entry_count
+                    FROM musabaqa_programs p
+                    LEFT JOIN " . DB_MAIN_NAME . ".class_types ct ON ct.id = p.class_type_id
+                    LEFT JOIN musabaqa_program_entries pe ON pe.program_id = p.id
+                    LEFT JOIN " . DB_MAIN_NAME . ".users submitter ON submitter.id = p.submitted_by
+                    WHERE p.event_id = ? AND (p.section_id IS NULL OR p.section_id = 0)
+                    GROUP BY p.id, ct.id, submitter.id
+                    ORDER BY p.title ASC
+                ");
+                $pStmt->execute([$activeEventId]);
+            }
+            $programs = $pStmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Compute statistics for this session
+            $totalPrograms = count($programs);
+            $submittedCount = 0;
+            $approvedCount = 0;
+            $rejectedCount = 0;
+            $pendingCount = 0;
+
+            foreach ($programs as $p) {
+                $st = (string)($p['approval_status'] ?? '');
+                if ($st === 'submitted') $submittedCount++;
+                elseif ($st === 'approved') $approvedCount++;
+                elseif ($st === 'rejected') $rejectedCount++;
+                else $pendingCount++;
+            }
+
+            $canBulkApprove = ($totalPrograms > 0 && $pendingCount == 0 && $submittedCount > 0);
+
+            ob_start();
+            if (!$programs): ?>
+                <div class="empty-state" style="padding: 40px 20px;">
+                    <div class="empty-icon"><i class="fa-solid fa-clipboard-check"></i></div>
+                    <div class="empty-title">No Programs in Session</div>
+                    <div class="empty-subtitle">There are no programs assigned to this schedule session.</div>
+                </div>
+            <?php else: ?>
+                <div class="table-wrapper">
+                    <table class="table approval-table">
+                        <thead>
+                            <tr>
+                                <th>Program Title</th>
+                                <th>Class</th>
+                                <th>Entries</th>
+                                <th>Submitted By</th>
+                                <th>Submitted Date</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($programs as $p): ?>
+                                <tr id="prog-row-<?= (int)$p['id'] ?>">
+                                    <td><strong><?= e($p['title']) ?></strong></td>
+                                    <td>
+                                        <?php $classTier = admin_class_type_tier_from_name($p['class_type_name'] ?? ''); ?>
+                                        <span class="badge <?= admin_class_type_badge_class($classTier) ?>">
+                                            <?= e(admin_class_type_display($p['class_type_name'] ?? null, (int)($p['class_type_id'] ?? 0))) ?>
+                                        </span>
+                                    </td>
+                                    <td><?= (int)$p['entry_count'] ?> Entries</td>
+                                    <td><?= e($p['submitted_name'] ?: $p['submitted_username'] ?: '-') ?></td>
+                                    <td><?= $p['submitted_at'] ? e(date('d M h:i A', strtotime($p['submitted_at']))) : '-' ?></td>
+                                    <td id="prog-status-td-<?= (int)$p['id'] ?>">
+                                        <span class="badge <?= approval_badge($p['approval_status']) ?>">
+                                            <?= e(ucfirst((string)($p['approval_status'] ?: 'Pending'))) ?>
+                                        </span>
+                                    </td>
+                                    <td id="prog-actions-td-<?= (int)$p['id'] ?>">
+                                        <div class="flex gap-2 flex-wrap">
+                                            <button type="button" class="btn btn-secondary btn-sm" onclick="toggleProgramPreviewInModal(<?= (int)$p['id'] ?>)">
+                                                <i class="fa-solid fa-eye"></i> View
+                                            </button>
+                                            <?php if ($p['approval_status'] === 'submitted' || $p['approval_status'] === 'rejected'): ?>
+                                                <button type="button" class="btn btn-success btn-sm" onclick="approveProgramInModal(<?= (int)$p['id'] ?>)">
+                                                    <i class="fa-solid fa-check"></i> Approve
+                                                </button>
+                                                <?php if ($p['approval_status'] === 'submitted'): ?>
+                                                    <button type="button" class="btn btn-danger btn-sm" onclick="promptRejectProgram(<?= (int)$p['id'] ?>, '<?= e(addslashes($p['title'])) ?>')">
+                                                        Reject
+                                                    </button>
+                                                <?php endif; ?>
+                                            <?php elseif ($p['approval_status'] === 'approved'): ?>
+                                                <button type="button" class="btn btn-warning btn-sm" onclick="promptRevokeProgram(<?= (int)$p['id'] ?>, '<?= e(addslashes($p['title'])) ?>')">
+                                                    <i class="fa-solid fa-rotate-left"></i> Undo
+                                                </button>
+                                            <?php endif; ?>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr id="prog-preview-tr-<?= (int)$p['id'] ?>" class="hidden">
+                                    <td colspan="7" style="padding: 12px; background: rgba(0, 0, 0, 0.35);">
+                                        <div id="prog-preview-content-<?= (int)$p['id'] ?>" class="text-sm text-muted">
+                                            Loading ranking preview...
+                                        </div>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            <?php endif;
+            $html = ob_get_clean();
+
+            echo json_encode([
+                'success' => true,
+                'session_id' => $sessionId,
+                'session_name' => $sessionInfo ? $sessionInfo['name'] : 'Unscheduled / Off-Stage',
+                'session_meta' => $sessionInfo && $sessionInfo['section_date'] ? date('D, d M Y', strtotime($sessionInfo['section_date'])) . ($sessionInfo['start_time'] ? ' • ' . date('h:i A', strtotime($sessionInfo['start_time'])) . ' - ' . date('h:i A', strtotime($sessionInfo['end_time'])) : '') : 'Off-Stage Programs',
+                'html' => $html,
+                'total_programs' => $totalPrograms,
+                'submitted_count' => $submittedCount,
+                'approved_count' => $approvedCount,
+                'rejected_count' => $rejectedCount,
+                'pending_count' => $pendingCount,
+                'can_bulk_approve' => $canBulkApprove,
+            ]);
+            exit;
+        } catch (Throwable $e) {
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            exit;
+        }
+    }
+
+    // AJAX: Fetch Program Ranking Preview
+    if ($action === 'fetch_program_preview') {
+        header('Content-Type: application/json; charset=utf-8');
+        try {
+            $programId = (int)($_GET['program_id'] ?? $_POST['program_id'] ?? 0);
+            $stmt = $pdo->prepare("
+                SELECT p.*, ct.name AS class_type_name, submitter.full_name AS submitted_name, submitter.username AS submitted_username
+                FROM musabaqa_programs p
+                LEFT JOIN " . DB_MAIN_NAME . ".class_types ct ON ct.id = p.class_type_id
+                LEFT JOIN " . DB_MAIN_NAME . ".users submitter ON submitter.id = p.submitted_by
+                WHERE p.id = ? AND p.event_id = ?
+                LIMIT 1
+            ");
+            $stmt->execute([$programId, $activeEventId]);
+            $program = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$program) {
+                throw new RuntimeException('Program not found.');
+            }
+
+            $stmt = $pdo->prepare("
+                SELECT
+                    pe.id, pe.entry_number, pe.entry_name, t.team_name, t.team_color, ss.judge1_total, ss.judge2_total, ss.final_total
+                FROM musabaqa_program_entries pe
+                JOIN musabaqa_teams t ON t.id = pe.team_id
+                JOIN musabaqa_score_sheets ss ON ss.entry_id = pe.id
+                WHERE pe.event_id = ? AND pe.program_id = ?
+                ORDER BY ss.final_total DESC, pe.entry_number ASC, pe.id ASC
+            ");
+            $stmt->execute([$activeEventId, $programId]);
+            $entries = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            $settings = admin_get_settings($pdo);
+            $firstPoints = (int)($settings['first_place_points'] ?? 10);
+            $secondPoints = (int)($settings['second_place_points'] ?? 7);
+            $thirdPoints = (int)($settings['third_place_points'] ?? 5);
+
+            $teamPointsConfig = [];
+            if (!empty($program['team_points_config'])) {
+                $teamPointsConfig = json_decode($program['team_points_config'], true) ?: [];
+            }
+            $pointConfig = [];
+            $pointConfig[1] = isset($teamPointsConfig[1]) ? (int)$teamPointsConfig[1] : $firstPoints;
+            $pointConfig[2] = isset($teamPointsConfig[2]) ? (int)$teamPointsConfig[2] : $secondPoints;
+            $pointConfig[3] = isset($teamPointsConfig[3]) ? (int)$teamPointsConfig[3] : $thirdPoints;
+            foreach ($teamPointsConfig as $r => $pts) {
+                $pointConfig[(int)$r] = (int)$pts;
+            }
+
+            $scoreGroups = [];
+            foreach ($entries as $entry) {
+                $scoreKey = (string)(float)$entry['final_total'];
+                $scoreGroups[$scoreKey][] = $entry;
+            }
+            $groupCounts = array_map('count', array_values($scoreGroups));
+
+            $position = 1;
+            $idx = 0;
+            $processedEntries = [];
+            $teamTotals = [];
+
+            foreach ($scoreGroups as $scoreStr => $groupEntries) {
+                $count = count($groupEntries);
+                $rank = $position;
+                $teamPoints = 0;
+                if ($idx === 0) {
+                    $teamPoints = $pointConfig[1];
+                } elseif ($idx === 1) {
+                    $c1 = $groupCounts[0] ?? 0;
+                    $teamPoints = ($c1 === 1 || $c1 === 2) ? $pointConfig[2] : 0;
+                } elseif ($idx === 2) {
+                    $c1 = $groupCounts[0] ?? 0;
+                    $c2 = $groupCounts[1] ?? 0;
+                    $teamPoints = ($c1 === 1 && $c2 === 1) ? $pointConfig[3] : 0;
+                }
+
+                foreach ($groupEntries as $entry) {
+                    $entry['rank'] = $rank;
+                    $entry['team_points'] = $teamPoints;
+                    $processedEntries[] = $entry;
+                    $team = (string)$entry['team_name'];
+                    $teamTotals[$team] = [
+                        'total' => ($teamTotals[$team]['total'] ?? 0) + $teamPoints,
+                        'color' => $entry['team_color'] ?: '#64748b',
+                    ];
+                }
+                $position += $count;
+                $idx++;
+            }
+
+            ob_start(); ?>
+            <div class="panel" style="background: rgba(15, 22, 34, 0.95); padding: 16px;">
+                <div class="flex-between mb-4">
+                    <div>
+                        <strong style="font-size: 15px; display: block; color: var(--text);">Score Ranking Breakdown</strong>
+                        <span style="font-size: 12px; color: var(--muted);">Program: <?= e($program['title']) ?></span>
+                    </div>
+                    <span class="badge <?= approval_badge($program['approval_status']) ?>"><?= e(ucfirst((string)$program['approval_status'])) ?></span>
+                </div>
+
+                <div class="table-wrapper mb-4">
+                    <table class="table" style="font-size: 13px;">
+                        <thead>
+                            <tr><th>Entry Name</th><th>Team</th><th>Judge 1 Total</th><th>Judge 2 Total</th><th>Final Total</th><th>Rank</th><th>Team Pts</th></tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($processedEntries as $e): ?>
+                                <tr>
+                                    <td>#<?= e(str_pad((string)$e['entry_number'], 3, '0', STR_PAD_LEFT)) ?> <?= e($e['entry_name'] ?: 'Unnamed Entry') ?></td>
+                                    <td><span class="team-color-pill" style="background: <?= e($e['team_color'] ?? '#64748b') ?>22;"><?= e($e['team_name']) ?></span></td>
+                                    <td><?= number_format((float)$e['judge1_total'], 2) ?></td>
+                                    <td><?= number_format((float)$e['judge2_total'], 2) ?></td>
+                                    <td><strong><?= number_format((float)$e['final_total'], 2) ?></strong></td>
+                                    <td><strong><?= (int)$e['rank'] ?></strong></td>
+                                    <td><strong><?= (int)$e['team_points'] ?></strong></td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+
+                <strong style="font-size: 13.5px; display: block; color: var(--muted); margin-bottom: 8px;">Team Points Awarded</strong>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <?php foreach ($teamTotals as $tName => $tData): ?>
+                        <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 700;">
+                            <span style="color: <?= e($tData['color']) ?>;">● <?= e($tName) ?></span>: <?= (int)$tData['total'] ?> Pts
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+            <?php
+            $html = ob_get_clean();
+            echo json_encode(['success' => true, 'html' => $html]);
+            exit;
+        } catch (Throwable $e) {
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            exit;
+        }
+    }
+
+    // AJAX / POST: Approve Program
+    if ($action === 'approve_program' || $action === 'approve') {
+        $isAjax = isset($_GET['ajax']) || (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest');
+        $programId = (int)($_REQUEST['program_id'] ?? 0);
+        try {
+            admin_db_transaction($pdo, function ($pdo) use ($programId, $activeEventId, $currentUserId) {
+                admin_approve_program_scores($pdo, $activeEventId, $programId, $currentUserId);
+            });
+            if ($isAjax) {
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode(['success' => true, 'message' => 'Program approved.', 'program_id' => $programId, 'status' => 'approved']);
+                exit;
+            }
+            admin_flash('success', 'Program scores approved.');
+        } catch (Throwable $e) {
+            if ($isAjax) {
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+                exit;
+            }
+            admin_flash('error', $e->getMessage());
+        }
         approval_redirect();
     }
 
-    $programId = (int)($_POST['program_id'] ?? 0);
-    $action = (string)($_POST['approval_action'] ?? '');
-    $notes = trim((string)($_POST['rejection_notes'] ?? ''));
-    $selectedProgramIds = array_values(array_unique(array_map('intval', (array)($_POST['program_ids'] ?? []))));
-    $returnFilters = [
-        'status' => trim((string)($_POST['return_status'] ?? 'submitted')),
-        'search' => trim((string)($_POST['return_search'] ?? '')),
-        'class' => trim((string)($_POST['return_class'] ?? 'all')),
-    ];
-
-    try {
-        admin_db_transaction($pdo, function ($pdo) use (
-            $action, $programId, $activeEventId, $currentUserId, $selectedProgramIds, $returnFilters, $notes, $dashboardPdo
-        ) {
-            if ($action === 'approve') {
-                $stmt = $pdo->prepare('SELECT * FROM musabaqa_programs WHERE id = ? AND event_id = ? LIMIT 1');
-                $stmt->execute([$programId, $activeEventId]);
-                $program = $stmt->fetch(PDO::FETCH_ASSOC);
-                if (!$program) {
-                    throw new RuntimeException('Program not found.');
-                }
-                if (!approval_can_approve($program['approval_status'] ?? null)) {
-                    throw new RuntimeException('Only submitted or rejected programs can be approved.');
-                }
-                admin_approve_program_scores($pdo, $activeEventId, $programId, $currentUserId);
-                admin_flash('success', 'Program scores approved.');
-            } elseif ($action === 'approve_selected') {
-                if (!$selectedProgramIds) {
-                    throw new RuntimeException('Please select at least one program to approve.');
-                }
-                foreach ($selectedProgramIds as $selectedProgramId) {
-                    admin_approve_program_scores($pdo, $activeEventId, $selectedProgramId, $currentUserId);
-                }
-                admin_flash('success', count($selectedProgramIds) . ' program(s) approved.');
-            } elseif ($action === 'approve_all') {
-                $query = "
-                    SELECT p.id
-                    FROM musabaqa_programs p
-                    LEFT JOIN " . DB_MAIN_NAME . ".users submitter ON submitter.id = p.submitted_by
-                    WHERE p.event_id = ?
-                      AND p.approval_status IN ('submitted', 'rejected')
-                ";
-                $queryParams = [$activeEventId];
-
-                if ($returnFilters['status'] === 'submitted' || $returnFilters['status'] === 'rejected') {
-                    $query .= ' AND p.approval_status = ?';
-                    $queryParams[] = $returnFilters['status'];
-                }
-
-                if ($returnFilters['search'] !== '') {
-                    $query .= ' AND (p.title LIKE ? OR submitter.full_name LIKE ? OR submitter.username LIKE ?)';
-                    $like = '%' . $returnFilters['search'] . '%';
-                    array_push($queryParams, $like, $like, $like);
-                }
-
-                [$classSql, $classParams] = admin_program_class_filter_sql($dashboardPdo, $returnFilters['class'] ?? 'all', 'p');
-                $query .= $classSql;
-                array_push($queryParams, ...$classParams);
-
-                $stmt = $pdo->prepare($query);
-                $stmt->execute($queryParams);
-                $selectedProgramIds = array_map('intval', array_column($stmt->fetchAll(PDO::FETCH_ASSOC), 'id'));
-                if (!$selectedProgramIds) {
-                    throw new RuntimeException('No submitted or rejected programs match the current filter to approve.');
-                }
-                foreach ($selectedProgramIds as $selectedProgramId) {
-                    admin_approve_program_scores($pdo, $activeEventId, $selectedProgramId, $currentUserId);
-                }
-                admin_flash('success', count($selectedProgramIds) . ' program(s) approved.');
-            } elseif ($action === 'reject') {
-                $stmt = $pdo->prepare('SELECT * FROM musabaqa_programs WHERE id = ? AND event_id = ? LIMIT 1');
-                $stmt->execute([$programId, $activeEventId]);
-                $program = $stmt->fetch(PDO::FETCH_ASSOC);
-                if (!$program) {
-                    throw new RuntimeException('Program not found.');
-                }
-                if (($program['approval_status'] ?? '') !== 'submitted') {
-                    throw new RuntimeException('Only submitted programs can be rejected.');
-                }
+    // AJAX / POST: Reject Program
+    if ($action === 'reject_program' || $action === 'reject') {
+        $isAjax = isset($_GET['ajax']) || (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest');
+        $programId = (int)($_REQUEST['program_id'] ?? 0);
+        $notes = trim((string)($_REQUEST['rejection_notes'] ?? ''));
+        try {
+            admin_db_transaction($pdo, function ($pdo) use ($programId, $activeEventId, $currentUserId, $notes) {
                 admin_reject_program_scores($pdo, $activeEventId, $programId, $currentUserId, $notes);
-                admin_flash('success', 'Program scores rejected.');
-            } elseif ($action === 'revoke_approved') {
-                $stmt = $pdo->prepare('SELECT * FROM musabaqa_programs WHERE id = ? AND event_id = ? LIMIT 1');
-                $stmt->execute([$programId, $activeEventId]);
-                $program = $stmt->fetch(PDO::FETCH_ASSOC);
-                if (!$program) {
-                    throw new RuntimeException('Program not found.');
-                }
-                if (($program['approval_status'] ?? '') !== 'approved') {
-                    throw new RuntimeException('Only approved programs can be revoked.');
-                }
+            });
+            if ($isAjax) {
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode(['success' => true, 'message' => 'Program rejected.', 'program_id' => $programId, 'status' => 'rejected']);
+                exit;
+            }
+            admin_flash('success', 'Program scores rejected.');
+        } catch (Throwable $e) {
+            if ($isAjax) {
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+                exit;
+            }
+            admin_flash('error', $e->getMessage());
+        }
+        approval_redirect();
+    }
+
+    // AJAX / POST: Revoke Program Approval (Undo)
+    if ($action === 'revoke_program' || $action === 'revoke_approved') {
+        $isAjax = isset($_GET['ajax']) || (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest');
+        $programId = (int)($_REQUEST['program_id'] ?? 0);
+        $notes = trim((string)($_REQUEST['rejection_notes'] ?? ''));
+        try {
+            admin_db_transaction($pdo, function ($pdo) use ($programId, $activeEventId, $currentUserId, $notes) {
                 admin_revoke_program_approval($pdo, $activeEventId, $programId, $currentUserId, $notes);
-                admin_flash('success', 'Approval revoked. Finalized marks were removed and score sheets can be corrected.');
-            } else {
-                throw new RuntimeException('Invalid approval action.');
+            });
+            if ($isAjax) {
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode(['success' => true, 'message' => 'Program approval revoked.', 'program_id' => $programId, 'status' => 'submitted']);
+                exit;
             }
-        });
-    } catch (Throwable $e) {
-        admin_flash('error', $e->getMessage() ?: 'Unable to process program scores.');
+            admin_flash('success', 'Approval revoked.');
+        } catch (Throwable $e) {
+            if ($isAjax) {
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+                exit;
+            }
+            admin_flash('error', $e->getMessage());
+        }
+        approval_redirect();
     }
 
-    approval_redirect($returnFilters);
+    // AJAX / POST: Bulk Approve Session Programs
+    if ($action === 'approve_session') {
+        $isAjax = isset($_GET['ajax']) || (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest');
+        $sessionId = (int)($_REQUEST['session_id'] ?? 0);
+        try {
+            admin_db_transaction($pdo, function ($pdo) use ($sessionId, $activeEventId, $currentUserId) {
+                if ($sessionId > 0) {
+                    $stmt = $pdo->prepare("SELECT id FROM musabaqa_programs WHERE event_id = ? AND section_id = ? AND approval_status IN ('submitted', 'rejected')");
+                    $stmt->execute([$activeEventId, $sessionId]);
+                } else {
+                    $stmt = $pdo->prepare("SELECT id FROM musabaqa_programs WHERE event_id = ? AND (section_id IS NULL OR section_id = 0) AND approval_status IN ('submitted', 'rejected')");
+                    $stmt->execute([$activeEventId]);
+                }
+                $programIds = array_map('intval', array_column($stmt->fetchAll(PDO::FETCH_ASSOC), 'id'));
+                if (!$programIds) {
+                    throw new RuntimeException('No programs ready for approval in this session.');
+                }
+                foreach ($programIds as $pid) {
+                    admin_approve_program_scores($pdo, $activeEventId, $pid, $currentUserId);
+                }
+            });
+            if ($isAjax) {
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode(['success' => true, 'message' => 'Session programs approved successfully.', 'session_id' => $sessionId]);
+                exit;
+            }
+            admin_flash('success', 'Session programs approved successfully.');
+        } catch (Throwable $e) {
+            if ($isAjax) {
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+                exit;
+            }
+            admin_flash('error', $e->getMessage());
+        }
+        approval_redirect();
+    }
 }
 
+// ----------------------------------------------------
+// MAIN PAGE VIEW DATA FETCHING
+// ----------------------------------------------------
 $flash = admin_take_flash();
-$statusFilter = trim((string)($_GET['status'] ?? 'submitted'));
-$search = trim((string)($_GET['search'] ?? ''));
-$classFilter = trim((string)($_GET['class'] ?? 'all'));
-$viewProgramId = (int)($_GET['view'] ?? 0);
-
-$where = 'WHERE p.event_id = ?';
-$params = [$activeEventId];
-if ($statusFilter !== 'all' && in_array($statusFilter, ['none', 'submitted', 'rejected', 'approved'], true)) {
-    if ($statusFilter === 'submitted') {
-        $where .= " AND p.approval_status IN ('submitted', 'approved')";
-    } else {
-        $where .= ' AND p.approval_status = ?';
-        $params[] = $statusFilter;
-    }
-}
-if ($search !== '') {
-    $where .= ' AND (p.title LIKE ? OR submitter.full_name LIKE ? OR submitter.username LIKE ?)';
-    $like = '%' . $search . '%';
-    array_push($params, $like, $like, $like);
-}
-[$classSql, $classParams] = admin_program_class_filter_sql($dashboardPdo, $classFilter, 'p');
-$where .= $classSql;
-array_push($params, ...$classParams);
-
-$stmt = $pdo->prepare("
-    SELECT
-        p.*,
-        ct.name AS class_type_name,
-        COUNT(DISTINCT pe.id) AS entry_count,
-        submitter.full_name AS submitted_name,
-        submitter.username AS submitted_username
-    FROM musabaqa_programs p
-    LEFT JOIN " . DB_MAIN_NAME . ".class_types ct ON ct.id = p.class_type_id
-    LEFT JOIN musabaqa_program_entries pe ON pe.program_id = p.id
-    LEFT JOIN " . DB_MAIN_NAME . ".users submitter ON submitter.id = p.submitted_by
-    {$where}
-    GROUP BY p.id, ct.id, submitter.id
-    ORDER BY p.submitted_at DESC, p.id DESC
-");
-$stmt->execute($params);
-$programs = $stmt->fetchAll(PDO::FETCH_ASSOC);
-$totalPrograms = count($programs);
-
-if (isset($_GET['limit'])) {
-    $perPage = max(5, min(5000, (int)$_GET['limit']));
-    $_SESSION['score_approval_limit'] = $perPage;
-} else {
-    $perPage = isset($_SESSION['score_approval_limit']) ? $_SESSION['score_approval_limit'] : 15;
-}
-$page = max(1, (int)($_GET['page'] ?? 1));
-$offset = ($page - 1) * $perPage;
-$paginatedPrograms = array_slice($programs, $offset, $perPage);
-
-$review = null;
-if ($viewProgramId > 0) {
-        $stmt = $pdo->prepare("
-        SELECT p.*, ct.name AS class_type_name, submitter.full_name AS submitted_name, submitter.username AS submitted_username
-        FROM musabaqa_programs p
-        LEFT JOIN " . DB_MAIN_NAME . ".class_types ct ON ct.id = p.class_type_id
-        LEFT JOIN " . DB_MAIN_NAME . ".users submitter ON submitter.id = p.submitted_by
-        WHERE p.id = ? AND p.event_id = ?
-        LIMIT 1
-    ");
-    $stmt->execute([$viewProgramId, $activeEventId]);
-    $program = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    if ($program) {
-        $stmt = $pdo->prepare("
-            SELECT
-                pe.id,
-                pe.entry_number,
-                pe.entry_name,
-                t.team_name,
-                t.team_color,
-                ss.judge1_total,
-                ss.judge2_total,
-                ss.final_total
-            FROM musabaqa_program_entries pe
-            JOIN musabaqa_teams t ON t.id = pe.team_id
-            JOIN musabaqa_score_sheets ss ON ss.entry_id = pe.id
-            WHERE pe.event_id = ?
-              AND pe.program_id = ?
-            ORDER BY ss.final_total DESC, pe.entry_number ASC, pe.id ASC
-        ");
-        $stmt->execute([$activeEventId, $viewProgramId]);
-        $entries = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-        $settings = admin_get_settings($pdo);
-        $firstPoints = (int)($settings['first_place_points'] ?? 10);
-        $secondPoints = (int)($settings['second_place_points'] ?? 7);
-        $thirdPoints = (int)($settings['third_place_points'] ?? 5);
-
-        $teamPointsConfig = [];
-        if (!empty($program['team_points_config'])) {
-            $teamPointsConfig = json_decode($program['team_points_config'], true) ?: [];
-        }
-
-        $pointConfig = [];
-        $pointConfig[1] = isset($teamPointsConfig[1]) ? (int)$teamPointsConfig[1] : $firstPoints;
-        $pointConfig[2] = isset($teamPointsConfig[2]) ? (int)$teamPointsConfig[2] : $secondPoints;
-        $pointConfig[3] = isset($teamPointsConfig[3]) ? (int)$teamPointsConfig[3] : $thirdPoints;
-        foreach ($teamPointsConfig as $r => $pts) {
-            $pointConfig[(int)$r] = (int)$pts;
-        }
-
-        $scoreGroups = [];
-        foreach ($entries as $entry) {
-            $scoreKey = (string)(float)$entry['final_total'];
-            $scoreGroups[$scoreKey][] = $entry;
-        }
-
-        $groupCounts = [];
-        foreach ($scoreGroups as $scoreStr => $groupEntries) {
-            $groupCounts[] = count($groupEntries);
-        }
-
-        $position = 1;
-        $idx = 0;
-        $processedEntries = [];
-        $teamTotals = [];
-
-        foreach ($scoreGroups as $scoreStr => $groupEntries) {
-            $count = count($groupEntries);
-            $rank = $position;
-
-            // Custom tie scoring logic
-            $teamPoints = 0;
-            if ($idx === 0) {
-                $teamPoints = $pointConfig[1];
-            } elseif ($idx === 1) {
-                $c1 = $groupCounts[0];
-                if ($c1 === 1 || $c1 === 2) {
-                    $teamPoints = $pointConfig[2];
-                } else {
-                    $teamPoints = 0;
-                }
-            } elseif ($idx === 2) {
-                $c1 = $groupCounts[0];
-                $c2 = $groupCounts[1];
-                if ($c1 === 1 && $c2 === 1) {
-                    $teamPoints = $pointConfig[3];
-                } else {
-                    $teamPoints = 0;
-                }
-            } else {
-                $teamPoints = 0;
-            }
-
-            foreach ($groupEntries as $entry) {
-                $entry['rank'] = $rank;
-                $entry['team_points'] = $teamPoints;
-                $processedEntries[] = $entry;
-
-                $team = (string)$entry['team_name'];
-                $teamTotals[$team] = [
-                    'total' => ($teamTotals[$team]['total'] ?? 0) + $teamPoints,
-                    'color' => $entry['team_color'] ?: '#64748b',
-                ];
-            }
-
-            $position += $count;
-            $idx++;
-        }
-        $entries = $processedEntries;
-        uasort($teamTotals, static function ($a, $b) {
-            return $b['total'] <=> $a['total'];
-        });
-
-        $review = [
-            'program' => $program,
-            'entries' => $entries,
-            'team_totals' => $teamTotals,
-        ];
-    }
-}
-
-if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
-    ob_start();
-    if (!$paginatedPrograms) {
-        echo '<tr><td colspan="8" class="empty-state-row" style="text-align: center; padding: 30px; color: var(--muted);"><div class="empty-title">No Programs Found</div></td></tr>';
-    } else {
-        foreach ($paginatedPrograms as $program) {
-            $isExpanded = $review && (int)$review['program']['id'] === (int)$program['id'];
-            $baseQuery = ['status' => $statusFilter, 'search' => $search, 'class' => $classFilter];
-            $viewQuery = array_merge($baseQuery, ['view' => (int)$program['id']]);
-            $toggleUrl = app_url('/admin/score-update/score-approval.php?' . http_build_query($isExpanded ? $baseQuery : $viewQuery));
-            ?>
-            <tr>
-                <td class="checkbox-cell">
-                    <?php if (approval_can_approve($program['approval_status'] ?? null)): ?>
-                        <input type="checkbox" class="approval-checkbox program-checkbox" data-program-id="<?= (int)$program['id'] ?>" aria-label="Select program <?= e($program['title']) ?>">
-                    <?php endif; ?>
-                </td>
-                <td><strong><?= e($program['title']) ?></strong></td>
-                <td>
-                    <?php $classTier = admin_class_type_tier_from_name($program['class_type_name'] ?? ''); ?>
-                    <span class="badge <?= admin_class_type_badge_class($classTier) ?>">
-                        <?= e(admin_class_type_display($program['class_type_name'] ?? null, (int)($program['class_type_id'] ?? 0))) ?>
-                    </span>
-                </td>
-                <td><?= (int)$program['entry_count'] ?></td>
-                <td><?= e($program['submitted_name'] ?: $program['submitted_username'] ?: '-') ?></td>
-                <td><?= $program['submitted_at'] ? e(date('d M Y h:i A', strtotime($program['submitted_at']))) : '-' ?></td>
-                <td><span class="badge <?= approval_badge($program['approval_status']) ?>"><?= e(ucfirst((string)$program['approval_status'])) ?></span></td>
-                <td>
-                    <div class="flex gap-2 flex-wrap">
-                        <a class="btn btn-secondary btn-sm" href="<?= e($toggleUrl) ?>"><i class="fa-solid fa-eye"></i> <?= $isExpanded ? 'Close' : 'View' ?></a>
-                        <?php if ($program['approval_status'] === 'submitted'): ?>
-                            <form method="POST">
-                                <?= admin_csrf_field() ?>
-                                <input type="hidden" name="program_id" value="<?= (int)$program['id'] ?>">
-                                <input type="hidden" name="approval_action" value="approve">
-                                <input type="hidden" name="return_status" value="<?= e($statusFilter) ?>">
-                                <input type="hidden" name="return_search" value="<?= e($search) ?>">
-                                <input type="hidden" name="return_class" value="<?= e($classFilter) ?>">
-                                <button class="btn btn-success btn-sm" type="submit">Approve</button>
-                            </form>
-                            <button class="btn btn-danger btn-sm" type="button" data-reject-id="<?= (int)$program['id'] ?>" data-reject-name="<?= e($program['title']) ?>" data-reject-action="reject">Reject</button>
-                        <?php elseif ($program['approval_status'] === 'rejected'): ?>
-                            <form method="POST">
-                                <?= admin_csrf_field() ?>
-                                <input type="hidden" name="program_id" value="<?= (int)$program['id'] ?>">
-                                <input type="hidden" name="approval_action" value="approve">
-                                <input type="hidden" name="return_status" value="<?= e($statusFilter) ?>">
-                                <input type="hidden" name="return_search" value="<?= e($search) ?>">
-                                <input type="hidden" name="return_class" value="<?= e($classFilter) ?>">
-                                <button class="btn btn-success btn-sm" type="submit"><i class="fa-solid fa-check"></i> Approve</button>
-                            </form>
-                        <?php elseif ($program['approval_status'] === 'approved'): ?>
-                            <button class="btn btn-warning btn-sm" type="button" data-reject-id="<?= (int)$program['id'] ?>" data-reject-name="<?= e($program['title']) ?>" data-reject-action="revoke_approved"><i class="fa-solid fa-rotate-left"></i> Undo Approval</button>
-                        <?php endif; ?>
-                    </div>
-                </td>
-            </tr>
-            <?php if ($isExpanded): ?>
-                <tr>
-                    <td colspan="8">
-                        <div class="panel">
-                            <div class="flex-between mb-6">
-                                <div>
-                                    <div class="dashboard-heading">Program Ranking Preview</div>
-                                    <div class="page-subtitle" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                                        <span>Final Score is Judge 1 Total + Judge 2 Total.</span>
-                                        <?php if (!empty($review['program']['only_team_marks'])): ?>
-                                            <span class="badge badge-info" style="font-size: 11px; background: rgba(14, 165, 233, 0.15); color: #0ea5e9; border: 1px solid rgba(14, 165, 233, 0.3); padding: 2px 8px; border-radius: 9999px;">
-                                                <i class="fa-solid fa-people-group"></i> Only Team Marks (No Indiv. Marks)
-                                            </span>
-                                        <?php endif; ?>
-                                    </div>
-                                </div>
-                                <span class="badge <?= approval_badge($review['program']['approval_status']) ?>"><?= e(ucfirst((string)$review['program']['approval_status'])) ?></span>
-                            </div>
-
-                            <div class="table-wrapper mb-6">
-                                <table class="table">
-                                    <thead><tr><th>Entry Name</th><th>Team</th><th>Judge 1 Total</th><th>Judge 2 Total</th><th>Final Score</th><th>Rank</th><th>Team Points</th></tr></thead>
-                                    <tbody>
-                                        <?php foreach ($review['entries'] as $entry): ?>
-                                            <tr>
-                                                <td>#<?= e(str_pad((string)$entry['entry_number'], 3, '0', STR_PAD_LEFT)) ?> <?= e($entry['entry_name'] ?: 'Unnamed Entry') ?></td>
-                                                <td><span class="team-color-pill" style="background: <?= e($entry['team_color'] ?? '#64748b') ?>22;"><?= e($entry['team_name']) ?></span></td>
-                                                <td><?= number_format((float)$entry['judge1_total'], 2) ?></td>
-                                                <td><?= number_format((float)$entry['judge2_total'], 2) ?></td>
-                                                <td><strong><?= number_format((float)$entry['final_total'], 2) ?></strong></td>
-                                                <td><strong><?= (int)$entry['rank'] ?></strong></td>
-                                                <td><strong><?= (int)$entry['team_points'] ?></strong></td>
-                                            </tr>
-                                        <?php endforeach; ?>
-                                    </tbody>
-                                </table>
-                            </div>
-
-                            <div class="dashboard-heading mb-6">Team Totals Preview</div>
-                            <div class="table-wrapper">
-                                <table class="table">
-                                    <thead><tr><th>Team</th><th>Earned Points</th></tr></thead>
-                                    <tbody>
-                                        <?php foreach ($review['team_totals'] as $teamName => $teamData): ?>
-                                            <tr>
-                                                <td><span class="team-color-pill" style="background: <?= e($teamData['color'] ?? '#64748b') ?>22;"><?= e($teamName) ?></span></td>
-                                                <td><strong><?= number_format((float)$teamData['total'], 2) ?></strong></td>
-                                            </tr>
-                                        <?php endforeach; ?>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </td>
-                </tr>
-            <?php endif; ?>
-            <?php
-        }
-    }
-    $tbodyHtml = ob_get_clean();
-
-    header('Content-Type: application/json; charset=utf-8');
-    echo json_encode([
-        'success' => true,
-        'html' => $tbodyHtml,
-        'pagination' => admin_render_pagination_html($page, $perPage, $totalPrograms)
-    ]);
-    exit;
-}
+$sessions = admin_get_sessions_approval_stats($pdo, $activeEventId);
 
 require_once __DIR__ . '/../../includes/header.php';
 require_once __DIR__ . '/../../includes/sidebar.php';
@@ -454,7 +526,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
     <div class="topbar">
         <div>
             <div class="page-title">Score Approval</div>
-            <div class="page-subtitle">Review and approve complete programs</div>
+            <div class="page-subtitle">Select a schedule session to review and approve program scores</div>
         </div>
     </div>
 
@@ -462,380 +534,356 @@ require_once __DIR__ . '/../../includes/sidebar.php';
         <div class="alert <?= $flash['type'] === 'success' ? 'alert-success' : 'alert-error' ?>"><?= e($flash['message']) ?></div>
     <?php endif; ?>
 
-    <div class="panel mb-6">
-        <form method="GET" class="form-grid" id="search-form">
-            <div class="input-group">
-                <label>Approval Status</label>
-                <select name="status">
-                    <option value="all">All Status</option>
-                    <?php foreach (['submitted', 'approved', 'rejected', 'none'] as $status): ?>
-                        <option value="<?= $status ?>" <?= $statusFilter === $status ? 'selected' : '' ?>><?= e(ucfirst($status)) ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-            <div class="input-group">
-                <label>Search</label>
-                <input type="text" name="search" value="<?= e($search) ?>" placeholder="Program or submitter">
-            </div>
-            <div class="input-group">
-                <label>Class</label>
-                <select name="class">
-                    <?php foreach (admin_class_type_tiers() as $value => $label): ?>
-                        <option value="<?= e($value) ?>" <?= $classFilter === $value ? 'selected' : '' ?>><?= e($label) ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-            <div class="form-actions full-width">
-                <button type="submit" class="btn btn-secondary btn-md"><i class="fa-solid fa-filter"></i> Filter</button>
-                <?php if ($statusFilter !== 'submitted' || $search !== '' || $classFilter !== 'all'): ?>
-                    <a class="btn btn-secondary btn-md" href="<?= app_url('/admin/score-update/score-approval.php') ?>">Clear</a>
-                <?php endif; ?>
-            </div>
-        </form>
-    </div>
-
-    <?php if (!$programs): ?>
-        <div class="empty-state"><div class="empty-icon"><i class="fa-solid fa-clipboard-check"></i></div><div class="empty-title">No Programs Found</div><div class="empty-subtitle">No program submissions match the current filter.</div></div>
+    <!-- SCHEDULE SESSIONS TABLE LIST -->
+    <?php if (!$sessions): ?>
+        <div class="empty-state"><div class="empty-icon"><i class="fa-solid fa-clipboard-check"></i></div><div class="empty-title">No Active Sessions Found</div><div class="empty-subtitle">There are no schedule sessions with active program entries.</div></div>
     <?php else: ?>
-        <form method="POST" id="batchApprovalForm" class="mb-6">
-            <?= admin_csrf_field() ?>
-            <input type="hidden" name="approval_action" id="batchApprovalAction" value="">
-            <input type="hidden" name="return_status" value="<?= e($statusFilter) ?>">
-            <input type="hidden" name="return_search" value="<?= e($search) ?>">
-            <input type="hidden" name="return_class" value="<?= e($classFilter) ?>">
-            <?php if (in_array($statusFilter, ['submitted', 'rejected', 'all'], true)): ?>
-                <div class="flex gap-2 mb-4">
-                    <button type="button" class="btn btn-success btn-md" id="approveAllBtn"><i class="fa-solid fa-list-check"></i> Approve All Matching Filter</button>
-                </div>
-            <?php endif; ?>
-        </form>
         <div class="table-wrapper mb-6 approval-table-wrap">
             <table class="table approval-table">
                 <thead>
                     <tr>
-                        <th class="checkbox-cell"><input type="checkbox" class="approval-checkbox" id="selectAllPrograms" aria-label="Select all approvable programs"></th>
-                        <th>Program Name</th>
-                        <th>Class</th>
-                        <th>Entry Count</th>
-                        <th>Submitted By</th>
-                        <th>Submitted Date</th>
+                        <th>Schedule Session</th>
+                        <th>Date & Timing</th>
+                        <th>Programs Breakdown</th>
                         <th>Status</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
-                <tbody id="table-body">
-                    <?php foreach ($paginatedPrograms as $program): ?>
-                        <?php
-                        $isExpanded = $review && (int)$review['program']['id'] === (int)$program['id'];
-                        $baseQuery = ['status' => $statusFilter, 'search' => $search, 'class' => $classFilter];
-                        $viewQuery = array_merge($baseQuery, ['view' => (int)$program['id']]);
-                        $toggleUrl = app_url('/admin/score-update/score-approval.php?' . http_build_query($isExpanded ? $baseQuery : $viewQuery));
+                <tbody>
+                    <?php foreach ($sessions as $session): ?>
+                        <?php 
+                        $tot = (int)$session['total_programs'];
+                        $app = (int)$session['approved_count'];
+                        $sub = (int)$session['submitted_count'];
+                        $rej = (int)$session['rejected_count'];
+                        $pen = (int)$session['pending_count'];
+                        
+                        // STRICT BULK APPROVAL RULE:
+                        // "the button is disabled until all the programs are send for approval"
+                        $canBulkApprove = ($tot > 0 && $pen === 0 && $sub > 0);
                         ?>
-                        <tr>
-                            <td class="checkbox-cell">
-                                <?php if (approval_can_approve($program['approval_status'] ?? null)): ?>
-                                    <input type="checkbox" class="approval-checkbox program-checkbox" data-program-id="<?= (int)$program['id'] ?>" aria-label="Select program <?= e($program['title']) ?>">
+                        <tr id="session-row-<?= (int)$session['session_id'] ?>">
+                            <td>
+                                <strong style="font-size: 15px; color: #fff; display: flex; align-items: center; gap: 8px;">
+                                    <i class="fa-solid fa-clock-rotate-left" style="color: #38bdf8; font-size: 14px;"></i>
+                                    <?= e($session['session_name']) ?>
+                                </strong>
+                            </td>
+                            <td>
+                                <?php if ($session['section_date']): ?>
+                                    <span class="text-sm text-muted">
+                                        <i class="fa-regular fa-calendar mr-1"></i> <?= date('D, d M Y', strtotime($session['section_date'])) ?>
+                                        <?php if ($session['start_time']): ?>
+                                            • <?= date('h:i A', strtotime($session['start_time'])) ?> - <?= date('h:i A', strtotime($session['end_time'])) ?>
+                                        <?php endif; ?>
+                                    </span>
+                                <?php else: ?>
+                                    <span class="text-sm text-muted">Off-Stage & Unscheduled</span>
                                 <?php endif; ?>
                             </td>
-                            <td><strong><?= e($program['title']) ?></strong></td>
                             <td>
-                                <?php $classTier = admin_class_type_tier_from_name($program['class_type_name'] ?? ''); ?>
-                                <span class="badge <?= admin_class_type_badge_class($classTier) ?>">
-                                    <?= e(admin_class_type_display($program['class_type_name'] ?? null, (int)($program['class_type_id'] ?? 0))) ?>
-                                </span>
+                                <strong><?= $tot ?> Total Programs</strong>
+                                <div style="font-size: 12px; margin-top: 3px;">
+                                    <span style="color: #34d399; font-weight: 700;"><?= $app ?> Approved</span> • 
+                                    <span style="color: #fbbf24; font-weight: 700;"><?= $sub ?> Submitted</span> • 
+                                    <span style="color: #94a3b8; font-weight: 700;"><?= $pen ?> Pending</span>
+                                </div>
                             </td>
-                            <td><?= (int)$program['entry_count'] ?></td>
-                            <td><?= e($program['submitted_name'] ?: $program['submitted_username'] ?: '-') ?></td>
-                            <td><?= $program['submitted_at'] ? e(date('d M Y h:i A', strtotime($program['submitted_at']))) : '-' ?></td>
-                            <td><span class="badge <?= approval_badge($program['approval_status']) ?>"><?= e(ucfirst((string)$program['approval_status'])) ?></span></td>
+                            <td>
+                                <?php if ($tot === 0): ?>
+                                    <span class="badge badge-neutral">No Programs</span>
+                                <?php elseif ($app === $tot): ?>
+                                    <span class="badge badge-success" style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3);">
+                                        <i class="fa-solid fa-circle-check mr-1"></i> All Approved
+                                    </span>
+                                <?php elseif ($canBulkApprove): ?>
+                                    <span class="badge badge-success" style="box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);">
+                                        <i class="fa-solid fa-list-check mr-1"></i> Ready for Bulk Approval
+                                    </span>
+                                <?php else: ?>
+                                    <span class="badge badge-warning">
+                                        <i class="fa-solid fa-hourglass-half mr-1"></i> <?= $pen ?> Pending Submission
+                                    </span>
+                                <?php endif; ?>
+                            </td>
                             <td>
                                 <div class="flex gap-2 flex-wrap">
-                                    <a class="btn btn-secondary btn-sm" href="<?= e($toggleUrl) ?>"><i class="fa-solid fa-eye"></i> <?= $isExpanded ? 'Close' : 'View' ?></a>
-                                    <?php if ($program['approval_status'] === 'submitted'): ?>
-                                        <form method="POST">
-                                            <?= admin_csrf_field() ?>
-                                            <input type="hidden" name="program_id" value="<?= (int)$program['id'] ?>">
-                                            <input type="hidden" name="approval_action" value="approve">
-                                            <input type="hidden" name="return_status" value="<?= e($statusFilter) ?>">
-                                            <input type="hidden" name="return_search" value="<?= e($search) ?>">
-                                            <input type="hidden" name="return_class" value="<?= e($classFilter) ?>">
-                                            <button class="btn btn-success btn-sm" type="submit">Approve</button>
-                                        </form>
-                                        <button class="btn btn-danger btn-sm" type="button" data-reject-id="<?= (int)$program['id'] ?>" data-reject-name="<?= e($program['title']) ?>" data-reject-action="reject">Reject</button>
-                                    <?php elseif ($program['approval_status'] === 'rejected'): ?>
-                                        <form method="POST">
-                                            <?= admin_csrf_field() ?>
-                                            <input type="hidden" name="program_id" value="<?= (int)$program['id'] ?>">
-                                            <input type="hidden" name="approval_action" value="approve">
-                                            <input type="hidden" name="return_status" value="<?= e($statusFilter) ?>">
-                                            <input type="hidden" name="return_search" value="<?= e($search) ?>">
-                                            <input type="hidden" name="return_class" value="<?= e($classFilter) ?>">
-                                            <button class="btn btn-success btn-sm" type="submit"><i class="fa-solid fa-check"></i> Approve</button>
-                                        </form>
-                                    <?php elseif ($program['approval_status'] === 'approved'): ?>
-                                        <button class="btn btn-warning btn-sm" type="button" data-reject-id="<?= (int)$program['id'] ?>" data-reject-name="<?= e($program['title']) ?>" data-reject-action="revoke_approved"><i class="fa-solid fa-rotate-left"></i> Undo Approval</button>
-                                    <?php endif; ?>
+                                    <button type="button" class="btn btn-secondary btn-sm" onclick="openSessionModal(<?= (int)$session['session_id'] ?>, '<?= e(addslashes($session['session_name'])) ?>')">
+                                        <i class="fa-solid fa-folder-open mr-1"></i> Review Programs
+                                    </button>
+                                    
+                                    <button type="button" class="btn btn-success btn-sm session-card-bulk-btn" 
+                                            data-session-card-id="<?= (int)$session['session_id'] ?>"
+                                            <?= !$canBulkApprove ? 'disabled' : '' ?>
+                                            title="<?= !$canBulkApprove ? ($pen > 0 ? 'Disabled: All programs in this session must be sent for approval first.' : ($tot == 0 ? 'No programs in session' : 'All submitted programs already approved.')) : 'Bulk approve all submitted programs in this session' ?>"
+                                            onclick="bulkApproveSession(<?= (int)$session['session_id'] ?>)">
+                                        <i class="fa-solid fa-circle-check"></i> Bulk Approve
+                                    </button>
                                 </div>
                             </td>
                         </tr>
-                        <?php if ($isExpanded): ?>
-                            <tr>
-                                <td colspan="8">
-                                    <div class="panel">
-                                        <div class="flex-between mb-6">
-                                            <div>
-                                                <div class="dashboard-heading">Program Ranking Preview</div>
-                                                <div class="page-subtitle" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                                                    <span>Final Score is Judge 1 Total + Judge 2 Total.</span>
-                                                    <?php if (!empty($review['program']['only_team_marks'])): ?>
-                                                        <span class="badge badge-info" style="font-size: 11px; background: rgba(14, 165, 233, 0.15); color: #0ea5e9; border: 1px solid rgba(14, 165, 233, 0.3); padding: 2px 8px; border-radius: 9999px;">
-                                                            <i class="fa-solid fa-people-group"></i> Only Team Marks (No Indiv. Marks)
-                                                        </span>
-                                                    <?php endif; ?>
-                                                </div>
-                                            </div>
-                                            <span class="badge <?= approval_badge($review['program']['approval_status']) ?>"><?= e(ucfirst((string)$review['program']['approval_status'])) ?></span>
-                                        </div>
-
-                                        <div class="table-wrapper mb-6">
-                                            <table class="table">
-                                                <thead><tr><th>Entry Name</th><th>Team</th><th>Judge 1 Total</th><th>Judge 2 Total</th><th>Final Score</th><th>Rank</th><th>Team Points</th></tr></thead>
-                                                <tbody>
-                                                    <?php foreach ($review['entries'] as $entry): ?>
-                                                        <tr>
-                                                            <td>#<?= e(str_pad((string)$entry['entry_number'], 3, '0', STR_PAD_LEFT)) ?> <?= e($entry['entry_name'] ?: 'Unnamed Entry') ?></td>
-                                                            <td><span class="team-color-pill" style="background: <?= e($entry['team_color'] ?? '#64748b') ?>22;"><?= e($entry['team_name']) ?></span></td>
-                                                            <td><?= number_format((float)$entry['judge1_total'], 2) ?></td>
-                                                            <td><?= number_format((float)$entry['judge2_total'], 2) ?></td>
-                                                            <td><strong><?= number_format((float)$entry['final_total'], 2) ?></strong></td>
-                                                            <td><strong><?= (int)$entry['rank'] ?></strong></td>
-                                                            <td><strong><?= (int)$entry['team_points'] ?></strong></td>
-                                                        </tr>
-                                                    <?php endforeach; ?>
-                                                </tbody>
-                                            </table>
-                                        </div>
-
-                                        <div class="dashboard-heading mb-6">Team Totals Preview</div>
-                                        <div class="table-wrapper">
-                                            <table class="table">
-                                                <thead><tr><th>Team</th><th>Earned Points</th></tr></thead>
-                                                <tbody>
-                                                    <?php foreach ($review['team_totals'] as $teamName => $teamData): ?>
-                                                        <tr>
-                                                            <td><span class="team-color-pill" style="background: <?= e($teamData['color'] ?? '#64748b') ?>22;"><?= e($teamName) ?></span></td>
-                                                            <td><strong><?= number_format((float)$teamData['total'], 2) ?></strong></td>
-                                                        </tr>
-                                                    <?php endforeach; ?>
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </div>
-                                </td>
-                            </tr>
-                        <?php endif; ?>
                     <?php endforeach; ?>
                 </tbody>
             </table>
         </div>
-        <div id="pagination-container">
-            <?= admin_render_pagination_html($page, $perPage, $totalPrograms) ?>
     <?php endif; ?>
+</div>
 
-
-<!-- FLOATING TICKBAR -->
-<div class="tickbar" id="tickbar">
-    <div class="tickbar-content">
-        <div class="tickbar-info">
-            <i class="fa-solid fa-circle-check"></i>
-            <span class="tickbar-count" id="tickbarCount">0 selected</span>
+<!-- SESSION PROGRAMS MODAL -->
+<div class="modal-overlay" id="sessionModal">
+    <div class="modal-box modal-lg" style="max-width: 980px; width: 95%; max-height: calc(100vh - 40px); display: flex; flex-direction: column; overflow: hidden; padding: 20px;">
+        <div class="modal-header" style="flex-shrink: 0; margin-bottom: 14px;">
+            <div>
+                <div class="modal-title" id="sessionModalTitle">Session Programs</div>
+                <div class="text-xs text-muted" id="sessionModalMeta">Loading session info...</div>
+            </div>
+            <button class="modal-close" type="button" data-close="sessionModal"><i class="fa-solid fa-xmark"></i></button>
         </div>
-        <div class="tickbar-actions">
-            <button type="button" class="btn btn-success btn-md" id="tickbarApproveBtn">
-                <i class="fa-solid fa-check"></i> Approve Selected
+
+        <div class="flex-between mb-4 p-3" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; flex-shrink: 0; flex-wrap: wrap; gap: 10px;">
+            <div id="sessionModalStats" style="font-size: 13px; font-weight: 700; color: var(--muted);"></div>
+            <button type="button" class="btn btn-success btn-md" id="sessionModalBulkBtn" disabled onclick="bulkApproveFromModal()">
+                <i class="fa-solid fa-circle-check"></i> Approve Entire Session
             </button>
-            <button type="button" class="btn btn-secondary btn-md" id="tickbarClearBtn">
-                Cancel
-            </button>
+        </div>
+
+        <div style="flex: 1; overflow-y: auto; padding-right: 6px;" id="sessionModalBody">
+            <div class="empty-state" style="padding: 40px;"><i class="fa-solid fa-spinner fa-spin" style="font-size: 28px;"></i><div class="empty-title mt-2">Loading programs...</div></div>
+        </div>
+
+        <div class="form-actions" style="flex-shrink: 0; padding-top: 14px; margin-top: 12px; border-top: 1px solid rgba(255,255,255,0.08); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+            <span class="text-xs text-muted"><i class="fa-solid fa-info-circle mr-1"></i> Actions inside this window execute instantly and will not close the window.</span>
+            <button type="button" class="btn btn-secondary btn-md" data-close="sessionModal">Close</button>
         </div>
     </div>
 </div>
 
-<!-- BATCH APPROVAL CONFIRMATION MODAL -->
-<div class="modal-overlay" id="batchApproveModal">
+<!-- REJECTION NOTES MODAL -->
+<div class="modal-overlay" id="rejectPromptModal" style="z-index: 100010;">
     <div class="modal-box modal-md">
         <div class="modal-header">
-            <div class="modal-title">Confirm Batch Approval</div>
-            <button class="modal-close" type="button" data-close="batchApproveModal">
-                <i class="fa-solid fa-xmark"></i>
-            </button>
+            <div class="modal-title">Reject Program Scores</div>
+            <button class="modal-close" type="button" data-close="rejectPromptModal"><i class="fa-solid fa-xmark"></i></button>
         </div>
-        <div class="panel mb-6">
-            Are you sure you want to approve scores for the <strong id="batchApproveCountText">0</strong> selected program(s)?
-            <div class="mt-2 text-sm text-muted">This will finalize the rankings and update the public leaderboard.</div>
+        <div class="panel mb-4">
+            Reject <strong id="rejectPromptProgName">this program</strong>? Score sheets will become editable again.
+        </div>
+        <div class="input-group full-width mb-4">
+            <label>Rejection Notes (Optional)</label>
+            <textarea id="rejectPromptNotes" rows="3" placeholder="Provide reason for rejection..."></textarea>
         </div>
         <div class="form-actions">
-            <button type="button" class="btn btn-secondary btn-md" data-close="batchApproveModal">Cancel</button>
-            <button type="button" class="btn btn-success btn-md" id="batchApproveConfirmBtn">Approve</button>
+            <button type="button" class="btn btn-secondary btn-md" data-close="rejectPromptModal">Cancel</button>
+            <button type="button" class="btn btn-danger btn-md" id="rejectPromptConfirmBtn">Reject Program</button>
         </div>
-    </div>
-</div>
-
-<div class="modal-overlay" id="rejectModal">
-    <div class="modal-box modal-md">
-        <div class="modal-header"><div class="modal-title" id="rejectModalTitle">Reject Program</div><button class="modal-close" type="button" data-close="rejectModal"><i class="fa-solid fa-xmark"></i></button></div>
-        <form method="POST">
-            <?= admin_csrf_field() ?>
-            <input type="hidden" name="program_id" id="rejectProgramId">
-            <input type="hidden" name="approval_action" id="rejectApprovalAction" value="reject">
-            <input type="hidden" name="return_status" value="<?= e($statusFilter) ?>">
-            <input type="hidden" name="return_search" value="<?= e($search) ?>">
-            <input type="hidden" name="return_class" value="<?= e($classFilter) ?>">
-            <div class="panel mb-6" id="rejectModalMessage">Reject <strong id="rejectProgramName"></strong>? Score sheets will become editable again.</div>
-            <div class="input-group full-width"><label>Notes</label><textarea name="rejection_notes" rows="4" placeholder="Optional notes for the scoring team"></textarea></div>
-            <div class="form-actions"><button type="button" class="btn btn-secondary btn-md" data-close="rejectModal">Cancel</button><button class="btn btn-danger btn-md" type="submit" id="rejectModalSubmit">Reject</button></div>
-        </form>
     </div>
 </div>
 
 <script>
 (() => {
+    let currentSessionId = null;
+    let pendingRejectProgramId = null;
 
-function collectSelectedProgramIds(){
-    return Array.from(document.querySelectorAll('.program-checkbox:checked')).map(input => Number(input.dataset.programId)).filter(id => id > 0);
-}
-function clearBatchProgramInputs(form){
-    Array.from(form.querySelectorAll('input[name="program_ids[]"]')).forEach(input => input.remove());
-}
-function addBatchProgramInputs(form, ids){
-    ids.forEach(id => {
-        const input = document.createElement('input');
-        input.type = 'hidden';
-        input.name = 'program_ids[]';
-        input.value = String(id);
-        form.appendChild(input);
-    });
-}
+    // Open Session Modal and load programs via AJAX
+    window.openSessionModal = function(sessionId, sessionName) {
+        currentSessionId = sessionId;
+        document.getElementById('sessionModalTitle').textContent = sessionName || 'Session Programs';
+        document.getElementById('sessionModalMeta').textContent = 'Loading programs...';
+        document.getElementById('sessionModalStats').textContent = '';
+        document.getElementById('sessionModalBody').innerHTML = '<div class="empty-state" style="padding: 40px;"><i class="fa-solid fa-spinner fa-spin" style="font-size: 28px;"></i><div class="empty-title mt-2">Loading programs...</div></div>';
+        
+        const bulkBtn = document.getElementById('sessionModalBulkBtn');
+        bulkBtn.disabled = true;
+        bulkBtn.title = 'Checking session status...';
 
-const batchForm = document.getElementById('batchApprovalForm');
-const selectAllCheckbox = document.getElementById('selectAllPrograms');
-const approveAllBtn = document.getElementById('approveAllBtn');
+        window.openModal('sessionModal');
+        loadSessionPrograms(sessionId);
+    };
 
-const tickbar = document.getElementById('tickbar');
-const tickbarCount = document.getElementById('tickbarCount');
-const tickbarApproveBtn = document.getElementById('tickbarApproveBtn');
-const tickbarClearBtn = document.getElementById('tickbarClearBtn');
-const batchApproveCountText = document.getElementById('batchApproveCountText');
-const batchApproveConfirmBtn = document.getElementById('batchApproveConfirmBtn');
+    // Load Session Programs JSON/HTML
+    function loadSessionPrograms(sessionId) {
+        const fetchUrl = `${window.location.pathname}?action=fetch_session_programs&session_id=${sessionId}&ajax=1`;
+        fetch(fetchUrl)
+            .then(res => {
+                if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+                return res.json();
+            })
+            .then(data => {
+                if (!data.success) {
+                    document.getElementById('sessionModalBody').innerHTML = `<div class="alert alert-error">${data.message || 'Error loading programs'}</div>`;
+                    return;
+                }
 
-function syncSelectAllCheckbox() {
-    if (!selectAllCheckbox) return;
-    const boxes = document.querySelectorAll('.program-checkbox');
-    const checked = document.querySelectorAll('.program-checkbox:checked');
-    selectAllCheckbox.checked = boxes.length > 0 && boxes.length === checked.length;
-    selectAllCheckbox.indeterminate = checked.length > 0 && checked.length < boxes.length;
-}
+                document.getElementById('sessionModalTitle').textContent = data.session_name;
+                document.getElementById('sessionModalMeta').textContent = data.session_meta;
+                document.getElementById('sessionModalBody').innerHTML = data.html;
 
-function updateTickbar() {
-    if (!tickbar) return;
-    const ids = collectSelectedProgramIds();
-    if (ids.length > 0) {
-        tickbarCount.textContent = ids.length === 1 ? '1 program selected' : `${ids.length} programs selected`;
-        tickbar.classList.add('active');
-    } else {
-        tickbar.classList.remove('active');
+                document.getElementById('sessionModalStats').innerHTML = `
+                    <span style="color: #fff;">${data.total_programs} Total Programs</span>: 
+                    <span style="color: #34d399;">${data.approved_count} Approved</span>, 
+                    <span style="color: #fbbf24;">${data.submitted_count} Submitted</span>, 
+                    <span style="color: #94a3b8;">${data.pending_count} Pending</span>
+                `;
+
+                const bulkBtn = document.getElementById('sessionModalBulkBtn');
+                if (data.can_bulk_approve) {
+                    bulkBtn.disabled = false;
+                    bulkBtn.title = 'Approve all submitted programs in this session';
+                } else {
+                    bulkBtn.disabled = true;
+                    bulkBtn.title = data.pending_count > 0 
+                        ? 'Disabled: All programs in this session must be sent for approval first.' 
+                        : 'No submitted programs to approve.';
+                }
+            })
+            .catch(err => {
+                document.getElementById('sessionModalBody').innerHTML = `<div class="alert alert-error">Error loading session programs: ${err.message || 'Network error'}</div>`;
+            });
     }
-}
 
-if (selectAllCheckbox) {
-    selectAllCheckbox.addEventListener('change', () => {
-        document.querySelectorAll('.program-checkbox').forEach(cb => { cb.checked = selectAllCheckbox.checked; });
-        selectAllCheckbox.indeterminate = false;
-        updateTickbar();
-    });
-    document.addEventListener('change', (e) => {
-        if (e.target.classList.contains('program-checkbox')) {
-            syncSelectAllCheckbox();
-            updateTickbar();
-        }
-    });
-}
+    // Toggle Program Ranking Preview inside Modal
+    window.toggleProgramPreviewInModal = function(programId) {
+        const previewTr = document.getElementById(`prog-preview-tr-${programId}`);
+        const previewContent = document.getElementById(`prog-preview-content-${programId}`);
+        if (!previewTr) return;
 
-if (tickbarClearBtn) {
-    tickbarClearBtn.addEventListener('click', () => {
-        document.querySelectorAll('.program-checkbox').forEach(cb => { cb.checked = false; });
-        if (selectAllCheckbox) {
-            selectAllCheckbox.checked = false;
-            selectAllCheckbox.indeterminate = false;
-        }
-        updateTickbar();
-    });
-}
-
-if (tickbarApproveBtn) {
-    tickbarApproveBtn.addEventListener('click', () => {
-        const ids = collectSelectedProgramIds();
-        if (!ids.length) return;
-        if (batchApproveCountText) {
-            batchApproveCountText.textContent = String(ids.length);
-        }
-       window.openModal('batchApproveModal');
-    });
-}
-
-if (batchApproveConfirmBtn && batchForm) {
-    batchApproveConfirmBtn.addEventListener('click', () => {
-        const ids = collectSelectedProgramIds();
-        if (!ids.length) return;
-        clearBatchProgramInputs(batchForm);
-        addBatchProgramInputs(batchForm, ids);
-        document.getElementById('batchApprovalAction').value = 'approve_selected';
-        batchForm.submit();
-    });
-}
-
-if (approveAllBtn && batchForm) {
-    approveAllBtn.addEventListener('click', () => {
-        if (!confirm('Approve all submitted or rejected programs that match the current filter?')) {
+        if (!previewTr.classList.contains('hidden')) {
+            previewTr.classList.add('hidden');
             return;
         }
-        clearBatchProgramInputs(batchForm);
-        document.getElementById('batchApprovalAction').value = 'approve_all';
-        batchForm.submit();
-    });
-}
 
-document.querySelectorAll('[data-close]').forEach(btn => btn.addEventListener('click', () =>window.closeModal(btn.dataset.close)));
-document.querySelectorAll('.modal-overlay').forEach(modal => modal.addEventListener('click', e => { if (e.target === modal)window.closeModal(modal.id); }));
-document.addEventListener('click', (e) => {
-    const btn = e.target.closest('[data-reject-id]');
-    if (btn) {
-        const isRevoke = btn.dataset.rejectAction === 'revoke_approved';
-        const programName = btn.dataset.rejectName || 'this program';
+        previewTr.classList.remove('hidden');
+        if (previewContent.getAttribute('data-loaded') === 'true') return;
 
-        document.getElementById('rejectProgramId').value = btn.dataset.rejectId;
-        document.getElementById('rejectApprovalAction').value = isRevoke ? 'revoke_approved' : 'reject';
-        document.getElementById('rejectModalTitle').textContent = isRevoke ? 'Undo Program Approval' : 'Reject Program';
-        const msgEl = document.getElementById('rejectModalMessage');
-        const nameEl = document.getElementById('rejectProgramName');
-        nameEl.textContent = programName;
-        msgEl.replaceChildren(
-            document.createTextNode(isRevoke ? 'Undo approval for ' : 'Reject '),
-            nameEl,
-            document.createTextNode(
-                isRevoke
-                    ? '? This removes finalized ranks, team points, and system scores. The program will return to the submitted state and remain locked for editing.'
-                    : '? Score sheets will become editable again.'
-            )
-        );
-        document.getElementById('rejectModalSubmit').textContent = isRevoke ? 'Undo Approval' : 'Reject';
+        previewContent.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> Loading breakdown...';
+        const fetchUrl = `${window.location.pathname}?action=fetch_program_preview&program_id=${programId}&ajax=1`;
+        fetch(fetchUrl)
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    previewContent.innerHTML = data.html;
+                    previewContent.setAttribute('data-loaded', 'true');
+                } else {
+                    previewContent.innerHTML = `<div class="text-danger">${data.message || 'Unable to load preview.'}</div>`;
+                }
+            })
+            .catch(() => {
+                previewContent.innerHTML = `<div class="text-danger">Network error loading breakdown.</div>`;
+            });
+    };
 
-       window.openModal('rejectModal');
+    // Approve Program via AJAX inside Modal (MODAL DOES NOT CLOSE)
+    window.approveProgramInModal = function(programId) {
+        const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
+        const fetchUrl = `${window.location.pathname}?action=approve_program&program_id=${programId}&ajax=1`;
+        fetch(fetchUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `csrf_token=${encodeURIComponent(csrf)}`
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                // Reload session programs list inside modal (Modal remains open!)
+                if (currentSessionId !== null) {
+                    loadSessionPrograms(currentSessionId);
+                }
+            } else {
+                alert(data.message || 'Error approving program.');
+            }
+        });
+    };
+
+    // Prompt Reject Program
+    window.promptRejectProgram = function(programId, progName) {
+        pendingRejectProgramId = programId;
+        document.getElementById('rejectPromptProgName').textContent = progName;
+        document.getElementById('rejectPromptNotes').value = '';
+        window.openModal('rejectPromptModal');
+    };
+
+    const confirmRejectBtn = document.getElementById('rejectPromptConfirmBtn');
+    if (confirmRejectBtn) {
+        confirmRejectBtn.addEventListener('click', () => {
+            if (!pendingRejectProgramId) return;
+            const notes = document.getElementById('rejectPromptNotes').value;
+            const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
+            const fetchUrl = `${window.location.pathname}?action=reject_program&program_id=${pendingRejectProgramId}&rejection_notes=${encodeURIComponent(notes)}&ajax=1`;
+
+            fetch(fetchUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `csrf_token=${encodeURIComponent(csrf)}`
+            })
+            .then(res => res.json())
+            .then(data => {
+                window.closeModal('rejectPromptModal');
+                if (data.success) {
+                    if (currentSessionId !== null) {
+                        loadSessionPrograms(currentSessionId);
+                    }
+                } else {
+                    alert(data.message || 'Error rejecting program.');
+                }
+            });
+        });
     }
-});
+
+    // Revoke Program Approval via AJAX inside Modal (MODAL DOES NOT CLOSE)
+    window.promptRevokeProgram = function(programId, progName) {
+        if (!confirm(`Undo approval for ${progName}? The program will return to submitted state.`)) return;
+        const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
+        const fetchUrl = `${window.location.pathname}?action=revoke_program&program_id=${programId}&ajax=1`;
+
+        fetch(fetchUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `csrf_token=${encodeURIComponent(csrf)}`
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                if (currentSessionId !== null) {
+                    loadSessionPrograms(currentSessionId);
+                }
+            } else {
+                alert(data.message || 'Error revoking approval.');
+            }
+        });
+    };
+
+    // Bulk Approve Session from Main Page or Modal
+    window.bulkApproveSession = function(sessionId) {
+        if (!confirm('Approve all submitted programs in this schedule session?')) return;
+        const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
+        const fetchUrl = `${window.location.pathname}?action=approve_session&session_id=${sessionId}&ajax=1`;
+
+        fetch(fetchUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `csrf_token=${encodeURIComponent(csrf)}`
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                window.location.reload();
+            } else {
+                alert(data.message || 'Error approving session.');
+            }
+        });
+    };
+
+    window.bulkApproveFromModal = function() {
+        if (currentSessionId !== null) {
+            window.bulkApproveSession(currentSessionId);
+        }
+    };
+
+    // Standard Modal Close Handlers
+    document.querySelectorAll('[data-close]').forEach(btn => btn.addEventListener('click', () => window.closeModal(btn.dataset.close)));
+    document.querySelectorAll('.modal-overlay').forEach(modal => modal.addEventListener('click', e => { if (e.target === modal) window.closeModal(modal.id); }));
 
 })();
 </script>
-</div>
-<?= admin_ajax_pagination_script() ?>
+
 <?php admin_close_page(); ?>

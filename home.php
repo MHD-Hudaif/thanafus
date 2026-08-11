@@ -1,586 +1,683 @@
 <?php
+declare(strict_types=1);
 
 require_once __DIR__ . '/config/auth.php';
 require_once __DIR__ . '/config/app.php';
 
+// Establish public database data context gracefully
+try {
+    require_once __DIR__ . '/includes/public-data.php';
+    $event = tv_active_event();
+    $teams = teams();
+    $schedule = schedule_items();
+    $scheduleSections = schedule_sections();
+    $results = result_items();
+    $workingCommittee = working_committee();
+    $venues = venues_data();
+    
+    $eventTitle = trim((string)($event['title'] ?? 'Kauzariyya Musabaqa 2026'));
+    $eventTitle = $eventTitle !== '' ? $eventTitle : 'Kauzariyya Musabaqa 2026';
+    
+    $eventStart = !empty($event['start_date']) ? (string)$event['start_date'] : null;
+    $eventDateFormatted = !empty($eventStart) 
+        ? date('d F Y', strtotime($eventStart)) 
+        : '05 JULY 2026';
+
+    $candidatesCount = '800+';
+    $eventId = tv_active_event_id();
+    if ($eventId > 0 && isset($GLOBALS['musabaqa_pdo'])) {
+        try {
+            $stmtCount = $GLOBALS['musabaqa_pdo']->prepare("SELECT COUNT(DISTINCT student_id) FROM musabaqa_team_members WHERE event_id = ?");
+            $stmtCount->execute([$eventId]);
+            $cCount = (int)$stmtCount->fetchColumn();
+            if ($cCount > 0) {
+                $candidatesCount = (string)$cCount;
+            }
+        } catch (\Throwable $e) {}
+    }
+} catch (\Throwable $e) {
+    $eventTitle = 'Kauzariyya Musabaqa 2026';
+    $eventDateFormatted = '05 JULY 2026';
+    $teams = [];
+    $schedule = [];
+    $scheduleSections = [];
+    $results = [];
+    $workingCommittee = [];
+    $venues = [];
+    $candidatesCount = '800+';
+}
+
 $user = $_SESSION['user'] ?? null;
 $isLoggedIn = !empty($user);
 
-$backgroundImages = array_values(array_filter(
-    glob(__DIR__ . '/assets/images/kauzariyya*.png') ?: [],
-    static fn(string $path): bool => !str_contains(basename($path), 'logo')
-));
-natsort($backgroundImages);
-$backgroundImages = array_values($backgroundImages);
+// Fallbacks for preview/demo mode if database is unpopulated
+if (empty($teams)) {
+    $teams = [
+        ['id' => 1, 'name' => 'Team Al-Fath', 'score' => 245, 'color' => '#10b981'],
+        ['id' => 2, 'name' => 'Team Al-Noor', 'score' => 210, 'color' => '#f59e0b'],
+        ['id' => 3, 'name' => 'Team Al-Hikmah', 'score' => 195, 'color' => '#3b82f6'],
+        ['id' => 4, 'name' => 'Team Al-Badr', 'score' => 180, 'color' => '#8b5cf6'],
+    ];
+}
 
-$highlights = [
-    ['icon' => 'fa-book-quran', 'title' => "Qur'an Competitions", 'text' => 'Hifz, Tajweed, Qiraat and recitation programs.'],
-    ['icon' => 'fa-microphone-lines', 'title' => 'Speech and Debate', 'text' => 'Stage events that build confidence and clarity.'],
-    ['icon' => 'fa-book-open-reader', 'title' => 'Islamic Quiz', 'text' => 'Knowledge rounds across Islamic studies and history.'],
-    ['icon' => 'fa-mosque', 'title' => 'Adhan Competition', 'text' => 'A platform for discipline, voice and devotion.'],
-    ['icon' => 'fa-pen-nib', 'title' => 'Literary Events', 'text' => 'Arabic, Malayalam and creative writing contests.'],
-    ['icon' => 'fa-trophy', 'title' => 'Team Championship', 'text' => 'A complete team-based competition journey.'],
-];
+if (empty($venues)) {
+    $venues = [
+        [
+            'name' => 'Stage 1 · Main Auditorium',
+            'count' => 18,
+            'next_program' => 'Qur’an Recitation - Senior Final',
+            'next_program_status' => 'scoring',
+            'last_program' => 'Hadith Memorization'
+        ],
+        [
+            'name' => 'Stage 2 · Seminar Hall',
+            'count' => 14,
+            'next_program' => 'Arabic Speech - Junior Round',
+            'next_program_status' => 'upcoming',
+            'last_program' => 'Islamic Quiz Prelims'
+        ]
+    ];
+}
 
-$liveFeatures = [
-    'Live Leaderboard',
-    'Current Performance',
-    'Upcoming Schedule',
-    'Program Results',
-    'Team Rankings',
-    'Medal Table',
-    'Digital ID Cards',
-    'Real-time Score Updates',
-];
+if (empty($results)) {
+    $results = [
+        [
+            'id' => 1,
+            'participant' => 'Muhammad Rashid',
+            'code' => 'K-102',
+            'program' => 'Qur’an Recitation (Tajweed)',
+            'category' => 'Ayaat Senior',
+            'team_name' => 'Team Al-Fath',
+            'score' => 98.5,
+            'position' => 1
+        ],
+        [
+            'id' => 2,
+            'participant' => 'Abdullah Nizar',
+            'code' => 'K-208',
+            'program' => 'Arabic Oratory & Speech',
+            'category' => 'Bidayah Junior',
+            'team_name' => 'Team Al-Noor',
+            'score' => 94.0,
+            'position' => 2
+        ],
+        [
+            'id' => 3,
+            'participant' => 'Bilal Hassan',
+            'code' => 'K-315',
+            'program' => 'Islamic Quiz Championship',
+            'category' => 'General Open',
+            'team_name' => 'Team Al-Hikmah',
+            'score' => 91.5,
+            'position' => 3
+        ]
+    ];
+}
 
+if (empty($workingCommittee)) {
+    $workingCommittee = [
+        [
+            'id' => 1,
+            'name' => 'Usthad Ilyas Kauzari',
+            'role' => 'General Convener',
+            'place' => 'Aluva',
+            'image' => 'https://daruliftakauzariyya.com/team-photos/Usthad-Ilyas.png'
+        ],
+        [
+            'id' => 2,
+            'name' => 'Usthad Abid Kauzari',
+            'role' => 'Program Controller',
+            'place' => 'Edathala',
+            'image' => 'https://daruliftakauzariyya.com/team-photos/Abid.png'
+        ],
+        [
+            'id' => 3,
+            'name' => 'Usthad Abdul Basith',
+            'role' => 'Chief Inspector',
+            'place' => 'Ernakulam',
+            'image' => 'https://ui-avatars.com/api/?name=Abdul+Basith&background=1b4332&color=fff&size=512'
+        ],
+        [
+            'id' => 4,
+            'name' => 'Usthad Faisal Farooqi',
+            'role' => 'Stage & Venue Manager',
+            'place' => 'Kochi',
+            'image' => 'https://ui-avatars.com/api/?name=Faisal+Farooqi&background=1b4332&color=fff&size=512'
+        ]
+    ];
+}
+
+// Calculate highest score for leaderboard percentage bars
+$maxScore = 1;
+foreach ($teams as $t) {
+    if ((float)$t['score'] > $maxScore) {
+        $maxScore = (float)$t['score'];
+    }
+}
+
+// Dynamic 3D schedule deck construction
+$scheduleDeck = [];
+if (!empty($schedule)) {
+    $grouped = [];
+    foreach ($schedule as $item) {
+        $sec = $item['session'] ?? 'general';
+        $grouped[$sec][] = $item;
+    }
+
+    $dayIndex = 1;
+    foreach ($grouped as $secKey => $items) {
+        $sectionName = $scheduleSections[$secKey] ?? ('Stage Session ' . $dayIndex);
+        $dayNum = sprintf('%02d', $dayIndex);
+        $progCount = count($items);
+        
+        $venuesList = array_unique(array_filter(array_column($items, 'venue')));
+        $venueStr = !empty($venuesList) ? implode(' & ', array_slice($venuesList, 0, 2)) : 'STAGE 1 & 2';
+
+        $catsList = array_unique(array_filter(array_column($items, 'category')));
+        $catStr = !empty($catsList) ? implode(', ', array_slice($catsList, 0, 3)) : 'Qur\'an, Oratory & Arts';
+
+        $scheduleDeck[] = [
+            'badge' => 'DAY ' . $dayNum,
+            'pill' => $progCount . ' PROGRAMMES',
+            'number' => date('d', !empty($eventStart) ? strtotime($eventStart . " +".($dayIndex-1)." days") : time()),
+            'month_year' => strtoupper(date('F Y', !empty($eventStart) ? strtotime($eventStart) : time())),
+            'subtitle' => strtoupper($sectionName) . ' · ' . strtoupper($venueStr),
+            'footer' => $catStr
+        ];
+        $dayIndex++;
+        if ($dayIndex > 4) break;
+    }
+}
+
+if (empty($scheduleDeck)) {
+    $scheduleDeck = [
+        [
+            'badge' => 'DAY 01',
+            'pill' => '12 PROGRAMMES',
+            'number' => '18',
+            'month_year' => 'AUGUST 2026',
+            'subtitle' => 'TUESDAY · STAGE 1 & 2',
+            'footer' => 'Qur\'an Recitation, Oratory & Literary Arts'
+        ],
+        [
+            'badge' => 'DAY 02',
+            'pill' => '14 PROGRAMMES',
+            'number' => '19',
+            'month_year' => 'AUGUST 2026',
+            'subtitle' => 'WEDNESDAY · STAGE 1 & 2',
+            'footer' => 'Grand Finale, Cultural Arts & Awards'
+        ]
+    ];
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Kauzariyya Musabaqa 2026</title>
-
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
-
-<style>
-:root {
-    --bg: #07100d;
-    --surface: #0e1915;
-    --surface-2: #14241d;
-    --text: #f8fafc;
-    --muted: #b6c4ba;
-    --muted-2: #7f9187;
-    --green: #16a34a;
-    --emerald: #10b981;
-    --gold: #d8a827;
-    --gold-2: #facc15;
-    --border: rgba(255,255,255,.12);
-    --shadow: 0 22px 60px rgba(0,0,0,.34);
-    --radius: 8px;
-}
-
-* { box-sizing: border-box; margin: 0; padding: 0; }
-html { scroll-behavior: smooth; }
-body {
-    min-height: 100vh;
-    font-family: Cairo, Arial, sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    line-height: 1.6;
-}
-a { color: inherit; text-decoration: none; }
-img { max-width: 100%; display: block; }
-
-.site-header {
-    position: fixed;
-    top: 18px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 40;
-    width: min(1180px, calc(100% - 28px));
-    min-height: 74px;
-    padding: 10px 14px 10px 18px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 18px;
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    background: rgba(7, 16, 13, .78);
-    backdrop-filter: blur(18px);
-    box-shadow: 0 16px 42px rgba(0,0,0,.22);
-}
-
-.brand {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    min-width: 0;
-}
-.brand img { width: 58px; height: auto; }
-.brand-title { font-weight: 900; line-height: 1.05; white-space: nowrap; }
-.brand-subtitle { color: var(--muted); font-size: 12px; font-weight: 700; }
-
-.nav {
-    display: flex;
-    align-items: center;
-    gap: 24px;
-    color: rgba(255,255,255,.78);
-    font-size: 14px;
-    font-weight: 700;
-}
-.nav a:hover { color: var(--gold-2); }
-
-.header-actions { display: flex; gap: 10px; align-items: center; }
-.btn {
-    min-height: 42px;
-    padding: 9px 16px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    border-radius: var(--radius);
-    border: 1px solid transparent;
-    font-weight: 900;
-    line-height: 1.2;
-    transition: transform .2s ease, filter .2s ease, border-color .2s ease;
-}
-.btn:hover { transform: translateY(-2px); filter: brightness(1.06); }
-.btn-primary { background: linear-gradient(135deg, var(--emerald), var(--gold-2)); color: #062117; }
-.btn-secondary { background: rgba(255,255,255,.08); border-color: var(--border); color: var(--text); }
-
-.hero {
-    position: relative;
-    min-height: 92vh;
-    display: grid;
-    align-items: end;
-    overflow: hidden;
-    padding: 140px 24px 72px;
-}
-.hero-bg, .hero-bg::after, .bg-image {
-    position: absolute;
-    inset: 0;
-}
-.hero-bg { z-index: 0; background: #08110e; }
-.hero-bg::after {
-    content: "";
-    background:
-        linear-gradient(90deg, rgba(7,16,13,.92), rgba(7,16,13,.68), rgba(7,16,13,.36)),
-        linear-gradient(0deg, rgba(7,16,13,1), rgba(7,16,13,.22) 42%, rgba(7,16,13,.72));
-}
-.bg-image {
-    background-size: cover;
-    background-position: center;
-    opacity: 0;
-    transform: scale(1.04);
-    transition: opacity 2.8s ease;
-}
-.bg-image.active { opacity: 1; }
-
-.hero-inner {
-    position: relative;
-    z-index: 2;
-    width: min(1180px, 100%);
-    margin: 0 auto;
-    display: grid;
-    grid-template-columns: minmax(0, 760px);
-    gap: 30px;
-}
-.eyebrow {
-    display: inline-flex;
-    width: fit-content;
-    align-items: center;
-    gap: 8px;
-    min-height: 30px;
-    padding: 4px 10px;
-    border-radius: var(--radius);
-    border: 1px solid rgba(250,204,21,.3);
-    color: #fef3c7;
-    background: rgba(250,204,21,.08);
-    font-size: 12px;
-    font-weight: 900;
-    text-transform: uppercase;
-    letter-spacing: .08em;
-}
-.hero h1 {
-    max-width: 760px;
-    font-size: clamp(44px, 7vw, 88px);
-    line-height: .98;
-    font-weight: 900;
-    letter-spacing: 0;
-}
-.hero h1 span { color: var(--gold-2); }
-.hero-copy {
-    max-width: 690px;
-    color: rgba(255,255,255,.82);
-    font-size: clamp(16px, 2vw, 20px);
-}
-.motto {
-    color: var(--gold-2);
-    font-weight: 900;
-}
-.hero-actions { display: flex; flex-wrap: wrap; gap: 12px; }
-
-.section {
-    padding: 74px 24px;
-    background: var(--bg);
-}
-.section.alt { background: #0a1511; }
-.section-inner {
-    width: min(1180px, 100%);
-    margin: 0 auto;
-}
-.section-heading {
-    display: grid;
-    gap: 10px;
-    margin-bottom: 28px;
-}
-.section-kicker {
-    color: var(--gold-2);
-    font-size: 13px;
-    font-weight: 900;
-    text-transform: uppercase;
-    letter-spacing: .08em;
-}
-.section h2 {
-    max-width: 780px;
-    font-size: clamp(30px, 4vw, 50px);
-    line-height: 1.08;
-    font-weight: 900;
-    letter-spacing: 0;
-}
-.section-lead {
-    max-width: 850px;
-    color: var(--muted);
-    font-size: 17px;
-}
-
-.about-grid {
-    display: grid;
-    grid-template-columns: minmax(0, 1.2fr) minmax(280px, .8fr);
-    gap: 24px;
-    align-items: stretch;
-}
-.story-panel, .quote-panel {
-    padding: 24px;
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    background: var(--surface);
-    box-shadow: var(--shadow);
-}
-.story-panel p + p { margin-top: 14px; }
-.quote-panel {
-    display: grid;
-    align-content: center;
-    gap: 18px;
-    border-top: 4px solid var(--gold);
-}
-.arabic {
-    font-size: 30px;
-    font-weight: 900;
-    line-height: 1.6;
-    color: #fef3c7;
-    direction: rtl;
-}
-.quote-text {
-    color: var(--muted);
-    font-size: 17px;
-}
-
-.mission-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 18px;
-}
-.mission-block {
-    padding: 24px;
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    background: var(--surface);
-}
-.mission-block h3 {
-    margin-bottom: 12px;
-    font-size: 24px;
-    font-weight: 900;
-}
-.mission-list {
-    display: grid;
-    gap: 10px;
-    color: var(--muted);
-    list-style: none;
-}
-.mission-list li {
-    display: flex;
-    gap: 10px;
-    align-items: flex-start;
-}
-.mission-list i { margin-top: 6px; color: var(--emerald); }
-
-.highlight-grid {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 16px;
-}
-.highlight-card {
-    min-height: 190px;
-    padding: 20px;
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    background: var(--surface);
-}
-.highlight-card i {
-    display: grid;
-    place-items: center;
-    width: 46px;
-    height: 46px;
-    margin-bottom: 18px;
-    border-radius: var(--radius);
-    background: rgba(16,185,129,.13);
-    color: var(--gold-2);
-    font-size: 20px;
-}
-.highlight-card h3 {
-    margin-bottom: 8px;
-    font-size: 20px;
-    font-weight: 900;
-}
-.highlight-card p { color: var(--muted); }
-
-.feature-strip {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 12px;
-}
-.feature-pill {
-    min-height: 62px;
-    padding: 12px 14px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    background: var(--surface-2);
-    color: rgba(255,255,255,.88);
-    font-weight: 800;
-}
-.feature-pill i { color: var(--emerald); }
-
-.welcome {
-    position: relative;
-    overflow: hidden;
-    border-top: 1px solid var(--border);
-    border-bottom: 1px solid var(--border);
-    background:
-        linear-gradient(90deg, rgba(7,16,13,.96), rgba(7,16,13,.72)),
-        url('<?= APP_URL ?>/assets/images/kauzariyya-logo.png') center right 8% / min(420px, 65vw) no-repeat,
-        #07100d;
-}
-.welcome .section-inner {
-    display: grid;
-    gap: 20px;
-}
-.welcome-message {
-    max-width: 820px;
-    color: rgba(255,255,255,.84);
-    font-size: 18px;
-}
-
-.footer {
-    padding: 44px 24px;
-    background: #050d0a;
-    border-top: 1px solid var(--border);
-}
-.footer-inner {
-    width: min(1180px, 100%);
-    margin: 0 auto;
-    display: flex;
-    justify-content: space-between;
-    gap: 24px;
-    align-items: flex-start;
-    color: var(--muted);
-}
-.footer strong { display: block; color: var(--text); font-size: 18px; }
-.footer em { color: #fef3c7; font-style: normal; font-weight: 800; }
-
-@media (max-width: 960px) {
-    .site-header { align-items: flex-start; }
-    .nav { display: none; }
-    .about-grid, .mission-grid { grid-template-columns: 1fr; }
-    .highlight-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .feature-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
-
-@media (max-width: 620px) {
-    .site-header {
-        position: absolute;
-        top: 10px;
-        min-height: auto;
-        align-items: center;
-    }
-    .brand img { width: 48px; }
-    .brand-subtitle { display: none; }
-    .header-actions .btn-secondary { display: none; }
-    .hero { min-height: 96vh; padding: 118px 16px 52px; }
-    .hero-actions .btn { width: 100%; }
-    .section { padding: 56px 16px; }
-    .highlight-grid, .feature-strip { grid-template-columns: 1fr; }
-    .footer-inner { display: grid; }
-}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#061009">
+  <meta name="description" content="The official Kauzariyya Musabaqa companion for live scores, schedules, participants and festival results.">
+  <title><?= e($eventTitle) ?> · Al Jamiathul Kauzariyya</title>
+  
+  <link rel="icon" type="image/png" href="<?= asset_url('kauzariyya-brand-icon.png') ?>">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+  <link rel="stylesheet" href="<?= asset_url('css/musabaqa-landing.css') ?>">
+  <script src="<?= asset_url('js/musabaqa-landing.js') ?>" defer></script>
 </head>
-
 <body>
-<header class="site-header">
-    <a href="<?= APP_URL ?>/home" class="brand">
-        <img src="<?= APP_URL ?>/assets/images/thanafus-logo.png" alt="Kauzariyya Musabaqa">
-        <div>
-            <div class="brand-title">Kauzariyya Musabaqa</div>
-            <div class="brand-subtitle">Digital Competition Platform</div>
-        </div>
+
+  <!-- ════════════════════════════════════════ BACKGROUND VIDEO ═══ -->
+  <div class="home-video-bg">
+    <video id="bgVideo" autoplay muted loop playsinline fetchpriority="high">
+      <source src="<?= asset_url('video.mp4') ?>" type="video/mp4">
+      <source src="<?= asset_url('intro.mp4') ?>" type="video/mp4">
+    </video>
+  </div>
+  <div class="home-video-overlay" aria-hidden="true"></div>
+
+  <!-- ════════════════════════════════════════ SITE HEADER ═══ -->
+  <header class="site-header">
+    <a href="<?= app_url('/home') ?>" class="site-logo">
+      <img src="<?= asset_url('kauzariyya-brand-icon.png') ?>" alt="Kauzariyya Logo">
+      <span>
+        <b>Al-Jamiathul Kauzariyya</b>
+        <small>Management Platform</small>
+      </span>
     </a>
 
-    <nav class="nav">
-        <a href="#about">About</a>
-        <a href="#vision">Vision</a>
-        <a href="#events">Events</a>
-        <a href="#live">Live</a>
-        <a href="#welcome">Welcome</a>
+    <nav class="site-nav">
+      <a href="#hero" class="active">Home</a>
+      <a href="#leaderboard">Leaderboard</a>
+      <a href="#stages">Stages</a>
+      <a href="#results">Results</a>
+      <a href="#committee">Committee</a>
+      <a href="<?= app_url('/schedule') ?>">Schedule</a>
+      <a href="<?= app_url('/participants') ?>">Participants</a>
+      <a href="#about">About</a>
     </nav>
 
-    <div class="header-actions">
-        <a href="<?= APP_URL ?>/tv/index.php" class="btn btn-secondary"><i class="fa-solid fa-tv"></i> TV Mode</a>
-        <?php if ($isLoggedIn): ?>
-            <a href="<?= APP_URL ?>/admin/dashboard" class="btn btn-primary"><i class="fa-solid fa-table-columns"></i> Dashboard</a>
-        <?php else: ?>
-            <a href="<?= APP_URL ?>/auth/login" class="btn btn-primary"><i class="fa-solid fa-right-to-bracket"></i> Login</a>
-        <?php endif; ?>
+    <div class="header-account-actions">
+      <div class="festival-date">
+        <span>FESTIVAL DATE</span>
+        <b><?= e(strtoupper($eventDateFormatted)) ?></b>
+      </div>
+      
+      <a href="<?= app_url('/tv/index.php') ?>" class="header-action-btn btn-secondary" title="Open TV Live Display">
+        <i class="fa-solid fa-tv"></i> TV Mode
+      </a>
+
+      <?php if ($isLoggedIn): ?>
+        <a href="<?= app_url('/admin/dashboard') ?>" class="header-action-btn btn-primary">
+          <i class="fa-solid fa-gauge"></i> Dashboard
+        </a>
+      <?php else: ?>
+        <a href="<?= app_url('/auth/login') ?>" class="header-action-btn btn-primary">
+          <i class="fa-solid fa-right-to-bracket"></i> Login
+        </a>
+      <?php endif; ?>
     </div>
-</header>
+  </header>
 
-<main>
-    <section class="hero">
-        <div class="hero-bg" aria-hidden="true">
-            <?php foreach ($backgroundImages as $index => $imagePath): ?>
-                <div class="bg-image<?= $index === 0 ? ' active' : '' ?>" style="background-image:url('<?= APP_URL ?>/assets/images/<?= e(basename($imagePath)) ?>')"></div>
-            <?php endforeach; ?>
-        </div>
+  <!-- ════════════════════════════════════════ MAIN CONTENT ═══ -->
+  <main id="hero">
 
-        <div class="hero-inner">
-            <div class="eyebrow"><i class="fa-solid fa-star-and-crescent"></i> Al Jamiathul Kauzariyya Arabic College</div>
-            <h1>Kauzariyya <span>Musabaqa 2026</span></h1>
-            <p class="hero-copy">Competing in excellence, growing in knowledge, and standing together in faith. The official digital platform for Kauzariyya's student competitions, live scores, schedules, teams and results.</p>
-            <p class="motto">Excellence Through Knowledge • Unity Through Faith • Success Through Sincerity</p>
-            <div class="hero-actions">
-                <a href="<?= APP_URL ?>/tv/index.php" class="btn btn-primary"><i class="fa-solid fa-tower-broadcast"></i> Watch Live Display</a>
-                <a href="#events" class="btn btn-secondary"><i class="fa-solid fa-list-check"></i> Explore Events</a>
-            </div>
-        </div>
+    <!-- HERO SECTION -->
+    <section class="home-redesign-hero">
+      <div class="home-redesign-copy">
+        <span class="home-hero-eyebrow">FAITH · KNOWLEDGE · CREATIVITY</span>
+        <h1><?= e(explode(' ', $eventTitle)[0] ?? 'Kauzariyya') ?> <em><?= e(implode(' ', array_slice(explode(' ', $eventTitle), 1)) ?: 'Arts Festival') ?>.</em></h1>
+        <p class="home-hero-intro">
+          A celebration where students discover their voice, share their talent and grow through meaningful competition.
+        </p>
+      </div>
     </section>
 
-    <section class="section" id="about">
-        <div class="section-inner about-grid">
-            <div class="story-panel">
-                <div class="section-heading">
-                    <div class="section-kicker">About the Musabaqa</div>
-                    <h2>A stage for knowledge, discipline and sincere competition.</h2>
-                </div>
-                <p>The Kauzariyya Musabaqa is an annual academic and Islamic competition organized by Al Jamiathul Kauzariyya Arabic College. It gives students a meaningful platform to demonstrate excellence in Qur'an, Hadith, Arabic, Islamic studies, speeches, recitation, literature and co-curricular programs.</p>
-                <p>More than a competition, it is a gathering that strengthens confidence, brotherhood, discipline and good character while celebrating the talents Allah has placed in every student.</p>
-            </div>
-
-            <div class="quote-panel">
-                <div class="arabic">بسم الله الرحمن الرحيم</div>
-                <p class="quote-text">Inspired with the aroma of sterling Islam, Kauzariyya continues to guide students toward beneficial knowledge, service and sincerity.</p>
-            </div>
-        </div>
+    <!-- PLATFORM STATEMENT -->
+    <section class="home-platform-statement section-wrap">
+      <p>
+        Competing in excellence, growing in knowledge, and standing together in faith. The official digital platform for Kauzariyya’s student competitions, live scores, schedules, teams and results.
+      </p>
+      <strong>
+        EXCELLENCE THROUGH KNOWLEDGE <i></i> UNITY THROUGH FAITH <i></i> SUCCESS THROUGH SINCERITY
+      </strong>
     </section>
 
-    <section class="section alt" id="vision">
-        <div class="section-inner">
-            <div class="section-heading">
-                <div class="section-kicker">Vision and Mission</div>
-                <h2>Healthy competition shaped by the Qur'an and Sunnah.</h2>
-                <p class="section-lead">The Musabaqa exists to inspire students to pursue excellence while preserving humility, respect and unity.</p>
-            </div>
-
-            <div class="mission-grid">
-                <div class="mission-block">
-                    <h3>Vision</h3>
-                    <p class="section-lead">To inspire students to pursue excellence through healthy competition while upholding the teachings of the Qur'an and Sunnah.</p>
-                </div>
-
-                <div class="mission-block">
-                    <h3>Mission</h3>
-                    <ul class="mission-list">
-                        <li><i class="fa-solid fa-check"></i><span>Encourage academic and Islamic excellence.</span></li>
-                        <li><i class="fa-solid fa-check"></i><span>Develop leadership, confidence and discipline.</span></li>
-                        <li><i class="fa-solid fa-check"></i><span>Discover and nurture student talents.</span></li>
-                        <li><i class="fa-solid fa-check"></i><span>Strengthen unity, brotherhood and good character.</span></li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <section class="section" id="events">
-        <div class="section-inner">
-            <div class="section-heading">
-                <div class="section-kicker">Event Highlights</div>
-                <h2>Programs that bring every talent into the light.</h2>
-                <p class="section-lead">From recitation and speeches to writing, quiz and team championship moments, every event is built to reward preparation, sincerity and presence.</p>
-            </div>
-
-            <div class="highlight-grid">
-                <?php foreach ($highlights as $highlight): ?>
-                    <article class="highlight-card">
-                        <i class="fa-solid <?= e($highlight['icon']) ?>"></i>
-                        <h3><?= e($highlight['title']) ?></h3>
-                        <p><?= e($highlight['text']) ?></p>
-                    </article>
-                <?php endforeach; ?>
-            </div>
-        </div>
-    </section>
-
-    <section class="section alt" id="live">
-        <div class="section-inner">
-            <div class="section-heading">
-                <div class="section-kicker">Live Digital Platform</div>
-                <h2>Real-time tools for stage, judges, teams and audience.</h2>
-                <p class="section-lead">The Musabaqa system connects scoring, schedules, team standings, ID cards and TV displays in one smooth competition workflow.</p>
-            </div>
-
-            <div class="feature-strip">
-                <?php foreach ($liveFeatures as $feature): ?>
-                    <div class="feature-pill"><i class="fa-solid fa-circle-dot"></i><?= e($feature) ?></div>
-                <?php endforeach; ?>
-            </div>
-        </div>
-    </section>
-
-    <section class="section welcome" id="welcome">
-        <div class="section-inner">
-            <div class="section-heading">
-                <div class="section-kicker">Welcome Message</div>
-                <h2>May this gathering become a means of beneficial knowledge.</h2>
-            </div>
-            <p class="welcome-message">We warmly welcome all participants, judges, teachers, parents and guests to the Kauzariyya Musabaqa. May Allah accept our efforts, strengthen Islamic values through this gathering, and grant every participant success with sincerity. Ameen.</p>
-            <div class="hero-actions">
-                <a href="<?= APP_URL ?>/tv/index.php" class="btn btn-primary"><i class="fa-solid fa-tv"></i> Open TV Mode</a>
-                <?php if ($isLoggedIn): ?>
-                    <a href="<?= APP_URL ?>/admin/dashboard" class="btn btn-secondary"><i class="fa-solid fa-shield"></i> Admin Panel</a>
-                <?php endif; ?>
-            </div>
-        </div>
-    </section>
-</main>
-
-<footer class="footer">
-    <div class="footer-inner">
+    <!-- 1. LIVE LEADERBOARD / TEAM STANDINGS -->
+    <section class="home-access section-wrap" id="leaderboard">
+      <header>
         <div>
-            <strong>Al Jamiathul Kauzariyya Arabic College</strong>
-            <span>Edathala, Aluva, Kerala</span>
+          <span class="overline">LIVE CHAMPIONSHIP</span>
+          <h2>Team Leaderboard</h2>
         </div>
-        <div><em>Inspired with the Aroma of Sterling Islam</em></div>
-    </div>
-</footer>
+        <span>Real-time standings and total points accumulated across all competition categories.</span>
+      </header>
 
-<script>
-(function () {
-    const backgrounds = document.querySelectorAll('.bg-image');
-    if (backgrounds.length < 2) return;
+      <div class="home-leaderboard-grid">
+        <?php foreach ($teams as $rankIdx => $t): 
+            $rank = $rankIdx + 1;
+            $score = (float)($t['score'] ?? 0);
+            $pct = min(100, max(8, round(($score / $maxScore) * 100)));
+            $rankClass = $rank <= 3 ? 'rank-' . $rank : '';
+            $medalIcon = $rank === 1 ? '🥇 1st Place' : ($rank === 2 ? '🥈 2nd Place' : ($rank === 3 ? '🥉 3rd Place' : '#' . $rank . ' Rank'));
+            $color = $t['color'] ?? '#59df7b';
+        ?>
+          <article class="leaderboard-card">
+            <div>
+              <span class="leaderboard-rank-tag <?= $rankClass ?>"><?= $medalIcon ?></span>
+              <div class="leaderboard-score-val"><?= (int)$score ?> <small>PTS</small></div>
+              <div class="leaderboard-team-name"><?= e($t['name']) ?></div>
+            </div>
+            <div class="leaderboard-progress-bg">
+              <div class="leaderboard-progress-bar" style="width: <?= $pct ?>%; background-color: <?= e($color) ?>;"></div>
+            </div>
+          </article>
+        <?php endforeach; ?>
+      </div>
+    </section>
 
-    let current = 0;
-    setInterval(function () {
-        backgrounds[current].classList.remove('active');
-        current = (current + 1) % backgrounds.length;
-        backgrounds[current].classList.add('active');
-    }, 9000);
-})();
-</script>
+    <!-- 2. LIVE STAGES & VENUES -->
+    <section class="home-schedule-3d-deck section-wrap" id="stages">
+      <header class="schedule-3d-head">
+        <div>
+          <span class="overline">VENUES &amp; STAGES</span>
+          <h2>Live Competition Stages</h2>
+        </div>
+        <a href="<?= app_url('/schedule') ?>" class="schedule-3d-action-btn">
+          Full Stage Schedule <i class="fa-solid fa-arrow-right"></i>
+        </a>
+      </header>
+
+      <div class="home-venues-grid">
+        <?php foreach ($venues as $v): 
+            $status = $v['next_program_status'] ?? 'upcoming';
+            $statusLabel = $status === 'scoring' ? '● LIVE STAGE' : ($status === 'completed' ? 'FINISHED' : 'UPCOMING');
+            $statusClass = $status === 'scoring' ? 'live' : ($status === 'completed' ? 'completed' : 'upcoming');
+        ?>
+          <article class="venue-card">
+            <div>
+              <span class="status-badge <?= $statusClass ?>"><?= $statusLabel ?></span>
+              <div class="venue-title"><?= e($v['name']) ?></div>
+              <p class="venue-meta">
+                <?php if (!empty($v['next_program'])): ?>
+                  <strong>Current/Next:</strong> <?= e($v['next_program']) ?>
+                <?php else: ?>
+                  All stage programs completed for this session.
+                <?php endif; ?>
+              </p>
+            </div>
+            <div style="margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); color: var(--text-muted); font-size: 11px;">
+              <i class="fa-solid fa-layer-group" style="color: var(--accent);"></i> <?= (int)($v['count'] ?? 0) ?> Total Programs Assigned
+            </div>
+          </article>
+        <?php endforeach; ?>
+      </div>
+    </section>
+
+    <!-- 3. RECENT WINNERS & RESULTS -->
+    <section class="home-access section-wrap" id="results">
+      <header>
+        <div>
+          <span class="overline">FESTIVAL HIGHLIGHTS</span>
+          <h2>Recent Winners &amp; Results</h2>
+        </div>
+        <a href="<?= app_url('/review') ?>" class="feature-card-link" style="font-size: 13px;">
+          View All Results <i class="fa-solid fa-arrow-right"></i>
+        </a>
+      </header>
+
+      <div class="home-results-grid">
+        <?php foreach (array_slice($results, 0, 6) as $res): 
+            $pos = (int)($res['position'] ?? 1);
+            $posClass = $pos <= 3 ? 'pos-' . $pos : 'pos-3';
+            $medalSymbol = $pos === 1 ? '🥇' : ($pos === 2 ? '🥈' : ($pos === 3 ? '🥉' : '#' . $pos));
+        ?>
+          <article class="result-card">
+            <div>
+              <div style="display: flex; align-items: center; justify-content: space-between;">
+                <div class="result-medal <?= $posClass ?>"><?= $medalSymbol ?></div>
+                <?php if (!empty($res['code'])): ?>
+                  <span style="font-size: 10px; color: var(--text-muted); font-weight: 800; background: rgba(255,255,255,0.06); padding: 3px 8px; border-radius: 6px;">CHEST: <?= e($res['code']) ?></span>
+                <?php endif; ?>
+              </div>
+              <div class="result-program-title"><?= e($res['program']) ?></div>
+              <div class="result-winner-name"><?= e($res['participant']) ?></div>
+            </div>
+            <div style="margin-top: 12px;">
+              <span class="result-team-tag"><i class="fa-solid fa-flag" style="margin-right: 4px; color: var(--accent);"></i> <?= e($res['team_name']) ?></span>
+            </div>
+          </article>
+        <?php endforeach; ?>
+      </div>
+    </section>
+
+    <!-- 4. WORKING COMMITTEE -->
+    <section class="home-event-highlights section-wrap" id="committee">
+      <header>
+        <span class="overline">LEADERSHIP &amp; ORGANIZERS</span>
+        <h2>Working Committee</h2>
+      </header>
+
+      <div class="home-committee-grid">
+        <?php foreach ($workingCommittee as $member): ?>
+          <article class="committee-card">
+            <img src="<?= e($member['image']) ?>" alt="<?= e($member['name']) ?>" class="committee-avatar" onerror="this.src='https://ui-avatars.com/api/?name=<?= urlencode($member['name']) ?>&background=1b4332&color=fff&size=512'">
+            <div class="committee-name"><?= e($member['name']) ?></div>
+            <div class="committee-role"><?= e($member['role']) ?></div>
+            <?php if (!empty($member['place'])): ?>
+              <div class="committee-place"><i class="fa-solid fa-location-dot" style="margin-right: 3px;"></i> <?= e($member['place']) ?></div>
+            <?php endif; ?>
+          </article>
+        <?php endforeach; ?>
+      </div>
+    </section>
+
+    <!-- ABOUT MUSABAQA -->
+    <section class="home-musabaqa-about section-wrap" id="about">
+      <article class="home-about-copy">
+        <span class="overline">ABOUT THE MUSABAQA</span>
+        <h2>A stage for knowledge, discipline and sincere competition.</h2>
+        <p>
+          The Kauzariyya Musabaqa is an annual inter-class festival hosted by Al Jamiathul Kauzariyya, bringing together students across all years to compete in religious, literary, and academic programs.
+        </p>
+        <p>
+          From recitation and Arabic composition to general knowledge and debate, every program is a testament to the dedication of our students and teachers.
+        </p>
+      </article>
+
+      <article class="home-musabaqa-prayer">
+        <div class="bismillah-mark">بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ</div>
+        <p>
+          May this gathering ignite beneficial knowledge, deep brotherhood, and lifelong sincerity in the hearts of all participants.
+        </p>
+      </article>
+    </section>
+
+    <!-- CAMPUS STORY & QURANIC VERSE -->
+    <section class="home-story section-wrap">
+      <figure class="home-story-visual">
+        <img src="<?= asset_url('kauzariyya3.png') ?>" alt="Al Jamiathul Kauzariyya Campus at Twilight">
+        <figcaption>Al Jamiathul Kauzariyya · Edathala</figcaption>
+      </figure>
+
+      <article class="home-story-content">
+        <span class="home-story-kicker">MORE THAN A COMPETITION</span>
+        <h2>Knowledge in action.<br>Character in every moment.</h2>
+        <p class="home-story-copy">
+          Designed to encourage healthy rivalry while building humility, confidence and public speaking skills across generations of students.
+        </p>
+
+        <blockquote class="home-story-verse">
+          <div class="home-story-verse-head">
+            <b>Qur'anic Inspiration</b>
+            <span>Surah Al-Mutaffifin</span>
+          </div>
+          <p lang="ar">وَفِي ذَٰلِكَ فَلْيَتَنَافَسِ الْمُتَنَافِسُونَ</p>
+          <footer>
+            <span>"And for this let those specify who would strive to compete."</span>
+            <cite>Surah 83 · Verse 26</cite>
+          </footer>
+        </blockquote>
+      </article>
+    </section>
+
+    <!-- FESTIVAL ACCESS CARDS -->
+    <section class="home-access section-wrap" id="access">
+      <header>
+        <div>
+          <span class="overline">FESTIVAL ACCESS</span>
+          <h2>Explore the platform</h2>
+        </div>
+        <span>Live updates, student directory, schedule blocks and community feedback.</span>
+      </header>
+
+      <div class="home-access-grid">
+        <article class="feature-card">
+          <div>
+            <div class="feature-card-icon">
+              <i class="fa-solid fa-trophy"></i>
+            </div>
+            <h3>Scoreboard</h3>
+            <p>
+              <?php if (!empty($teams)): ?>
+                Leader: <strong><?= e($teams[0]['name']) ?></strong> (<?= (int)$teams[0]['score'] ?> pts) across <?= count($teams) ?> teams.
+              <?php else: ?>
+                Live team rankings, total points accumulated, and instant competition standings.
+              <?php endif; ?>
+            </p>
+          </div>
+          <a href="<?= app_url('/scoreboard') ?>" class="feature-card-link">View Scores <i class="fa-solid fa-arrow-right"></i></a>
+        </article>
+
+        <article class="feature-card">
+          <div>
+            <div class="feature-card-icon">
+              <i class="fa-solid fa-calendar-days"></i>
+            </div>
+            <h3>Schedule</h3>
+            <p>
+              <?php if (!empty($schedule)): ?>
+                <?= count($schedule) ?> programs scheduled. Real-time timeline of ongoing &amp; upcoming performances.
+              <?php else: ?>
+                Real-time timeline of ongoing and upcoming stage performances and events.
+              <?php endif; ?>
+            </p>
+          </div>
+          <a href="<?= app_url('/schedule') ?>" class="feature-card-link">View Timetable <i class="fa-solid fa-arrow-right"></i></a>
+        </article>
+
+        <article class="feature-card">
+          <div>
+            <div class="feature-card-icon">
+              <i class="fa-solid fa-users"></i>
+            </div>
+            <h3>Participants</h3>
+            <p>
+              Complete directory of <?= e($candidatesCount) ?> registered competitors, chest numbers and categories.
+            </p>
+          </div>
+          <a href="<?= app_url('/participants') ?>" class="feature-card-link">Explore Roster <i class="fa-solid fa-arrow-right"></i></a>
+        </article>
+
+        <article class="feature-card">
+          <div>
+            <div class="feature-card-icon">
+              <i class="fa-solid fa-star"></i>
+            </div>
+            <h3>Reviews &amp; Results</h3>
+            <p>
+              <?php if (!empty($results)): ?>
+                Latest: <strong><?= e($results[0]['program']) ?></strong> — <?= e($results[0]['participant']) ?> (<?= e($results[0]['team_name']) ?>)
+              <?php else: ?>
+                Feedback, visitor impressions, and official judge highlights from the festival.
+              <?php endif; ?>
+            </p>
+          </div>
+          <a href="<?= app_url('/review') ?>" class="feature-card-link">Read Feedback <i class="fa-solid fa-arrow-right"></i></a>
+        </article>
+      </div>
+    </section>
+
+    <!-- 3D SCHEDULE DECK -->
+    <section class="home-schedule-3d-deck section-wrap" id="schedule">
+      <header class="schedule-3d-head">
+        <div>
+          <span class="overline">SCHEDULE DETAILS</span>
+          <h2>Information of Event Schedules</h2>
+        </div>
+        <a href="<?= app_url('/schedule') ?>" class="schedule-3d-action-btn">
+          Explore Full Schedule <i class="fa-solid fa-arrow-right"></i>
+        </a>
+      </header>
+
+      <div class="schedule-3d-grid">
+        <?php foreach ($scheduleDeck as $deckCard): ?>
+          <a href="<?= app_url('/schedule') ?>" class="schedule-3d-card">
+            <header class="card-3d-head">
+              <span class="card-3d-badge"><?= e($deckCard['badge']) ?></span>
+              <span class="card-3d-pill"><?= e($deckCard['pill']) ?></span>
+            </header>
+            <div class="card-3d-body">
+              <span class="card-3d-number"><?= e($deckCard['number']) ?></span>
+              <div class="card-3d-date-meta">
+                <strong><?= e($deckCard['month_year']) ?></strong>
+                <small><?= e($deckCard['subtitle']) ?></small>
+              </div>
+            </div>
+            <footer class="card-3d-foot">
+              <span><?= e($deckCard['footer']) ?></span>
+              <i class="fa-solid fa-arrow-right"></i>
+            </footer>
+          </a>
+        <?php endforeach; ?>
+      </div>
+    </section>
+
+    <!-- EVENT HIGHLIGHTS -->
+    <section class="home-event-highlights section-wrap" id="highlights">
+      <header>
+        <span class="overline">EVENT HIGHLIGHTS</span>
+        <h2>Where faith, knowledge and creativity take the stage.</h2>
+      </header>
+
+      <div>
+        <article>
+          <div class="highlight-card-head">
+            <i class="fa-solid fa-book-quran"></i>
+          </div>
+          <h3>Qur’an &amp; Recitation</h3>
+          <p>Celebrating memorisation, precise Tajweed and the beauty of Qur’anic recitation.</p>
+        </article>
+
+        <article>
+          <div class="highlight-card-head">
+            <i class="fa-solid fa-microphone-lines"></i>
+          </div>
+          <h3>Oratory &amp; Expression</h3>
+          <p>Inspiring confident voices through thoughtful speeches, debates and presentations.</p>
+        </article>
+
+        <article>
+          <div class="highlight-card-head">
+            <i class="fa-solid fa-kaaba"></i>
+          </div>
+          <h3>Islamic Knowledge</h3>
+          <p>Exploring the Qur’an, Seerah and Islamic heritage through engaging challenges.</p>
+        </article>
+
+        <article>
+          <div class="highlight-card-head">
+            <i class="fa-solid fa-feather-pointed"></i>
+          </div>
+          <h3>Language &amp; Literature</h3>
+          <p>Showcasing imagination through Arabic, Malayalam and creative writing.</p>
+        </article>
+      </div>
+    </section>
+
+    <!-- LOCATION & COMMUNITY FOOTER -->
+    <footer class="site-footer">
+      <section class="home-footer-location">
+        <div class="footer-location-map">
+          <iframe
+            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3928.2718105021235!2d76.37042571479483!3d10.073042992801452!2m3!1f0!0f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3b0809b4d8ec11ab%3A0x6b4fb6c178f5ff60!2sAl%20Jamiathul%20Kauzariyya!5e0!3m2!1sen!2sin!4v1680000000000!5m2!1sen!2sin"
+            loading="lazy"
+            referrerpolicy="no-referrer-when-downgrade"
+            title="Campus Location Map">
+          </iframe>
+        </div>
+
+        <div class="footer-pulse-copy">
+          <span class="overline">OUR PLACE · OUR COMMUNITY</span>
+          <h2>Rooted in Edathala.</h2>
+          <p>
+            A welcoming campus in Aluva, fostering sacred knowledge, community unity, and lifelong guidance.
+          </p>
+          <a href="https://maps.google.com/?q=Al+Jamiathul+Kauzariyya+Edathala" target="_blank" rel="noopener" class="footer-directions-link">
+            Open in Google Maps <i class="fa-solid fa-arrow-up-right-from-square"></i>
+          </a>
+        </div>
+      </section>
+
+      <div class="home-footer-identity">
+        <h2>AL JAMIATHUL KAUZARIYYA</h2>
+        <address>
+          Edathala North P.O., Aluva, Ernakulam District, Kerala 683561, India
+        </address>
+      </div>
+
+      <div class="simple-social-icons">
+        <a href="https://instagram.com/kauzariyya" target="_blank" rel="noopener" aria-label="Instagram"><i class="fa-brands fa-instagram"></i></a>
+        <a href="https://youtube.com/@Kauzariyya" target="_blank" rel="noopener" aria-label="YouTube"><i class="fa-brands fa-youtube"></i></a>
+        <a href="https://wa.me/" target="_blank" rel="noopener" aria-label="WhatsApp"><i class="fa-brands fa-whatsapp"></i></a>
+        <a href="https://facebook.com/Kauzariyya" target="_blank" rel="noopener" aria-label="Facebook"><i class="fa-brands fa-facebook-f"></i></a>
+      </div>
+
+      <div class="home-footer-copyright">
+        &copy; 2026 Al Jamiathul Kauzariyya · All rights reserved
+      </div>
+    </footer>
+
+  </main>
+
 </body>
 </html>

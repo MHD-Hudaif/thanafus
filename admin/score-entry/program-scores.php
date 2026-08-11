@@ -136,6 +136,7 @@ if ($programId > 0) {
                                 <th colspan="<?= count($categories) ?>" style="text-align: center; border-bottom: 1px solid rgba(255,255,255,0.08); font-weight: 700; <?= $j > 1 ? 'border-left: 2px solid rgba(99, 102, 241, 0.5);' : 'border-left: 1px solid rgba(255,255,255,0.1);' ?>">Judge <?= $j ?></th>
                             <?php endfor; ?>
                             <th rowspan="2" style="width: 100px; text-align: center; vertical-align: middle; border-left: 1px solid rgba(255,255,255,0.1);">Final Score</th>
+                            <th rowspan="2" style="width: 90px; text-align: center; vertical-align: middle;">Percentage</th>
                             <th rowspan="2" style="width: 90px; text-align: center; vertical-align: middle;">Grade</th>
                             <th rowspan="2" style="width: 100px; text-align: center; vertical-align: middle;">Status</th>
                         </tr>
@@ -156,6 +157,15 @@ if ($programId > 0) {
                         <?php
                             $entryId = (int)$entry['id'];
                             $hasSheet = !empty($entry['score_sheet_id']);
+                            $finalScoreVal = (float)($entry['final_total'] ?? 0);
+                            $pctVal = ($hasSheet && $judgesCount > 0) ? round(($finalScoreVal / ($judgesCount * 100)) * 100, 1) : null;
+                            $entryGrade = $entry['grade'];
+                            $gradePts = (float)($entry['grade_points'] ?? 0);
+                            if (empty($entryGrade) && $hasSheet && $pctVal !== null) {
+                                $gInfo = admin_calculate_grade_info($finalScoreVal, $judgesCount);
+                                $entryGrade = $gInfo['grade'];
+                                $gradePts = $gInfo['grade_points'];
+                            }
                         ?>
                         <tr>
                             <td><strong><?= $orderIdx++ ?></strong></td>
@@ -199,17 +209,18 @@ if ($programId > 0) {
                             <?php endif; ?>
 
                             <td style="font-weight: 700; color: #34d399; font-size: 14px; text-align: center; vertical-align: middle; border-left: 1px solid rgba(255,255,255,0.1);">
-                                <?= $hasSheet ? number_format((float)$entry['final_total'], 0) : '0' ?>
+                                <?= $hasSheet ? number_format($finalScoreVal, 0) : '0' ?>
+                            </td>
+
+                            <td style="font-weight: 600; color: #60a5fa; font-size: 13px; text-align: center; vertical-align: middle;">
+                                <?= $pctVal !== null ? number_format($pctVal, 1) . '%' : '—' ?>
                             </td>
 
                             <td style="text-align: center; vertical-align: middle;">
-                                <?php if (!empty($entry['grade'])): ?>
-                                    <span class="badge badge-<?= match($entry['grade']) { 'A' => 'success', 'B' => 'info', 'C' => 'warning', default => 'neutral' } ?>" style="font-size: 11px; padding: 3px 8px; font-weight: 800;">
-                                        Grade <?= e($entry['grade']) ?>
+                                <?php if (!empty($entryGrade)): ?>
+                                    <span class="badge badge-<?= match($entryGrade) { 'A' => 'success', 'B' => 'info', 'C' => 'warning', 'D' => 'neutral', default => 'neutral' } ?>" style="font-size: 11px; padding: 3px 8px; font-weight: 800;">
+                                        Grade <?= e($entryGrade) ?>
                                     </span>
-                                    <?php if ((float)($entry['grade_points'] ?? 0) > 0): ?>
-                                        <div style="color: #34d399; font-weight: 700; font-size: 11px; margin-top: 2px;">+<?= number_format((float)$entry['grade_points'], 0) ?> Bonus</div>
-                                    <?php endif; ?>
                                 <?php else: ?>
                                     <span class="text-muted">—</span>
                                 <?php endif; ?>

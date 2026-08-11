@@ -18,7 +18,7 @@ if (!defined('LIVE_DISPLAY_STAGE')) {
 // Fetch current leader info for dynamic 1st rank team color transition & aura
 $leaderboard = tv_leaderboard((int)($event['id'] ?? 0));
 $firstTeam = !empty($leaderboard) ? $leaderboard[0] : null;
-$firstTeamColor = !empty($firstTeam['team_color']) ? live_display_color($firstTeam['team_color']) : '#10b981';
+$firstTeamColor = !empty($firstTeam['team_color']) ? live_display_color($firstTeam['team_color']) : '#6400a6';
 $firstTeamName = !empty($firstTeam['team_name']) ? $firstTeam['team_name'] : 'Leader';
 
 if (!function_exists('tv_format_section_name')) {
@@ -56,7 +56,7 @@ $initFullTitle = trim($initTitleRaw . ($initCategory !== '' ? ' ' . $initCategor
 $initChest = !empty($initPerf['chest_number']) ? $initPerf['chest_number'] : (!empty($initPerf['number']) ? $initPerf['number'] : '—');
 $initPerfName = !empty($initPerf['name']) ? $initPerf['name'] : 'Awaiting Performer';
 $initTeamName = !empty($initPerf['team']) ? $initPerf['team'] : '—';
-$initTeamColor = !empty($initPerf['team_color']) ? live_display_color($initPerf['team_color'] ?? null) : '#10b981';
+$initTeamColor = !empty($initPerf['team_color']) ? live_display_color($initPerf['team_color'] ?? null) : $firstTeamColor;
 
 $initNextChest = !empty($initNext['chest_number']) ? $initNext['chest_number'] : (!empty($initNext['number']) ? $initNext['number'] : '—');
 
@@ -134,7 +134,7 @@ $nextProgTime = !empty($initNextProg['start_label']) ? $initNextProg['start_labe
 
     .programs-wrapper {
         --first-team-color: <?= e($firstTeamColor) ?>;
-        --current-neon: #10b981;
+        --current-neon: var(--first-team-color, #6400a6);
         width: 100%;
         max-width: 1840px;
         height: 100vh;
@@ -591,14 +591,14 @@ $nextProgTime = !empty($initNextProg['start_label']) ? $initNextProg['start_labe
     <!-- Dynamic 1st Rank Team Geometric Chevron Vectors -->
     <svg class="side-chevrons-svg full-screen" viewBox="0 0 1920 1080" preserveAspectRatio="none" fill="none" xmlns="http://www.w3.org/2000/svg">
         <g class="animated-chevron-group">
-            <path class="animated-dash-line" d="M-100 1200 L650 540 L-100 -100" stroke="var(--first-team-color, #10b981)" stroke-width="3" stroke-linecap="round" />
-            <path class="animated-dash-line" d="M-150 1050 L480 540 L-150 30" stroke="var(--first-team-color, #10b981)" stroke-width="2" opacity="0.8" stroke-linecap="round" />
-            <line class="animated-cross-line" x1="200" y1="900" x2="420" y2="680" stroke="var(--first-team-color, #10b981)" stroke-width="2" opacity="0.75" />
-            <line class="animated-cross-line" x1="320" y1="780" x2="540" y2="560" stroke="var(--first-team-color, #10b981)" stroke-width="2" opacity="0.75" />
+            <path class="animated-dash-line" d="M-100 1200 L650 540 L-100 -100" stroke="var(--first-team-color)" stroke-width="3" stroke-linecap="round" />
+            <path class="animated-dash-line" d="M-150 1050 L480 540 L-150 30" stroke="var(--first-team-color)" stroke-width="2" opacity="0.8" stroke-linecap="round" />
+            <line class="animated-cross-line" x1="200" y1="900" x2="420" y2="680" stroke="var(--first-team-color)" stroke-width="2" opacity="0.75" />
+            <line class="animated-cross-line" x1="320" y1="780" x2="540" y2="560" stroke="var(--first-team-color)" stroke-width="2" opacity="0.75" />
 
-            <path class="animated-dash-line" d="M2020 1200 L1270 540 L2020 -100" stroke="var(--first-team-color, #10b981)" stroke-width="3" stroke-linecap="round" />
-            <path class="animated-dash-line" d="M2070 1050 L1440 540 L2070 30" stroke="var(--first-team-color, #10b981)" stroke-width="2" opacity="0.8" stroke-linecap="round" />
-            <line class="animated-cross-line" x1="1720" y1="900" x2="1500" y2="680" stroke="var(--first-team-color, #10b981)" stroke-width="2" opacity="0.75" />
+            <path class="animated-dash-line" d="M2020 1200 L1270 540 L2020 -100" stroke="var(--first-team-color)" stroke-width="3" stroke-linecap="round" />
+            <path class="animated-dash-line" d="M2070 1050 L1440 540 L2070 30" stroke="var(--first-team-color)" stroke-width="2" opacity="0.8" stroke-linecap="round" />
+            <line class="animated-cross-line" x1="1720" y1="900" x2="1500" y2="680" stroke="var(--first-team-color)" stroke-width="2" opacity="0.75" />
         </g>
     </svg>
 
@@ -711,7 +711,7 @@ $nextProgTime = !empty($initNextProg['start_label']) ? $initNextProg['start_labe
             if (current) {
                 root.style.setProperty('--current-neon', current);
             } else {
-                root.style.setProperty('--current-neon', '#10b981');
+                root.style.setProperty('--current-neon', getComputedStyle(document.documentElement).getPropertyValue('--first-team-color') || '<?= e($firstTeamColor) ?>');
             }
         }
 
@@ -875,9 +875,9 @@ $nextProgTime = !empty($initNextProg['start_label']) ? $initNextProg['start_labe
                         if (isIntro || !perf.team || perf.team === '—') {
                             teamEl.style.display = 'none';
                             teamEl.innerHTML = '';
-                            if (heroBoxEl) heroBoxEl.style.setProperty('--current-team-color', '#10b981');
+                            if (heroBoxEl) heroBoxEl.style.setProperty('--current-team-color', '<?= e($firstTeamColor) ?>');
                         } else {
-                            const color = perf.team_color || '#10b981';
+                            const color = perf.team_color || '<?= e($firstTeamColor) ?>';
                             teamEl.innerHTML = `<span class="tv-team-dot" style="background:${color};"></span>`;
                             teamEl.style.display = 'flex';
                             if (heroBoxEl) heroBoxEl.style.setProperty('--current-team-color', color);

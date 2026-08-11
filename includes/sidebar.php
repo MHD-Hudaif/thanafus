@@ -182,6 +182,10 @@ if ($activeEventId) {
                     <i data-lucide="file-text" class="sidebar-icon"></i>
                     <span class="sidebar-label">Scores - all the scores</span>
                 </a>
+                <a href="<?= app_url('/admin/score-entry/score-history.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('score-history.php') ?>">
+                    <i data-lucide="history" class="sidebar-icon"></i>
+                    <span class="sidebar-label">Score History</span>
+                </a>
                 <?php if (is_admin()): ?>
                 <a href="<?= app_url('/admin/score-update/score-approval.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('score-approval.php') ?>">
                     <i data-lucide="check-circle-2" class="sidebar-icon"></i>

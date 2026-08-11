@@ -1,7 +1,7 @@
 <?php
 $pageTitle = 'Chest Numbers';
 
-require_once __DIR__ . '/../../includes/id-card-helpers.php';
+require_once __DIR__ . '/../../includes/admin-helpers.php';
 require_login();
 
 $pdo = $GLOBALS['musabaqa_pdo'];

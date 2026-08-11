@@ -4201,7 +4201,7 @@ body.modal-open {
 .sidebar-vertical-link:hover {
     background: rgba(255, 255, 255, 0.05) !important;
     color: #ffffff !important;
-    padding-left: 18px !important;
+    padding-left: 18px;
 }
 
 .sidebar-vertical-link:hover i {
@@ -4213,7 +4213,7 @@ body.modal-open {
     border-color: rgba(52, 211, 153, 0.15) !important;
     color: #34d399 !important;
     box-shadow: 0 4px 16px rgba(16, 185, 129, 0.08);
-    padding-left: 18px !important;
+    padding-left: 18px;
 }
 
 .sidebar-vertical-link.active::before {
