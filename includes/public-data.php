@@ -299,7 +299,8 @@ function working_committee(): array
                     } elseif (stripos($r['full_name'], 'Abid') !== false) {
                         $image = 'https://daruliftakauzariyya.com/team-photos/Abid.png';
                     } else {
-                        $image = 'https://ui-avatars.com/api/?name=' . urlencode($r['full_name']) . '&background=1b4332&color=fff&size=512';
+                        $cleanName = trim(preg_replace('/^(Usthad|Mufti|Al|Moulana)\s+/i', '', $r['full_name']));
+                        $image = 'https://ui-avatars.com/api/?name=' . urlencode($cleanName) . '&background=073a69&color=c9a84c&size=512&font-size=0.42&bold=true';
                     }
 
                     $items[] = [

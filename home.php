@@ -415,8 +415,8 @@ img { max-width: 100%; display: block; }
 
 <body>
 <header class="site-header">
-    <a href="<?= APP_URL ?>/home" class="brand">
-        <img src="<?= APP_URL ?>/assets/images/thanafus-logo.png" alt="Kauzariyya Musabaqa">
+    <a href="<?= url('/') ?>" class="brand">
+        <img src="<?= url('assets/images/thanafus-logo.png') ?>" alt="Kauzariyya Musabaqa">
         <div>
             <div class="brand-title">Kauzariyya Musabaqa</div>
             <div class="brand-subtitle">Digital Competition Platform</div>
@@ -432,11 +432,11 @@ img { max-width: 100%; display: block; }
     </nav>
 
     <div class="header-actions">
-        <a href="<?= APP_URL ?>/tv/index.php" class="btn btn-secondary"><i class="fa-solid fa-tv"></i> TV Mode</a>
+        <a href="<?= url('live-display/index.php') ?>" class="btn btn-secondary"><i class="fa-solid fa-tv"></i> TV Mode</a>
         <?php if ($isLoggedIn): ?>
-            <a href="<?= APP_URL ?>/admin/dashboard" class="btn btn-primary"><i class="fa-solid fa-table-columns"></i> Dashboard</a>
+            <a href="<?= url('admin/event-manager/programs.php') ?>" class="btn btn-primary"><i class="fa-solid fa-table-columns"></i> Dashboard</a>
         <?php else: ?>
-            <a href="<?= APP_URL ?>/auth/login" class="btn btn-primary"><i class="fa-solid fa-right-to-bracket"></i> Login</a>
+            <a href="<?= url('admin/score-entry/index.php') ?>" class="btn btn-primary"><i class="fa-solid fa-right-to-bracket"></i> Login</a>
         <?php endif; ?>
     </div>
 </header>
@@ -455,7 +455,7 @@ img { max-width: 100%; display: block; }
             <p class="hero-copy">Competing in excellence, growing in knowledge, and standing together in faith. The official digital platform for Kauzariyya's student competitions, live scores, schedules, teams and results.</p>
             <p class="motto">Excellence Through Knowledge • Unity Through Faith • Success Through Sincerity</p>
             <div class="hero-actions">
-                <a href="<?= APP_URL ?>/tv/index.php" class="btn btn-primary"><i class="fa-solid fa-tower-broadcast"></i> Watch Live Display</a>
+                <a href="<?= url('live-display/index.php') ?>" class="btn btn-primary"><i class="fa-solid fa-tower-broadcast"></i> Watch Live Display</a>
                 <a href="#events" class="btn btn-secondary"><i class="fa-solid fa-list-check"></i> Explore Events</a>
             </div>
         </div>
@@ -550,9 +550,9 @@ img { max-width: 100%; display: block; }
             </div>
             <p class="welcome-message">We warmly welcome all participants, judges, teachers, parents and guests to the Kauzariyya Musabaqa. May Allah accept our efforts, strengthen Islamic values through this gathering, and grant every participant success with sincerity. Ameen.</p>
             <div class="hero-actions">
-                <a href="<?= APP_URL ?>/tv/index.php" class="btn btn-primary"><i class="fa-solid fa-tv"></i> Open TV Mode</a>
+                <a href="<?= url('live-display/index.php') ?>" class="btn btn-primary"><i class="fa-solid fa-tv"></i> Open TV Mode</a>
                 <?php if ($isLoggedIn): ?>
-                    <a href="<?= APP_URL ?>/admin/dashboard" class="btn btn-secondary"><i class="fa-solid fa-shield"></i> Admin Panel</a>
+                    <a href="<?= url('admin/event-manager/programs.php') ?>" class="btn btn-secondary"><i class="fa-solid fa-shield"></i> Admin Panel</a>
                 <?php endif; ?>
             </div>
         </div>
