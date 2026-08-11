@@ -433,6 +433,20 @@ require_once __DIR__ . '/../../includes/sidebar.php';
     color: #38bdf8 !important;
     font-weight: 700;
 }
+/* Force modals to always be viewport-fixed regardless of parent stacking context */
+.modal-overlay {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 100000 !important;
+    overflow-y: auto !important;
+    display: none;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 30px 16px;
+}
+.modal-overlay.active {
+    display: flex !important;
+}
 </style>
 
 <div class="main-content">
@@ -1365,7 +1379,22 @@ timelineSearch?.addEventListener('input', filterTimeline);
 timelineSectionFilter?.addEventListener('change', filterTimeline);
 
 // Modal helpers
-function openModal(id){document.getElementById(id)?.classList.add('active')}
+// Move all modal overlays to <body> to escape any CSS stacking context trap
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.modal-overlay').forEach(el => {
+        if (el.parentElement !== document.body) {
+            document.body.appendChild(el);
+        }
+    });
+});
+
+function openModal(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.add('active');
+    // Reset scroll so the modal box is always visible at the top
+    el.scrollTop = 0;
+}
 function closeModal(id){document.getElementById(id)?.classList.remove('active')}
 document.querySelectorAll('[data-close]').forEach(btn => btn.addEventListener('click', () => closeModal(btn.dataset.close)));
 document.querySelectorAll('.modal-overlay').forEach(modal => modal.addEventListener('click', e => { if (e.target === modal) closeModal(modal.id); }));
