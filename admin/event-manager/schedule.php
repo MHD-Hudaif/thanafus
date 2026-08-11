@@ -75,19 +75,26 @@ function schedule_validate_gap(PDO $pdo, int $eventId, int $stageTypeId, int $pr
     $startSql = $start->format('Y-m-d H:i:s');
     $endSql = $end->format('Y-m-d H:i:s');
 
-    [$startExpr, $endExpr] = schedule_program_datetime_columns($pdo);
-    $stmt = $pdo->prepare("
-        SELECT COUNT(*)
-        FROM musabaqa_programs
-        WHERE event_id = ?
-          AND stage_type_id = ?
-          AND id NOT IN (?, ?)
-          AND {$startExpr} < ?
-          AND {$endExpr} > ?
-    ");
-    $stmt->execute([$eventId, $stageTypeId, $previousProgramId, $nextProgramId, $endSql, $startSql]);
-    if ((int)$stmt->fetchColumn() > 0) {
-        throw new RuntimeException('Extra item time overlaps another program.');
+    $stageStmt = $pdo->prepare("SELECT name FROM musabaqa_stage_types WHERE id = ?");
+    $stageStmt->execute([$stageTypeId]);
+    $stageName = (string)$stageStmt->fetchColumn();
+    $isOffStage = (stripos($stageName, 'off') !== false);
+
+    if (!$isOffStage) {
+        [$startExpr, $endExpr] = schedule_program_datetime_columns($pdo);
+        $stmt = $pdo->prepare("
+            SELECT COUNT(*)
+            FROM musabaqa_programs
+            WHERE event_id = ?
+              AND stage_type_id = ?
+              AND id NOT IN (?, ?)
+              AND {$startExpr} < ?
+              AND {$endExpr} > ?
+        ");
+        $stmt->execute([$eventId, $stageTypeId, $previousProgramId, $nextProgramId, $endSql, $startSql]);
+        if ((int)$stmt->fetchColumn() > 0) {
+            throw new RuntimeException('Extra item time overlaps another program.');
+        }
     }
 
     $stmt = $pdo->prepare("
@@ -121,15 +128,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $previousProgramId = (int)($_POST['previous_program_id'] ?? 0);
             $nextProgramId = (int)($_POST['next_program_id'] ?? 0);
             $stageTypeId = (int)($_POST['stage_type_id'] ?? 0);
+            $startTime = trim((string)($_POST['start_time'] ?? ''));
+            $endTime = trim((string)($_POST['end_time'] ?? ''));
+            $durationMinutes = (int)($_POST['duration_minutes'] ?? 0);
 
             if ($name === '') {
-                throw new RuntimeException('Extra title is required.');
+                throw new RuntimeException('Extra item title is required.');
             }
             if ($stageTypeId <= 0) {
                 throw new RuntimeException('Stage is required.');
             }
 
-            [$start, $end] = schedule_validate_gap($pdo, $activeEventId, $stageTypeId, $previousProgramId, $nextProgramId);
+            if ($previousProgramId > 0 && $nextProgramId > 0) {
+                [$start, $end] = schedule_validate_gap($pdo, $activeEventId, $stageTypeId, $previousProgramId, $nextProgramId);
+            } elseif ($startTime !== '') {
+                $startDt = new DateTime($startTime);
+                if ($durationMinutes > 0) {
+                    $endDt = clone $startDt;
+                    $endDt->modify("+{$durationMinutes} minutes");
+                } elseif ($endTime !== '') {
+                    $endDt = new DateTime($endTime);
+                } else {
+                    throw new RuntimeException('Either duration or end time must be specified.');
+                }
+                if ($endDt <= $startDt) {
+                    throw new RuntimeException('End time must be after start time.');
+                }
+                $start = $startDt->format('Y-m-d H:i:s');
+                $end = $endDt->format('Y-m-d H:i:s');
+            } else {
+                throw new RuntimeException('Start time or valid timeline gap is required.');
+            }
 
             $stmt = $pdo->prepare("
                 INSERT INTO musabaqa_breaks
@@ -173,30 +202,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $startSql = $startDt->format('Y-m-d H:i:s');
             $endSql = $endDt->format('Y-m-d H:i:s');
 
-            // Overlap check
-            [$startExpr, $endExpr] = schedule_program_datetime_columns($pdo);
-            $stmt = $pdo->prepare("
-                SELECT id
-                FROM musabaqa_programs
-                WHERE event_id = ?
-                  AND id <> ?
-                  AND stage_type_id = ?
-                  AND {$startExpr} IS NOT NULL
-                  AND {$endExpr} IS NOT NULL
-                  AND {$startExpr} < ?
-                  AND {$endExpr} > ?
-                LIMIT 1
-            ");
-            $stmt->execute([
-                $activeEventId,
-                $programId,
-                $stageTypeId,
-                $endSql,
-                $startSql
-            ]);
+            // Overlap check (Bypassed for Off Stage so programs can run concurrently)
+            $stageStmt = $pdo->prepare("SELECT name FROM musabaqa_stage_types WHERE id = ?");
+            $stageStmt->execute([$stageTypeId]);
+            $stageName = (string)$stageStmt->fetchColumn();
+            $isOffStage = (stripos($stageName, 'off') !== false);
 
-            if ($stmt->fetchColumn()) {
-                throw new RuntimeException('Another program already exists during this time on the same stage.');
+            if (!$isOffStage) {
+                [$startExpr, $endExpr] = schedule_program_datetime_columns($pdo);
+                $stmt = $pdo->prepare("
+                    SELECT id
+                    FROM musabaqa_programs
+                    WHERE event_id = ?
+                      AND id <> ?
+                      AND stage_type_id = ?
+                      AND {$startExpr} IS NOT NULL
+                      AND {$endExpr} IS NOT NULL
+                      AND {$startExpr} < ?
+                      AND {$endExpr} > ?
+                    LIMIT 1
+                ");
+                $stmt->execute([
+                    $activeEventId,
+                    $programId,
+                    $stageTypeId,
+                    $endSql,
+                    $startSql
+                ]);
+
+                if ($stmt->fetchColumn()) {
+                    throw new RuntimeException('Another program already exists during this time on the same stage.');
+                }
             }
 
             // Auto-detect section for this program
@@ -388,40 +424,51 @@ require_once __DIR__ . '/../../includes/sidebar.php';
 ?>
 
 <div class="main-content">
-    <div class="topbar">
-        <div>
-            <div class="page-title">Schedule</div>
-            <div class="page-subtitle">Programs appear chronologically; extras fill gaps between programs</div>
+    <div class="topbar" style="background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(255, 255, 255, 0.08); padding: 16px 24px; border-radius: 14px; margin-bottom: 20px;">
+        <div style="display: flex; align-items: center; gap: 14px;">
+            <div style="width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(168, 85, 247, 0.2)); border: 1px solid rgba(99, 102, 241, 0.3); display: flex; align-items: center; justify-content: center; color: #a78bfa; font-size: 20px;">
+                <i class="fa-solid fa-calendar-days"></i>
+            </div>
+            <div>
+                <div class="page-title" style="font-size: 20px; font-weight: 800; color: #fff; margin-bottom: 2px;">Program Schedule</div>
+                <div class="page-subtitle" style="font-size: 13px; color: var(--muted);">Organize stage timelines, resolve gaps, and schedule competition programs</div>
+            </div>
         </div>
-        <div class="flex gap-2">
-            <button class="btn btn-success btn-md" type="button" id="scheduleNewProgramBtn"><i class="fa-solid fa-plus"></i> Schedule Program</button>
-            <button class="btn btn-secondary btn-md" type="button" id="openUnscheduledModalBtn"><i class="fa-solid fa-clock"></i> Unscheduled Programs</button>
-            <a href="<?= app_url('/admin/event-manager/programs.php') ?>" class="btn btn-secondary btn-md"><i class="fa-solid fa-microphone-lines"></i> Programs</a>
+        <div class="flex gap-2" style="flex-wrap: wrap;">
+            <button class="btn btn-success btn-md" type="button" id="scheduleNewProgramBtn" style="border-radius: 10px; font-weight: 700; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.25);"><i class="fa-solid fa-plus mr-1"></i> Schedule Program</button>
+            <button class="btn btn-warning btn-md" type="button" id="addNewExtraBtn" style="border-radius: 10px; font-weight: 700; background: linear-gradient(135deg, rgba(245,158,11,0.2), rgba(217,119,6,0.2)); color: #facc15; border: 1px solid rgba(245,158,11,0.35); box-shadow: 0 4px 14px rgba(245,158,11,0.15);"><i class="fa-solid fa-puzzle-piece mr-1"></i> Add Extra Item</button>
+            <button class="btn btn-secondary btn-md" type="button" id="openUnscheduledModalBtn" style="border-radius: 10px; font-weight: 700; background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.1);"><i class="fa-solid fa-clock mr-1" style="color: var(--warning);"></i> Unscheduled (<span id="topbarUnscheduledBadge"><?= count($unscheduledPrograms) ?></span>)</button>
+            <a href="<?= app_url('/admin/event-manager/programs.php') ?>" class="btn btn-secondary btn-md" style="border-radius: 10px; font-weight: 700; background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.1);"><i class="fa-solid fa-microphone-lines mr-1" style="color: #38bdf8;"></i> All Programs</a>
         </div>
     </div>
 
     <?php if ($flash): ?>
-        <div class="alert <?= $flash['type'] === 'success' ? 'alert-success' : 'alert-error' ?>"><?= e($flash['message']) ?></div>
+        <div class="alert <?= $flash['type'] === 'success' ? 'alert-success' : 'alert-error' ?>" style="border-radius: 10px; font-weight: 600; margin-bottom: 20px;"><?= e($flash['message']) ?></div>
     <?php endif; ?>
 
-    <div class="panel mb-6">
-        <form method="GET" class="form-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
-            <div class="input-group">
-                <label>Class Section</label>
-                <select name="class" onchange="this.form.submit()">
+    <!-- FILTER BAR -->
+    <div class="panel mb-6" style="padding: 16px 20px; background: rgba(15, 23, 42, 0.4); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 14px; margin-bottom: 24px;">
+        <form method="GET" class="form-grid" style="display: flex; gap: 14px; align-items: flex-end; flex-wrap: wrap;">
+            <input type="hidden" name="stage_id" value="<?= $activeStageId ?>">
+            <div class="input-group" style="flex: 1; min-width: 180px;">
+                <label style="font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; display: block;">Class Section Filter</label>
+                <select name="class" onchange="this.form.submit()" class="form-input" style="height: 40px; font-size: 13.5px; border-radius: 8px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color: #fff;">
                     <?php foreach (admin_class_type_tiers() as $value => $label): ?>
                         <option value="<?= e($value) ?>" <?= $classFilter === $value ? 'selected' : '' ?>><?= e($label) ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>
-            <div class="input-group">
-                <label>Search Title/Location</label>
-                <input type="text" name="search" value="<?= e($search) ?>" placeholder="Program title or location">
+            <div class="input-group" style="flex: 2; min-width: 240px;">
+                <label style="font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; display: block;">Search Title or Location</label>
+                <div style="position: relative; display: flex; align-items: center;">
+                    <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 12px; color: var(--muted); font-size: 13px;"></i>
+                    <input type="text" name="search" value="<?= e($search) ?>" placeholder="Filter by program name or room..." class="form-input" style="padding-left: 36px; height: 40px; font-size: 13.5px; border-radius: 8px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color: #fff; width: 100%;">
+                </div>
             </div>
-            <div class="form-actions" style="grid-column: 1 / -1; display: flex; gap: 10px; margin-top: 10px;">
-                <button class="btn btn-secondary btn-md" type="submit"><i class="fa-solid fa-filter"></i> Filter</button>
+            <div style="display: flex; gap: 8px; height: 40px;">
+                <button class="btn btn-secondary btn-md" type="submit" style="border-radius: 8px; font-weight: 700; height: 40px; padding: 0 18px;"><i class="fa-solid fa-filter mr-1"></i> Filter</button>
                 <?php if ($search !== '' || $classFilter !== 'all'): ?>
-                    <a href="<?= app_url('/admin/event-manager/schedule.php') ?>" class="btn btn-secondary btn-md">Clear</a>
+                    <a href="<?= app_url('/admin/event-manager/schedule.php?stage_id=' . $activeStageId) ?>" class="btn btn-secondary btn-md" style="border-radius: 8px; font-weight: 700; height: 40px; padding: 0 14px; display: inline-flex; align-items: center; justify-content: center;"><i class="fa-solid fa-xmark mr-1"></i> Clear</a>
                 <?php endif; ?>
             </div>
         </form>
@@ -434,28 +481,28 @@ require_once __DIR__ . '/../../includes/sidebar.php';
         <div class="schedule-left-column" style="flex: 1; min-width: 0;">
             
             <!-- STAGE TABS BAR -->
-            <div class="stage-tabs-bar" style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 12px; flex-wrap: wrap;">
+            <div class="stage-tabs-bar" style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 14px; flex-wrap: wrap;">
                 <?php foreach ($stageTypes as $idx => $stage): ?>
                     <?php 
                     $stId = (int)$stage['id'];
                     $stCount = count($programsByStage[$stId] ?? []);
                     $isTabActive = ($stId === $activeStageId) || ($activeStageId <= 0 && $idx === 0);
                     ?>
-                    <button type="button" class="stage-tab-btn <?= $isTabActive ? 'active' : '' ?>" data-stage-tab="<?= $stId ?>" style="padding: 10px 18px; border-radius: 10px; font-weight: 700; font-size: 13.5px; border: 1px solid rgba(255,255,255,0.08); background: <?= $isTabActive ? 'linear-gradient(135deg, rgba(99,102,241,0.2), rgba(168,85,247,0.2))' : 'rgba(255,255,255,0.02)' ?>; color: <?= $isTabActive ? '#fff' : 'var(--muted)' ?>; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; gap: 8px;">
-                        <i class="fa-solid fa-map-pin" style="color: var(--accent);"></i>
+                    <button type="button" class="stage-tab-btn <?= $isTabActive ? 'active' : '' ?>" data-stage-tab="<?= $stId ?>" style="padding: 11px 20px; border-radius: 12px; font-weight: 700; font-size: 14px; border: 1px solid <?= $isTabActive ? 'rgba(99,102,241,0.5)' : 'rgba(255,255,255,0.08)' ?>; background: <?= $isTabActive ? 'linear-gradient(135deg, rgba(99,102,241,0.25), rgba(168,85,247,0.25))' : 'rgba(255,255,255,0.03)' ?>; color: <?= $isTabActive ? '#fff' : 'var(--muted)' ?>; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; gap: 10px; box-shadow: <?= $isTabActive ? '0 4px 16px rgba(99,102,241,0.2)' : 'none' ?>;">
+                        <i class="fa-solid fa-layer-group" style="color: <?= $isTabActive ? '#a78bfa' : 'var(--muted)' ?>;"></i>
                         <span><?= e($stage['name']) ?></span>
-                        <span class="badge badge-neutral" style="font-size: 11px; padding: 2px 7px; border-radius: 99px;"><?= $stCount ?></span>
+                        <span class="badge" style="font-size: 11px; padding: 2px 8px; border-radius: 99px; background: <?= $isTabActive ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.08)' ?>; color: #fff; font-weight: 800;"><?= $stCount ?></span>
                     </button>
                 <?php endforeach; ?>
             </div>
 
             <!-- LIVE TIMELINE FILTER BAR -->
-            <div class="panel mb-6" style="padding: 14px 18px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; background: rgba(255,255,255,0.015); border-color: rgba(255,255,255,0.03);">
-                <div style="position: relative; display: flex; align-items: center; flex: 1; min-width: 180px;">
+            <div class="panel mb-6" style="padding: 12px 18px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; background: rgba(15,23,42,0.4); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; margin-bottom: 20px;">
+                <div style="position: relative; display: flex; align-items: center; flex: 1; min-width: 200px;">
                     <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 12px; color: var(--muted); font-size: 13px;"></i>
-                    <input type="text" id="timelineSearch" placeholder="Search scheduled..." class="form-input" style="padding-left: 34px; height: 36px; font-size: 13px; width: 100%; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; color: #fff;">
+                    <input type="text" id="timelineSearch" placeholder="Search scheduled timeline..." class="form-input" style="padding-left: 36px; height: 38px; font-size: 13px; width: 100%; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; color: #fff;">
                 </div>
-                <select id="timelineSectionFilter" class="form-input" style="height: 36px; font-size: 13px; width: 160px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; color: #fff; padding: 0 10px;">
+                <select id="timelineSectionFilter" class="form-input" style="height: 38px; font-size: 13px; width: 170px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; color: #fff; padding: 0 12px;">
                     <option value="all">All Divisions</option>
                     <option value="senior">Senior</option>
                     <option value="junior">Junior</option>
@@ -475,26 +522,26 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                     $lastEndAt = $lastProg ? $lastProg['end_at'] : '';
                     $isPanelActive = ($stageId === $activeStageId) || ($activeStageId <= 0 && $idx === 0);
                     ?>
-                    <div class="stage-panel-item panel" data-stage-id="<?= $stageId ?>" data-last-end-at="<?= e($lastEndAt) ?>" style="padding: 24px; background: rgba(255,255,255,0.01); border: 2px dashed rgba(255,255,255,0.06); transition: all 0.2s ease; <?= !$isPanelActive ? 'display: none;' : '' ?>">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 12px;">
-                            <div class="dashboard-heading" style="margin: 0; font-size: 16px; display: flex; align-items: center; gap: 8px;">
-                                <i class="fa-solid fa-map-pin" style="color: var(--accent);"></i>
+                    <div class="stage-panel-item panel" data-stage-id="<?= $stageId ?>" data-last-end-at="<?= e($lastEndAt) ?>" style="padding: 24px; background: rgba(15,23,42,0.4); border: 2px dashed rgba(255,255,255,0.08); border-radius: 16px; transition: all 0.2s ease; <?= !$isPanelActive ? 'display: none;' : '' ?>">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 14px;">
+                            <div class="dashboard-heading" style="margin: 0; font-size: 16px; font-weight: 800; color: #fff; display: flex; align-items: center; gap: 10px;">
+                                <i class="fa-solid fa-layer-group" style="color: #a78bfa;"></i>
                                 <?= e($stage['name']) ?>
-                                <span style="font-size: 12px; color: var(--muted); font-weight: 500;">(<?= count($stageProgs) ?> Scheduled)</span>
+                                <span style="font-size: 12px; color: var(--muted); font-weight: 600;">(<?= count($stageProgs) ?> Scheduled Programs)</span>
                             </div>
-                            <div style="font-size: 11.5px; color: var(--muted); font-style: italic;">
-                                <i class="fa-solid fa-hand-pointer mr-1"></i> Drag unscheduled programs here
+                            <div style="font-size: 12px; color: var(--muted); font-weight: 600; display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.04); padding: 4px 10px; border-radius: 99px; border: 1px solid rgba(255,255,255,0.06);">
+                                <i class="fa-solid fa-hand-pointer" style="color: #38bdf8;"></i> Drag & drop unscheduled programs to schedule
                             </div>
                         </div>
 
                         <?php if (empty($stageProgs)): ?>
-                            <div class="empty-state stage-drop-zone" style="padding: 40px 20px; border: 2px dashed rgba(255,255,255,0.08); border-radius: 12px; text-align: center;">
-                                <div class="empty-icon" style="font-size: 32px; color: var(--muted);"><i class="fa-solid fa-calendar-xmark"></i></div>
-                                <div class="empty-title" style="font-size: 14px; margin-top: 8px;">No Scheduled Programs for <?= e($stage['name']) ?></div>
-                                <div class="empty-subtitle" style="font-size: 12px; color: var(--muted);">Drag an unscheduled program card from the right sidebar and drop it here to schedule.</div>
+                            <div class="empty-state stage-drop-zone" style="padding: 48px 24px; border: 2px dashed rgba(255,255,255,0.1); border-radius: 14px; text-align: center; background: rgba(255,255,255,0.01); transition: all 0.2s ease;">
+                                <div class="empty-icon" style="font-size: 36px; color: var(--muted); margin-bottom: 10px;"><i class="fa-solid fa-calendar-xmark"></i></div>
+                                <div class="empty-title" style="font-size: 15px; font-weight: 700; color: #fff; margin-top: 8px;">No Scheduled Programs for <?= e($stage['name']) ?></div>
+                                <div class="empty-subtitle" style="font-size: 12.5px; color: var(--muted); margin-top: 4px;">Drag an unscheduled program card from the sidebar or click "Schedule Program" above.</div>
                             </div>
                         <?php else: ?>
-                            <div class="grid gap-4 stage-drop-zone" style="position: relative; padding-left: 10px;">
+                            <div class="grid gap-4 stage-drop-zone" style="position: relative;">
                                 <?php foreach ($stageProgs as $index => $program): ?>
                                     <?php
                                     $secNames = [];
@@ -519,40 +566,61 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                     $classTier = admin_class_type_tier_from_name($program['class_type_name'] ?? '');
                                     $allowedCount = !empty($program['allowed_sections']) ? count(explode(',', $program['allowed_sections'])) : 0;
                                     $itemSection = ($allowedCount > 1 || !$classTier) ? 'general' : $classTier;
+
+                                    $startDt = new DateTime((string)$program['start_at']);
+                                    $endDt = new DateTime((string)$program['end_at']);
+                                    $durMins = max(1, (int)round(($endDt->getTimestamp() - $startDt->getTimestamp()) / 60));
+
+                                    $borderAccent = match($classTier) {
+                                        'senior' => '#a78bfa',
+                                        'junior' => '#38bdf8',
+                                        'subjunior' => '#34d399',
+                                        default => '#f43f5e'
+                                    };
                                     ?>
                                     <div class="timeline-item-container timeline-row" data-title="<?= e($program['title']) ?>" data-location="<?= e($program['location'] ?? '') ?>" data-section="<?= e($itemSection) ?>">
-                                        <div class="panel" style="padding: 14px 16px; border-left: 4px solid <?= $classTier ? ($classTier === 'senior' ? '#a78bfa' : ($classTier === 'junior' ? '#38bdf8' : '#34d399')) : '#94a3b8' ?>; background: rgba(255,255,255,0.015); border-color: rgba(255,255,255,0.03);">
+                                        <div class="panel" style="padding: 16px 18px; border-left: 5px solid <?= $borderAccent ?>; background: rgba(30, 41, 59, 0.4); border-color: rgba(255,255,255,0.06); border-radius: 12px; transition: transform 0.2s ease, box-shadow 0.2s ease;">
                                             <div style="display: flex; flex-direction: column; gap: 10px;">
-                                                <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;">
-                                                    <div>
-                                                        <div class="dashboard-heading" style="font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 2px;"><?= e($program['title']) ?></div>
-                                                        <div class="page-subtitle" style="margin-top: 4px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
-                                                            <span class="badge <?= admin_class_type_badge_class($classTier) ?>" style="font-size: 9px; padding: 1px 5px;">
+                                                <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;">
+                                                    <div style="min-width: 0; flex: 1;">
+                                                        <div class="dashboard-heading" style="font-size: 15px; font-weight: 800; color: #fff; margin-bottom: 4px; line-height: 1.3;"><?= e($program['title']) ?></div>
+                                                        <div class="page-subtitle" style="margin-top: 6px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                                                            <span class="badge <?= admin_class_type_badge_class($classTier) ?>" style="font-size: 10px; padding: 2px 7px; border-radius: 6px; font-weight: 700;">
                                                                 <?= e($sectionDisplay) ?>
                                                             </span>
+                                                            <?php if (stripos($stage['name'], 'off') !== false): ?>
+                                                                <span class="badge" style="font-size: 10px; padding: 2px 7px; border-radius: 6px; font-weight: 700; background: rgba(245, 158, 11, 0.15); color: #facc15; border: 1px solid rgba(245, 158, 11, 0.3);">
+                                                                    <i class="fa-solid fa-layer-group mr-1"></i> Off-Stage Parallel
+                                                                </span>
+                                                            <?php endif; ?>
                                                             <?php if (!empty($program['location'])): ?>
-                                                                <span style="color: var(--accent); font-size: 11px;"><i class="fa-solid fa-location-dot"></i> <?= e($program['location']) ?></span>
+                                                                <span style="color: #38bdf8; font-size: 11.5px; font-weight: 600;"><i class="fa-solid fa-location-dot mr-1"></i> <?= e($program['location']) ?></span>
                                                             <?php endif; ?>
                                                             <?php if (!empty($program['responsible_teacher_name'])): ?>
-                                                                <span style="color: var(--muted); font-size: 11px;"><i class="fa-solid fa-chalkboard-user"></i> <?= e($program['responsible_teacher_name']) ?></span>
+                                                                <span style="color: var(--muted); font-size: 11.5px; font-weight: 500;"><i class="fa-solid fa-chalkboard-user mr-1"></i> <?= e($program['responsible_teacher_name']) ?></span>
                                                             <?php endif; ?>
                                                         </div>
                                                     </div>
                                                 </div>
-                                                <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255,255,255,0.04); padding-top: 8px; margin-top: 4px;">
-                                                    <span class="badge badge-info" style="font-size: 10.5px; font-weight: 800; padding: 3px 6px; border-radius: 6px;">
-                                                        <i class="fa-regular fa-clock mr-1"></i>
-                                                        <?= e(date('h:i A', strtotime($program['start_at']))) ?> - <?= e(date('h:i A', strtotime($program['end_at']))) ?>
-                                                    </span>
+                                                <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 10px; margin-top: 4px; flex-wrap: wrap; gap: 8px;">
+                                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                                        <span class="badge badge-info" style="font-size: 11px; font-weight: 800; padding: 4px 10px; border-radius: 8px; background: rgba(56,189,248,0.12); color: #38bdf8; border: 1px solid rgba(56,189,248,0.25);">
+                                                            <i class="fa-regular fa-clock mr-1"></i>
+                                                            <?= e(date('h:i A', strtotime($program['start_at']))) ?> - <?= e(date('h:i A', strtotime($program['end_at']))) ?>
+                                                        </span>
+                                                        <span style="font-size: 11px; color: var(--muted); font-weight: 700; background: rgba(255,255,255,0.05); padding: 3px 8px; border-radius: 6px;">
+                                                            <?= $durMins ?> mins
+                                                        </span>
+                                                    </div>
                                                     <div class="flex gap-2">
-                                                        <button class="btn btn-secondary btn-sm" type="button" data-edit-schedule-btn='<?= e(json_encode($program, JSON_HEX_APOS | JSON_HEX_QUOT)) ?>' title="Edit Schedule" style="padding: 4px 6px; font-size: 10px;"><i class="fa-solid fa-pen"></i></button>
+                                                        <button class="btn btn-secondary btn-sm" type="button" data-edit-schedule-btn='<?= e(json_encode($program, JSON_HEX_APOS | JSON_HEX_QUOT)) ?>' title="Edit Schedule" style="padding: 5px 10px; font-size: 11px; border-radius: 6px; font-weight: 600;"><i class="fa-solid fa-pen mr-1"></i> Edit</button>
                                                         
-                                                        <form method="POST" style="display: inline;" onsubmit="return confirm('Are you sure you want to unschedule this program?');">
+                                                        <form method="POST" style="display: inline;" onsubmit="return confirm('Are you sure you want to unschedule <?= e(addslashes($program['title'])) ?>?');">
                                                             <?= admin_csrf_field() ?>
                                                             <input type="hidden" name="action" value="unschedule_program">
                                                             <input type="hidden" name="stage_type_id" value="<?= $stageId ?>">
                                                             <input type="hidden" name="program_id" value="<?= (int)$program['id'] ?>">
-                                                            <button class="btn btn-danger btn-sm" type="submit" title="Unschedule" style="padding: 4px 6px; font-size: 10px;"><i class="fa-solid fa-calendar-minus"></i></button>
+                                                            <button class="btn btn-danger btn-sm" type="submit" title="Unschedule" style="padding: 5px 10px; font-size: 11px; border-radius: 6px; font-weight: 600;"><i class="fa-solid fa-calendar-minus mr-1"></i> Unschedule</button>
                                                         </form>
                                                     </div>
                                                 </div>
@@ -571,31 +639,31 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                         $break = $stageBreakMap[$gapStartSql . '|' . $gapEndSql] ?? null;
                                         ?>
                                         <?php if ($hasGap && $break): ?>
-                                            <div class="timeline-gap-container timeline-row" style="margin: 8px 0; padding-left: 20px; border-left: 2px dashed rgba(250,204,21,.3); position: relative;">
-                                                <div class="panel" style="border-color: rgba(250,204,21,.2); padding: 8px 10px; background: rgba(250,204,21,.03);">
-                                                    <div class="flex-between">
+                                            <div class="timeline-gap-container timeline-row" style="margin: 10px 0; padding-left: 20px; border-left: 2px dashed rgba(250,204,21,.4); position: relative;">
+                                                <div class="panel" style="border-color: rgba(250,204,21,.3); padding: 10px 14px; background: rgba(250,204,21,.05); border-radius: 10px;">
+                                                    <div class="flex-between" style="gap: 10px; flex-wrap: wrap;">
                                                         <div>
-                                                            <div class="dashboard-heading" style="font-size: 12.5px; margin: 0;"><i class="fa-solid fa-puzzle-piece mr-2" style="color: #facc15;"></i> <?= e($break['name']) ?></div>
-                                                            <div class="page-subtitle" style="font-size: 10.5px;"><?= e($break['description'] ?: 'Extra Item') ?></div>
+                                                            <div class="dashboard-heading" style="font-size: 13px; font-weight: 700; margin: 0; color: #facc15;"><i class="fa-solid fa-puzzle-piece mr-2" style="color: #facc15;"></i> <?= e($break['name']) ?></div>
+                                                            <div class="page-subtitle" style="font-size: 11px; color: var(--muted); margin-top: 2px;"><?= e($break['description'] ?: 'Intermission / Schedule Gap') ?></div>
                                                         </div>
-                                                        <div class="flex gap-2 flex-wrap">
-                                                            <span class="badge badge-warning" style="font-size: 9.5px; padding: 1.5px 5px;"><?= e(date('h:i A', strtotime($break['start_datetime']))) ?> - <?= e(date('h:i A', strtotime($break['end_datetime']))) ?></span>
+                                                        <div class="flex gap-2 flex-wrap" style="align-items: center;">
+                                                            <span class="badge badge-warning" style="font-size: 10px; padding: 3px 8px; border-radius: 6px; font-weight: 800; background: rgba(250,204,21,0.15); color: #facc15; border: 1px solid rgba(250,204,21,0.3);"><?= e(date('h:i A', strtotime($break['start_datetime']))) ?> - <?= e(date('h:i A', strtotime($break['end_datetime']))) ?></span>
                                                             <form method="POST">
                                                                 <?= admin_csrf_field() ?>
                                                                 <input type="hidden" name="action" value="delete_extra">
                                                                 <input type="hidden" name="stage_type_id" value="<?= $stageId ?>">
                                                                 <input type="hidden" name="break_id" value="<?= (int)$break['id'] ?>">
-                                                                <button class="btn btn-danger btn-sm" type="submit" style="padding: 3px 5px; font-size: 9.5px;"><i class="fa-solid fa-trash"></i></button>
+                                                                <button class="btn btn-danger btn-sm" type="submit" style="padding: 4px 8px; font-size: 10px; border-radius: 6px;" title="Remove Extra Item"><i class="fa-solid fa-trash"></i></button>
                                                             </form>
                                                         </div>
                                                     </div>
                                                 </div>
                                             </div>
                                         <?php elseif ($hasGap): ?>
-                                            <div class="timeline-gap-container timeline-row" style="margin: 8px 0; padding-left: 20px; border-left: 2px dashed rgba(255,255,255,0.1); position: relative;">
-                                                <div class="flex-between panel" style="padding: 6px 10px; background: rgba(255,255,255,0.01); border-color: rgba(255,255,255,0.04);">
+                                            <div class="timeline-gap-container timeline-row" style="margin: 10px 0; padding-left: 20px; border-left: 2px dashed rgba(255,255,255,0.15); position: relative;">
+                                                <div class="flex-between panel" style="padding: 8px 14px; background: rgba(255,255,255,0.02); border-color: rgba(255,255,255,0.06); border-radius: 10px;">
                                                     <div>
-                                                        <div class="page-subtitle" style="font-size: 11px; margin: 0; color: var(--muted);"><i class="fa-solid fa-hourglass-half mr-2"></i> Gap: <?= e(date('h:i A', strtotime($gapStartSql))) ?> - <?= e(date('h:i A', strtotime($gapEndSql))) ?></div>
+                                                        <div class="page-subtitle" style="font-size: 12px; margin: 0; color: var(--muted); font-weight: 600;"><i class="fa-solid fa-hourglass-half mr-2" style="color: #fbbf24;"></i> Timeline Gap: <?= e(date('h:i A', strtotime($gapStartSql))) ?> - <?= e(date('h:i A', strtotime($gapEndSql))) ?></div>
                                                     </div>
                                                     <button
                                                         class="btn btn-success btn-sm"
@@ -606,9 +674,9 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                                         data-previous-program="<?= (int)$program['id'] ?>"
                                                         data-next-program="<?= (int)$next['id'] ?>"
                                                         data-gap-label="<?= e(date('h:i A', strtotime($gapStartSql)) . ' - ' . date('h:i A', strtotime($gapEndSql))) ?>"
-                                                        style="padding: 3px 6px; font-size: 10px;"
+                                                        style="padding: 4px 10px; font-size: 11px; border-radius: 6px; font-weight: 700;"
                                                     >
-                                                        <i class="fa-solid fa-plus"></i> Extra
+                                                        <i class="fa-solid fa-plus mr-1"></i> Add Extra Item
                                                     </button>
                                                 </div>
                                             </div>
@@ -623,36 +691,36 @@ require_once __DIR__ . '/../../includes/sidebar.php';
         </div>
 
         <!-- RIGHT SIDEBAR: DRAGGABLE UNSCHEDULED PROGRAMS PANEL -->
-        <aside class="unscheduled-sidebar-panel panel" style="width: 330px; flex: 0 0 330px; position: sticky; top: 20px; max-height: calc(100vh - 40px); max-height: calc(100dvh - 40px); display: flex; flex-direction: column; padding: 18px; border-color: rgba(255,255,255,0.06); background: #0e1726; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 10px;">
-                <div style="font-size: 14.5px; font-weight: 800; color: #fff; display: flex; align-items: center; gap: 8px;">
+        <aside class="unscheduled-sidebar-panel panel" style="width: 340px; flex: 0 0 340px; position: sticky; top: 20px; max-height: calc(100vh - 40px); max-height: calc(100dvh - 40px); display: flex; flex-direction: column; padding: 20px; border-color: rgba(255,255,255,0.08); background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(12px); border-radius: 16px; box-shadow: 0 12px 40px rgba(0,0,0,0.4);">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 12px;">
+                <div style="font-size: 15px; font-weight: 800; color: #fff; display: flex; align-items: center; gap: 8px;">
                     <i class="fa-solid fa-clock" style="color: var(--warning);"></i>
                     <span>Unscheduled Programs</span>
                 </div>
-                <span class="badge badge-neutral" id="sidebarUnscheduledCount" style="font-size: 11px; font-weight: 700; border-radius: 99px;"><?= count($unscheduledPrograms) ?></span>
+                <span class="badge" id="sidebarUnscheduledCount" style="font-size: 11px; font-weight: 800; border-radius: 99px; background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); padding: 3px 8px;"><?= count($unscheduledPrograms) ?></span>
             </div>
 
-            <div style="position: relative; display: flex; align-items: center; margin-bottom: 12px;">
-                <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 10px; color: var(--muted); font-size: 12px;"></i>
-                <input type="text" id="sidebarUnscheduledSearch" placeholder="Search unscheduled..." class="form-input" style="padding-left: 30px; height: 34px; font-size: 12px; width: 100%; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; color: #fff;">
+            <div style="position: relative; display: flex; align-items: center; margin-bottom: 14px;">
+                <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 12px; color: var(--muted); font-size: 12px;"></i>
+                <input type="text" id="sidebarUnscheduledSearch" placeholder="Search unscheduled..." class="form-input" style="padding-left: 34px; height: 38px; font-size: 12.5px; width: 100%; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; color: #fff;">
             </div>
 
-            <div style="font-size: 11px; color: var(--muted); margin-bottom: 10px; font-style: italic;">
-                <i class="fa-solid fa-grip-vertical mr-1"></i> Drag card to active stage timeline to schedule
+            <div style="font-size: 11.5px; color: var(--muted); margin-bottom: 12px; font-weight: 600; display: flex; align-items: center; gap: 6px;">
+                <i class="fa-solid fa-grip-vertical" style="color: #38bdf8;"></i> Drag program card to active stage timeline
             </div>
 
             <div class="unscheduled-sidebar-content" style="display: flex; flex-direction: column; gap: 10px; overflow-y: auto; flex: 1; padding-right: 4px;">
                 <?php foreach ($tiers as $tierKey => $tierLabel): ?>
                     <?php $tierProgs = $unscheduledGrouped[$tierKey] ?? []; ?>
                     <div class="accordion-item sidebar-accordion-item" data-tier="<?= $tierKey ?>">
-                        <button class="accordion-header" type="button" style="width: 100%; text-align: left; padding: 10px 12px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; color: #fff; font-weight: 700; font-size: 12.5px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: all 0.2s;">
-                            <span><?= e($tierLabel) ?> <span class="tier-count" style="font-size: 11px; color: var(--muted); margin-left: 4px;">(<?= count($tierProgs) ?>)</span></span>
-                            <i class="fa-solid fa-chevron-down accordion-icon" style="font-size: 10px; transition: transform 0.2s;"></i>
+                        <button class="accordion-header" type="button" style="width: 100%; text-align: left; padding: 11px 14px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; color: #fff; font-weight: 700; font-size: 13px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: all 0.2s;">
+                            <span><?= e($tierLabel) ?> <span class="tier-count" style="font-size: 11px; color: var(--muted); margin-left: 6px; font-weight: 600;">(<?= count($tierProgs) ?>)</span></span>
+                            <i class="fa-solid fa-chevron-down accordion-icon" style="font-size: 11px; transition: transform 0.2s;"></i>
                         </button>
                         <div class="accordion-content" style="max-height: 0; overflow: hidden; transition: max-height 0.25s ease-out;">
-                            <div style="padding: 8px 2px 0 2px; display: flex; flex-direction: column; gap: 8px;">
+                            <div style="padding: 10px 2px 0 2px; display: flex; flex-direction: column; gap: 10px;">
                                 <?php if (empty($tierProgs)): ?>
-                                    <div style="font-size: 12px; color: var(--muted); text-align: center; padding: 10px; background: rgba(0,0,0,0.05); border-radius: 6px;">No programs</div>
+                                    <div style="font-size: 12px; color: var(--muted); text-align: center; padding: 12px; background: rgba(0,0,0,0.1); border-radius: 8px;">No programs in this tier</div>
                                 <?php else: ?>
                                     <?php foreach ($tierProgs as $prog): ?>
                                         <?php
@@ -676,13 +744,13 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                         }
                                         $classTier = admin_class_type_tier_from_name($prog['class_type_name'] ?? '');
                                         ?>
-                                        <div class="unscheduled-card panel draggable-program-card" draggable="true" data-title="<?= e($prog['title']) ?>" data-stage-type-id="<?= (int)($prog['stage_type_id'] ?? 0) ?>" data-program-json='<?= e(json_encode($prog, JSON_HEX_APOS | JSON_HEX_QUOT)) ?>' style="padding: 10px 12px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; cursor: grab; display: flex; flex-direction: column; gap: 8px; transition: all 0.2s ease;">
-                                            <div style="display: flex; align-items: flex-start; gap: 8px;">
-                                                <i class="fa-solid fa-grip-vertical" style="color: var(--muted); font-size: 13px; margin-top: 2px;"></i>
+                                        <div class="unscheduled-card panel draggable-program-card" draggable="true" data-title="<?= e($prog['title']) ?>" data-stage-type-id="<?= (int)($prog['stage_type_id'] ?? 0) ?>" data-program-json='<?= e(json_encode($prog, JSON_HEX_APOS | JSON_HEX_QUOT)) ?>' style="padding: 12px 14px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; cursor: grab; display: flex; flex-direction: column; gap: 10px; transition: all 0.2s ease;">
+                                            <div style="display: flex; align-items: flex-start; gap: 10px;">
+                                                <i class="fa-solid fa-grip-vertical" style="color: var(--muted); font-size: 14px; margin-top: 2px;"></i>
                                                 <div style="min-width: 0; flex: 1;">
-                                                    <strong style="display: block; font-size: 13px; line-height: 1.3; color: #fff;" title="<?= e($prog['title']) ?>"><?= e($prog['title']) ?></strong>
-                                                    <span class="page-subtitle" style="font-size: 10.5px; margin-top: 4px; display: inline-block;">
-                                                        <span class="badge <?= admin_class_type_badge_class($classTier) ?>" style="font-size: 9px; padding: 1px 5px;">
+                                                    <strong style="display: block; font-size: 13.5px; line-height: 1.3; color: #fff;" title="<?= e($prog['title']) ?>"><?= e($prog['title']) ?></strong>
+                                                    <span class="page-subtitle" style="font-size: 11px; margin-top: 4px; display: inline-block;">
+                                                        <span class="badge <?= admin_class_type_badge_class($classTier) ?>" style="font-size: 9.5px; padding: 1px 6px;">
                                                             <?= e($sectionDisplay) ?>
                                                         </span>
                                                         <?php if (!empty($prog['responsible_teacher_name'])): ?>
@@ -691,7 +759,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                                     </span>
                                                 </div>
                                             </div>
-                                            <button class="btn btn-success btn-sm" type="button" data-schedule-btn='<?= e(json_encode($prog, JSON_HEX_APOS | JSON_HEX_QUOT)) ?>' style="width: 100%; justify-content: center; font-size: 11px; padding: 4px 8px; border-radius: 6px;"><i class="fa-solid fa-calendar-plus mr-1"></i> Schedule</button>
+                                            <button class="btn btn-success btn-sm" type="button" data-schedule-btn='<?= e(json_encode($prog, JSON_HEX_APOS | JSON_HEX_QUOT)) ?>' style="width: 100%; justify-content: center; font-size: 11.5px; padding: 6px 10px; border-radius: 8px; font-weight: 700;"><i class="fa-solid fa-calendar-plus mr-1"></i> Schedule Now</button>
                                         </div>
                                     <?php endforeach; ?>
                                 <?php endif; ?>
@@ -705,34 +773,62 @@ require_once __DIR__ . '/../../includes/sidebar.php';
 </div>
 
 <div class="modal-overlay" id="breakModal">
-    <div class="modal-box modal-md">
+    <div class="modal-box modal-md" style="border-radius: 16px; border: 1px solid rgba(255,255,255,0.1); background: #0f172a;">
         <div class="modal-header">
             <div>
-                <div class="modal-title"><i class="fa-solid fa-puzzle-piece mr-2" style="color: #facc15;"></i> Add Extra Item</div>
-                <div class="page-subtitle" id="breakGapLabel"></div>
+                <div class="modal-title" style="font-size: 18px; font-weight: 800; display: flex; align-items: center; gap: 8px;"><i class="fa-solid fa-puzzle-piece" style="color: #facc15;"></i> Add Extra Item</div>
+                <div class="page-subtitle" id="breakGapLabel" style="font-size: 12px; color: var(--muted); margin-top: 4px;"></div>
             </div>
             <button class="modal-close" type="button" data-close="breakModal"><i class="fa-solid fa-xmark"></i></button>
         </div>
-        <form method="POST">
+        <form method="POST" id="breakForm">
             <?= admin_csrf_field() ?>
             <input type="hidden" name="action" value="add_extra">
-            <input type="hidden" name="stage_type_id" id="breakStageTypeId">
             <input type="hidden" name="previous_program_id" id="previousProgramId">
             <input type="hidden" name="next_program_id" id="nextProgramId">
-            <div class="form-grid">
-                <div class="input-group full-width"><label>Extra Title / Name <span class="required">*</span></label><input type="text" name="name" required class="form-input" placeholder="e.g. Intermission / Segment"></div>
-                <div class="input-group full-width"><label>Description</label><textarea name="description" rows="3" class="form-input" placeholder="Optional details about this extra item"></textarea></div>
+            <div class="form-grid" style="padding: 20px; gap: 16px;">
+                <div class="input-group full-width">
+                    <label style="font-size: 12.5px; font-weight: 700;">Extra Title / Name <span class="required">*</span></label>
+                    <input type="text" name="name" id="breakNameInput" required class="form-input" placeholder="e.g. Intermission / Tea Break / Announcements" style="height: 40px; border-radius: 8px;">
+                </div>
+                <div class="input-group full-width" id="breakStageSelectGroup">
+                    <label style="font-size: 12.5px; font-weight: 700;">Stage / Venue <span class="required">*</span></label>
+                    <select name="stage_type_id" id="breakStageTypeId" class="form-input" required style="height: 40px; border-radius: 8px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color: #fff;">
+                        <?php foreach ($stageTypes as $stage): ?>
+                            <option value="<?= (int)$stage['id'] ?>"><?= e($stage['name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="input-group full-width" id="breakTimeFieldsGroup">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+                        <div>
+                            <label style="font-size: 12.5px; font-weight: 700;">Start Date & Time</label>
+                            <input type="datetime-local" name="start_time" id="breakStartTime" class="form-input" style="height: 40px; border-radius: 8px;">
+                        </div>
+                        <div>
+                            <label style="font-size: 12.5px; font-weight: 700;">Duration (Minutes)</label>
+                            <input type="number" name="duration_minutes" id="breakDurationMinutes" min="1" placeholder="e.g. 15" class="form-input" value="15" style="height: 40px; border-radius: 8px;">
+                        </div>
+                    </div>
+                </div>
+                <div class="input-group full-width">
+                    <label style="font-size: 12.5px; font-weight: 700;">Description</label>
+                    <textarea name="description" id="breakDescriptionInput" rows="3" class="form-input" placeholder="Optional details about this extra item..." style="border-radius: 8px;"></textarea>
+                </div>
             </div>
-            <div class="form-actions"><button class="btn btn-secondary btn-md" type="button" data-close="breakModal">Cancel</button><button class="btn btn-success btn-md" type="submit">Save Extra</button></div>
+            <div class="form-actions" style="padding: 16px 20px; border-top: 1px solid rgba(255,255,255,0.06); display: flex; justify-content: flex-end; gap: 10px;">
+                <button class="btn btn-secondary btn-md" type="button" data-close="breakModal" style="border-radius: 8px;">Cancel</button>
+                <button class="btn btn-success btn-md" type="submit" style="border-radius: 8px; font-weight: 700;">Save Extra Item</button>
+            </div>
         </form>
     </div>
 </div>
 
 <div class="modal-overlay" id="scheduleModal">
-    <div class="modal-box modal-md">
+    <div class="modal-box modal-md" style="border-radius: 16px; border: 1px solid rgba(255,255,255,0.1); background: #0f172a;">
         <div class="modal-header">
             <div>
-                <div class="modal-title" id="scheduleModalTitle">Schedule Program</div>
+                <div class="modal-title" id="scheduleModalTitle" style="font-size: 18px; font-weight: 800; color: #fff;">Schedule Program</div>
             </div>
             <button class="modal-close" type="button" data-close="scheduleModal"><i class="fa-solid fa-xmark"></i></button>
         </div>
@@ -740,11 +836,11 @@ require_once __DIR__ . '/../../includes/sidebar.php';
             <?= admin_csrf_field() ?>
             <input type="hidden" name="action" value="schedule_program">
             
-            <div class="form-grid">
+            <div class="form-grid" style="padding: 20px; gap: 16px;">
                 <!-- PROGRAM SELECT DROP-DOWN (Shown when creating/scheduling) -->
                 <div class="input-group full-width" id="modalProgramSelectGroup">
-                    <label>Select Program <span class="required">*</span></label>
-                    <select name="program_id" id="scheduleProgramSelect" class="form-input" required>
+                    <label style="font-size: 12.5px; font-weight: 700;">Select Program <span class="required">*</span></label>
+                    <select name="program_id" id="scheduleProgramSelect" class="form-input" required style="height: 42px; border-radius: 8px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color: #fff;">
                         <option value="">-- Choose an Unscheduled Program --</option>
                         <?php foreach ($tiers as $tierKey => $tierLabel): ?>
                             <?php $tierProgs = $unscheduledGrouped[$tierKey] ?? []; ?>
@@ -781,86 +877,89 @@ require_once __DIR__ . '/../../includes/sidebar.php';
 
                 <!-- STATIC DISPLAY (Shown when editing) -->
                 <div class="input-group full-width" id="modalProgramStaticGroup" style="display: none;">
-                    <label>Program</label>
-                    <div id="scheduleProgramTitle" style="font-weight: 800; color: var(--accent); font-size: 15px; padding: 10px 14px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px;"></div>
+                    <label style="font-size: 12.5px; font-weight: 700;">Program</label>
+                    <div id="scheduleProgramTitle" style="font-weight: 800; color: #38bdf8; font-size: 15px; padding: 12px 16px; background: rgba(56,189,248,0.08); border: 1px solid rgba(56,189,248,0.2); border-radius: 8px;"></div>
                     <input type="hidden" name="program_id" id="scheduleProgramId">
                 </div>
 
                 <div class="input-group full-width">
-                    <label>Stage/Venue <span class="required">*</span></label>
-                    <select name="stage_type_id" id="scheduleStageTypeId" class="form-input" required>
+                    <label style="font-size: 12.5px; font-weight: 700;">Stage / Venue <span class="required">*</span></label>
+                    <select name="stage_type_id" id="scheduleStageTypeId" class="form-input" required style="height: 42px; border-radius: 8px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color: #fff;">
                         <?php foreach ($stageTypes as $stage): ?>
                             <option value="<?= (int)$stage['id'] ?>"><?= e($stage['name']) ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>
                 <div class="input-group full-width">
-                    <label>Location / Room</label>
-                    <input type="text" name="location" id="scheduleLocation" placeholder="e.g. Main Hall, Stage A" class="form-input">
+                    <label style="font-size: 12.5px; font-weight: 700;">Location / Room</label>
+                    <input type="text" name="location" id="scheduleLocation" placeholder="e.g. Main Auditorium, Stage 1" class="form-input" style="height: 40px; border-radius: 8px;">
                 </div>
                 <div class="input-group">
-                    <label>Start Date & Time <span class="required">*</span></label>
-                    <input type="datetime-local" name="start_time" id="scheduleStartTime" class="form-input" required>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <label style="font-size: 12.5px; font-weight: 700; margin: 0;">Start Date & Time <span class="required">*</span></label>
+                        <button type="button" id="scheduleUseNextSlotBtn" class="btn btn-secondary btn-xs" style="font-size: 10.5px; padding: 2px 8px; border-radius: 6px; font-weight: 700;"><i class="fa-solid fa-bolt" style="color: #facc15;"></i> Next Slot</button>
+                    </div>
+                    <input type="datetime-local" name="start_time" id="scheduleStartTime" class="form-input" required style="height: 40px; border-radius: 8px;">
                 </div>
                 <div class="input-group">
-                    <label>Duration (Minutes)</label>
-                    <input type="number" name="duration_minutes" id="scheduleDurationMinutes" min="1" placeholder="e.g. 30" class="form-input" value="30">
-                    <div style="display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap;">
-                        <button type="button" class="btn btn-secondary btn-xs duration-preset-btn" data-mins="15">15m</button>
-                        <button type="button" class="btn btn-secondary btn-xs duration-preset-btn" data-mins="30">30m</button>
-                        <button type="button" class="btn btn-secondary btn-xs duration-preset-btn" data-mins="45">45m</button>
-                        <button type="button" class="btn btn-secondary btn-xs duration-preset-btn" data-mins="60">60m</button>
-                        <button type="button" class="btn btn-secondary btn-xs duration-preset-btn" data-mins="90">90m</button>
+                    <label style="font-size: 12.5px; font-weight: 700;">Duration (Minutes)</label>
+                    <input type="number" name="duration_minutes" id="scheduleDurationMinutes" min="1" placeholder="e.g. 30" class="form-input" value="30" style="height: 40px; border-radius: 8px;">
+                    <div style="display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap;">
+                        <button type="button" class="btn btn-secondary btn-xs duration-preset-btn" data-mins="15" style="border-radius: 6px; font-weight: 700; padding: 4px 10px;">15m</button>
+                        <button type="button" class="btn btn-secondary btn-xs duration-preset-btn" data-mins="30" style="border-radius: 6px; font-weight: 700; padding: 4px 10px;">30m</button>
+                        <button type="button" class="btn btn-secondary btn-xs duration-preset-btn" data-mins="45" style="border-radius: 6px; font-weight: 700; padding: 4px 10px;">45m</button>
+                        <button type="button" class="btn btn-secondary btn-xs duration-preset-btn" data-mins="60" style="border-radius: 6px; font-weight: 700; padding: 4px 10px;">60m</button>
+                        <button type="button" class="btn btn-secondary btn-xs duration-preset-btn" data-mins="90" style="border-radius: 6px; font-weight: 700; padding: 4px 10px;">90m</button>
                     </div>
                 </div>
                 <div class="input-group full-width">
-                    <label>End Date & Time</label>
-                    <input type="datetime-local" name="end_time" id="scheduleEndTime" class="form-input">
+                    <label style="font-size: 12.5px; font-weight: 700;">End Date & Time</label>
+                    <input type="datetime-local" name="end_time" id="scheduleEndTime" class="form-input" style="height: 40px; border-radius: 8px;">
                 </div>
             </div>
-            <div class="form-actions">
-                <button class="btn btn-secondary btn-md" type="button" data-close="scheduleModal">Cancel</button>
-                <button class="btn btn-success btn-md" type="submit">Save Schedule</button>
+            <div class="form-actions" style="padding: 16px 20px; border-top: 1px solid rgba(255,255,255,0.06); display: flex; justify-content: flex-end; gap: 10px;">
+                <button class="btn btn-secondary btn-md" type="button" data-close="scheduleModal" style="border-radius: 8px;">Cancel</button>
+                <button class="btn btn-success btn-md" type="submit" style="border-radius: 8px; font-weight: 700;">Save Schedule</button>
             </div>
         </form>
     </div>
 </div>
 
 <div class="modal-overlay" id="unscheduledProgramsModal">
-    <div class="modal-box modal-md" style="max-height: 80vh; display: flex; flex-direction: column;">
+    <div class="modal-box modal-md" style="max-height: 85vh; display: flex; flex-direction: column; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1); background: #0f172a;">
         <div class="modal-header">
             <div>
-                <div class="modal-title" style="display: flex; align-items: center; gap: 8px;">
+                <div class="modal-title" style="display: flex; align-items: center; gap: 8px; font-size: 18px; font-weight: 800; color: #fff;">
                     <i class="fa-solid fa-clock" style="color: var(--warning);"></i> Unscheduled Programs
                 </div>
             </div>
             <button class="modal-close" type="button" data-close="unscheduledProgramsModal"><i class="fa-solid fa-xmark"></i></button>
         </div>
         <div class="modal-body" style="padding: 20px; overflow-y: auto; flex: 1;">
-            <div style="position: relative; display: flex; align-items: center; margin-bottom: 15px;">
-                <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 10px; color: var(--muted); font-size: 12px;"></i>
-                <input type="text" id="unscheduledSearchInput" placeholder="Search unscheduled..." class="form-input" style="padding-left: 30px; height: 36px; font-size: 12.5px; width: 100%; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; color: #fff;">
+            <div style="position: relative; display: flex; align-items: center; margin-bottom: 16px;">
+                <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 12px; color: var(--muted); font-size: 13px;"></i>
+                <input type="text" id="unscheduledSearchInput" placeholder="Search unscheduled programs..." class="form-input" style="padding-left: 36px; height: 40px; font-size: 13px; width: 100%; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; color: #fff;">
             </div>
 
             <div class="unscheduled-accordion-container" style="display: flex; flex-direction: column; gap: 10px;">
                 <?php foreach ($tiers as $tierKey => $tierLabel): ?>
                     <?php $tierProgs = $unscheduledGrouped[$tierKey] ?? []; ?>
-                    <div class="accordion-item" data-tier="<?= $tierKey ?>">
-                        <button class="accordion-header" type="button" style="width: 100%; text-align: left; padding: 10px 12px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; color: #fff; font-weight: 700; font-size: 13px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: all 0.2s;">
-                            <span><?= e($tierLabel) ?> <span style="font-size: 11px; color: var(--muted); margin-left: 4px;">(<?= count($tierProgs) ?>)</span></span>
-                            <i class="fa-solid fa-chevron-down accordion-icon" style="font-size: 10px; transition: transform 0.2s;"></i>
+                    <div class="accordion-item modal-accordion-item" data-tier="<?= $tierKey ?>">
+                        <button class="accordion-header" type="button" style="width: 100%; text-align: left; padding: 12px 14px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; color: #fff; font-weight: 700; font-size: 13.5px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: all 0.2s;">
+                            <span><?= e($tierLabel) ?> <span class="tier-count" style="font-size: 11px; color: var(--muted); margin-left: 6px; font-weight: 600;">(<?= count($tierProgs) ?>)</span></span>
+                            <i class="fa-solid fa-chevron-down accordion-icon" style="font-size: 11px; transition: transform 0.2s;"></i>
                         </button>
                         <div class="accordion-content" style="max-height: 0; overflow: hidden; transition: max-height 0.25s ease-out;">
-                            <div style="padding: 8px 2px 0 2px; display: flex; flex-direction: column; gap: 8px;">
+                            <div style="padding: 10px 2px 0 2px; display: flex; flex-direction: column; gap: 10px;">
                                 <?php if (empty($tierProgs)): ?>
-                                    <div style="font-size: 12px; color: var(--muted); text-align: center; padding: 10px; background: rgba(0,0,0,0.05); border-radius: 6px;">No programs</div>
+                                    <div style="font-size: 12px; color: var(--muted); text-align: center; padding: 12px; background: rgba(0,0,0,0.1); border-radius: 8px;">No programs</div>
                                 <?php else: ?>
                                     <?php foreach ($tierProgs as $prog): ?>
-                                        <div class="unscheduled-card panel" data-title="<?= e($prog['title']) ?>" data-stage-type-id="<?= (int)($prog['stage_type_id'] ?? 0) ?>" style="padding: 10px 12px; background: rgba(255,255,255,0.01); border-color: rgba(255,255,255,0.04); display: flex; flex-direction: column; gap: 8px;">
+                                        <div class="unscheduled-card panel" data-title="<?= e($prog['title']) ?>" data-stage-type-id="<?= (int)($prog['stage_type_id'] ?? 0) ?>" style="padding: 12px 14px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; display: flex; flex-direction: column; gap: 10px;">
                                             <div style="min-width: 0; flex: 1;">
-                                                <strong style="display: block; font-size: 13px; line-height: 1.3;" title="<?= e($prog['title']) ?>"><?= e($prog['title']) ?></strong>
+                                                <strong style="display: block; font-size: 14px; line-height: 1.3; color: #fff;" title="<?= e($prog['title']) ?>"><?= e($prog['title']) ?></strong>
                                             </div>
-                                            <button class="btn btn-success btn-sm" type="button" data-schedule-btn='<?= e(json_encode($prog, JSON_HEX_APOS | JSON_HEX_QUOT)) ?>' style="width: 100%; justify-content: center; font-size: 11.5px; padding: 6px 10px;"><i class="fa-solid fa-calendar-plus mr-1"></i> Schedule</button>
+                                            <button class="btn btn-success btn-sm" type="button" data-schedule-btn='<?= e(json_encode($prog, JSON_HEX_APOS | JSON_HEX_QUOT)) ?>' style="width: 100%; justify-content: center; font-size: 12px; padding: 7px 12px; border-radius: 8px; font-weight: 700;"><i class="fa-solid fa-calendar-plus mr-1"></i> Schedule Program</button>
                                         </div>
                                     <?php endforeach; ?>
                                 <?php endif; ?>
@@ -870,8 +969,8 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                 <?php endforeach; ?>
             </div>
         </div>
-        <div class="modal-footer" style="padding: 15px 20px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end;">
-            <button class="btn btn-secondary btn-md" type="button" data-close="unscheduledProgramsModal">Close</button>
+        <div class="modal-footer" style="padding: 16px 20px; border-top: 1px solid rgba(255,255,255,0.06); display: flex; justify-content: flex-end;">
+            <button class="btn btn-secondary btn-md" type="button" data-close="unscheduledProgramsModal" style="border-radius: 8px;">Close</button>
         </div>
     </div>
 </div>
@@ -887,7 +986,7 @@ function updateActiveStage(stageId) {
     document.querySelectorAll('.stage-tab-btn').forEach(btn => {
         const isTarget = btn.dataset.stageTab === currentActiveStageId;
         btn.classList.toggle('active', isTarget);
-        btn.style.background = isTarget ? 'linear-gradient(135deg, rgba(99,102,241,0.2), rgba(168,85,247,0.2))' : 'rgba(255,255,255,0.02)';
+        btn.style.background = isTarget ? 'linear-gradient(135deg, rgba(99,102,241,0.25), rgba(168,85,247,0.25))' : 'rgba(255,255,255,0.03)';
         btn.style.color = isTarget ? '#fff' : 'var(--muted)';
         btn.style.borderColor = isTarget ? 'rgba(99,102,241,0.5)' : 'rgba(255,255,255,0.08)';
     });
@@ -919,7 +1018,6 @@ function filterSidebarUnscheduled() {
             const title = card.dataset.title.toLowerCase();
             const cardStage = card.dataset.stageTypeId || '1';
 
-            // Match ONLY programs belonging to the current active stage tab
             const matchesStage = (String(cardStage) === String(currentActiveStageId));
             const matchesQuery = (query === '') || title.includes(query);
 
@@ -956,25 +1054,48 @@ function filterSidebarUnscheduled() {
     if (headerCount) {
         headerCount.textContent = totalVisible;
     }
+    const topbarBadge = document.getElementById('topbarUnscheduledBadge');
+    if (topbarBadge) {
+        topbarBadge.textContent = totalVisible;
+    }
 }
 
 function filterModalProgramOptions() {
     const selectEl = document.getElementById('scheduleProgramSelect');
+    const stageSelect = document.getElementById('scheduleStageTypeId');
+    const selectedStage = stageSelect ? stageSelect.value : currentActiveStageId;
+
     if (selectEl) {
         Array.from(selectEl.options).forEach(opt => {
             if (!opt.value) return;
             const optStage = opt.dataset.stageTypeId || '1';
-            const matchesStage = (String(optStage) === String(currentActiveStageId));
+            const matchesStage = (String(optStage) === String(selectedStage));
             opt.disabled = !matchesStage;
             opt.style.display = matchesStage ? '' : 'none';
         });
     }
-
-    const stageSelect = document.getElementById('scheduleStageTypeId');
-    if (stageSelect && currentActiveStageId && currentActiveStageId !== '0') {
-        stageSelect.value = currentActiveStageId;
-    }
 }
+
+// Stage Select dropdown change listener in scheduleModal
+document.getElementById('scheduleStageTypeId')?.addEventListener('change', () => {
+    filterModalProgramOptions();
+    applyNextAvailableSlotForStage();
+});
+
+function applyNextAvailableSlotForStage() {
+    const stageId = document.getElementById('scheduleStageTypeId').value;
+    const targetPanel = document.querySelector(`.stage-panel-item[data-stage-id="${stageId}"]`);
+    if (targetPanel && targetPanel.dataset.lastEndAt) {
+        document.getElementById('scheduleStartTime').value = toLocalDatetime(targetPanel.dataset.lastEndAt);
+    } else {
+        document.getElementById('scheduleStartTime').value = formatLocalDatetime(new Date());
+    }
+    updateScheduleEndTime();
+}
+
+document.getElementById('scheduleUseNextSlotBtn')?.addEventListener('click', () => {
+    applyNextAvailableSlotForStage();
+});
 
 // Stage Tabs Switching
 document.querySelectorAll('.stage-tab-btn').forEach(tabBtn => {
@@ -1007,6 +1128,39 @@ sidebarUnscheduledSearch?.addEventListener('input', () => {
     filterSidebarUnscheduled();
 });
 
+// Modal Unscheduled Search Fix
+const unscheduledSearchInput = document.getElementById('unscheduledSearchInput');
+unscheduledSearchInput?.addEventListener('input', () => {
+    const query = unscheduledSearchInput.value.toLowerCase().trim();
+    document.querySelectorAll('.modal-accordion-item').forEach(item => {
+        let matchCount = 0;
+        const cards = item.querySelectorAll('.unscheduled-card');
+        const content = item.querySelector('.accordion-content');
+        const icon = item.querySelector('.accordion-icon');
+
+        cards.forEach(card => {
+            const title = card.dataset.title.toLowerCase();
+            if (query === '' || title.includes(query)) {
+                card.style.display = '';
+                matchCount++;
+            } else {
+                card.style.display = 'none';
+            }
+        });
+
+        if (query !== '' && matchCount > 0) {
+            item.classList.add('is-open');
+            if (content) content.style.maxHeight = content.scrollHeight + 'px';
+            if (icon) icon.style.transform = 'rotate(180deg)';
+            item.style.display = '';
+        } else if (query !== '' && matchCount === 0) {
+            item.style.display = 'none';
+        } else {
+            item.style.display = '';
+        }
+    });
+});
+
 // Run stage filter on initial load
 document.addEventListener('DOMContentLoaded', () => {
     updateActiveStage(currentActiveStageId);
@@ -1026,30 +1180,31 @@ document.querySelectorAll('.draggable-program-card[draggable="true"]').forEach(c
 document.querySelectorAll('.stage-panel-item').forEach(stagePanel => {
     stagePanel.addEventListener('dragover', (e) => {
         e.preventDefault();
-        stagePanel.style.borderColor = 'rgba(99,102,241,0.6)';
-        stagePanel.style.background = 'rgba(99,102,241,0.05)';
+        stagePanel.style.borderColor = '#38bdf8';
+        stagePanel.style.background = 'rgba(56,189,248,0.06)';
     });
     stagePanel.addEventListener('dragleave', () => {
-        stagePanel.style.borderColor = 'rgba(255,255,255,0.06)';
-        stagePanel.style.background = 'rgba(255,255,255,0.01)';
+        stagePanel.style.borderColor = 'rgba(255,255,255,0.08)';
+        stagePanel.style.background = 'rgba(15,23,42,0.4)';
     });
     stagePanel.addEventListener('drop', (e) => {
         e.preventDefault();
-        stagePanel.style.borderColor = 'rgba(255,255,255,0.06)';
-        stagePanel.style.background = 'rgba(255,255,255,0.01)';
+        stagePanel.style.borderColor = 'rgba(255,255,255,0.08)';
+        stagePanel.style.background = 'rgba(15,23,42,0.4)';
         try {
             const p = JSON.parse(e.dataTransfer.getData('text/plain'));
             setModalCreateMode();
+            
+            const stageId = stagePanel.dataset.stageId;
+            if (stageId) {
+                document.getElementById('scheduleStageTypeId').value = stageId;
+            }
+            filterModalProgramOptions();
             
             const selectEl = document.getElementById('scheduleProgramSelect');
             selectEl.value = p.id;
             if (p.location) {
                 document.getElementById('scheduleLocation').value = p.location;
-            }
-            
-            const stageId = stagePanel.dataset.stageId;
-            if (stageId) {
-                document.getElementById('scheduleStageTypeId').value = stageId;
             }
             
             const lastEndAt = stagePanel.dataset.lastEndAt;
@@ -1155,11 +1310,37 @@ function closeModal(id){document.getElementById(id)?.classList.remove('active')}
 document.querySelectorAll('[data-close]').forEach(btn => btn.addEventListener('click', () => closeModal(btn.dataset.close)));
 document.querySelectorAll('.modal-overlay').forEach(modal => modal.addEventListener('click', e => { if (e.target === modal) closeModal(modal.id); }));
 
+// Click topbar "Add Extra Item" button
+document.getElementById('addNewExtraBtn')?.addEventListener('click', () => {
+    document.getElementById('breakForm').reset();
+    document.getElementById('previousProgramId').value = '';
+    document.getElementById('nextProgramId').value = '';
+    document.getElementById('breakGapLabel').textContent = 'Custom Extra Item / Intermission';
+    
+    document.getElementById('breakStageSelectGroup').style.display = '';
+    document.getElementById('breakTimeFieldsGroup').style.display = '';
+    document.getElementById('breakStageTypeId').value = currentActiveStageId || '1';
+    
+    const targetPanel = document.querySelector(`.stage-panel-item[data-stage-id="${currentActiveStageId}"]`);
+    if (targetPanel && targetPanel.dataset.lastEndAt) {
+        document.getElementById('breakStartTime').value = toLocalDatetime(targetPanel.dataset.lastEndAt);
+    } else {
+        document.getElementById('breakStartTime').value = formatLocalDatetime(new Date());
+    }
+    document.getElementById('breakDurationMinutes').value = '15';
+    openModal('breakModal');
+});
+
+// Click timeline gap "Add Extra Item" button
 document.querySelectorAll('[data-open-extra], [data-open-break]').forEach(button => button.addEventListener('click', () => {
+    document.getElementById('breakForm').reset();
     document.getElementById('breakStageTypeId').value = button.dataset.stageId || '';
     document.getElementById('previousProgramId').value = button.dataset.previousProgram || '';
     document.getElementById('nextProgramId').value = button.dataset.nextProgram || '';
-    document.getElementById('breakGapLabel').textContent = button.dataset.gapLabel || '';
+    document.getElementById('breakGapLabel').textContent = button.dataset.gapLabel ? ('Timeline Gap: ' + button.dataset.gapLabel) : '';
+    
+    document.getElementById('breakStageSelectGroup').style.display = 'none';
+    document.getElementById('breakTimeFieldsGroup').style.display = 'none';
     openModal('breakModal');
 }));
 
@@ -1187,13 +1368,14 @@ function setModalCreateMode() {
     hiddenEl.disabled = true;
     hiddenEl.name = 'program_id_hidden';
     
-    document.getElementById('scheduleStageTypeId').value = '<?= $stageTypes ? (int)$stageTypes[0]['id'] : '' ?>';
+    document.getElementById('scheduleStageTypeId').value = currentActiveStageId || '<?= $stageTypes ? (int)$stageTypes[0]['id'] : '' ?>';
     document.getElementById('scheduleLocation').value = '';
+    filterModalProgramOptions();
 }
 
 function setModalEditMode(p) {
     document.getElementById('scheduleForm').reset();
-    document.getElementById('scheduleModalTitle').textContent = 'Edit Schedule';
+    document.getElementById('scheduleModalTitle').textContent = 'Edit Program Schedule';
     
     document.getElementById('modalProgramSelectGroup').style.display = 'none';
     const selectEl = document.getElementById('scheduleProgramSelect');
@@ -1224,18 +1406,7 @@ function setModalEditMode(p) {
 // 1. Click main button
 document.getElementById('scheduleNewProgramBtn')?.addEventListener('click', () => {
     setModalCreateMode();
-    const selectEl = document.getElementById('scheduleProgramSelect');
-    if (selectEl.options.length > 1) {
-        const firstOpt = selectEl.options[1]; // First actual program option
-        if (firstOpt && firstOpt.dataset && firstOpt.dataset.location) {
-            document.getElementById('scheduleLocation').value = firstOpt.dataset.location;
-        }
-    }
-    if (!document.getElementById('scheduleStartTime').value) {
-        document.getElementById('scheduleStartTime').value = formatLocalDatetime(new Date());
-        document.getElementById('scheduleDurationMinutes').value = 30;
-        updateScheduleEndTime();
-    }
+    applyNextAvailableSlotForStage();
     openModal('scheduleModal');
 });
 
@@ -1250,18 +1421,18 @@ document.querySelectorAll('[data-schedule-btn]').forEach(btn => btn.addEventList
     closeModal('unscheduledProgramsModal');
     setModalCreateMode();
     
+    if (p.stage_type_id) {
+        document.getElementById('scheduleStageTypeId').value = p.stage_type_id;
+    }
+    filterModalProgramOptions();
+    
     const selectEl = document.getElementById('scheduleProgramSelect');
     selectEl.value = p.id;
     if (p.location) {
         document.getElementById('scheduleLocation').value = p.location;
     }
     
-    if (!document.getElementById('scheduleStartTime').value) {
-        document.getElementById('scheduleStartTime').value = formatLocalDatetime(new Date());
-        document.getElementById('scheduleDurationMinutes').value = 30;
-        updateScheduleEndTime();
-    }
-    
+    applyNextAvailableSlotForStage();
     openModal('scheduleModal');
 }));
 
