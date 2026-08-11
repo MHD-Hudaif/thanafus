@@ -893,7 +893,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                     <input type="hidden" name="program_id" id="scheduleProgramId">
                 </div>
 
-                <div class="input-group full-width">
+                <div class="input-group full-width" id="modalStageGroup">
                     <label style="font-size: 12.5px; font-weight: 700;">Stage / Venue <span class="required">*</span></label>
                     <select name="stage_type_id" id="scheduleStageTypeId" class="form-input" required style="height: 42px; border-radius: 8px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color: #fff;">
                         <?php foreach ($stageTypes as $stage): ?>
@@ -1247,12 +1247,19 @@ document.querySelectorAll('.stage-panel-item').forEach(stagePanel => {
         hiddenEl.name = 'program_id';
         hiddenEl.value = p.id;
 
-        // Set the stage from the drop target
+        // Always show Stage/Venue field
+        const stageGroup = document.getElementById('modalStageGroup');
+        if (stageGroup) stageGroup.style.display = '';
+        const stageSelectEl = document.getElementById('scheduleStageTypeId');
+        stageSelectEl.disabled = false;
+        stageSelectEl.required = true;
+
+        // Set the stage from the drop target panel (stageId == stage_type_id)
         const stageId = stagePanel.dataset.stageId;
-        if (stageId) {
-            document.getElementById('scheduleStageTypeId').value = stageId;
-        } else if (p.stage_type_id) {
-            document.getElementById('scheduleStageTypeId').value = p.stage_type_id;
+        if (stageId && stageSelectEl.querySelector(`option[value="${stageId}"]`)) {
+            stageSelectEl.value = stageId;
+        } else if (p.stage_type_id && stageSelectEl.querySelector(`option[value="${p.stage_type_id}"]`)) {
+            stageSelectEl.value = String(p.stage_type_id);
         }
 
         // Set location from program data
@@ -1513,6 +1520,10 @@ function setModalEditMode(p) {
     hiddenEl.value = p.id;
     hiddenEl.name = 'program_id';
     
+    const stageGroupEl = document.getElementById('modalStageGroup');
+    if (stageGroupEl) stageGroupEl.style.display = '';
+    document.getElementById('scheduleStageTypeId').disabled = false;
+    document.getElementById('scheduleStageTypeId').required = true;
     document.getElementById('scheduleStageTypeId').value = p.stage_type_id || '';
     document.getElementById('scheduleLocation').value = p.location || '';
     document.getElementById('scheduleStartTime').value = toLocalDatetime(p.start_at);
