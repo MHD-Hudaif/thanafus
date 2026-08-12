@@ -1532,17 +1532,37 @@
         const scaler = document.getElementById('tvViewportScaler');
         if (!scaler) return;
 
+        const DESIGN_WIDTH = 1920;
+        const DESIGN_HEIGHT = 1080;
+
         const updateScale = () => {
-            scaler.style.transform = 'none';
-            scaler.style.width = '100%';
-            scaler.style.height = '100%';
+            const vw = window.innerWidth;
+            const vh = window.innerHeight;
+
+            // Compute uniform scale factor fitting 1920x1080 landscape canvas inside current screen width & height
+            const scale = Math.min(vw / DESIGN_WIDTH, vh / DESIGN_HEIGHT);
+
             scaler.style.position = 'absolute';
-            scaler.style.inset = '0';
+            scaler.style.width = `${DESIGN_WIDTH}px`;
+            scaler.style.height = `${DESIGN_HEIGHT}px`;
+            scaler.style.left = '50%';
+            scaler.style.top = '50%';
+            scaler.style.transformOrigin = 'center center';
+            scaler.style.transform = `translate(-50%, -50%) scale(${scale})`;
             scaler.style.margin = '0';
+            scaler.style.overflow = 'hidden';
+            scaler.style.boxSizing = 'border-box';
         };
 
         updateScale();
+
         window.addEventListener('resize', updateScale, { passive: true });
+        window.addEventListener('orientationchange', () => setTimeout(updateScale, 150), { passive: true });
+
+        // Attempt locking orientation to landscape if Screen Orientation API is supported
+        if (screen.orientation && typeof screen.orientation.lock === 'function') {
+            screen.orientation.lock('landscape').catch(() => {});
+        }
     }
 
     let tvWakeLock = null;

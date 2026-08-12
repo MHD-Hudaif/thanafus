@@ -37,20 +37,26 @@ $assetBase = live_display_asset_url();
     <div class="tv-backdrop" aria-hidden="true">
         <video autoplay loop muted playsinline src="<?= e(asset_url('videos/schedule-background.mp4')) ?>" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1;"></video>
     </div>
-    <header class="tv-topbar">
-        <div class="tv-brand">
-            <img src="<?= e(asset_url('images/thanafus-logo.png')) ?>" alt="Thanafus">
-            <div class="tv-brand-copy">
-                <div class="tv-brand-kicker">Kauzariyya Digital Musabaqa</div>
-                <div class="tv-brand-title" data-event-title><?= e($eventPayload['title']) ?></div>
-            </div>
-        </div>
-        <div class="tv-topbar-right">
-            <div class="tv-live-chip"><span></span> Live</div>
-            <div class="tv-clock" id="tvClock">--:--</div>
-        </div>
-    </header>
+
+    <div class="tv-orientation-hint" id="tvOrientationHint" aria-hidden="true">
+        <i class="fa-solid fa-mobile-screen-button"></i>
+        <span>Landscape 16:9 Locked Stage &bull; Rotate device for full view</span>
+    </div>
 
     <div class="tv-viewport-scaler" id="tvViewportScaler">
+        <header class="tv-topbar">
+            <div class="tv-brand">
+                <img src="<?= e(asset_url('images/thanafus-logo.png')) ?>" alt="Thanafus">
+                <div class="tv-brand-copy">
+                    <div class="tv-brand-kicker">Kauzariyya Digital Musabaqa</div>
+                    <div class="tv-brand-title" data-event-title><?= e($eventPayload['title']) ?></div>
+                </div>
+            </div>
+            <div class="tv-topbar-right">
+                <div class="tv-live-chip"><span></span> Live</div>
+                <div class="tv-clock" id="tvClock">--:--</div>
+            </div>
+        </header>
+
         <main class="tv-stage" id="tvStage">
 
