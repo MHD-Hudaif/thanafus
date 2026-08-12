@@ -171,16 +171,21 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // 4. High-Performance IntersectionObserver Scroll Reveal
     const revealElements = document.querySelectorAll('.reveal-3d');
+    const isMobileViewport = window.innerWidth <= 991;
     
     const grids = document.querySelectorAll('.stats-grid, .scholars-grid, .categories-grid, .stages-grid, .articles-grid');
     grids.forEach(grid => {
         const children = grid.querySelectorAll('.reveal-3d');
         children.forEach((child, index) => {
-            child.style.transitionDelay = `${index * 0.08}s`;
+            if (!isMobileViewport) {
+                child.style.transitionDelay = `${index * 0.08}s`;
+            }
         });
     });
 
-    if ('IntersectionObserver' in window) {
+    if (isMobileViewport) {
+        revealElements.forEach(el => el.classList.add('visible'));
+    } else if ('IntersectionObserver' in window) {
         const revealObserver = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
                 if (entry.isIntersecting) {
@@ -189,7 +194,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }, {
             root: null,
-            rootMargin: '0px 0px -50px 0px',
+            rootMargin: '0px 0px -30px 0px',
             threshold: 0.05
         });
 

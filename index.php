@@ -63,14 +63,14 @@ try {
     <title>Thanafus 2026-27 | Kauzariyya Musabaqa Landing</title>
     
     <!-- CSS Dependencies -->
-    <link rel="stylesheet" href="<?= asset_url('css/intro.css') ?>">
+    <link rel="stylesheet" href="<?= asset_url('css/intro.css') ?>?v=<?= file_exists(__DIR__ . '/assets/css/intro.css') ? filemtime(__DIR__ . '/assets/css/intro.css') : time() ?>">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <!-- Smooth Scrolling Lenis CDN -->
     <script src="https://unpkg.com/@studio-freight/lenis@1.0.34/dist/lenis.min.js"></script>
     <!-- JS Script -->
-    <script src="<?= asset_url('js/intro.js') ?>" defer></script>
+    <script src="<?= asset_url('js/intro.js') ?>?v=<?= file_exists(__DIR__ . '/assets/js/intro.js') ? filemtime(__DIR__ . '/assets/js/intro.js') : time() ?>" defer></script>
 </head>
 <body>
     <!-- Glowing background warmth -->
