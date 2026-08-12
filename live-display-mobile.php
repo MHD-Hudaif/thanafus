@@ -486,6 +486,101 @@ $startDateFormatted = !empty($activeEvent['start_date']) ? date('d F Y', strtoti
     }
     .page-footer span { color: rgba(16,185,129,0.4); }
 
+    /* ── App Download Card ── */
+    .download-card {
+      background: linear-gradient(135deg, rgba(59,130,246,0.15) 0%, rgba(16,185,129,0.1) 100%);
+      border: 1px solid rgba(59,130,246,0.25);
+      border-radius: 22px;
+      backdrop-filter: blur(22px);
+      -webkit-backdrop-filter: blur(22px);
+      box-shadow: 0 8px 32px rgba(3, 10, 5, 0.5);
+      padding: 20px;
+      margin-bottom: 18px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      position: relative;
+      overflow: hidden;
+    }
+    .download-card::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle, rgba(59,130,246,0.08) 0%, transparent 60%);
+      pointer-events: none;
+    }
+    .download-icon-wrap {
+      width: 52px;
+      height: 52px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, var(--blue), var(--green));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      color: #fff;
+      flex-shrink: 0;
+      box-shadow: 0 6px 16px rgba(59, 130, 246, 0.3);
+    }
+    .download-info {
+      flex-grow: 1;
+      min-width: 0;
+    }
+    .download-info h3 {
+      font-size: 16px;
+      font-weight: 800;
+      color: #fff;
+      margin-bottom: 3px;
+      letter-spacing: -0.01em;
+    }
+    .download-info p {
+      font-size: 11.5px;
+      color: rgba(255,255,255,0.7);
+      line-height: 1.4;
+    }
+    .btn-download-app {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: #fff;
+      color: #030a05;
+      padding: 10px 18px;
+      border-radius: 14px;
+      font-size: 13px;
+      font-weight: 800;
+      text-decoration: none;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 4px 12px rgba(255, 255, 255, 0.15);
+      white-space: nowrap;
+      cursor: pointer;
+    }
+    .btn-download-app:hover {
+      background: var(--blue);
+      color: #fff;
+      box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+      transform: translateY(-1px);
+    }
+    
+    @media (max-width: 480px) {
+      .download-card {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 14px;
+      }
+      .download-icon-wrap {
+        width: 44px;
+        height: 44px;
+        font-size: 20px;
+      }
+      .btn-download-app {
+        width: 100%;
+      }
+    }
+
     /* ── Transition fade on update ── */
     .fade-update {
       animation: fade-update 0.4s ease;
@@ -558,6 +653,25 @@ $startDateFormatted = !empty($activeEvent['start_date']) ? date('d F Y', strtoti
           <div class="next-up-name-el" id="next-up-name">–</div>
         </div>
       </div>
+    </div>
+
+    <!-- App Download Card -->
+    <div class="download-card">
+      <div class="download-icon-wrap">
+        📲
+      </div>
+      <div class="download-info">
+        <h3>Get the Mobile App</h3>
+        <p>Install the native app for instant updates and presentation features.</p>
+      </div>
+      <a href="<?= app_url('/uploads/kauzariyya-musabaqa.apk') ?>" class="btn-download-app" download>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="7 10 12 15 17 10"></polyline>
+          <line x1="12" y1="15" x2="12" y2="3"></line>
+        </svg>
+        Download APK
+      </a>
     </div>
 
     <!-- Leaderboard Card -->
