@@ -894,3 +894,26 @@ body.sidebar-collapsed .sidebar-collapse-trigger svg {
         display: none !important;
     }
 }
+
+/* PRINT MEDIA OVERRIDES: Completely hide sidebar during print */
+@media print {
+    .sidebar-vertical,
+    #adminVerticalSidebar,
+    .sidebar-overlay,
+    .event-role-sidebar,
+    .event-role-mobile-bar,
+    .topbar,
+    .event-top-nav,
+    .sidebar-collapse-trigger {
+        display: none !important;
+        width: 0 !important;
+        height: 0 !important;
+        visibility: hidden !important;
+    }
+    body.layout-sidebar-enabled .main-content,
+    .main-content {
+        margin-left: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+    }
+}

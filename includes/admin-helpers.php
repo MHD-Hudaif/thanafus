@@ -1680,5 +1680,68 @@ if (!function_exists('id_card_category_label')) {
     }
 }
 
+if (!function_exists('admin_get_default_categories_for_program_title')) {
+    function admin_get_default_categories_for_program_title(string $title): array
+    {
+        $t = strtolower($title);
+
+        if (str_contains($t, 'qira') || str_contains($t, 'quran') || str_contains($t, 'قرآن')) {
+            return [
+                ['name' => 'التجويد والترتيل', 'max_marks' => 30.00, 'sort_order' => 1],
+                ['name' => 'حسن الصوت واللحن', 'max_marks' => 30.00, 'sort_order' => 2],
+                ['name' => 'الوقف والابتداء', 'max_marks' => 20.00, 'sort_order' => 3],
+                ['name' => 'الالتزام بالوقت', 'max_marks' => 20.00, 'sort_order' => 4]
+            ];
+        }
+        if (str_contains($t, 'song') || str_contains($t, 'nasheed') || str_contains($t, 'نشيد') || str_contains($t, 'غناء')) {
+            return [
+                ['name' => 'حسن الصوت واللحن', 'max_marks' => 30.00, 'sort_order' => 1],
+                ['name' => 'الأداء والإيقاع', 'max_marks' => 30.00, 'sort_order' => 2],
+                ['name' => 'مضمون النشيد', 'max_marks' => 20.00, 'sort_order' => 3],
+                ['name' => 'الثقة بالنفس', 'max_marks' => 20.00, 'sort_order' => 4]
+            ];
+        }
+        if (str_contains($t, 'speech') || str_contains($t, 'خطاب') || str_contains($t, 'muhadasa') || str_contains($t, 'ebarath') || str_contains($t, 'reading')) {
+            return [
+                ['name' => 'الموضوع', 'max_marks' => 20.00, 'sort_order' => 1],
+                ['name' => 'التقديم', 'max_marks' => 20.00, 'sort_order' => 2],
+                ['name' => 'النطق والاداء', 'max_marks' => 20.00, 'sort_order' => 3],
+                ['name' => 'الثقة بالنفس', 'max_marks' => 20.00, 'sort_order' => 4],
+                ['name' => 'الالتزام بالوقت', 'max_marks' => 20.00, 'sort_order' => 5]
+            ];
+        }
+        if (str_contains($t, 'calligraphy') || str_contains($t, 'خط')) {
+            return [
+                ['name' => 'دقة الخط والقواعد', 'max_marks' => 30.00, 'sort_order' => 1],
+                ['name' => 'الجمال والتناسق', 'max_marks' => 30.00, 'sort_order' => 2],
+                ['name' => 'النظافة والإتقان', 'max_marks' => 20.00, 'sort_order' => 3],
+                ['name' => 'الإبداع والابتكار', 'max_marks' => 20.00, 'sort_order' => 4]
+            ];
+        }
+        if (str_contains($t, 'essay') || str_contains($t, 'poem') || str_contains($t, 'writing') || str_contains($t, 'news') || str_contains($t, 'كتابة') || str_contains($t, 'شعر')) {
+            return [
+                ['name' => 'الموضوع والأفكار', 'max_marks' => 30.00, 'sort_order' => 1],
+                ['name' => 'الأسلوب واللغة', 'max_marks' => 30.00, 'sort_order' => 2],
+                ['name' => 'التنظيم والتسلسل', 'max_marks' => 20.00, 'sort_order' => 3],
+                ['name' => 'النحو والإملاء', 'max_marks' => 20.00, 'sort_order' => 4]
+            ];
+        }
+        if (str_contains($t, 'fight') || str_contains($t, 'word') || str_contains($t, 'musajala') || str_contains($t, 'quiz') || str_contains($t, 'مسابقة')) {
+            return [
+                ['name' => 'الدقة والصحة', 'max_marks' => 40.00, 'sort_order' => 1],
+                ['name' => 'سرعة الإجابة', 'max_marks' => 30.00, 'sort_order' => 2],
+                ['name' => 'الالتزام بالقواعد', 'max_marks' => 30.00, 'sort_order' => 3]
+            ];
+        }
+
+        return [
+            ['name' => 'الموضوع والأفكار', 'max_marks' => 30.00, 'sort_order' => 1],
+            ['name' => 'الأداء والتقديم', 'max_marks' => 30.00, 'sort_order' => 2],
+            ['name' => 'الإتقان والمهارة', 'max_marks' => 20.00, 'sort_order' => 3],
+            ['name' => 'الالتزام بالوقت', 'max_marks' => 20.00, 'sort_order' => 4]
+        ];
+    }
+}
+
 
 

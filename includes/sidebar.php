@@ -239,11 +239,11 @@ if ($activeEventId) {
                 <i data-lucide="chevron-down" class="chevron-icon"></i>
             </div>
             <div class="sidebar-group-content">
-                <a href="<?= app_url('/admin/printer/score-sheets.php') ?>" class="sidebar-vertical-link <?= str_contains($currentPath, '/printer/score-sheets.php') ? 'active' : '' ?>">
+                <a href="<?= app_url('/admin/printer/score-sheets.php') ?>" class="sidebar-vertical-link <?= str_contains($currentPath, '/printer/score-sheets.php') ? 'active' : '' ?>" target="_blank">
                     <i data-lucide="printer" class="sidebar-icon"></i>
                     <span class="sidebar-label">Print Score Sheets</span>
                 </a>
-                <a href="<?= app_url('/admin/printer/mc-sheets.php') ?>" class="sidebar-vertical-link <?= str_contains($currentPath, '/printer/mc-sheets.php') ? 'active' : '' ?>">
+                <a href="<?= app_url('/admin/printer/mc-sheets.php') ?>" class="sidebar-vertical-link <?= str_contains($currentPath, '/printer/mc-sheets.php') ? 'active' : '' ?>" target="_blank">
                     <i data-lucide="printer" class="sidebar-icon"></i>
                     <span class="sidebar-label">Print MC Sheets</span>
                 </a>

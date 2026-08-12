@@ -362,10 +362,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ]);
             $programId = (int)$pdo->lastInsertId();
 
-            $stmt = $pdo->prepare("INSERT INTO musabaqa_program_categories (program_id, name, max_marks, sort_order) VALUES (?, 'Total', 100.00, 1)");
-            $stmt->execute([$programId]);
+            $defaultCats = admin_get_default_categories_for_program_title($title);
+            $catStmt = $pdo->prepare("INSERT INTO musabaqa_program_categories (program_id, name, max_marks, sort_order) VALUES (?, ?, ?, ?)");
+            foreach ($defaultCats as $cat) {
+                $catStmt->execute([$programId, $cat['name'], $cat['max_marks'], $cat['sort_order']]);
+            }
 
-            admin_flash('success', 'Program created successfully. Default 100-mark category added.');
+            admin_flash('success', 'Program created successfully. Multi-criteria scoring categories initialized.');
         }
     } catch (Throwable $e) {
         if ($pdo->inTransaction()) {

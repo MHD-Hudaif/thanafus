@@ -101,7 +101,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                 <div class="panel">
                     <h3 class="mb-4"><i class="fa-solid fa-compass mr-2" style="color: var(--accent);"></i> Quick Navigation</h3>
                     <div class="dashboard-list">
-                        <a href="<?= app_url('/admin/printer/judge-sheet.php') ?>" class="sidebar-action-btn">
+                        <a href="<?= app_url('/admin/printer/judge-sheet.php') ?>" class="sidebar-action-btn" target="_blank">
                             <div class="sidebar-action-icon" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">
                                 <i class="fa-solid fa-clipboard-check"></i>
                             </div>
@@ -111,7 +111,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                             </div>
                         </a>
 
-                        <a href="<?= app_url('/admin/printer/score-sheets.php') ?>?print_type=scores" class="sidebar-action-btn">
+                        <a href="<?= app_url('/admin/printer/score-sheets.php') ?>?print_type=scores" class="sidebar-action-btn" target="_blank">
                             <div class="sidebar-action-icon" style="background: rgba(139, 92, 246, 0.15); color: var(--accent);">
                                 <i class="fa-solid fa-file-invoice"></i>
                             </div>
@@ -121,7 +121,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                             </div>
                         </a>
 
-                        <a href="<?= app_url('/admin/printer/mc-sheets.php') ?>" class="sidebar-action-btn">
+                        <a href="<?= app_url('/admin/printer/mc-sheets.php') ?>" class="sidebar-action-btn" target="_blank">
                             <div class="sidebar-action-icon" style="background: rgba(14, 165, 233, 0.15); color: #38bdf8;">
                                 <i class="fa-solid fa-microphone"></i>
                             </div>

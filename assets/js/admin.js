@@ -216,7 +216,14 @@
        ===================================================== */
 
     function initModals() {
-        document.querySelectorAll('[data-modal-open], [data-open-modal]').forEach(button => {
+        document.querySelectorAll('.modal-overlay, .chat-modal-overlay').forEach(modal => {
+            if (modal.parentElement !== document.body) {
+                document.body.appendChild(modal);
+            }
+        });
+
+        document.querySelectorAll('[data-modal-open]:not([data-modal-bound]), [data-open-modal]:not([data-modal-bound])').forEach(button => {
+            button.setAttribute('data-modal-bound', 'true');
             button.addEventListener('click', () => {
                 const target = button.getAttribute('data-modal-open') || button.getAttribute('data-open-modal');
                 if (!target) return;
@@ -226,19 +233,21 @@
             });
         });
 
-        document.querySelectorAll('[data-modal-close], [data-close]').forEach(button => {
+        document.querySelectorAll('[data-modal-close]:not([data-modal-close-bound]), [data-close]:not([data-modal-close-bound])').forEach(button => {
+            button.setAttribute('data-modal-close-bound', 'true');
             button.addEventListener('click', () => {
                 const targetId = button.getAttribute('data-modal-close') || button.getAttribute('data-close');
                 if (targetId) {
                     window.closeModal(targetId);
                 } else {
-                    const modal = button.closest('.modal-overlay');
+                    const modal = button.closest('.modal-overlay, .chat-modal-overlay');
                     if (modal) window.closeModal(modal.id);
                 }
             });
         });
 
-        document.querySelectorAll('.modal-overlay').forEach(modal => {
+        document.querySelectorAll('.modal-overlay:not([data-modal-click-bound]), .chat-modal-overlay:not([data-modal-click-bound])').forEach(modal => {
+            modal.setAttribute('data-modal-click-bound', 'true');
             modal.addEventListener('click', (e) => {
                 if (e.target === modal) {
                     window.closeModal(modal.id);
@@ -248,23 +257,24 @@
     }
 
     let lastPageScrollY = 0;
+    let modalScrollY = 0;
 
     function syncModalScrollLock() {
         const hasOpenModal = Boolean(document.querySelector('.modal-overlay.active, .chat-modal-overlay.active'));
         if (hasOpenModal) {
             if (!document.body.classList.contains('modal-open')) {
-                lastPageScrollY = window.scrollY || document.documentElement.scrollTop || 0;
+                modalScrollY = window.scrollY || document.documentElement.scrollTop || 0;
                 document.documentElement.classList.add('modal-scroll-locked');
                 document.body.classList.add('modal-open');
                 document.body.style.position = 'fixed';
-                document.body.style.top = `-${lastPageScrollY}px`;
+                document.body.style.top = `-${modalScrollY}px`;
                 document.body.style.left = '0';
                 document.body.style.right = '0';
                 document.body.style.overflow = 'hidden';
             }
         } else {
             if (document.body.classList.contains('modal-open')) {
-                const savedTop = Math.abs(parseInt(document.body.style.top || '0', 10)) || lastPageScrollY;
+                const savedTop = Math.abs(parseInt(document.body.style.top || '0', 10)) || modalScrollY;
                 document.body.style.position = '';
                 document.body.style.top = '';
                 document.body.style.left = '';
@@ -651,6 +661,9 @@
                         document.head.appendChild(s);
                     }
                 });
+
+                // Clean up old modals from document.body prior to swapping content to prevent duplication
+                document.querySelectorAll('body > .modal-overlay, body > .chat-modal-overlay').forEach(el => el.remove());
 
                 // Swap the DOM content
                 mainContent.innerHTML = contentClone.innerHTML;
@@ -1301,7 +1314,6 @@
     window.openModal = function (id) {
         const modal = document.getElementById(id);
         if (!modal) return;
-        lastPageScrollY = window.scrollY || document.documentElement.scrollTop || 0;
         modal.classList.add('active');
         syncModalScrollLock();
         gsap.fromTo(
@@ -1315,7 +1327,6 @@
         const modal = document.getElementById(id);
         if (modal) modal.classList.remove('active');
         syncModalScrollLock();
-        window.scrollTo(0, lastPageScrollY);
     };
 
 

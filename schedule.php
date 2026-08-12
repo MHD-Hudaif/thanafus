@@ -35,6 +35,9 @@ require __DIR__ . '/includes/public-header.php';
       <div class="timeline-row <?= $statusClass ?>" data-session-row="<?= e($item['session'] ?? 'morning') ?>">
         <div class="timeline-time">
           <span class="time-main"><?= e($item['start_time']) ?></span>
+          <?php if (!empty($item['date'])): ?>
+            <span class="time-date" style="display:block; font-size: 0.85em; opacity: 0.8; margin-top: 4px; margin-bottom: 4px;"><i class="fa-regular fa-calendar" style="margin-right: 4px;"></i><?= e($item['date']) ?></span>
+          <?php endif; ?>
           <span class="time-duration"><?= e($item['duration_minutes']) ?> mins</span>
         </div>
 
@@ -45,12 +48,23 @@ require __DIR__ . '/includes/public-header.php';
             <h3 class="timeline-title"><?= e($item['title']) ?></h3>
             <span class="timeline-status <?= $statusClass ?>"><?= $statusLabel ?></span>
           </div>
-          <div class="timeline-meta">
-            <span class="meta-pill meta-category"><i class="fa-solid fa-layer-group"></i> <?= e($item['category'] ?? 'General') ?></span>
-            <?php if (!empty($item['stage'])): ?>
-              <span class="meta-pill meta-stage"><i class="fa-solid fa-location-dot"></i> <?= e($item['stage']) ?></span>
-            <?php endif; ?>
-          </div>
+          <?php if (!empty($item['is_stacked'])): ?>
+            <div class="timeline-stacked" style="display:flex; flex-direction:column; gap:8px; margin-top:12px;">
+              <?php foreach ($item['stacked_programs'] as $sp): ?>
+                <div class="stacked-item" style="background:rgba(0,0,0,0.03); padding:8px 12px; border-radius:8px; border-left:3px solid var(--primary);">
+                  <strong style="display:block; font-size:0.95em; margin-bottom:4px;"><?= e($sp['title']) ?></strong>
+                  <span style="font-size:0.8em; opacity:0.8; margin-right:8px;"><i class="fa-solid fa-layer-group"></i> <?= e($sp['category']) ?></span>
+                </div>
+              <?php endforeach; ?>
+            </div>
+          <?php else: ?>
+            <div class="timeline-meta">
+              <span class="meta-pill meta-category"><i class="fa-solid fa-layer-group"></i> <?= e($item['category'] ?? 'General') ?></span>
+              <?php if (!empty($item['venue'])): ?>
+                <span class="meta-pill meta-stage"><i class="fa-solid fa-location-dot"></i> <?= e($item['venue']) ?></span>
+              <?php endif; ?>
+            </div>
+          <?php endif; ?>
         </div>
       </div>
     <?php endforeach; ?>

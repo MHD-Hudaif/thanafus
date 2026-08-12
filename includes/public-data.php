@@ -95,6 +95,7 @@ function schedule_items(): array
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
         
         $items = [];
+        $offstageGroups = [];
         foreach ($rows as $row) {
             $startTimeStr = $row['start_time'] ? date('H:i', strtotime($row['start_time'])) : '09:00';
             $duration = ($row['start_time'] && $row['end_time']) 
@@ -120,17 +121,64 @@ function schedule_items(): array
                 }
             }
 
-            $items[] = [
-                'id' => (int)$row['id'],
-                'start_time' => $startTimeStr,
-                'title' => $row['title'],
-                'category' => $row['class_name'] ?: 'Open Category',
-                'session' => $session,
-                'duration_minutes' => $duration,
-                'status' => $status,
-                'venue' => $row['location'] ?: ($row['stage_name'] ?: 'Main Venue'),
-            ];
+            $isOffstage = (stripos($row['stage_name'] ?? '', 'off') !== false || stripos($row['location'] ?? '', 'off') !== false);
+            $dateFormatted = $row['start_time'] ? date('M d, Y', strtotime($row['start_time'])) : '';
+            $venue = $row['location'] ?: ($row['stage_name'] ?: 'Main Venue');
+
+            if ($isOffstage) {
+                $groupKey = $startTimeStr . '_' . $dateFormatted . '_' . $session;
+                if (!isset($offstageGroups[$groupKey])) {
+                    $offstageGroups[$groupKey] = [
+                        'id' => (int)$row['id'],
+                        'start_time' => $startTimeStr,
+                        'title' => 'Off-Stage Programs',
+                        'category' => 'Multiple Categories',
+                        'session' => $session,
+                        'duration_minutes' => $duration,
+                        'status' => $status,
+                        'venue' => 'Various Off-Stage Venues',
+                        'date' => $dateFormatted,
+                        'is_stacked' => true,
+                        'stacked_programs' => []
+                    ];
+                }
+                $offstageGroups[$groupKey]['stacked_programs'][] = [
+                    'title' => $row['title'],
+                    'category' => $row['class_name'] ?: 'Open Category',
+                    'venue' => $venue
+                ];
+                if ($duration > $offstageGroups[$groupKey]['duration_minutes']) {
+                    $offstageGroups[$groupKey]['duration_minutes'] = $duration;
+                }
+                if ($status === 'live') {
+                    $offstageGroups[$groupKey]['status'] = 'live';
+                }
+            } else {
+                $items[] = [
+                    'id' => (int)$row['id'],
+                    'start_time' => $startTimeStr,
+                    'title' => $row['title'],
+                    'category' => $row['class_name'] ?: 'Open Category',
+                    'session' => $session,
+                    'duration_minutes' => $duration,
+                    'status' => $status,
+                    'venue' => $venue,
+                    'date' => $dateFormatted,
+                ];
+            }
         }
+        
+        $items = array_merge($items, array_values($offstageGroups));
+        
+        usort($items, function($a, $b) {
+            $timeA = strtotime($a['date'] . ' ' . $a['start_time']);
+            $timeB = strtotime($b['date'] . ' ' . $b['start_time']);
+            if ($timeA == $timeB) {
+                return $a['id'] <=> $b['id'];
+            }
+            return $timeA <=> $timeB;
+        });
+
         return $items;
     } catch (Throwable $e) {
         error_log('schedule_items query failed: ' . $e->getMessage());
