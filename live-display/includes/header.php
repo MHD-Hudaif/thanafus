@@ -35,20 +35,7 @@ $assetBase = live_display_asset_url();
 <body class="tv-body theme-<?= e($settings['theme']) ?> <?= e($tvBodyClass ?? '') ?>">
 <div class="tv-app" id="tvApp">
     <div class="tv-backdrop" aria-hidden="true">
-        <div class="tv-ambient-particles" aria-hidden="true">
-            <div class="tv-particle p1"></div>
-            <div class="tv-particle p2"></div>
-            <div class="tv-particle p3"></div>
-            <div class="tv-particle p4"></div>
-            <div class="tv-particle p5"></div>
-            <div class="tv-particle p6"></div>
-            <div class="tv-particle p7"></div>
-            <div class="tv-particle p8"></div>
-        </div>
-        <div class="tv-geometric"></div>
-        <div class="tv-spotlight tv-spotlight-a"></div>
-        <div class="tv-spotlight tv-spotlight-b"></div>
-        <div class="tv-sweep"></div>
+        <video autoplay loop muted playsinline src="<?= e(asset_url('videos/schedule-background.mp4')) ?>" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1;"></video>
     </div>
     <header class="tv-topbar">
         <div class="tv-brand">

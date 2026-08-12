@@ -98,8 +98,8 @@ $nextProgTime = !empty($initNextProg['start_label']) ? $initNextProg['start_labe
     }
 
     .current-programs-stage-root {
-        width: 100vw;
-        height: 100vh;
+        width: 100%;
+        height: 100%;
         position: relative;
         overflow: hidden;
         display: flex;
@@ -137,7 +137,7 @@ $nextProgTime = !empty($initNextProg['start_label']) ? $initNextProg['start_labe
         --current-neon: var(--first-team-color, #6400a6);
         width: 100%;
         max-width: 1840px;
-        height: 100vh;
+        height: 100%;
         padding: 36px 48px;
         display: flex;
         flex-direction: column;
@@ -490,8 +490,8 @@ $nextProgTime = !empty($initNextProg['start_label']) ? $initNextProg['start_labe
     .bg-3d-cuts-svg {
         position: absolute;
         inset: 0;
-        width: 100vw;
-        height: 100vh;
+        width: 100%;
+        height: 100%;
         pointer-events: none;
         z-index: 0;
     }
@@ -499,8 +499,8 @@ $nextProgTime = !empty($initNextProg['start_label']) ? $initNextProg['start_labe
     .side-chevrons-svg.full-screen {
         position: absolute;
         inset: 0;
-        width: 100vw;
-        height: 100vh;
+        width: 100%;
+        height: 100%;
         pointer-events: none;
         z-index: 1;
     }

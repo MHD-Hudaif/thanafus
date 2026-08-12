@@ -917,3 +917,81 @@ body.sidebar-collapsed .sidebar-collapse-trigger svg {
         width: 100% !important;
     }
 }
+
+/* ── Home Button in Brand Area ── */
+.sidebar-home-btn {
+    position: absolute;
+    right: 44px;
+    top: 18px;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    display: grid;
+    place-items: center;
+    color: rgba(255,255,255,0.45);
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    text-decoration: none;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+    z-index: 15;
+}
+.sidebar-home-btn:hover {
+    color: #10b981;
+    background: rgba(16, 185, 129, 0.12);
+    border-color: rgba(16, 185, 129, 0.3);
+}
+body.sidebar-collapsed .sidebar-home-btn {
+    display: none;
+}
+
+/* ── User Dropdown Menu ── */
+.sidebar-user-dropdown {
+    display: none;
+    flex-direction: column;
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 0;
+    right: 0;
+    background: rgba(10, 15, 26, 0.98);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 14px;
+    padding: 6px;
+    z-index: 9999;
+    box-shadow: 0 -8px 30px rgba(0,0,0,0.5);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+}
+.sidebar-user-dropdown[aria-hidden="false"] {
+    display: flex;
+}
+.sidebar-user-dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 9px 12px;
+    border-radius: 9px;
+    font-size: 13px;
+    font-weight: 600;
+    color: rgba(255,255,255,0.75);
+    text-decoration: none;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+.sidebar-user-dropdown-item:hover {
+    background: rgba(255,255,255,0.07);
+    color: #fff;
+}
+.sidebar-user-dropdown-divider {
+    height: 1px;
+    background: rgba(255,255,255,0.06);
+    margin: 4px 0;
+}
+.sidebar-user-dropdown-danger {
+    color: rgba(239, 68, 68, 0.75);
+}
+.sidebar-user-dropdown-danger:hover {
+    background: rgba(239, 68, 68, 0.12);
+    color: #ef4444;
+}
+

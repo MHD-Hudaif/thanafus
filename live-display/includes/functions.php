@@ -616,6 +616,31 @@ function live_display_program_rows(int $eventId): array
 
 function live_display_program_payload(array $row): array
 {
+    $pdo = live_display_pdo();
+    $stmt = $pdo->prepare("
+        SELECT 
+            t.id,
+            t.team_name,
+            t.team_color,
+            pe.final_rank,
+            COALESCE(SUM(s.total_mark), 0) AS total_points
+        FROM musabaqa_teams t
+        LEFT JOIN musabaqa_program_entries pe ON pe.team_id = t.id AND pe.program_id = ?
+        LEFT JOIN musabaqa_scores s ON s.entry_id = pe.id AND s.judge_name = 'System Final'
+        GROUP BY t.id, pe.final_rank
+        ORDER BY t.id ASC
+    ");
+    $stmt->execute([(int)$row['id']]);
+    $teamMarks = [];
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $tm) {
+        $teamMarks[] = [
+            'team_name' => $tm['team_name'],
+            'team_color' => live_display_color($tm['team_color']),
+            'total_points' => (float)$tm['total_points'],
+            'final_rank' => $tm['final_rank'] !== null ? (int)$tm['final_rank'] : null,
+        ];
+    }
+
     return [
         'id' => (int)$row['id'],
         'title' => $row['title'] ?? 'Program',
@@ -632,6 +657,7 @@ function live_display_program_payload(array $row): array
         'entry_count' => (int)($row['entry_count'] ?? 0),
         'completed_entry_count' => (int)($row['completed_entry_count'] ?? 0),
         'section_id' => isset($row['section_id']) ? (int)$row['section_id'] : null,
+        'team_marks' => $teamMarks,
     ];
 }
 

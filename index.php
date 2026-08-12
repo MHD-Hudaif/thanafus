@@ -86,7 +86,7 @@ try {
             </a>
             
             <ul class="nav-menu">
-                <li><a href="<?= app_url('/home.php') ?>" class="nav-link"><i class="fa-solid fa-chart-line" style="margin-right: 5px; color: #166534;"></i> Live Dashboard</a></li>
+                <li><a href="<?= app_url('/live-display-mobile.php') ?>" class="nav-link"><i class="fa-solid fa-chart-line" style="margin-right: 5px; color: #166534;"></i> Live Dashboard</a></li>
                 <li><a href="#about" class="nav-link">Articles</a></li>
                 <li><a href="#categories" class="nav-link">Categories</a></li>
                 <li><a href="#scholars" class="nav-link">Working Committee</a></li>
@@ -141,9 +141,8 @@ try {
 
             <!-- CTA Actions -->
             <div class="hero-actions">
-                <a href="home.php" class="btn-primary">Live Dashboard</a>
-                <a href="scoreboard.php" class="btn-secondary">View Scoreboard</a>
-                <button id="celebrate-btn" class="btn-secondary">Celebrate 🎉</button>
+                <a href="live-display-mobile.php" class="btn-primary">Live Dashboard</a>
+                <a href="live-display/" class="btn-secondary" target="_blank">Event Slideshow</a>
             </div>
             
             <div style="margin-top: 2rem; font-size: 0.9rem; color: var(--brand-gold); font-weight: 700; letter-spacing: 2px;">
@@ -511,8 +510,8 @@ try {
                     <div class="footer-links-col">
                         <h6>Quick Links</h6>
                         <ul class="footer-links">
-                            <li><a href="home.php">Live Dashboard</a></li>
-                            <li><a href="scoreboard.php">Live Scoreboard</a></li>
+                            <li><a href="live-display-mobile.php">Live Dashboard</a></li>
+                            <li><a href="live-display/" target="_blank">Event Slideshow</a></li>
                             <li><a href="schedule.php">Program Schedule</a></li>
                             <li><a href="admin.php">Management Portal</a></li>
                         </ul>

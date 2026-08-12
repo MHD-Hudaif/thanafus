@@ -671,9 +671,9 @@ function admin_program_approvable(?string $approvalStatus): bool
     return in_array((string) $approvalStatus, ['submitted', 'rejected'], true);
 }
 
-function admin_approve_program_scores(PDO $pdo, int $eventId, int $programId, int $userId): void
+function admin_approve_program_scores(PDO $pdo, int $eventId, int $programId, int $userId, bool $isBulk = false): void
 {
-    admin_db_transaction($pdo, function ($pdo) use ($eventId, $programId, $userId) {
+    admin_db_transaction($pdo, function ($pdo) use ($eventId, $programId, $userId, $isBulk) {
         $stmt = $pdo->prepare('SELECT approval_status FROM musabaqa_programs WHERE id = ? AND event_id = ? LIMIT 1');
         $stmt->execute([$programId, $eventId]);
         $approvalStatus = (string) ($stmt->fetchColumn() ?: '');
@@ -780,10 +780,12 @@ function admin_approve_program_scores(PDO $pdo, int $eventId, int $programId, in
         ");
         $stmt->execute([$userId, $programId, $eventId]);
 
-        admin_recalculate_participant_totals($pdo, $eventId, $programId);
-        admin_recalculate_program_results($pdo, $eventId, $programId);
-        admin_recalculate_team_totals($pdo, $eventId);
-        admin_trigger_live_score_reveal($pdo, $eventId, $programId);
+        if (!$isBulk) {
+            admin_recalculate_participant_totals($pdo, $eventId, $programId);
+            admin_recalculate_program_results($pdo, $eventId, $programId);
+            admin_recalculate_team_totals($pdo, $eventId);
+            admin_trigger_live_score_reveal($pdo, $eventId, $programId);
+        }
 
         admin_log_activity($pdo, $userId, $eventId, 'approve_program_scores', 'musabaqa_programs', $programId, 'Program scores approved and finalized.');
         admin_log_activity($pdo, $userId, $eventId, 'leaderboard_update', 'musabaqa_teams', null, 'Leaderboard totals recalculated from approved program scores.');

@@ -31,9 +31,7 @@ document.querySelector('.tv-topbar')?.setAttribute('hidden', '');
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;700;800;900&family=Outfit:wght@600;700;800;900&family=Cairo:wght@700;800;900&display=swap');
 
 body.tv-schedule-active .tv-topbar,
-body.tv-schedule-active .tv-backdrop,
-body:has(#slide-schedule.tv-slide--active) .tv-topbar,
-body:has(#slide-schedule.tv-slide--active) .tv-backdrop {
+body:has(#slide-schedule.tv-slide--active) .tv-topbar {
     display: none !important;
 }
 
@@ -41,9 +39,9 @@ body:has(#slide-schedule.tv-slide--active) .tv-backdrop {
     padding: 0 !important;
     margin: 0 !important;
     overflow: hidden;
-    background: #f8fafc url('<?= asset_url('images/white-background.png') ?>') center center / cover no-repeat;
+    background: transparent !important;
     font-family: 'Plus Jakarta Sans', 'Outfit', 'Cairo', system-ui, -apple-system, sans-serif;
-    color: #0f172a;
+    color: #fff;
     width: 100% !important;
     height: 100% !important;
     display: flex;
@@ -54,8 +52,8 @@ body:has(#slide-schedule.tv-slide--active) .tv-backdrop {
 }
 
 .tv-schedule-stage-root {
-    width: 100vw;
-    height: 100vh;
+    width: 100%;
+    height: 100%;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -77,7 +75,7 @@ body:has(#slide-schedule.tv-slide--active) .tv-backdrop {
     --panel-glow: color-mix(in srgb, var(--first-team-color, #6400a6) 12%, transparent);
     width: 100%;
     max-width: 1650px;
-    height: 100vh;
+    height: 100%;
     padding: 48px 64px;
     display: flex;
     flex-direction: column;
@@ -87,204 +85,137 @@ body:has(#slide-schedule.tv-slide--active) .tv-backdrop {
     z-index: 2;
 }
 
-/* Light Backdrop Mesh with Subtle Pulse Tinted in 1st Rank Team's Color */
-.ambient-mesh-bg {
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    z-index: 0;
-    background: 
-        radial-gradient(circle at 18% 25%, color-mix(in srgb, var(--first-team-color, #6400a6) 22%, transparent) 0%, transparent 55%),
-        radial-gradient(circle at 82% 75%, color-mix(in srgb, var(--first-team-color, #6400a6) 14%, transparent) 0%, transparent 48%);
-    animation: ambient-pulse 12s ease-in-out infinite alternate;
-}
-
-@keyframes ambient-pulse {
-    0% { opacity: 0.8; transform: scale(1); }
-    100% { opacity: 1; transform: scale(1.04); }
-}
-
-/* Upgraded Page Background & Dynamic 3D Cut Geometric Chevrons */
-.bg-3d-cuts-svg {
-    position: absolute;
-    inset: 0;
-    width: 100vw;
-    height: 100vh;
-    pointer-events: none;
-    z-index: 0;
-}
-
-.side-chevrons-svg.full-screen {
-    position: absolute;
-    inset: 0;
-    width: 100vw;
-    height: 100vh;
-    pointer-events: none;
-    z-index: 1;
-}
-
-#particles-js, .tv-particles {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
-    z-index: 1;
-}
-
-@keyframes bg-chevron-pulse-float {
-    0% {
-        transform: translate3d(0, 0, 0) scale(1);
-        opacity: 0.85;
-    }
-    50% {
-        transform: translate3d(0, -6px, 0) scale(1.008);
-        opacity: 1;
-    }
-    100% {
-        transform: translate3d(0, 0, 0) scale(1);
-        opacity: 0.85;
-    }
-}
-
-@keyframes line-dash-flow {
-    0% {
-        stroke-dashoffset: 400;
-    }
-    100% {
-        stroke-dashoffset: -400;
-    }
-}
-
-.animated-chevron-group {
-    will-change: transform, opacity;
-    animation: bg-chevron-pulse-float 10s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite alternate;
-}
-
-.animated-dash-line {
-    stroke-dasharray: 250 120;
-    will-change: stroke-dashoffset;
-    animation: line-dash-flow 24s linear infinite;
-    transition: stroke 1.4s cubic-bezier(0.19, 1, 0.22, 1), opacity 1.4s cubic-bezier(0.19, 1, 0.22, 1);
-}
-
-.animated-cross-line {
-    transition: stroke 1.4s cubic-bezier(0.19, 1, 0.22, 1), opacity 1.4s cubic-bezier(0.19, 1, 0.22, 1);
-}
-
 /* Title Header style: Pure Minimalist */
 .schedule-slide-title {
     font-size: 38px;
     font-weight: 900;
     text-transform: uppercase;
     letter-spacing: -0.01em;
-    color: #0f172a;
+    color: #fff !important;
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding-bottom: 16px;
     margin-bottom: 24px;
     font-family: 'Plus Jakarta Sans', sans-serif;
-    border-bottom: 2px solid color-mix(in srgb, var(--first-team-color) 30%, transparent);
+    border-bottom: 2px solid rgba(255, 255, 255, 0.15);
 }
 
 .page-count-badge {
     font-size: 16px;
     font-weight: 800;
-    color: #0f172a;
-    background: rgba(255, 255, 255, 0.9);
+    color: #fff !important;
+    background: rgba(255, 255, 255, 0.08);
     backdrop-filter: blur(16px);
-    border: 1.5px solid color-mix(in srgb, var(--first-team-color) 35%, white);
+    border: 1.5px solid rgba(255, 255, 255, 0.15);
     padding: 8px 20px;
     border-radius: 30px;
     letter-spacing: 0.05em;
-    box-shadow: 0 8px 20px rgba(0,0,0,0.04);
 }
 
-/* Schedule Board Glass container */
-.tv-schedule-board {
-    background: rgba(255, 255, 255, 0.84);
-    backdrop-filter: blur(40px);
-    -webkit-backdrop-filter: blur(40px);
-    border: 1.5px solid color-mix(in srgb, var(--first-team-color) 25%, rgba(255, 255, 255, 0.95));
-    border-radius: 36px;
+.schedule-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: rgba(255, 255, 255, 0.88);
+    backdrop-filter: blur(30px);
+    -webkit-backdrop-filter: blur(30px);
+    border-radius: 16px;
     overflow: hidden;
-    box-shadow: 0 24px 60px -12px rgba(0, 0, 0, 0.05);
-    display: flex;
-    flex-direction: column;
-    transition: border-color 1.2s ease;
-    position: relative;
+    z-index: 1;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.4);
 }
 
-.card-chevrons-svg {
-    position: absolute !important;
-    top: 0 !important;
-    left: 0 !important;
-    right: 0 !important;
-    bottom: 0 !important;
-    width: 100% !important;
-    height: 100% !important;
-    pointer-events: none !important;
-    z-index: 0 !important;
-    overflow: hidden !important;
+.schedule-table th,
+.schedule-table td {
+    padding: 22px 32px;
+    text-align: left;
+    border-bottom: 1px solid rgba(15, 23, 42, 0.08);
 }
 
-/* Table Header - 4 Column Layout */
-.tv-schedule-board-head {
-    display: grid;
-    grid-template-columns: 90px 180px minmax(0, 1fr) 280px;
-    align-items: center;
-    height: 60px;
-    background: rgba(15, 23, 42, 0.04);
-    border-bottom: 1.5px solid rgba(15, 23, 42, 0.08);
-    grid-template-columns: 80px 220px 1fr 240px;
-    padding: 16px 36px;
-    background: rgba(241, 245, 249, 0.7);
-    border-bottom: 2px solid color-mix(in srgb, var(--first-team-color, #6400a6) 30%, transparent);
-    font-size: 14px;
+.schedule-table th {
+    background-color: rgba(241, 245, 249, 0.95);
+    font-size: 26px;
+    color: #1e293b;
     font-weight: 900;
-    color: #64748b;
-    letter-spacing: 0.1em;
     text-transform: uppercase;
+    letter-spacing: 0.05em;
 }
 
-.tv-schedule-page {
-    display: flex;
-    flex-direction: column;
+.date-header-row {
+    background-color: rgba(226, 232, 240, 0.9);
+    font-weight: bold;
+    font-size: 24px;
 }
 
-.tv-schedule-row {
-    display: grid;
-    grid-template-columns: 80px 220px 1fr 240px;
-    align-items: center;
-    padding: 16px 36px;
-    border-bottom: 1px solid rgba(226, 232, 240, 0.8);
-    transition: background 0.25s ease;
+.date-header {
+    color: #0f172a;
+    font-family: 'Outfit', sans-serif;
+    font-weight: 800;
 }
 
-.tv-schedule-row:last-child {
-    border-bottom: none;
+.program-row {
+    vertical-align: middle;
+    background: rgba(255, 255, 255, 0.6);
+    color: #1e293b;
 }
 
-/* Highlight Active Running Program */
-.tv-schedule-row.is-running-program {
-    background: color-mix(in srgb, var(--first-team-color, #6400a6) 10%, transparent) !important;
-    border-left: 8px solid var(--first-team-color, #6400a6) !important;
-    box-shadow: inset 0 0 24px color-mix(in srgb, var(--first-team-color, #6400a6) 8%, transparent);
+.program-row td {
+    color: #1e293b;
+    font-weight: 700;
+    font-size: 23px;
 }
 
-.tv-schedule-row.is-running-program .tv-schedule-row-num {
-    color: var(--first-team-color, #6400a6);
+.program-row.is-running-program {
+    background: color-mix(in srgb, var(--first-team-color, #6400a6) 12%, rgba(255, 255, 255, 0.7)) !important;
+    border-left: 10px solid var(--first-team-color, #6400a6) !important;
+}
+
+.program-row.is-break {
+    background: rgba(245, 158, 11, 0.12) !important;
+    border-left: 8px solid #f59e0b !important;
+}
+
+.section-badge {
+    display: inline-block;
+    background-color: #ffd700;
+    color: #000;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 16px;
     font-weight: 900;
+    margin-left: 16px;
 }
 
-.tv-schedule-row.is-running-program .tv-schedule-row-program strong {
-    color: var(--first-team-color, #6400a6);
+.marks {
+    font-size: 22px;
+    font-weight: bold;
 }
 
-.tv-schedule-row.is-break {
-    background: rgba(245, 158, 11, 0.06) !important;
-    border-left: 6px solid #f59e0b !important;
+.rank-badge {
+    display: inline-block;
+    padding: 6px 14px;
+    border-radius: 8px;
+    font-size: 18px;
+    font-weight: 900;
+    margin-right: 12px;
+    text-align: center;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+.rank-badge.rank-1 {
+    background-color: #22c55e !important;
+    color: #fff !important;
+}
+
+.rank-badge.rank-2 {
+    background-color: #eab308 !important;
+    color: #000 !important;
+}
+
+.rank-badge.rank-3 {
+    background-color: #3b82f6 !important;
+    color: #fff !important;
 }
 
 .tv-schedule-row-live-badge {
@@ -301,6 +232,7 @@ body:has(#slide-schedule.tv-slide--active) .tv-backdrop {
     letter-spacing: 0.08em;
     text-transform: uppercase;
     flex-shrink: 0;
+    margin-left: 12px;
 }
 
 .tv-schedule-row-live-badge .live-dot {
@@ -316,49 +248,12 @@ body:has(#slide-schedule.tv-slide--active) .tv-backdrop {
     0% { opacity: 0.4; transform: scale(0.9); }
     100% { opacity: 1; transform: scale(1.3); }
 }
-
-.tv-schedule-row-location {
-    font-size: 20px;
-    font-weight: 800;
-    color: #475569;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js" defer></script>
 
-<div class="tv-schedule-stage-root" data-schedule-stage-root style="--first-team-color: <?= e($firstTeamColor) ?>; --top-team-color: <?= e($firstTeamColor) ?>;">
-    <!-- 3D Relief Geometric Layer Cuts Background -->
-    <svg class="bg-3d-cuts-svg" viewBox="0 0 1920 1080" preserveAspectRatio="none" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <filter id="cutShadowSchedule" x="-20%" y="-20%" width="140%" height="140%">
-            <feDropShadow dx="-8" dy="12" stdDeviation="15" flood-color="rgba(0,0,0,0.06)" />
-        </filter>
-        <polygon points="-100,1200 650,540 -100,-100" fill="#ffffff" filter="url(#cutShadowSchedule)" />
-        <polygon points="-100,1050 480,540 -100,30" fill="rgba(250,250,252,0.92)" filter="url(#cutShadowSchedule)" />
-        <polygon points="2020,1200 1270,540 2020,-100" fill="#ffffff" filter="url(#cutShadowSchedule)" />
-        <polygon points="2020,1050 1440,540 2020,30" fill="rgba(250,250,252,0.92)" filter="url(#cutShadowSchedule)" />
-    </svg>
-
-    <!-- Dynamic 1st Rank Team Geometric Chevron Vectors -->
-    <svg class="side-chevrons-svg full-screen" viewBox="0 0 1920 1080" preserveAspectRatio="none" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <g class="animated-chevron-group">
-            <path class="animated-dash-line" d="M-100 1200 L650 540 L-100 -100" stroke="var(--first-team-color)" stroke-width="3" stroke-linecap="round" />
-            <path class="animated-dash-line" d="M-150 1050 L480 540 L-150 30" stroke="var(--first-team-color)" stroke-width="2" opacity="0.8" stroke-linecap="round" />
-            <line class="animated-cross-line" x1="200" y1="900" x2="420" y2="680" stroke="var(--first-team-color)" stroke-width="2" opacity="0.75" />
-            <line class="animated-cross-line" x1="320" y1="780" x2="540" y2="560" stroke="var(--first-team-color)" stroke-width="2" opacity="0.75" />
-
-            <path class="animated-dash-line" d="M2020 1200 L1270 540 L2020 -100" stroke="var(--first-team-color)" stroke-width="3" stroke-linecap="round" />
-            <path class="animated-dash-line" d="M2070 1050 L1440 540 L2070 30" stroke="var(--first-team-color)" stroke-width="2" opacity="0.8" stroke-linecap="round" />
-            <line class="animated-cross-line" x1="1720" y1="900" x2="1500" y2="680" stroke="var(--first-team-color)" stroke-width="2" opacity="0.75" />
-        </g>
-    </svg>
-
-    <div class="ambient-mesh-bg"></div>
-    <div id="particles-js" class="tv-particles"></div>
-
-    <div class="tv-schedule" data-schedule></div>
+<div class="tv-schedule-stage-root" data-schedule-stage-root style="--first-team-color: <?= e($firstTeamColor) ?>; --top-team-color: <?= e($firstTeamColor) ?>; width: 100%; height: 100%;">
+    <div class="tv-schedule" data-schedule style="width: 100%; height: 100%;"></div>
 </div>
 
 <script>

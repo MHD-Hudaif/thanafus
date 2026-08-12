@@ -346,6 +346,10 @@ function working_committee(): array
                         $image = 'https://daruliftakauzariyya.com/team-photos/Usthad-Ilyas.png';
                     } elseif (stripos($r['full_name'], 'Abid') !== false) {
                         $image = 'https://daruliftakauzariyya.com/team-photos/Abid.png';
+                    } elseif (stripos($r['full_name'], 'Answaf') !== false) {
+                        $image = asset_url('images/committee/ansaf.png');
+                    } elseif (stripos($r['full_name'], 'Adhil') !== false) {
+                        $image = asset_url('images/committee/adil.png');
                     } else {
                         $cleanName = trim(preg_replace('/^(Usthad|Mufti|Al|Moulana)\s+/i', '', $r['full_name']));
                         $image = 'https://ui-avatars.com/api/?name=' . urlencode($cleanName) . '&background=073a69&color=c9a84c&size=512&font-size=0.42&bold=true';

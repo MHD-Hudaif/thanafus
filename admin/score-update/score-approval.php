@@ -491,8 +491,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' || isset($_GET['ajax']) || isset($_GET
                     throw new RuntimeException('No programs ready for approval in this session.');
                 }
                 foreach ($programIds as $pid) {
-                    admin_approve_program_scores($pdo, $activeEventId, $pid, $currentUserId);
+                    admin_approve_program_scores($pdo, $activeEventId, $pid, $currentUserId, true);
                 }
+                foreach ($programIds as $pid) {
+                    admin_recalculate_participant_totals($pdo, $activeEventId, $pid);
+                    admin_recalculate_program_results($pdo, $activeEventId, $pid);
+                }
+                admin_recalculate_team_totals($pdo, $activeEventId);
+                admin_trigger_live_score_reveal($pdo, $activeEventId, $programIds);
             });
             if ($isAjax) {
                 header('Content-Type: application/json; charset=utf-8');

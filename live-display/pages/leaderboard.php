@@ -73,8 +73,8 @@ body:has(#slide-leaderboard.tv-slide--active) .tv-topbar {
 .bg-3d-cuts-svg {
     position: absolute;
     inset: 0;
-    width: 100vw;
-    height: 100vh;
+    width: 100%;
+    height: 100%;
     pointer-events: none;
     z-index: 0;
 }
@@ -82,8 +82,8 @@ body:has(#slide-leaderboard.tv-slide--active) .tv-topbar {
 .side-chevrons-svg.full-screen {
     position: absolute;
     inset: 0;
-    width: 100vw;
-    height: 100vh;
+    width: 100%;
+    height: 100%;
     pointer-events: none;
     z-index: 1;
 }
@@ -120,8 +120,8 @@ body:has(#slide-leaderboard.tv-slide--active) .tv-topbar {
     position: relative;
     width: 1050px;
     height: 820px;
-    max-width: 96vw;
-    max-height: 94vh;
+    max-width: 96%;
+    max-height: 94%;
     display: flex;
     align-items: center;
     justify-content: center;

@@ -701,23 +701,17 @@
                     <span>Program Schedule</span>
                     <span class="page-count-badge" data-schedule-page-badge>Page ${curPage + 1} / ${totalPages}</span>
                 </div>
-                <div class="tv-schedule-board">
-                    <svg class="card-chevrons-svg" viewBox="0 0 800 500" preserveAspectRatio="none" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <g class="animated-card-group">
-                            <path class="animated-dash-line" d="M-50 480 L350 80 L-50 -320" stroke="var(--first-team-color, #6400a6)" stroke-width="2.5" opacity="0.4" stroke-linecap="round"/>
-                            <path class="animated-dash-line" d="M850 480 L450 80 L850 -320" stroke="var(--first-team-color, #6400a6)" stroke-width="2.5" opacity="0.4" stroke-linecap="round"/>
-                        </g>
-                    </svg>
-                    <div class="tv-schedule-board-head" style="position: relative; z-index: 2;">
-                        <span>#</span>
-                        <span>Time</span>
-                        <span>Program</span>
-                        <span>Venue</span>
-                    </div>
-                    <div class="tv-schedule-page-wrapper" style="overflow: hidden; position: relative; z-index: 2;">
-                        <div class="tv-schedule-page" data-schedule-page></div>
-                    </div>
-                </div>
+                <table class="schedule-table">
+                    <thead>
+                        <tr>
+                            <th>Program</th>
+                            <th>Marks</th>
+                            <th>Time</th>
+                        </tr>
+                    </thead>
+                    <tbody data-schedule-page>
+                    </tbody>
+                </table>
             </div>
         `;
     }
@@ -764,15 +758,17 @@
             badgeEl.textContent = `Page ${index + 1} / ${totalPages}`;
         }
 
-        const currentRows = Array.from(pageEl.querySelectorAll('.tv-schedule-row'));
+        const currentRows = Array.from(pageEl.querySelectorAll('.program-row, .date-header-row'));
 
         const updateAndAnimateIn = () => {
             if (!page.length) {
                 pageEl.innerHTML = `
-                    <div class="tv-schedule-empty" style="padding: 48px; text-align: center;">
-                        <strong style="font-size: 24px; display: block; margin-bottom: 8px;">No programs scheduled</strong>
-                        <span style="color: #64748b;">Stand by for upcoming competition events.</span>
-                    </div>
+                    <tr>
+                        <td colspan="3" class="tv-schedule-empty" style="padding: 48px; text-align: center; color: #64748b;">
+                            <strong style="font-size: 24px; display: block; margin-bottom: 8px; color: #fff;">No programs scheduled</strong>
+                            <span>Stand by for upcoming competition events.</span>
+                        </td>
+                    </tr>
                 `;
                 return;
             }
@@ -790,23 +786,49 @@
                 });
             }
 
-            pageEl.innerHTML = page.map((item, rowIndex) => {
+            // Dynamically build a map of date -> Day X across all rows
+            const uniqueDates = [...new Set(allRows.map(r => r.start_time ? r.start_time.split(' ')[0] : ''))]
+                .filter(Boolean)
+                .sort();
+            const dateToDayMap = {};
+            uniqueDates.forEach((d, idx) => {
+                dateToDayMap[d] = `Day ${idx + 1}`;
+            });
+
+            let html = '';
+            let lastDay = null;
+
+            page.forEach((item, rowIndex) => {
                 const globalIndex = (index * scheduleRowsPerPage()) + rowIndex;
                 const isCurrentRunning = (globalIndex === runningGlobalIndex && item.type !== 'break');
                 const isBreak = (item.type === 'break');
-                const time = item.start_label || item.start_time || '--';
+                
+                let timeStr = '—';
+                if (item.start_label) {
+                    timeStr = item.start_label;
+                    if (item.end_label) {
+                        timeStr += ` - ${item.end_label}`;
+                    }
+                } else if (item.start_time) {
+                    timeStr = item.start_time;
+                }
+
                 const rawCategory = item.category || item.class_type_name || item.class_name || item.section_name || '';
                 const title = item.title || item.name || 'Program';
                 const secName = tvFormatScheduleSectionName(rawCategory);
 
-                let programLabel = title;
-                if (secName && secName.toLowerCase() !== title.toLowerCase()) {
-                    programLabel = `${title} ${secName}`;
+                const itemDate = item.start_time ? item.start_time.split(' ')[0] : '';
+                const currentDay = dateToDayMap[itemDate] || 'Unknown Day';
+                if (lastDay !== currentDay) {
+                    html += `
+                        <tr class="date-header-row">
+                            <td colspan="3" class="date-header">${escapeHtml(currentDay)}</td>
+                        </tr>
+                    `;
+                    lastDay = currentDay;
                 }
 
-                const rowNumber = String(globalIndex + 1).padStart(2, '0');
-
-                let rowClasses = ['tv-schedule-row'];
+                let rowClasses = ['program-row'];
                 let rowAccent = '#3b82f6';
 
                 if (isCurrentRunning) {
@@ -817,26 +839,45 @@
                     rowAccent = '#f59e0b';
                 }
 
-                let venueName = item.location || item.venue || '';
-                if (!venueName || venueName.trim() === '' || venueName.toLowerCase() === 'normal stage') {
-                    venueName = (item.stage && item.stage.toLowerCase() !== 'normal stage') ? item.stage : 'Main Stage';
-                }
+                const secBadge = secName ? `<span class="section-badge">${escapeHtml(secName)}</span>` : '';
+                
+                const marksHtml = (item.team_marks || [])
+                    .filter(tm => tm.final_rank && tm.final_rank >= 1 && tm.final_rank <= 3)
+                    .sort((a, b) => a.final_rank - b.final_rank)
+                    .map(tm => {
+                        if (tm.final_rank === 1) {
+                            return `<span class="rank-badge rank-1" style="border: 3px solid ${escapeHtml(tm.team_color)};">1st</span>`;
+                        } else if (tm.final_rank === 2) {
+                            return `<span class="rank-badge rank-2" style="border: 3px solid ${escapeHtml(tm.team_color)};">2nd</span>`;
+                        } else if (tm.final_rank === 3) {
+                            return `<span class="rank-badge rank-3" style="border: 3px solid ${escapeHtml(tm.team_color)};">3rd</span>`;
+                        }
+                        return '';
+                    }).join('');
 
-                return `
-                    <article class="${rowClasses.join(' ')}" style="--row-neon:${escapeHtml(rowAccent)}">
-                        <div class="tv-schedule-row-num">${rowNumber}</div>
-                        <div class="tv-schedule-row-time">${escapeHtml(time)}</div>
-                        <div class="tv-schedule-row-program">
-                            <strong>${escapeHtml(programLabel)}</strong>
-                            ${isCurrentRunning ? '<span class="tv-schedule-row-live-badge"><span class="live-dot"></span> LIVE</span>' : ''}
-                        </div>
-                        <div class="tv-schedule-row-location">${escapeHtml(venueName)}</div>
-                    </article>
+                const liveBadge = isCurrentRunning ? '<span class="tv-schedule-row-live-badge"><span class="live-dot"></span> LIVE</span>' : '';
+
+                html += `
+                    <tr class="${rowClasses.join(' ')}" style="--row-neon:${escapeHtml(rowAccent)}">
+                        <td>
+                            ${escapeHtml(title)}
+                            ${secBadge}
+                            ${liveBadge}
+                        </td>
+                        <td class="marks">
+                            ${marksHtml}
+                        </td>
+                        <td>
+                            ${escapeHtml(timeStr)}
+                        </td>
+                    </tr>
                 `;
-            }).join('');
+            });
+
+            pageEl.innerHTML = html;
 
             if (typeof gsap !== 'undefined') {
-                const rows = pageEl.querySelectorAll('.tv-schedule-row');
+                const rows = pageEl.querySelectorAll('.program-row, .date-header-row');
                 gsap.fromTo(rows, {
                     opacity: 0,
                     x: 35,
@@ -1492,31 +1533,12 @@
         if (!scaler) return;
 
         const updateScale = () => {
-            const vw = window.innerWidth;
-            const vh = window.innerHeight;
-
-            if (vw > 768) {
-                const baseW = 1920;
-                const baseH = 1080;
-                const scale = Math.min(vw / baseW, vh / baseH);
-
-                if (scale < 0.96 || scale > 1.04) {
-                    scaler.style.transform = `scale(${scale.toFixed(4)})`;
-                    scaler.style.width = `${baseW}px`;
-                    scaler.style.height = `${baseH}px`;
-                    scaler.style.margin = 'auto';
-                } else {
-                    scaler.style.transform = 'none';
-                    scaler.style.width = '100%';
-                    scaler.style.height = '100%';
-                    scaler.style.margin = '0';
-                }
-            } else {
-                scaler.style.transform = 'none';
-                scaler.style.width = '100%';
-                scaler.style.height = '100%';
-                scaler.style.margin = '0';
-            }
+            scaler.style.transform = 'none';
+            scaler.style.width = '100%';
+            scaler.style.height = '100%';
+            scaler.style.position = 'absolute';
+            scaler.style.inset = '0';
+            scaler.style.margin = '0';
         };
 
         updateScale();
