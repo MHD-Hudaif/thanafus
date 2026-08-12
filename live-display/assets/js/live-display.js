@@ -1565,6 +1565,46 @@
         }
     }
 
+    window.toggleTvFullscreen = function() {
+        const doc = window.document;
+        const docEl = doc.documentElement;
+
+        const requestFS = docEl.requestFullscreen || docEl.webkitRequestFullscreen || docEl.mozRequestFullScreen || docEl.msRequestFullscreen;
+        const cancelFS = doc.exitFullscreen || doc.webkitExitFullscreen || doc.mozCancelFullScreen || doc.msExitFullscreen;
+
+        const isFS = doc.fullscreenElement || doc.webkitFullscreenElement || doc.mozFullScreenElement || doc.msFullscreenElement;
+
+        if (!isFS) {
+            if (requestFS) {
+                const fsPromise = requestFS.call(docEl);
+                if (fsPromise && typeof fsPromise.then === 'function') {
+                    fsPromise.then(() => {
+                        if (screen.orientation && typeof screen.orientation.lock === 'function') {
+                            screen.orientation.lock('landscape').catch(() => {});
+                        }
+                    }).catch(() => {});
+                }
+            }
+        } else {
+            if (cancelFS) {
+                cancelFS.call(doc).catch(() => {});
+            }
+        }
+    };
+
+    function updateFsIcon() {
+        const doc = window.document;
+        const isFS = !!(doc.fullscreenElement || doc.webkitFullscreenElement || doc.mozFullScreenElement || doc.msFullscreenElement);
+        const fsIcon = document.getElementById('tvFsIcon');
+        if (fsIcon) {
+            fsIcon.className = isFS ? 'fa-solid fa-compress' : 'fa-solid fa-expand';
+        }
+    }
+
+    ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange'].forEach(evt => {
+        document.addEventListener(evt, updateFsIcon, { passive: true });
+    });
+
     let tvWakeLock = null;
     async function initWakeLock() {
         if ('wakeLock' in navigator) {

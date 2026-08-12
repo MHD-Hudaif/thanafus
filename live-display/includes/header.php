@@ -38,9 +38,12 @@ $assetBase = live_display_asset_url();
         <video autoplay loop muted playsinline src="<?= e(asset_url('videos/schedule-background.mp4')) ?>" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1;"></video>
     </div>
 
-    <div class="tv-orientation-hint" id="tvOrientationHint" aria-hidden="true">
+    <div class="tv-orientation-hint" id="tvOrientationHint">
         <i class="fa-solid fa-mobile-screen-button"></i>
-        <span>Landscape 16:9 Locked Stage &bull; Rotate device for full view</span>
+        <span>Landscape 16:9 Stage</span>
+        <button type="button" class="tv-hint-fs-btn" id="tvHintFsBtn" onclick="toggleTvFullscreen()" aria-label="Full Screen">
+            <i class="fa-solid fa-expand"></i> Full Screen
+        </button>
     </div>
 
     <div class="tv-viewport-scaler" id="tvViewportScaler">
@@ -53,6 +56,9 @@ $assetBase = live_display_asset_url();
                 </div>
             </div>
             <div class="tv-topbar-right">
+                <button type="button" class="tv-fullscreen-btn" id="tvFullscreenBtn" onclick="toggleTvFullscreen()" aria-label="Toggle Full Screen" title="Toggle Full Screen">
+                    <i class="fa-solid fa-expand" id="tvFsIcon"></i>
+                </button>
                 <div class="tv-live-chip"><span></span> Live</div>
                 <div class="tv-clock" id="tvClock">--:--</div>
             </div>
