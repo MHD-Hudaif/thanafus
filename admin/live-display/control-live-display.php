@@ -24,7 +24,7 @@ try {
             event_id INT NULL,
             slide_key VARCHAR(50) NOT NULL,
             title VARCHAR(255) NOT NULL,
-            duration INT NOT NULL DEFAULT 15000,
+            duration INT NOT NULL DEFAULT 5000,
             is_enabled TINYINT(1) NOT NULL DEFAULT 1,
             sort_order INT NOT NULL DEFAULT 0,
             style VARCHAR(50) NOT NULL DEFAULT 'classic',
@@ -36,10 +36,10 @@ try {
 
 
 $defaultSlides = [
-    'intro' => ['Welcome Intro', 12000, 1],
-    'leaderboard' => ['Team Leaderboard', 16000, 2],
-    'schedule' => ['Upcoming Programs', 18000, 3],
-    'current-program' => ['Main Stage (Now Performing)', 18000, 4]
+    'intro'           => ['Welcome Intro',              10000, 1],
+    'leaderboard'     => ['Team Leaderboard',             5000, 2],
+    'schedule'        => ['Upcoming Programs',            5000, 3],
+    'current-program' => ['Main Stage (Now Performing)', 5000, 4]
 ];
 
 $insertStmt = $pdo->prepare("
@@ -51,6 +51,18 @@ foreach ($defaultSlides as $key => $slide) {
         $insertStmt->execute([$activeEventId, $key, $slide[0], $slide[1], $slide[2]]);
     }
 }
+
+// Normalize existing rows: if a non-intro slide still has an old high default (>= 16000ms),
+// reset it to the new default of 5000ms so the UI shows sensible values on first load.
+try {
+    $pdo->prepare("
+        UPDATE musabaqa_live_display_components
+        SET duration = 5000
+        WHERE event_id = ?
+          AND slide_key IN ('leaderboard', 'schedule', 'current-program')
+          AND duration >= 16000
+    ")->execute([$activeEventId]);
+} catch (Throwable $e) { /* non-fatal */ }
 
 // POST Save Slide components
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'save_slides') {
@@ -193,12 +205,14 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                         </td>
                                         <td>
                                             <input type="number" 
-                                                   name="slides[<?= e($c['slide_key']) ?>][duration]" 
-                                                   value="<?= (int)($c['duration'] / 1000) ?>" 
-                                                   min="3" 
-                                                   class="form-control" 
-                                                   style="width: 70px; padding: 4px;"
-                                                   required>
+                                                    name="slides[<?= e($c['slide_key']) ?>][duration]" 
+                                                    value="<?= (int)($c['duration'] / 1000) ?>" 
+                                                    min="1" 
+                                                    max="300"
+                                                    class="form-control" 
+                                                    style="width: 70px; padding: 4px;"
+                                                    title="Duration in seconds. Min: 1s. Video/intro slides: 10–30s recommended."
+                                                    required>
                                         </td>
                                         <td>
                                             <?php if ($c['slide_key'] === 'leaderboard'): ?>
@@ -446,14 +460,15 @@ require_once __DIR__ . '/../../includes/sidebar.php';
         btn.addEventListener('click', async function() {
             const key = this.dataset.key;
             const res = await postSettings('slide', { slide: key });
-            if (res && res.success) {
-                // Change loop buttons visual mode state
-                const manual = document.getElementById('btnModeManual');
-                if (manual) manual.className = 'btn btn-primary btn-sm';
-                const auto = document.getElementById('btnModeAuto');
-                if (auto) auto.className = 'btn btn-secondary btn-sm';
-                // Trigger preview iframe immediately
-                if (iframe) iframe.src = `${window.APP_CONFIG.baseUrl}/live-display/${key}.php`;
+                if (res && res.success) {
+                    // Change loop buttons visual mode state
+                    const manual = document.getElementById('btnModeManual');
+                    if (manual) manual.className = 'btn btn-primary btn-sm';
+                    const auto = document.getElementById('btnModeAuto');
+                    if (auto) auto.className = 'btn btn-secondary btn-sm';
+                    // Trigger preview iframe immediately
+                    const base = (window.APP_CONFIG?.baseUrl || '').replace(/\/$/, '');
+                    if (iframe) iframe.src = `${base}/live-display/${key}.php`;
             }
         });
     });

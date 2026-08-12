@@ -125,31 +125,31 @@ function live_display_default_slides(): array
 {
     return [
         'intro' => [
-            'key' => 'intro',
-            'title' => 'Grand Opening',
-            'duration' => 12000,
-            'enabled' => true,
+            'key'        => 'intro',
+            'title'      => 'Grand Opening',
+            'duration'   => 10000,
+            'enabled'    => true,
             'sort_order' => 1,
         ],
         'leaderboard' => [
-            'key' => 'leaderboard',
-            'title' => 'Live Leaderboard',
-            'duration' => 16000,
-            'enabled' => true,
+            'key'        => 'leaderboard',
+            'title'      => 'Live Leaderboard',
+            'duration'   => 5000,
+            'enabled'    => true,
             'sort_order' => 2,
         ],
         'schedule' => [
-            'key' => 'schedule',
-            'title' => 'Upcoming Programs',
-            'duration' => 18000,
-            'enabled' => true,
+            'key'        => 'schedule',
+            'title'      => 'Upcoming Programs',
+            'duration'   => 5000,
+            'enabled'    => true,
             'sort_order' => 3,
         ],
         'current-program' => [
-            'key' => 'current-program',
-            'title' => 'Current Stage',
-            'duration' => 18000,
-            'enabled' => true,
+            'key'        => 'current-program',
+            'title'      => 'Current Stage',
+            'duration'   => 5000,
+            'enabled'    => true,
             'sort_order' => 4,
         ]
     ];
@@ -239,7 +239,7 @@ function live_display_legacy_component_settings(PDO $pdo, int $eventId): array
         $slides[$key] = [
             'key' => $key,
             'title' => (string)($row['title'] ?: ucfirst($key)),
-            'duration' => max(3000, (int)$row['duration']),
+            'duration'   => max(1000, (int)$row['duration']),
             'enabled' => (int)$row['is_enabled'] === 1,
             'sort_order' => (int)$row['sort_order'],
             'style' => (string)($row['style'] ?? 'classic'),
@@ -267,7 +267,7 @@ function live_display_normalize_settings(array $settings): array
     foreach ($defaults['slides'] as $key => $slide) {
         $cleanSlides[$key] = live_display_merge_settings($slide, $settings['slides'][$key] ?? []);
         $cleanSlides[$key]['key'] = $key;
-        $cleanSlides[$key]['duration'] = max(3000, min(120000, (int)$cleanSlides[$key]['duration']));
+        $cleanSlides[$key]['duration'] = max(1000, min(120000, (int)$cleanSlides[$key]['duration']));
         $cleanSlides[$key]['enabled'] = (bool)$cleanSlides[$key]['enabled'];
         $cleanSlides[$key]['sort_order'] = (int)$cleanSlides[$key]['sort_order'];
         if ($key === 'leaderboard') {
@@ -1286,7 +1286,7 @@ function live_display_sanitize_dashboard_settings(array $post, array $current): 
         }
 
         $settings['slides'][$key]['title'] = trim((string)($slide['title'] ?? $settings['slides'][$key]['title']));
-        $settings['slides'][$key]['duration'] = max(3, (int)($slide['duration'] ?? 10)) * 1000;
+        $settings['slides'][$key]['duration'] = max(1, (int)($slide['duration'] ?? 5)) * 1000;
         $settings['slides'][$key]['sort_order'] = (int)($slide['sort_order'] ?? $settings['slides'][$key]['sort_order']);
         $settings['slides'][$key]['enabled'] = isset($slide['enabled']);
     }

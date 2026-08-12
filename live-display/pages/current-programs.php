@@ -611,7 +611,7 @@ $nextProgTime = !empty($initNextProg['start_label']) ? $initNextProg['start_labe
             <!-- Main Panel (Program Title + Section & Active Performer) -->
             <main class="glass-panel now-performing-card">
                 <div>
-                    <h1 class="program-title-display" data-current-title><?= $initRenderTitle ?></h1>
+                    <h1 class="program-title-display" data-current-title><?= e($initFullTitle) ?></h1>
                 </div>
 
                 <!-- Performer Hero Details -->

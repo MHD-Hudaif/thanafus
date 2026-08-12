@@ -3333,6 +3333,179 @@ body.tv-leaderboard-only #tvApp {
     transform: scale(1.04);
 }
 
+/* =====================================================
+   REDESIGNED SCHEDULE TABLE CARD (LIGHT MINT MATCH)
+   ===================================================== */
+.schedule-table-card {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.94);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border-radius: 24px;
+    border: 1px solid rgba(226, 232, 240, 0.9);
+    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+    z-index: 1;
+}
+
+.schedule-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: transparent;
+}
+
+.schedule-table th {
+    background-color: rgba(248, 250, 252, 0.95);
+    font-size: 12px;
+    color: #64748b;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    padding: 18px 24px;
+    border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+    text-align: left;
+}
+
+.schedule-table td {
+    padding: 16px 24px;
+    text-align: left;
+    border-bottom: 1px solid rgba(241, 245, 249, 0.9);
+    vertical-align: middle;
+}
+
+.program-row {
+    background: #ffffff;
+    transition: background 0.2s ease;
+    border-left: 5px solid transparent;
+}
+
+.program-row.is-running-program {
+    background: rgba(236, 253, 245, 0.85) !important;
+    border-left: 5px solid #10b981 !important;
+}
+
+.program-row.is-break {
+    background: rgba(254, 243, 199, 0.6) !important;
+    border-left: 5px solid #f59e0b !important;
+}
+
+/* Bracketed Number Badges */
+.num-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 900;
+    font-family: 'Space Grotesk', 'Plus Jakarta Sans', sans-serif;
+    letter-spacing: 0.05em;
+    min-width: 44px;
+}
+
+.num-badge.num-green {
+    background: rgba(209, 250, 229, 0.8);
+    color: #047857;
+    border-left: 2.5px solid #10b981;
+    border-right: 2.5px solid #10b981;
+}
+
+.num-badge.num-blue {
+    background: rgba(219, 234, 254, 0.8);
+    color: #1d4ed8;
+    border-left: 2.5px solid #3b82f6;
+    border-right: 2.5px solid #3b82f6;
+}
+
+.num-badge.num-amber {
+    background: rgba(254, 243, 199, 0.8);
+    color: #b45309;
+    border-left: 2.5px solid #f59e0b;
+    border-right: 2.5px solid #f59e0b;
+}
+
+.num-badge.num-gray {
+    background: rgba(241, 245, 249, 0.9);
+    color: #64748b;
+    border-left: 2.5px solid #94a3b8;
+    border-right: 2.5px solid #94a3b8;
+}
+
+/* Table Column Details */
+.col-time {
+    font-size: 16px;
+    font-weight: 800;
+    color: #0f172a;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    white-space: nowrap;
+}
+
+.col-program {
+    font-size: 16px;
+    font-weight: 900;
+    color: #0f172a;
+    text-transform: uppercase;
+    letter-spacing: -0.01em;
+}
+
+.program-sec-tag {
+    display: inline-block;
+    background: rgba(15, 23, 42, 0.06);
+    color: #475569;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 800;
+    margin-left: 10px;
+    letter-spacing: 0.05em;
+}
+
+.col-venue {
+    font-size: 14px;
+    font-weight: 700;
+    color: #475569;
+}
+
+/* Status Badges */
+.status-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 16px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.status-pill.status-in-progress {
+    background: rgba(209, 250, 229, 0.9);
+    color: #047857;
+    border: 1.5px solid #059669;
+    box-shadow: 0 2px 8px rgba(5, 150, 105, 0.15);
+}
+
+.status-pill.status-upcoming {
+    background: rgba(219, 234, 254, 0.9);
+    color: #1d4ed8;
+    border: 1.5px solid #3b82f6;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15);
+}
+
+.status-pill.status-completed {
+    background: rgba(241, 245, 249, 0.9);
+    color: #64748b;
+    border: 1.5px solid #94a3b8;
+}
+
+.status-pill.status-break {
+    background: rgba(254, 243, 199, 0.9);
+    color: #b45309;
+    border: 1.5px solid #d97706;
+}
+
 @media (max-width: 991px) and (orientation: portrait) {
     .tv-orientation-hint {
         display: flex;

@@ -630,6 +630,10 @@
 
         sections.forEach((section) => {
             (Array.isArray(section.items) ? section.items : []).forEach((item) => {
+                // Remove breaks and completed programs from the live display slideshow table
+                if (item.type === 'break' || item.status === 'completed' || item.approval_status === 'approved') {
+                    return;
+                }
                 rows.push({
                     ...item,
                     section_name: section.name || 'Schedule',
@@ -640,6 +644,10 @@
 
         if (!rows.length && Array.isArray(scheduleData?.timeline)) {
             scheduleData.timeline.forEach((item) => {
+                // Remove breaks and completed programs from the live display slideshow table
+                if (item.type === 'break' || item.status === 'completed' || item.approval_status === 'approved') {
+                    return;
+                }
                 rows.push({
                     ...item,
                     section_name: 'Full Schedule',
@@ -701,17 +709,21 @@
                     <span>Program Schedule</span>
                     <span class="page-count-badge" data-schedule-page-badge>Page ${curPage + 1} / ${totalPages}</span>
                 </div>
-                <table class="schedule-table">
-                    <thead>
-                        <tr>
-                            <th>Program</th>
-                            <th>Marks</th>
-                            <th>Time</th>
-                        </tr>
-                    </thead>
-                    <tbody data-schedule-page>
-                    </tbody>
-                </table>
+                <div class="schedule-table-card">
+                    <table class="schedule-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 75px; text-align: center;">#</th>
+                                <th style="width: 140px;">TIME</th>
+                                <th>PROGRAM</th>
+                                <th style="width: 200px;">STAGE / VENUE</th>
+                                <th style="width: 160px; text-align: right;">STATUS</th>
+                            </tr>
+                        </thead>
+                        <tbody data-schedule-page>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         `;
     }
@@ -764,8 +776,8 @@
             if (!page.length) {
                 pageEl.innerHTML = `
                     <tr>
-                        <td colspan="3" class="tv-schedule-empty" style="padding: 48px; text-align: center; color: #64748b;">
-                            <strong style="font-size: 24px; display: block; margin-bottom: 8px; color: #fff;">No programs scheduled</strong>
+                        <td colspan="5" class="tv-schedule-empty" style="padding: 48px; text-align: center; color: #64748b;">
+                            <strong style="font-size: 24px; display: block; margin-bottom: 8px; color: #0f172a;">No programs scheduled</strong>
                             <span>Stand by for upcoming competition events.</span>
                         </td>
                     </tr>
@@ -800,8 +812,10 @@
 
             page.forEach((item, rowIndex) => {
                 const globalIndex = (index * scheduleRowsPerPage()) + rowIndex;
-                const isCurrentRunning = (globalIndex === runningGlobalIndex && item.type !== 'break');
+                const rowNum = String(globalIndex + 1).padStart(2, '0');
+                const isCurrentRunning = (globalIndex === runningGlobalIndex && item.type !== 'break') || item.status === 'scoring' || item.status === 'active-stage';
                 const isBreak = (item.type === 'break');
+                const isCompleted = item.status === 'completed' || item.approval_status === 'approved';
                 
                 let timeStr = '—';
                 if (item.start_label) {
@@ -814,62 +828,50 @@
                 }
 
                 const rawCategory = item.category || item.class_type_name || item.class_name || item.section_name || '';
-                const title = item.title || item.name || 'Program';
+                const title = (item.title || item.name || 'Program').toUpperCase();
                 const secName = tvFormatScheduleSectionName(rawCategory);
+                const venueName = item.venue || item.stage_name || item.room || 'Normal Stage';
 
                 const itemDate = item.start_time ? item.start_time.split(' ')[0] : '';
                 const currentDay = dateToDayMap[itemDate] || 'Unknown Day';
                 if (lastDay !== currentDay) {
                     html += `
                         <tr class="date-header-row">
-                            <td colspan="3" class="date-header">${escapeHtml(currentDay)}</td>
+                            <td colspan="5" class="date-header">${escapeHtml(currentDay)}</td>
                         </tr>
                     `;
                     lastDay = currentDay;
                 }
 
                 let rowClasses = ['program-row'];
-                let rowAccent = '#3b82f6';
+                let statusHtml = '';
+                let numBadgeHtml = '';
 
                 if (isCurrentRunning) {
                     rowClasses.push('is-running-program');
-                    rowAccent = state.leaderboardData?.[0]?.team_color || '#6400a6';
+                    statusHtml = '<span class="status-pill status-in-progress">IN PROGRESS</span>';
+                    numBadgeHtml = `<span class="num-badge num-green">| ${rowNum} |</span>`;
+                } else if (isCompleted) {
+                    statusHtml = '<span class="status-pill status-completed">COMPLETED</span>';
+                    numBadgeHtml = `<span class="num-badge num-gray">| ${rowNum} |</span>`;
                 } else if (isBreak) {
                     rowClasses.push('is-break');
-                    rowAccent = '#f59e0b';
+                    statusHtml = '<span class="status-pill status-break">BREAK</span>';
+                    numBadgeHtml = `<span class="num-badge num-amber">| ${rowNum} |</span>`;
+                } else {
+                    statusHtml = '<span class="status-pill status-upcoming">UPCOMING</span>';
+                    numBadgeHtml = `<span class="num-badge num-blue">| ${rowNum} |</span>`;
                 }
 
-                const secBadge = secName ? `<span class="section-badge">${escapeHtml(secName)}</span>` : '';
-                
-                const marksHtml = (item.team_marks || [])
-                    .filter(tm => tm.final_rank && tm.final_rank >= 1 && tm.final_rank <= 3)
-                    .sort((a, b) => a.final_rank - b.final_rank)
-                    .map(tm => {
-                        if (tm.final_rank === 1) {
-                            return `<span class="rank-badge rank-1" style="border: 3px solid ${escapeHtml(tm.team_color)};">1st</span>`;
-                        } else if (tm.final_rank === 2) {
-                            return `<span class="rank-badge rank-2" style="border: 3px solid ${escapeHtml(tm.team_color)};">2nd</span>`;
-                        } else if (tm.final_rank === 3) {
-                            return `<span class="rank-badge rank-3" style="border: 3px solid ${escapeHtml(tm.team_color)};">3rd</span>`;
-                        }
-                        return '';
-                    }).join('');
-
-                const liveBadge = isCurrentRunning ? '<span class="tv-schedule-row-live-badge"><span class="live-dot"></span> LIVE</span>' : '';
+                const secBadge = secName ? `<span class="program-sec-tag">${escapeHtml(secName)}</span>` : '';
 
                 html += `
-                    <tr class="${rowClasses.join(' ')}" style="--row-neon:${escapeHtml(rowAccent)}">
-                        <td>
-                            ${escapeHtml(title)}
-                            ${secBadge}
-                            ${liveBadge}
-                        </td>
-                        <td class="marks">
-                            ${marksHtml}
-                        </td>
-                        <td>
-                            ${escapeHtml(timeStr)}
-                        </td>
+                    <tr class="${rowClasses.join(' ')}">
+                        <td style="text-align: center;">${numBadgeHtml}</td>
+                        <td class="col-time">${escapeHtml(timeStr)}</td>
+                        <td class="col-program">${escapeHtml(title)} ${secBadge}</td>
+                        <td class="col-venue">${escapeHtml(venueName)}</td>
+                        <td style="text-align: right;">${statusHtml}</td>
                     </tr>
                 `;
             });
@@ -1397,7 +1399,7 @@
                 state.slides[key] = {
                     key,
                     title: slide.title || key,
-                    duration: slide.duration || 12000,
+                    duration: slide.duration || (key === 'intro' ? 10000 : 5000),
                     enabled: slide.enabled !== false,
                     sort_order: slide.sort_order ?? 99,
                     style: slide.style || 'classic'

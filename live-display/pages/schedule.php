@@ -113,67 +113,72 @@ body:has(#slide-schedule.tv-slide--active) .tv-topbar {
     letter-spacing: 0.05em;
 }
 
+.schedule-table-card {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.94);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border-radius: 24px;
+    border: 1px solid rgba(226, 232, 240, 0.9);
+    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+    z-index: 1;
+}
+
 .schedule-table {
     width: 100%;
     border-collapse: collapse;
-    background: rgba(255, 255, 255, 0.88);
-    backdrop-filter: blur(30px);
-    -webkit-backdrop-filter: blur(30px);
-    border-radius: 16px;
-    overflow: hidden;
-    z-index: 1;
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
-    border: 1px solid rgba(255, 255, 255, 0.4);
-}
-
-.schedule-table th,
-.schedule-table td {
-    padding: 22px 32px;
-    text-align: left;
-    border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+    background: transparent;
 }
 
 .schedule-table th {
-    background-color: rgba(241, 245, 249, 0.95);
-    font-size: 26px;
-    color: #1e293b;
-    font-weight: 900;
+    background-color: rgba(248, 250, 252, 0.95);
+    font-size: 12px;
+    color: #64748b;
+    font-weight: 800;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.1em;
+    padding: 18px 24px;
+    border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+    text-align: left;
+}
+
+.schedule-table td {
+    padding: 16px 24px;
+    text-align: left;
+    border-bottom: 1px solid rgba(241, 245, 249, 0.9);
+    vertical-align: middle;
 }
 
 .date-header-row {
-    background-color: rgba(226, 232, 240, 0.9);
+    background-color: rgba(241, 245, 249, 0.9);
     font-weight: bold;
-    font-size: 24px;
+    font-size: 14px;
 }
 
 .date-header {
     color: #0f172a;
     font-family: 'Outfit', sans-serif;
     font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    padding: 12px 24px !important;
 }
 
 .program-row {
-    vertical-align: middle;
-    background: rgba(255, 255, 255, 0.6);
-    color: #1e293b;
-}
-
-.program-row td {
-    color: #1e293b;
-    font-weight: 700;
-    font-size: 23px;
+    background: #ffffff;
+    transition: background 0.2s ease;
+    border-left: 5px solid transparent;
 }
 
 .program-row.is-running-program {
-    background: color-mix(in srgb, var(--first-team-color, #6400a6) 12%, rgba(255, 255, 255, 0.7)) !important;
-    border-left: 10px solid var(--first-team-color, #6400a6) !important;
+    background: rgba(236, 253, 245, 0.85) !important;
+    border-left: 5px solid #10b981 !important;
 }
 
 .program-row.is-break {
-    background: rgba(245, 158, 11, 0.12) !important;
-    border-left: 8px solid #f59e0b !important;
+    background: rgba(254, 243, 199, 0.6) !important;
+    border-left: 5px solid #f59e0b !important;
 }
 
 .section-badge {

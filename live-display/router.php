@@ -28,7 +28,7 @@ function tv_render_slide(string $key, array $settings): void
         class="<?= e($classes) ?>"
         id="slide-<?= e($key) ?>"
         data-slide="<?= e($key) ?>"
-        data-duration="<?= (int)($slide['duration'] ?? 12000) ?>"
+        data-duration="<?= (int)($slide['duration'] ?? ($key === 'intro' ? 10000 : 5000)) ?>"
         aria-label="<?= e($slide['title'] ?? ucfirst($key)) ?>"
     >
         <?php require __DIR__ . '/pages/' . $pages[$key]; ?>
