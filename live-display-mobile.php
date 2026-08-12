@@ -248,14 +248,14 @@ $startDateFormatted = !empty($activeEvent['start_date']) ? date('d F Y', strtoti
 <body>
   <div class="mobile-live-container">
     <header class="live-mobile-header">
-      <a href="index.php" class="live-mobile-brand">
+      <a href="<?= app_url('/') ?>" class="live-mobile-brand">
         <img src="<?= asset_url('images/kauzariyya-logo.png') ?>" alt="Kauzariyya Logo">
         <div>
           <h1>Kauzariyya</h1>
           <span>Live Display (Mobile)</span>
         </div>
       </a>
-      <a href="index.php" class="btn-back-home">Back to Home</a>
+      <a href="<?= app_url('/') ?>" class="btn-back-home">← Back to Home</a>
     </header>
 
     <!-- Slide Spotlight Container -->
