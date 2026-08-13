@@ -245,4 +245,138 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
+    // 6. Live Website Update Checker (OTA)
+    const CURRENT_VERSION = '1.0.0';
+    let checkInterval = null;
+
+    function checkForUpdates() {
+        const isMobileAppSubdir = window.location.pathname.includes('/mobile-app');
+        const url = isMobileAppSubdir ? '../uploads/app-web-version.json' : 'uploads/app-web-version.json';
+        
+        fetch(url + '?t=' + Date.now())
+            .then(response => {
+                if (response.ok) return response.json();
+                throw new Error('Version file not found');
+            })
+            .then(data => {
+                if (data && data.version && data.version !== CURRENT_VERSION) {
+                    showUpdatePopup();
+                    clearInterval(checkInterval);
+                }
+            })
+            .catch(error => console.warn('Update check bypassed:', error.message));
+    }
+
+    function showUpdatePopup() {
+        if (document.getElementById('web-update-banner')) return;
+
+        const popup = document.createElement('div');
+        popup.id = 'web-update-banner';
+        popup.innerHTML = `
+            <div class="update-banner-content">
+                <div class="update-banner-icon"><i class="fa-solid fa-cloud-arrow-down"></i></div>
+                <div class="update-banner-text">
+                    <strong>Update Found!</strong>
+                    <span>New layouts & standings are available.</span>
+                </div>
+                <button id="web-update-btn" class="update-banner-btn">Update Now</button>
+            </div>
+        `;
+        
+        const style = document.createElement('style');
+        style.innerHTML = `
+            #web-update-banner {
+                position: fixed;
+                bottom: 24px;
+                left: 50%;
+                transform: translateX(-50%) translateY(120px);
+                width: 90%;
+                max-width: 400px;
+                background: #ffffff;
+                border: 1px solid rgba(27, 67, 50, 0.15);
+                box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
+                border-radius: 16px;
+                padding: 16px;
+                z-index: 999999;
+                transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+                font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+            }
+            #web-update-banner.show {
+                transform: translateX(-50%) translateY(0);
+            }
+            .update-banner-content {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+            }
+            .update-banner-icon {
+                width: 40px;
+                height: 40px;
+                border-radius: 10px;
+                background: rgba(27, 67, 50, 0.08);
+                color: #1b4332;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 18px;
+                flex-shrink: 0;
+            }
+            .update-banner-text {
+                display: flex;
+                flex-direction: column;
+                gap: 2px;
+                flex-grow: 1;
+                font-size: 12px;
+                color: #5b665c;
+                text-align: left;
+            }
+            .update-banner-text strong {
+                font-size: 14px;
+                font-weight: 700;
+                color: #1b4332;
+            }
+            .update-banner-btn {
+                background: #1b4332;
+                color: #ffffff;
+                border: none;
+                padding: 8px 14px;
+                border-radius: 8px;
+                font-size: 12px;
+                font-weight: 700;
+                cursor: pointer;
+                transition: background 0.2s;
+                white-space: nowrap;
+            }
+            .update-banner-btn:hover {
+                background: #2d6a4f;
+            }
+        `;
+        
+        document.body.appendChild(style);
+        document.body.appendChild(popup);
+        
+        setTimeout(() => popup.classList.add('show'), 150);
+        
+        document.getElementById('web-update-btn').addEventListener('click', () => {
+            const btn = document.getElementById('web-update-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+            setTimeout(() => {
+                window.location.reload(true);
+            }, 800);
+        });
+    }
+
+    // Start checking for updates after 5s, then check every 30s (ONLY if inside the mobile app)
+    const isMobileApp = !!window.Capacitor || 
+                        window.location.search.includes('platform=app') || 
+                        navigator.userAgent.includes('Capacitor');
+
+    if (isMobileApp) {
+        setTimeout(() => {
+            checkForUpdates();
+            checkInterval = setInterval(checkForUpdates, 30000);
+        }, 5000);
+    }
 });
