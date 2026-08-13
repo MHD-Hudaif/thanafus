@@ -309,8 +309,8 @@ function live_display_get_settings(?int $eventId = null): array
     $eventId = $eventId ?? live_display_active_event_id();
 
     $settings = live_display_default_settings();
-    $settings = live_display_merge_settings($settings, live_display_legacy_component_settings($pdo, $eventId));
     $settings = live_display_merge_settings($settings, live_display_read_settings_row($pdo, live_display_setting_key($eventId)));
+    $settings = live_display_merge_settings($settings, live_display_legacy_component_settings($pdo, $eventId));
 
     return live_display_normalize_settings($settings);
 }

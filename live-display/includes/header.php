@@ -18,6 +18,9 @@ $assetBase = live_display_asset_url();
     <link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400;1,700&family=Cairo:wght@600;700;800;900&family=Inter:wght@400;500;600;700;800;900&family=Outfit:wght@600;700;800;900&family=Plus+Jakarta+Sans:wght@500;600;700;800;900&family=Space+Grotesk:wght@600;700&family=Noto+Naskh+Arabic:wght@500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="<?= e(live_display_asset_url('css/live-display.css')) ?>?v=<?= filemtime(app_path('live-display/assets/css/live-display.css')) ?>">
     <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js" defer></script>
+    <?php if (!defined('LIVE_DISPLAY_STAGE')): ?>
+        <script>window.IS_SINGLE_PAGE = true;</script>
+    <?php endif; ?>
     <style>
         .tv-app { animation: tv-page-in .5s ease both; }
         @keyframes tv-page-in {

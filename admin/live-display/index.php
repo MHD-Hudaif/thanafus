@@ -96,33 +96,23 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                 <div class="panel">
                     <h3 class="mb-4"><i class="fa-solid fa-compass mr-2" style="color: var(--accent);"></i> Quick Navigation</h3>
                     <div class="dashboard-list">
-                        <a href="<?= app_url('/admin/live-display/remote.php') ?>" class="sidebar-action-btn">
-                            <div class="sidebar-action-icon" style="background: rgba(236, 72, 153, 0.15); color: #ec4899;">
-                                <i class="fa-solid fa-hand-pointer"></i>
+                        <a href="<?= app_url('/admin/live-display/control-live-display.php') ?>" class="sidebar-action-btn">
+                            <div class="sidebar-action-icon" style="background: rgba(139, 92, 246, 0.15); color: var(--accent);">
+                                <i class="fa-solid fa-tv"></i>
                             </div>
                             <div class="sidebar-action-info">
-                                <div class="sidebar-action-title">Live Remote Switcher</div>
-                                <div class="sidebar-action-subtitle">Switch active slides on air</div>
+                                <div class="sidebar-action-title">TV Controls</div>
+                                <div class="sidebar-action-subtitle">Control screen slides and overlays</div>
                             </div>
                         </a>
 
-                        <a href="<?= app_url('/live-display/dashboard.php') ?>" class="sidebar-action-btn" target="_blank">
-                            <div class="sidebar-action-icon" style="background: rgba(139, 92, 246, 0.15); color: var(--accent);">
+                        <a href="<?= app_url('/admin/live-display/emcee-deck.php') ?>" class="sidebar-action-btn">
+                            <div class="sidebar-action-icon" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">
                                 <i class="fa-solid fa-tower-broadcast"></i>
                             </div>
                             <div class="sidebar-action-info">
-                                <div class="sidebar-action-title">TV Control Console</div>
-                                <div class="sidebar-action-subtitle">Control screen overlay feeds</div>
-                            </div>
-                        </a>
-
-                        <a href="<?= app_url('/scoreboard.php') ?>" class="sidebar-action-btn" target="_blank">
-                            <div class="sidebar-action-icon" style="background: rgba(139, 92, 246, 0.15); color: var(--accent);">
-                                <i class="fa-solid fa-display"></i>
-                            </div>
-                            <div class="sidebar-action-info">
-                                <div class="sidebar-action-title">Scoreboard Preview</div>
-                                <div class="sidebar-action-subtitle">View public standings feed</div>
+                                <div class="sidebar-action-title">Emcee Stage Deck</div>
+                                <div class="sidebar-action-subtitle">Live stage controller & queue</div>
                             </div>
                         </a>
                     </div>

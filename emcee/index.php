@@ -201,19 +201,21 @@ require_once __DIR__ . '/../includes/header.php';
 ?>
 
 <style>
-    /* SCROLL-PROOF FULL VIEWPORT CONTAINER */
+    /* CSS REDESIGN FOR EMCEE MASTER STAGE DECK */
     html, body {
         height: 100vh !important;
-        overflow: hidden !important;
-        background: #020804 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #060907 !important;
         background-image: 
-            radial-gradient(circle at 50% 0%, rgba(16, 185, 129, 0.15) 0%, transparent 65%),
-            radial-gradient(circle at 10% 90%, rgba(6, 78, 42, 0.2) 0%, transparent 50%),
-            radial-gradient(circle at 90% 90%, rgba(6, 78, 42, 0.2) 0%, transparent 50%),
-            linear-gradient(to bottom, rgba(0, 0, 0, 0.85), #020804) !important;
-        background-attachment: fixed !important;
-        padding-left: 0 !important;
-        font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
+            radial-gradient(circle at 50% 0%, rgba(16, 185, 129, 0.08) 0%, transparent 60%),
+            linear-gradient(to bottom, #060907, #020403) !important;
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+        overflow: hidden !important;
+        font-family: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif !important;
+        color: #e5e7eb !important;
     }
     
     .admin-layout {
@@ -228,635 +230,1007 @@ require_once __DIR__ . '/../includes/header.php';
         overflow: hidden !important;
     }
 
+    body.layout-sidebar-enabled .main-content {
+        margin-left: auto !important;
+        margin-right: auto !important;
+        padding-top: 16px !important;
+        width: 100% !important;
+        max-width: 440px !important;
+    }
+
     .main-content {
         margin: 0 auto !important;
         width: 100% !important;
-        max-width: 1200px !important;
+        max-width: 440px !important;
         height: 100vh !important;
-        padding: 14px 16px 14px 16px !important;
+        padding: 16px !important;
         display: flex !important;
         flex-direction: column !important;
-        align-items: center !important;
+        justify-content: space-between !important;
         box-sizing: border-box !important;
+        background: #0a0d0b !important;
+        border-left: 1px solid rgba(16, 185, 129, 0.1) !important;
+        border-right: 1px solid rgba(16, 185, 129, 0.1) !important;
+        box-shadow: 0 0 80px rgba(0, 0, 0, 0.85) !important;
         overflow-y: auto !important;
-        scrollbar-width: thin;
-        scrollbar-color: rgba(16,185,129,0.3) transparent;
+        position: relative !important;
+        scrollbar-width: none; /* Hide scrollbar for clean app experience */
+    }
+    .main-content::-webkit-scrollbar {
+        display: none;
+    }
+    
+    @media (max-width: 440px) {
+        .main-content {
+            border-left: none !important;
+            border-right: none !important;
+            box-shadow: none !important;
+            max-width: 100vw !important;
+        }
     }
 
-    /* TOP STUDIO BAR */
-    .studio-navbar {
+    /* TOP HEADER BAR */
+    .app-header {
         width: 100% !important;
-        background: rgba(5, 25, 14, 0.85) !important;
-        border: 1px solid rgba(16, 185, 129, 0.3) !important;
-        border-radius: 18px !important;
-        padding: 12px 20px !important;
-        margin-bottom: 12px !important;
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.7), 0 0 20px rgba(16, 185, 129, 0.1) !important;
-        backdrop-filter: blur(16px) !important;
         display: flex !important;
         justify-content: space-between !important;
         align-items: center !important;
-        flex-wrap: wrap !important;
-        gap: 12px !important;
+        padding: 4px 4px 12px 4px !important;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
         box-sizing: border-box !important;
         flex-shrink: 0 !important;
+        margin-bottom: 16px !important;
     }
 
-    /* PPT SLIDE CANVAS STYLING */
-    .ppt-deck-container {
-        width: 100% !important;
-        box-sizing: border-box !important;
-        background: linear-gradient(160deg, rgba(6, 38, 21, 0.9) 0%, rgba(2, 12, 6, 0.98) 100%);
-        border: 1px solid rgba(16, 185, 129, 0.4);
-        border-radius: 22px;
-        padding: 20px 20px 16px 20px;
-        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.9), 0 0 45px rgba(16, 185, 129, 0.15);
-        text-align: center;
-        position: relative;
-        backdrop-filter: blur(20px);
-        touch-action: pan-y;
+    .header-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: rgba(16, 185, 129, 0.08);
+        border: 1px solid rgba(16, 185, 129, 0.2);
+        padding: 6px 12px;
+        border-radius: 999px;
+    }
+
+    .status-label {
+        font-size: 11px;
+        font-weight: 800;
+        color: #34d399;
+        letter-spacing: 0.5px;
+    }
+
+    .status-dot {
+        width: 6px;
+        height: 6px;
+        background-color: #00ff87;
+        border-radius: 50%;
+        box-shadow: 0 0 10px #00ff87;
+        animation: statusPulse 1.8s infinite ease-in-out;
+    }
+
+    @keyframes statusPulse {
+        0%, 100% { transform: scale(0.95); opacity: 0.6; }
+        50% { transform: scale(1.25); opacity: 1; }
+    }
+
+    .header-title {
+        font-size: 15px;
+        font-weight: 800;
+        color: #ffffff;
+        letter-spacing: -0.2px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 150px;
+    }
+
+    .grid-btn {
+        width: 38px;
+        height: 38px;
+        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        color: #ffffff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .grid-btn:hover {
+        background: rgba(16, 185, 129, 0.15);
+        border-color: rgba(16, 185, 129, 0.3);
+        color: #34d399;
+    }
+
+    /* SLIDE CARD CONTAINER & STYLING */
+    .slide-card-container {
         flex: 1;
         display: flex;
-        flex-direction: column;
-        justify-content: space-between;
-        min-height: 0;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        box-sizing: border-box;
+        padding: 10px 0;
     }
 
-    /* PPT Slide Widescreen Viewport */
-    .ppt-slide-viewport {
-        background: radial-gradient(circle at 50% 10%, rgba(16, 185, 129, 0.15) 0%, rgba(3, 16, 9, 0.95) 80%);
-        border: 2px solid rgba(16, 185, 129, 0.35);
-        border-radius: 18px;
-        padding: 20px 16px 16px 16px;
-        box-shadow: inset 0 2px 25px rgba(0,0,0,0.9), 0 10px 30px rgba(0,0,0,0.5);
-        transition: border-color 0.3s ease, background 0.3s ease, box-shadow 0.3s ease;
+    .slide-card {
         width: 100%;
-        max-width: 680px;
-        margin: 0 auto;
+        background: #111614;
+        border: 2px solid rgba(16, 185, 129, 0.2);
+        border-radius: 28px;
+        padding: 26px 22px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+        text-align: center;
         position: relative;
-        overflow: hidden;
+        box-sizing: border-box;
+        transition: all 0.3s ease;
         cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .slide-card.is-live-box {
+        border-color: #10b981 !important;
+        box-shadow: 0 0 30px rgba(16, 185, 129, 0.25), inset 0 0 15px rgba(16, 185, 129, 0.08) !important;
+    }
+
+    .card-subtitle {
+        font-size: 11px;
+        font-weight: 800;
+        color: #b5b5b5;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+        margin-bottom: 20px;
+    }
+
+    .card-icon-wrap {
+        margin-bottom: 20px;
+    }
+
+    .card-icon-circle {
+        width: 68px;
+        height: 68px;
+        border-radius: 50%;
+        background: rgba(16, 185, 129, 0.08);
+        border: 1px solid rgba(16, 185, 129, 0.2);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 22px;
+        color: #10b981;
+    }
+
+    .card-main-title {
+        font-size: 28px;
+        font-weight: 900;
+        color: #00ff87;
+        letter-spacing: -0.5px;
+        line-height: 1.25;
+        margin: 0 0 12px 0;
+        text-shadow: 0 0 20px rgba(0, 255, 135, 0.25);
+    }
+
+    .card-slot-time {
+        font-size: 15px;
+        font-weight: 700;
+        color: #10b981;
+        margin-bottom: 12px;
+        letter-spacing: -0.2px;
+    }
+
+    .card-description {
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .neon-chest {
+        font-size: 34px;
+        font-weight: 900;
+        color: #ffffff;
+        font-family: monospace;
+        letter-spacing: 1px;
+        display: block;
+        margin-bottom: 4px;
+        text-shadow: 0 0 15px rgba(255,255,255,0.2);
+    }
+
+    .participant-name {
+        font-size: 18px;
+        font-weight: 800;
+        color: #ffffff;
+        margin: 4px 0 8px 0;
+    }
+
+    .team-badge {
+        display: inline-block;
+        padding: 4px 14px;
+        border-radius: 99px;
+        background: rgba(255,255,255,0.05);
+        border: 1px solid rgba(255,255,255,0.1);
+        color: #ccc;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .badge {
+        display: inline-block;
+        font-size: 10px;
+        font-weight: 800;
+        padding: 4px 10px;
+        border-radius: 6px;
+        text-transform: uppercase;
+    }
+    
+    .badge-success {
+        background: rgba(16, 185, 129, 0.2);
+        color: #34d399;
+        border: 1px solid rgba(16, 185, 129, 0.4);
+    }
+
+    .badge-neutral {
+        background: rgba(255,255,255,0.05);
+        color: #aaa;
+        border: 1px solid rgba(255,255,255,0.1);
     }
 
     /* SLIDING TRANSITION ANIMATIONS */
     .slide-enter-next {
-        animation: slideNext 0.32s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+        animation: slideNext 0.3s cubic-bezier(0.25, 1, 0.5, 1) forwards;
     }
     .slide-enter-prev {
-        animation: slidePrev 0.32s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+        animation: slidePrev 0.3s cubic-bezier(0.25, 1, 0.5, 1) forwards;
     }
 
     @keyframes slideNext {
-        0% {
-            opacity: 0.15;
-            transform: translateX(55px) scale(0.96);
-        }
-        100% {
-            opacity: 1;
-            transform: translateX(0) scale(1);
-        }
+        0% { opacity: 0.3; transform: translateX(30px) scale(0.97); }
+        100% { opacity: 1; transform: translateX(0) scale(1); }
     }
 
     @keyframes slidePrev {
-        0% {
-            opacity: 0.15;
-            transform: translateX(-55px) scale(0.96);
-        }
-        100% {
-            opacity: 1;
-            transform: translateX(0) scale(1);
-        }
+        0% { opacity: 0.3; transform: translateX(-30px) scale(0.97); }
+        100% { opacity: 1; transform: translateX(0) scale(1); }
     }
 
-    .ppt-slide-viewport.is-live-box {
-        border-color: #34d399;
-        background: radial-gradient(circle at 50% 10%, rgba(16, 185, 129, 0.3) 0%, rgba(2, 18, 9, 0.98) 85%);
-        box-shadow: 0 0 50px rgba(16, 185, 129, 0.45), inset 0 2px 25px rgba(16, 185, 129, 0.25);
+    /* CONTROLS ROW */
+    .app-controls {
+        width: 100% !important;
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        margin-bottom: 16px !important;
+        box-sizing: border-box !important;
+        flex-shrink: 0 !important;
     }
 
-    .slide-number-badge {
-        position: absolute;
-        top: 12px;
-        left: 14px;
-        background: rgba(0, 0, 0, 0.65);
-        border: 1px solid rgba(16, 185, 129, 0.4);
-        color: #34d399;
-        font-size: 10.5px;
-        font-weight: 800;
-        letter-spacing: 1px;
-        padding: 3px 9px;
-        border-radius: 999px;
-        text-transform: uppercase;
-    }
-
-    .slide-mode-badge {
-        position: absolute;
-        top: 12px;
-        right: 14px;
-        background: rgba(0, 0, 0, 0.65);
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        color: rgba(255, 255, 255, 0.7);
-        font-size: 10.5px;
-        font-weight: 700;
-        padding: 3px 9px;
-        border-radius: 999px;
-    }
-
-    .chest-number-title {
-        font-size: 52px;
-        font-weight: 900;
-        color: #34d399;
-        letter-spacing: 2px;
-        line-height: 1.05;
-        margin: 8px 0 4px 0;
-        text-shadow: 0 0 25px rgba(52, 211, 153, 0.45);
-    }
-
-    .participant-name-title {
-        font-size: 22px;
-        font-weight: 800;
-        color: #fff;
-        margin-top: 2px;
-    }
-
-    .arrow-btn {
-        width: 68px;
-        height: 145px;
-        border-radius: 18px;
-        background: linear-gradient(145deg, rgba(0, 0, 0, 0.85) 0%, rgba(5, 30, 16, 0.95) 100%);
-        border: 1px solid rgba(16, 185, 129, 0.35);
-        color: #34d399;
-        font-size: 30px;
+    .nav-circle-btn {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        color: #10b981;
         display: flex;
-        flex-direction: column;
         align-items: center;
         justify-content: center;
-        gap: 4px;
+        font-size: 16px;
         cursor: pointer;
-        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-        user-select: none;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         outline: none;
-        box-shadow: 0 10px 25px rgba(0,0,0,0.6);
-        flex-shrink: 0;
     }
 
-    .arrow-btn:hover:not(.disabled) {
-        background: linear-gradient(145deg, rgba(16, 185, 129, 0.35) 0%, rgba(4, 40, 22, 0.98) 100%);
-        border-color: #34d399;
-        color: #fff;
-        transform: translateY(-3px) scale(1.03);
-        box-shadow: 0 14px 35px rgba(16, 185, 129, 0.4);
+    .nav-circle-btn:hover:not(.disabled) {
+        background: rgba(16, 185, 129, 0.15);
+        border-color: rgba(16, 185, 129, 0.3);
+        color: #ffffff;
+        transform: scale(1.05);
     }
 
-    .arrow-btn:active:not(.disabled) {
-        transform: scale(0.96);
+    .nav-circle-btn:active:not(.disabled) {
+        transform: scale(0.95);
     }
 
-    .arrow-btn.disabled {
-        opacity: 0.18;
+    .nav-circle-btn.disabled {
+        opacity: 0.15;
         cursor: not-allowed;
-        border-color: rgba(255, 255, 255, 0.08);
-        color: #64748b;
+        color: #6b7280;
     }
 
-    .arrow-key-hint {
-        font-size: 9px;
-        font-weight: 800;
-        letter-spacing: 1px;
-        text-transform: uppercase;
-        color: rgba(52, 211, 153, 0.7);
-        background: rgba(0, 0, 0, 0.6);
-        padding: 2px 6px;
-        border-radius: 4px;
-        border: 1px solid rgba(16, 185, 129, 0.3);
+    .slide-badge-pill {
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 999px;
+        padding: 8px 18px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        font-weight: 700;
+        color: #ffffff;
     }
 
-    /* ACTION BUTTONS */
-    .select-btn {
-        padding: 8px 16px;
-        border-radius: 10px;
-        font-size: 12.5px;
-        font-weight: 800;
-        letter-spacing: 0.5px;
-        text-transform: uppercase;
+    .slide-badge-pill i {
+        color: #10b981;
+        font-size: 11px;
+    }
+
+    /* FOOTER ACTION BUTTON */
+    .app-footer-action {
+        width: 100% !important;
+        box-sizing: border-box !important;
+        flex-shrink: 0 !important;
+    }
+
+    .footer-action-btn {
+        width: 100%;
+        background: #00ff87;
         border: none;
-        cursor: pointer;
-        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
-        outline: none;
-        display: inline-flex;
+        border-radius: 16px;
+        padding: 16px;
+        color: #050d08;
+        font-size: 14px;
+        font-weight: 800;
+        display: flex;
         align-items: center;
         justify-content: center;
         gap: 8px;
+        cursor: pointer;
+        box-shadow: 0 0 25px rgba(0, 255, 135, 0.35);
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        outline: none;
     }
 
-    .select-btn-unselected {
-        background: linear-gradient(135deg, rgba(6, 60, 32, 0.85) 0%, rgba(0, 0, 0, 0.95) 100%);
-        color: #34d399;
-        border: 2px solid rgba(16, 185, 129, 0.5);
-    }
-
-    .select-btn-unselected:hover {
-        background: linear-gradient(135deg, rgba(16, 185, 129, 0.35) 0%, rgba(0, 0, 0, 0.95) 100%);
-        box-shadow: 0 15px 35px rgba(16, 185, 129, 0.4);
+    .footer-action-btn:hover {
+        background: #00e575;
+        box-shadow: 0 0 35px rgba(0, 255, 135, 0.55);
         transform: translateY(-2px);
-        border-color: #34d399;
-        color: #fff;
     }
 
-    .select-btn-live {
-        background: linear-gradient(135deg, #10b981 0%, #047857 100%);
-        color: #fff;
-        border: 2px solid #34d399;
+    .footer-action-btn:active {
+        transform: scale(0.98);
+    }
+
+    .footer-action-btn.btn-live-active {
+        background: linear-gradient(135deg, #10b981, #059669);
+        color: #ffffff;
+        border: 1px solid #34d399;
+        box-shadow: 0 0 25px rgba(16, 185, 129, 0.4);
+    }
+
+    .footer-action-btn.btn-live-active:hover {
+        background: linear-gradient(135deg, #34d399, #10b981);
         box-shadow: 0 0 35px rgba(16, 185, 129, 0.6);
     }
 
-    .select-btn-live:hover {
-        background: linear-gradient(135deg, #34d399 0%, #10b981 100%);
-        transform: translateY(-2px);
-        box-shadow: 0 16px 40px rgba(16, 185, 129, 0.7);
-    }
-
-    /* RECORD TIME / STAGE TIMER WIDGET */
-    .timer-card-panel {
+    /* STOPWATCH TIMER STYLING */
+    .card-timer-section {
         width: 100%;
-        max-width: 680px;
-        margin: 14px auto 0 auto;
-        background: rgba(4, 20, 11, 0.9);
-        border: 2px solid rgba(16, 185, 129, 0.35);
-        border-radius: 18px;
-        padding: 14px 18px;
-        box-sizing: border-box;
-        text-align: center;
-        box-shadow: 0 8px 25px rgba(0,0,0,0.6);
-        position: relative;
+        margin-top: 18px;
+        padding-top: 16px;
+        border-top: 1px dashed rgba(255, 255, 255, 0.08);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
     }
 
-    .timer-card-panel.is-active-stage {
-        border-color: #34d399;
-        box-shadow: 0 0 30px rgba(16, 185, 129, 0.3);
-    }
-
-    .timer-display-clock {
-        font-family: 'Courier New', Courier, monospace, sans-serif;
-        font-size: 42px;
-        font-weight: 900;
-        color: #34d399;
-        letter-spacing: 3px;
-        margin: 4px 0;
-        text-shadow: 0 0 20px rgba(52, 211, 153, 0.5);
-    }
-
-    .timer-display-clock.is-running {
-        color: #ef4444;
-        text-shadow: 0 0 25px rgba(239, 68, 68, 0.7);
-        animation: timerPulse 1s infinite alternate;
-    }
-
-    @keyframes timerPulse {
-        0% { opacity: 1; }
-        100% { opacity: 0.85; }
-    }
-
-    .btn-timer-trigger {
-        padding: 12px 24px;
-        border-radius: 12px;
-        font-size: 16px;
+    .timer-badge {
+        font-size: 9px;
         font-weight: 800;
-        letter-spacing: 1px;
-        text-transform: uppercase;
+        color: #9ca3af;
+        background: rgba(255, 255, 255, 0.05);
+        padding: 3px 8px;
+        border-radius: 4px;
+        letter-spacing: 0.05em;
+        margin-bottom: 6px;
+    }
+
+    .timer-clock {
+        font-size: 28px;
+        font-weight: 800;
+        font-family: monospace;
+        color: #34d399;
+        text-shadow: 0 0 10px rgba(52, 211, 153, 0.3);
+        margin-bottom: 10px;
+    }
+
+    .timer-clock.is-running {
+        color: #ef4444;
+        text-shadow: 0 0 15px rgba(239, 68, 68, 0.5);
+    }
+
+    .timer-actions {
+        display: flex;
+        gap: 8px;
+    }
+
+    .timer-btn {
+        padding: 6px 12px;
+        border-radius: 6px;
         border: none;
+        font-size: 11px;
+        font-weight: 700;
         cursor: pointer;
-        transition: all 0.2s ease;
         display: inline-flex;
         align-items: center;
-        justify-content: center;
-        gap: 8px;
-        box-shadow: 0 6px 20px rgba(0,0,0,0.6);
-    }
-
-    .btn-timer-start {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        color: #fff;
-        border: 2px solid #34d399;
-    }
-    .btn-timer-start:hover {
-        background: linear-gradient(135deg, #34d399 0%, #10b981 100%);
-        transform: translateY(-2px);
-        box-shadow: 0 12px 30px rgba(16, 185, 129, 0.5);
-    }
-
-    .btn-timer-stop {
-        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-        color: #fff;
-        border: 2px solid #f87171;
-        animation: stopPulse 1.2s infinite alternate;
-    }
-    .btn-timer-stop:hover {
-        background: linear-gradient(135deg, #f87171 0%, #ef4444 100%);
-        transform: translateY(-2px);
-        box-shadow: 0 12px 30px rgba(239, 68, 68, 0.6);
-    }
-
-    @keyframes stopPulse {
-        0% { box-shadow: 0 0 15px rgba(239, 68, 68, 0.4); }
-        100% { box-shadow: 0 0 35px rgba(239, 68, 68, 0.8); }
-    }
-
-    .next-ribbon-card {
-        background: rgba(0, 0, 0, 0.65);
-        border: 1px solid rgba(16, 185, 129, 0.25);
-        border-radius: 12px;
-        padding: 10px 14px;
-        text-align: left;
-        cursor: pointer;
+        gap: 4px;
         transition: all 0.2s ease;
-        flex: 1;
-        min-width: 160px;
     }
-    .next-ribbon-card:hover {
-        background: rgba(16, 185, 129, 0.25);
-        border-color: #34d399;
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(16, 185, 129, 0.3);
+
+    .timer-btn.btn-start {
+        background: rgba(16, 185, 129, 0.15);
+        border: 1px solid rgba(16, 185, 129, 0.3);
+        color: #34d399;
+    }
+
+    .timer-btn.btn-stop {
+        background: rgba(239, 68, 68, 0.15);
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        color: #f87171;
+    }
+
+    .timer-btn.btn-reset {
+        background: rgba(255, 255, 255, 0.08);
+        color: #ccc;
     }
 
     .toast-notify {
         position: fixed;
         bottom: 24px;
-        right: 24px;
+        left: 50%;
+        transform: translateX(-50%);
         background: rgba(16, 185, 129, 0.95);
         color: #fff;
-        padding: 14px 28px;
-        border-radius: 14px;
+        padding: 12px 24px;
+        border-radius: 12px;
         font-weight: 800;
-        font-size: 15px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+        font-size: 14px;
+        box-shadow: 0 8px 30px rgba(0,0,0,0.5);
         z-index: 999999;
         display: none;
         align-items: center;
-        gap: 10px;
+        gap: 8px;
         backdrop-filter: blur(8px);
+        width: max-content;
+        max-width: 90vw;
     }
 
-    /* MOBILE STICKY BOTTOM ACTION BAR */
-    .mobile-sticky-bar {
-        display: none;
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        background: rgba(3, 16, 9, 0.96);
-        border-top: 2px solid rgba(16, 185, 129, 0.4);
-        padding: 12px 16px;
-        z-index: 9999;
-        backdrop-filter: blur(16px);
-        box-shadow: 0 -10px 30px rgba(0,0,0,0.8);
-        gap: 12px;
-        justify-content: center;
-        align-items: center;
-    }
+    /* ============================================================
+       MOBILE RESPONSIVE — PORTRAIT MODE
+       ============================================================ */
 
-    /* RESPONSIVE MEDIA QUERIES */
-    @media (max-width: 768px) {
-        html, body, .admin-layout {
-            height: auto !important;
-            overflow-y: auto !important;
-        }
+    /* Small phones (iPhone SE, Galaxy S, 320–374px) */
+    @media screen and (max-width: 374px) and (orientation: portrait) {
         .main-content {
-            height: auto !important;
-            padding: 10px 10px 90px 10px !important;
+            padding: 10px !important;
+            max-width: 100vw !important;
         }
-        .studio-navbar {
-            padding: 12px 14px !important;
-            flex-direction: column !important;
-            align-items: stretch !important;
-            gap: 10px !important;
-            border-radius: 16px !important;
+        .app-header {
+            padding: 2px 2px 8px 2px !important;
+            margin-bottom: 10px !important;
         }
-        .studio-navbar > div:first-child {
-            justify-content: center !important;
+        .header-title {
+            font-size: 12px !important;
+            max-width: 100px !important;
         }
-        .ppt-deck-container {
-            padding: 16px 12px !important;
-            border-radius: 18px !important;
+        .header-status {
+            padding: 4px 8px !important;
         }
-        .stage-deck-row {
-            gap: 8px !important;
+        .status-label {
+            font-size: 9px !important;
         }
-        .arrow-btn {
-            width: 46px !important;
-            height: 110px !important;
-            border-radius: 14px !important;
-            font-size: 22px !important;
+        .grid-btn {
+            width: 32px !important;
+            height: 32px !important;
+            font-size: 13px !important;
+            border-radius: 8px !important;
         }
-        .arrow-key-hint {
-            display: none !important;
+        .slide-card {
+            padding: 18px 14px !important;
+            border-radius: 20px !important;
         }
-        .ppt-slide-viewport {
-            padding: 16px 10px !important;
-            min-height: 170px !important;
+        .card-subtitle {
+            font-size: 9px !important;
+            margin-bottom: 12px !important;
         }
-        .chest-number-title {
-            font-size: 38px !important;
-        }
-        .participant-name-title {
+        .card-icon-circle {
+            width: 48px !important;
+            height: 48px !important;
             font-size: 18px !important;
         }
-        .timer-display-clock {
-            font-size: 34px !important;
+        .card-icon-wrap {
+            margin-bottom: 12px !important;
         }
-        .select-btn {
-            padding: 12px 16px !important;
-            font-size: 15px !important;
-            border-radius: 12px !important;
+        .card-main-title {
+            font-size: 20px !important;
+            margin-bottom: 8px !important;
         }
-        .btn-timer-trigger {
-            padding: 10px 18px !important;
+        .card-slot-time {
+            font-size: 12px !important;
+            margin-bottom: 8px !important;
+        }
+        .neon-chest {
+            font-size: 26px !important;
+        }
+        .participant-name {
             font-size: 14px !important;
         }
-        .mobile-sticky-bar {
-            display: flex !important;
+        .team-badge {
+            font-size: 10px !important;
+            padding: 3px 10px !important;
         }
+        .nav-circle-btn {
+            width: 40px !important;
+            height: 40px !important;
+            font-size: 14px !important;
+        }
+        .slide-badge-pill {
+            padding: 6px 12px !important;
+            font-size: 11px !important;
+        }
+        .footer-action-btn {
+            padding: 12px !important;
+            font-size: 12px !important;
+            border-radius: 12px !important;
+        }
+        .timer-clock {
+            font-size: 22px !important;
+        }
+        .card-timer-section {
+            margin-top: 12px !important;
+            padding-top: 10px !important;
+        }
+    }
+
+    /* Standard phones (375–430px) — mostly covered by defaults */
+    @media screen and (min-width: 375px) and (max-width: 430px) and (orientation: portrait) {
+        .main-content {
+            padding: 14px !important;
+            max-width: 100vw !important;
+        }
+    }
+
+    /* Tall phones with short viewport height portrait (e.g. long scroll) */
+    @media screen and (max-height: 640px) and (orientation: portrait) {
+        .card-icon-circle {
+            width: 48px !important;
+            height: 48px !important;
+            font-size: 18px !important;
+        }
+        .card-icon-wrap {
+            margin-bottom: 10px !important;
+        }
+        .card-main-title {
+            font-size: 22px !important;
+            margin-bottom: 6px !important;
+        }
+        .card-subtitle {
+            margin-bottom: 10px !important;
+        }
+        .card-timer-section {
+            margin-top: 10px !important;
+            padding-top: 8px !important;
+        }
+        .timer-clock {
+            font-size: 22px !important;
+            margin-bottom: 6px !important;
+        }
+        .app-header {
+            padding: 2px 4px 8px 4px !important;
+            margin-bottom: 8px !important;
+        }
+        .app-controls {
+            margin-bottom: 10px !important;
+        }
+    }
+
+    /* ============================================================
+       LANDSCAPE MODE
+       Reset body/admin-layout flex so main-content fills full width
+       ============================================================ */
+
+    @media screen and (orientation: landscape) and (max-height: 500px) {
+
+        /* Step 1: Kill the body flex-center that causes the black gap */
+        html {
+            overflow: hidden !important;
+        }
+        body {
+            display: block !important;
+            width: 100vw !important;
+            height: 100svh !important;
+            overflow: hidden !important;
+        }
+        .admin-layout {
+            display: block !important;
+            width: 100vw !important;
+            height: 100svh !important;
+            overflow: hidden !important;
+        }
+
+        /*
+         * Step 2: main-content fills the full screen with CSS grid.
+         *
+         *   ┌───────────────────────────────────┬──────┐
+         *   │ header                            │header│  auto
+         *   ├───────────────────────────────────┼──────┤
+         *   │ card                              │  nav │  1fr
+         *   ├───────────────────────────────────┴──────┤
+         *   │ footer                                   │  auto
+         *   └──────────────────────────────────────────┘
+         */
+        .main-content {
+            position: relative !important;
+            width: 100vw !important;
+            max-width: 100vw !important;
+            height: 100svh !important;
+            margin: 0 !important;
+            padding: 8px 12px !important;
+            border: none !important;
+            box-shadow: none !important;
+            overflow: hidden !important;
+            box-sizing: border-box !important;
+
+            display: grid !important;
+            grid-template-rows: auto 1fr auto !important;
+            grid-template-columns: 1fr 50px !important;
+            grid-template-areas:
+                "header  header"
+                "card    nav"
+                "footer  footer" !important;
+            gap: 4px 8px !important;
+        }
+
+        /* ── Header ── */
+        .app-header {
+            grid-area: header !important;
+            padding: 0 0 4px 0 !important;
+            margin-bottom: 0 !important;
+            border-bottom: 1px solid rgba(255,255,255,0.06) !important;
+        }
+        .header-title {
+            font-size: 12px !important;
+            max-width: 240px !important;
+        }
+        .header-status { padding: 3px 8px !important; }
+        .status-label { font-size: 9px !important; }
+        .status-dot { width: 5px !important; height: 5px !important; }
+        .grid-btn {
+            width: 28px !important;
+            height: 28px !important;
+            font-size: 12px !important;
+            border-radius: 7px !important;
+        }
+
+        /* ── Slide Card ── */
+        .slide-card-container {
+            grid-area: card !important;
+            padding: 0 !important;
+            min-height: 0 !important;
+            display: flex !important;
+            align-items: stretch !important;
+        }
+        .slide-card {
+            width: 100% !important;
+            padding: 8px 16px !important;
+            border-radius: 12px !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            justify-content: center !important;
+            gap: 0 !important;
+            text-align: center !important;
+            overflow: hidden !important;
+        }
+
+        /* Hide decorative / low-priority elements */
+        .card-subtitle        { display: none !important; }
+        .card-icon-wrap       { display: none !important; }
+        #textChestHeader      { display: none !important; }
+        #textParticipantProgress { display: none !important; }
+        #timerSubtext         { display: none !important; }
+
+        .card-main-title {
+            font-size: 16px !important;
+            margin: 0 0 2px 0 !important;
+            line-height: 1.1 !important;
+        }
+        .card-slot-time {
+            font-size: 10px !important;
+            margin-bottom: 3px !important;
+        }
+        .neon-chest {
+            font-size: 24px !important;
+            margin-bottom: 2px !important;
+        }
+        .participant-name {
+            font-size: 13px !important;
+            margin: 0 0 3px 0 !important;
+        }
+        .team-badge {
+            font-size: 10px !important;
+            padding: 2px 10px !important;
+        }
+        .badge {
+            font-size: 8px !important;
+            padding: 2px 6px !important;
+        }
+
+        /* Timer — horizontal inline row */
+        .card-timer-section {
+            margin-top: 6px !important;
+            padding-top: 6px !important;
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+            align-items: center !important;
+            justify-content: center !important;
+            gap: 8px !important;
+            border-top: 1px dashed rgba(255,255,255,0.07) !important;
+        }
+        .timer-badge {
+            font-size: 7px !important;
+            margin-bottom: 0 !important;
+            padding: 2px 4px !important;
+            white-space: nowrap !important;
+        }
+        .timer-clock {
+            font-size: 18px !important;
+            margin-bottom: 0 !important;
+        }
+        .timer-actions { gap: 5px !important; }
+        .timer-btn {
+            padding: 3px 7px !important;
+            font-size: 10px !important;
+        }
+
+        /* ── Nav column (prev / counter / next) ── */
+        .app-controls {
+            grid-area: nav !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            justify-content: center !important;
+            gap: 5px !important;
+            margin-bottom: 0 !important;
+            width: 50px !important;
+            padding: 0 !important;
+        }
+        .nav-circle-btn {
+            width: 36px !important;
+            height: 36px !important;
+            font-size: 13px !important;
+        }
+        .slide-badge-pill {
+            padding: 3px 5px !important;
+            font-size: 8px !important;
+            flex-direction: column !important;
+            gap: 0 !important;
+            text-align: center !important;
+            line-height: 1.25 !important;
+        }
+        .slide-badge-pill i { display: none !important; }
+
+        /* ── Footer broadcast button ── */
+        .app-footer-action {
+            grid-area: footer !important;
+            width: 100% !important;
+        }
+        .footer-action-btn {
+            padding: 8px !important;
+            font-size: 12px !important;
+            border-radius: 10px !important;
+        }
+
+        .toast-notify {
+            bottom: 10px !important;
+            padding: 8px 18px !important;
+            font-size: 11px !important;
+        }
+    }
+
+    /* Very short landscape — height ≤ 380px (iPhone SE, Galaxy S) */
+    @media screen and (orientation: landscape) and (max-height: 380px) {
+        .main-content {
+            padding: 5px 10px !important;
+            gap: 3px 6px !important;
+            grid-template-columns: 1fr 44px !important;
+        }
+        .slide-card { padding: 5px 10px !important; border-radius: 10px !important; }
+        .card-main-title { font-size: 14px !important; }
+        .neon-chest { font-size: 20px !important; }
+        .participant-name { font-size: 11px !important; }
+        .timer-clock { font-size: 15px !important; }
+        .timer-badge { display: none !important; }
+        .timer-btn { padding: 2px 5px !important; font-size: 8px !important; }
+        .nav-circle-btn { width: 30px !important; height: 30px !important; font-size: 11px !important; }
+        .app-controls { width: 44px !important; gap: 3px !important; }
+        .footer-action-btn { padding: 6px !important; font-size: 10px !important; }
+        .header-title { font-size: 11px !important; }
+        .slide-badge-pill { font-size: 7px !important; }
+    }
+
+    /* ============================================================
+       TABLET — PORTRAIT & LANDSCAPE
+       ============================================================ */
+
+
+    /* Tablet portrait (e.g. iPad 768–1024px) */
+    @media screen and (min-width: 441px) and (max-width: 1024px) and (orientation: portrait) {
+        .main-content {
+            max-width: 520px !important;
+        }
+        .slide-card {
+            padding: 32px 28px !important;
+        }
+        .card-main-title {
+            font-size: 32px !important;
+        }
+        .neon-chest {
+            font-size: 42px !important;
+        }
+        .card-icon-circle {
+            width: 76px !important;
+            height: 76px !important;
+            font-size: 26px !important;
+        }
+        .nav-circle-btn {
+            width: 52px !important;
+            height: 52px !important;
+        }
+        .footer-action-btn {
+            padding: 18px !important;
+            font-size: 15px !important;
+        }
+    }
+
+    /* Tablet landscape */
+    @media screen and (min-width: 768px) and (orientation: landscape) and (min-height: 501px) {
+        .main-content {
+            max-width: 600px !important;
+        }
+        .slide-card {
+            padding: 28px 24px !important;
+        }
+    }
+
+    /* ============================================================
+       SAFE AREA INSETS (notched phones — iPhone X+, etc.)
+       ============================================================ */
+    @supports (padding: env(safe-area-inset-top)) {
+        .main-content {
+            padding-top: max(16px, env(safe-area-inset-top)) !important;
+            padding-bottom: max(16px, env(safe-area-inset-bottom)) !important;
+        }
+        .toast-notify {
+            bottom: max(24px, env(safe-area-inset-bottom)) !important;
+        }
+        .footer-action-btn {
+            margin-bottom: env(safe-area-inset-bottom) !important;
+        }
+    }
+
+    /* ============================================================
+       CARDS GRID MODAL — RESPONSIVE
+       ============================================================ */
+    @media screen and (max-width: 600px) {
         #cardsGridContainer {
-            grid-template-columns: repeat(auto-fill, minmax(135px, 1fr)) !important;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)) !important;
             gap: 10px !important;
         }
     }
 
-    @media (max-width: 480px) {
-        #textProgramTitle {
-            font-size: 18px !important;
+    @media screen and (orientation: landscape) and (max-height: 500px) {
+        #cardsGridContainer {
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)) !important;
+            gap: 10px !important;
         }
-        .chest-number-title {
-            font-size: 30px !important;
-        }
-        .participant-name-title {
-            font-size: 15px !important;
-        }
-        .timer-display-clock {
-            font-size: 30px !important;
-        }
-        .arrow-btn {
-            width: 38px !important;
-            height: 95px !important;
-            font-size: 18px !important;
+        #cardsModal > div {
+            padding: 12px !important;
+            border-radius: 14px !important;
         }
     }
 </style>
 
 <div class="main-content">
-    
-    <!-- STUDIO TOPBAR & METRICS BAR -->
-    <div class="studio-navbar">
-        <div style="display: flex; align-items: center; gap: 14px;">
-            <div style="background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.35); padding: 8px 12px; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
-                <i class="fa-solid fa-tower-broadcast" style="font-size: 22px; color: #34d399; filter: drop-shadow(0 0 10px rgba(52, 211, 153, 0.6));"></i>
-            </div>
-            <div>
-                <div style="font-size: 17px; font-weight: 800; color: #fff; display: flex; align-items: center; gap: 8px;">
-                    Emcee Master Stage Deck
-                    <span style="background: rgba(16, 185, 129, 0.2); border: 1px solid rgba(16, 185, 129, 0.4); color: #34d399; font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 999px; text-transform: uppercase;">
-                        PPT Deck
-                    </span>
-                </div>
-                <div style="font-size: 11.5px; color: rgba(255,255,255,0.6); margin-top: 2px;">
-                    <?= e($activeEvent['name'] ?? 'Kauzariyya Musabaqa Event') ?>
-                </div>
-            </div>
+    <!-- Top Header Bar -->
+    <header class="app-header">
+        <div class="header-status">
+            <span class="status-dot"></span>
+            <span class="status-label">ON STAGE</span>
         </div>
-
-        <!-- STAGE METRICS & CONTROLS -->
-        <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap; justify-content: center;">
-            
-            <div style="display: flex; gap: 14px; border-right: 1px solid rgba(16,185,129,0.2); padding-right: 14px;">
-                <div style="text-align: right;">
-                    <div style="font-size: 9.5px; text-transform: uppercase; color: rgba(255,255,255,0.5); font-weight: 700;">Progress</div>
-                    <div style="font-size: 13px; font-weight: 800; color: #34d399;">
-                        <?= $completedProgramsCount ?> / <?= $totalProgramsCount ?> Done
-                    </div>
-                </div>
-                <div style="text-align: right;">
-                    <div style="font-size: 9.5px; text-transform: uppercase; color: rgba(255,255,255,0.5); font-weight: 700;">Deck Queue</div>
-                    <div style="font-size: 13px; font-weight: 800; color: #fff;">
-                        <?= $totalQueueItems ?> Slides
-                    </div>
-                </div>
-            </div>
-
-            <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 6px;">
-                <a href="<?= app_url('/live-display/dashboard.php') ?>" class="btn btn-secondary btn-sm" target="_blank" style="background: rgba(0,0,0,0.6); border: 1px solid rgba(16,185,129,0.3); color: #fff; padding: 5px 12px; border-radius: 8px; font-size: 12px; font-weight: 700;">
-                    <i class="fa-solid fa-tv mr-1"></i> Live TV
-                </a>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <button type="button" id="btnSelect" class="select-btn select-btn-unselected" onclick="broadcastLiveStage()">
-                        ⚡ BROADCAST LIVE TO STAGE
-                    </button>
-                    <button type="button" class="btn btn-primary btn-sm" onclick="openCardsModal()" style="background: linear-gradient(135deg, #10b981, #047857); border: 1px solid #34d399; font-weight: 800; padding: 7px 13px; border-radius: 9px; box-shadow: 0 0 15px rgba(16,185,129,0.3); font-size: 12px;">
-                        <i class="fa-solid fa-border-all mr-1"></i> Stage Cards
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
+        <div class="header-title">Emcee Master Stage Deck</div>
+        <button type="button" class="grid-btn" onclick="openCardsModal()" title="View Stage Cards Grid">
+            <i class="fa-solid fa-border-all"></i>
+        </button>
+    </header>
 
     <!-- Live Toast Notification -->
     <div id="toastNotification" class="toast-notify">
         <i class="fa-solid fa-circle-check"></i> <span id="toastText">Live Stage Updated!</span>
     </div>
 
-    <!-- HERO PPT MASTER DECK CONTAINER -->
-    <div class="ppt-deck-container">
-        
-        <!-- PROGRAM HEADER BAR -->
-        <div style="margin-bottom: 12px;">
-            <div style="display: flex; align-items: center; justify-content: center; gap: 6px; margin-bottom: 6px; flex-wrap: wrap;">
-                <span id="badgeStatus" class="badge" style="font-size: 10.5px; padding: 3px 12px; text-transform: uppercase; font-weight: 800;">
-                    --
-                </span>
-
-                <span id="badgeClassType" class="badge badge-info" style="font-size: 10.5px; padding: 3px 10px; background: rgba(16,185,129,0.18); color: #34d399; border: 1px solid rgba(16,185,129,0.35); font-weight: 700;">
-                    --
-                </span>
-
-                <span id="badgeSection" class="badge badge-neutral" style="font-size: 10.5px; padding: 3px 10px; display: none; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.15); color: #ccc;">
-                    <i class="fa-solid fa-clock mr-1"></i> <span id="textSection">--</span>
-                </span>
-            </div>
-
-            <h1 id="textProgramTitle" style="margin: 0; font-size: 26px; font-weight: 900; color: #fff; line-height: 1.2; letter-spacing: -0.5px;">
-                --
-            </h1>
-
-            <div id="textParticipantProgress" style="font-size: 13px; color: rgba(255,255,255,0.65); margin-top: 4px; font-weight: 500;">
-                --
-            </div>
-        </div>
-
-        <!-- PPT CANVAS DECK ROW (ARROWS + SLIDE CANVAS) -->
-        <div class="stage-deck-row" style="display: flex; align-items: center; justify-content: center; gap: 14px; max-width: 860px; margin: 0 auto;">
+    <!-- Active Performer Card -->
+    <div class="slide-card-container">
+        <div id="chestBox" class="slide-card" onclick="handleSlideClick()" title="Click to Broadcast Live to Stage">
+            <!-- Mode badge (e.g. PROGRAM START SLIDE) -->
+            <div class="card-subtitle" id="textSlideMode">PROGRAM START SLIDE</div>
             
-            <!-- PREVIOUS SLIDE ARROW BUTTON (<-) -->
-            <button type="button" id="btnPrev" class="arrow-btn" title="Previous Slide (Swipe Right or Left Arrow)" onclick="navigateStage(-1)">
-                <i class="fa-solid fa-chevron-left"></i>
-                <span class="arrow-key-hint">LEFT</span>
-            </button>
-
-            <!-- WIDESCREEN PPT SLIDE CANVAS (With Sliding Animation) -->
-            <div id="chestBox" class="ppt-slide-viewport" onclick="handleSlideClick()" title="Click to Broadcast Live to Stage">
-                
-                <span id="textSlideBadge" class="slide-number-badge">
-                    SLIDE 1 / 1
-                </span>
-
-                <span id="textSlideMode" class="slide-mode-badge">
-                    STAGE DECK
-                </span>
-
-                <div id="textChestHeader" style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: rgba(255,255,255,0.5); letter-spacing: 2px; margin-top: 14px;">
-                    CHEST NUMBER
-                </div>
-
-                <div id="textChestNumber" class="chest-number-title">
-                    --
-                </div>
-
-                <div id="textParticipantName" class="participant-name-title">
-                    --
-                </div>
-
-                <div style="margin-top: 8px;">
-                    <span id="pillTeam" class="team-color-pill" style="padding: 3px 14px; border-radius: 999px; font-size: 12.5px; font-weight: 700;">
-                        --
-                    </span>
-                </div>
-
-                <!-- SLIDE BROADCAST TIP -->
-                <div style="font-size: 10.5px; color: rgba(52,211,153,0.7); margin-top: 10px; font-weight: 600;">
-                    <i class="fa-solid fa-hand-pointer mr-1"></i> Click slide or button below to broadcast live on stage
+            <!-- Circle Icon -->
+            <div class="card-icon-wrap">
+                <div class="card-icon-circle">
+                    <i class="fa-solid fa-podium" id="cardIcon"></i>
                 </div>
             </div>
 
-            <!-- NEXT SLIDE ARROW BUTTON (->) -->
-            <button type="button" id="btnNext" class="arrow-btn" title="Next Slide (Swipe Left or Right Arrow)" onclick="navigateStage(1)">
-                <i class="fa-solid fa-chevron-right"></i>
-                <span class="arrow-key-hint">RIGHT</span>
-            </button>
+            <!-- Program Title -->
+            <h1 class="card-main-title" id="textProgramTitle">--</h1>
+            
+            <!-- Time / Category Slot -->
+            <div class="card-slot-time">
+                <span id="badgeClassType">--</span>
+                <span id="badgeSection" style="display: none;"> - <span id="textSection">--</span></span>
+            </div>
+            
+            <!-- Participant & Progress Details -->
+            <div class="card-description">
+                <div id="participantDetailsArea" style="margin-top: 8px;">
+                    <span id="textChestHeader" style="font-size: 11px; text-transform: uppercase; opacity: 0.6; display: block; margin-bottom: 2px;">CHEST NUMBER</span>
+                    <span id="textChestNumber" class="neon-chest">--</span>
+                    <h3 id="textParticipantName" class="participant-name">--</h3>
+                    <span id="pillTeam" class="team-badge">--</span>
+                </div>
+                <div id="textParticipantProgress" style="font-size: 11px; opacity: 0.5; margin-top: 10px;">--</div>
+            </div>
+            
+            <!-- Broadcast Status Indicator -->
+            <div style="margin-top: 10px;">
+                <span id="badgeStatus" class="badge">--</span>
+            </div>
 
+            <!-- Stopwatch Timer inside the card -->
+            <div class="card-timer-section" id="timerPanel">
+                <span class="timer-badge" id="timerStatusBadge">READY TO RECORD</span>
+                <div class="timer-clock" id="timerClock" onclick="toggleTimerFromMobile()" title="Click to Start/Stop timer">00:00</div>
+                <div class="timer-actions">
+                    <button type="button" id="btnStartTimer" class="timer-btn btn-start" onclick="event.stopPropagation(); startTimer();">
+                        <i class="fa-solid fa-play"></i> Start
+                    </button>
+                    <button type="button" id="btnStopTimer" class="timer-btn btn-stop" onclick="event.stopPropagation(); stopTimer();" style="display:none;">
+                        <i class="fa-solid fa-stop"></i> Stop
+                    </button>
+                    <button type="button" id="btnResetTimer" class="timer-btn btn-reset" onclick="event.stopPropagation(); resetTimer();" style="display:none;">
+                        <i class="fa-solid fa-rotate-left"></i> Reset
+                    </button>
+                </div>
+                <div id="timerSubtext" style="font-size: 9px; opacity: 0.4; margin-top: 6px;">Stopwatch for performance duration.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Controls Pagination -->
+    <div class="app-controls">
+        <button type="button" id="btnPrev" class="nav-circle-btn" onclick="navigateStage(-1)" title="Previous Slide">
+            <i class="fa-solid fa-arrow-left"></i>
+        </button>
+        
+        <div class="slide-badge-pill">
+            <i class="fa-solid fa-play"></i>
+            <span id="textSlideBadge">Slide 3 of 12</span>
         </div>
 
+        <button type="button" id="btnNext" class="nav-circle-btn" onclick="navigateStage(1)" title="Next Slide">
+            <i class="fa-solid fa-arrow-right"></i>
+        </button>
     </div>
-</div>
 
-<!-- MOBILE STICKY BOTTOM ACTION BAR -->
-<div id="mobileStickyBar" class="mobile-sticky-bar">
-    <button type="button" id="btnMobileActivate" class="btn btn-success" onclick="broadcastLiveStage()" style="flex: 1; padding: 12px; font-weight: 800; font-size: 15px; border-radius: 12px; background: linear-gradient(135deg, #10b981, #047857); border: 1px solid #34d399;">
-        ⚡ ACTIVATE ON STAGE
-    </button>
-    
-    <button type="button" id="btnMobileTimer" class="btn btn-primary" onclick="toggleTimerFromMobile()" style="padding: 12px 18px; font-weight: 800; font-size: 15px; border-radius: 12px; background: #059669; border: 1px solid #34d399; display: flex; align-items: center; gap: 6px;">
-        <i class="fa-solid fa-stopwatch"></i> <span id="textMobileTimer">TIMER</span>
-    </button>
+    <!-- Footer Action Broadcast -->
+    <div class="app-footer-action">
+        <button type="button" id="btnSelect" class="footer-action-btn" onclick="broadcastLiveStage()">
+            <i class="fa-solid fa-arrows-rotate"></i>
+            <span id="btnActionText">Update Program & Participants</span>
+        </button>
+    </div>
 </div>
 
 <!-- FULL SCREEN FIXED STAGE CARDS GRID GALLERY MODAL -->
@@ -935,6 +1309,7 @@ function renderStageDeck(index, direction = 'next') {
     const textPartName = document.getElementById('textParticipantName');
     const pillTeam = document.getElementById('pillTeam');
     const textSlideMode = document.getElementById('textSlideMode');
+    const cardIcon = document.getElementById('cardIcon');
 
     if (item.is_intro) {
         document.getElementById('textParticipantProgress').innerHTML = 
@@ -943,7 +1318,8 @@ function renderStageDeck(index, direction = 'next') {
         textChestNum.innerText = item.is_group ? '👥 GROUP INTRO' : '📋 PROGRAM INTRO';
         textChestNum.style.fontSize = window.innerWidth <= 480 ? '24px' : '32px';
         textPartName.innerText = item.entry_name;
-        textSlideMode.innerText = 'PROGRAM INTRO';
+        textSlideMode.innerText = 'PROGRAM START SLIDE';
+        if (cardIcon) cardIcon.className = 'fa-solid fa-podium';
         
         pillTeam.innerText = item.is_group ? 'Group Team Program' : 'Program Overview Mode';
         pillTeam.style.background = 'rgba(16, 185, 129, 0.2)';
@@ -958,7 +1334,8 @@ function renderStageDeck(index, direction = 'next') {
         textChestNum.innerText = item.team_name;
         textChestNum.style.fontSize = window.innerWidth <= 480 ? '26px' : '38px';
         textPartName.innerText = 'Team Performance';
-        textSlideMode.innerText = `TEAM #${item.participant_order}`;
+        textSlideMode.innerText = 'GROUP PERFORMANCE';
+        if (cardIcon) cardIcon.className = 'fa-solid fa-users';
         
         pillTeam.innerText = item.team_name;
         pillTeam.style.background = item.team_color + '22';
@@ -973,7 +1350,8 @@ function renderStageDeck(index, direction = 'next') {
         textChestNum.innerText = item.chest_number;
         textChestNum.style.fontSize = window.innerWidth <= 480 ? '32px' : '52px';
         textPartName.innerText = item.entry_name;
-        textSlideMode.innerText = `ENTRY #${item.participant_order}`;
+        textSlideMode.innerText = 'PARTICIPANT SLIDE';
+        if (cardIcon) cardIcon.className = 'fa-solid fa-microphone-lines';
         
         pillTeam.innerText = item.team_name;
         pillTeam.style.background = item.team_color + '22';
@@ -987,6 +1365,7 @@ function renderStageDeck(index, direction = 'next') {
         textChestNum.style.fontSize = '52px';
         textPartName.innerText = 'No Participants Registered';
         textSlideMode.innerText = 'EMPTY INTRO';
+        if (cardIcon) cardIcon.className = 'fa-solid fa-circle-info';
         pillTeam.style.display = 'none';
     }
 
@@ -999,13 +1378,11 @@ function renderStageDeck(index, direction = 'next') {
 
     if (isLiveItem) {
         badgeStatus.className = 'badge badge-success';
-        badgeStatus.innerText = item.is_intro ? '🔴 PROGRAM INTRO LIVE' : '🔴 ON STAGE LIVE';
+        badgeStatus.innerText = '🔴 Live On Stage';
         chestBox.classList.add('is-live-box');
 
-        btnSelect.className = 'select-btn select-btn-live';
-        btnSelect.innerHTML = item.is_intro 
-            ? '<i class="fa-solid fa-circle-check"></i> PROGRAM INTRO CURRENTLY LIVE ON STAGE' 
-            : '<i class="fa-solid fa-circle-check"></i> PARTICIPANT CURRENTLY LIVE ON STAGE';
+        btnSelect.className = 'footer-action-btn btn-live-active';
+        btnSelect.innerHTML = '<i class="fa-solid fa-circle-check"></i> LIVE ON STAGE';
             
         if (btnMobileActivate) {
             btnMobileActivate.className = 'btn btn-success';
@@ -1013,16 +1390,14 @@ function renderStageDeck(index, direction = 'next') {
         }
     } else {
         badgeStatus.className = 'badge badge-neutral';
-        badgeStatus.innerText = 'PREVIEWING SLIDE';
-        badgeStatus.style.background = 'rgba(0,0,0,0.6)';
-        badgeStatus.style.border = '1px solid rgba(255,255,255,0.15)';
+        badgeStatus.innerText = 'Previewing Slide';
+        badgeStatus.style.background = 'rgba(255,255,255,0.05)';
+        badgeStatus.style.border = '1px solid rgba(255,255,255,0.1)';
         badgeStatus.style.color = '#aaa';
         chestBox.classList.remove('is-live-box');
 
-        btnSelect.className = 'select-btn select-btn-unselected';
-        btnSelect.innerHTML = item.is_intro 
-            ? '⚡ ACTIVATE &amp; SHOW PROGRAM INTRO ON STAGE' 
-            : '⚡ ACTIVATE PARTICIPANT ON STAGE';
+        btnSelect.className = 'footer-action-btn';
+        btnSelect.innerHTML = '<i class="fa-solid fa-arrows-rotate"></i> Update Program & Participants';
 
         if (btnMobileActivate) {
             btnMobileActivate.className = 'btn btn-success';
@@ -1499,7 +1874,7 @@ let touchStartY = 0;
 let touchEndX = 0;
 let touchEndY = 0;
 
-const deckElement = document.querySelector('.ppt-deck-container');
+const deckElement = document.querySelector('.slide-card-container');
 
 if (deckElement) {
     deckElement.addEventListener('touchstart', (e) => {

@@ -757,7 +757,7 @@
         return c;
     }
 
-    function renderSchedulePage(index, animateOut = false) {
+    function renderSchedulePage(index, animateOut = false, isSync = false) {
         const pageEl = els.schedule?.querySelector('[data-schedule-page]');
         if (!pageEl) return;
 
@@ -878,7 +878,7 @@
 
             pageEl.innerHTML = html;
 
-            if (typeof gsap !== 'undefined') {
+            if (!isSync && typeof gsap !== 'undefined') {
                 const rows = pageEl.querySelectorAll('.program-row, .date-header-row');
                 gsap.fromTo(rows, {
                     opacity: 0,
@@ -930,13 +930,13 @@
             state.schedule.currentPage = 0;
             renderScheduleFrame(state.schedule.data);
             updateScheduleClock();
-            renderSchedulePage(0, false);
+            renderSchedulePage(0, false, false);
 
             if (state.activeSlide === 'schedule') {
                 startSchedulePlayback();
             }
         } else {
-            renderSchedulePage(state.schedule.currentPage, false);
+            renderSchedulePage(state.schedule.currentPage, false, true);
         }
     }
 
@@ -1371,7 +1371,7 @@
 
         // Sync playback state
         if (typeof settings.is_playing === 'boolean') state.is_playing = settings.is_playing;
-        if (settings.mode) state.mode = settings.mode;
+        if (settings.mode) state.mode = window.IS_SINGLE_PAGE ? 'manual' : settings.mode;
         if (settings.refresh_interval) state.refresh_interval = settings.refresh_interval;
 
         // Sync theme
@@ -1387,6 +1387,25 @@
 
         // Rebuild slides map and ordered rotation from settings
         const slidesMap = settings.slides || {};
+
+        // Compare DOM-rendered slides with the newly fetched settings.
+        // If slide configurations (enabled/disabled) differ, reload the page to render updated structures.
+        const currentDomSlideKeys = Array.from(document.querySelectorAll('.tv-slide'))
+            .map(el => el.dataset.slide)
+            .filter(Boolean)
+            .sort();
+
+        const newEnabledSlideKeys = Object.values(slidesMap)
+            .filter(s => s.enabled !== false)
+            .map(s => s.key || s.slide_key)
+            .filter(Boolean)
+            .sort();
+
+        if (!window.IS_SINGLE_PAGE && JSON.stringify(currentDomSlideKeys) !== JSON.stringify(newEnabledSlideKeys)) {
+            window.location.reload();
+            return;
+        }
+
         state.slides = {};
 
         const slideArray = Object.values(slidesMap);
@@ -1426,7 +1445,7 @@
         // Control slideshow flow based on mode settings
         if (state.mode === 'manual') {
             stopSlideTimer();
-            if (settings.active_slide && state.activeSlide !== settings.active_slide) {
+            if (!window.IS_SINGLE_PAGE && settings.active_slide && state.activeSlide !== settings.active_slide) {
                 setActiveSlide(settings.active_slide);
             }
         } else if (state.mode === 'auto') {
@@ -1654,6 +1673,10 @@
         const currentActive = document.querySelector('.tv-slide.tv-slide--active');
         const nextTarget = document.querySelector(`.tv-slide[data-slide="${normalizedKey}"]`) || document.getElementById(`slide-${normalizedKey}`);
 
+        if (!nextTarget) {
+            return;
+        }
+
         if (state.activeSlide === normalizedKey && currentActive === nextTarget) {
             return;
         }
@@ -1737,10 +1760,14 @@
     function getNextEnabledSlide() {
         const enabledKeys = state.slideOrder.filter(key => {
             const slideConf = state.slides[key];
-            return slideConf && slideConf.enabled !== false;
+            const hasEl = document.querySelector(`.tv-slide[data-slide="${key}"]`) || document.getElementById(`slide-${key}`);
+            return slideConf && slideConf.enabled !== false && hasEl;
         });
 
-        if (enabledKeys.length === 0) return 'intro';
+        if (enabledKeys.length === 0) {
+            const firstEl = document.querySelector('.tv-slide');
+            return firstEl ? (firstEl.dataset.slide || firstEl.id.replace('slide-', '')) : 'intro';
+        }
 
         const currentIdx = enabledKeys.indexOf(state.activeSlide);
         if (currentIdx === -1) return enabledKeys[0];

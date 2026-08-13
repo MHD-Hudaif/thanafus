@@ -73,6 +73,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
     $slides = $_POST['slides'] ?? [];
     try {
+        // Handle Video Upload
+        if (isset($_FILES['intro_video']) && $_FILES['intro_video']['error'] === UPLOAD_ERR_OK) {
+            $fileTmpPath = $_FILES['intro_video']['tmp_name'];
+            $fileName = $_FILES['intro_video']['name'];
+            $fileExtension = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+            if ($fileExtension !== 'mp4') {
+                throw new Exception('Only MP4 video files (.mp4) are allowed.');
+            }
+            $uploadFileDir = app_path('assets/videos/');
+            if (!is_dir($uploadFileDir)) {
+                mkdir($uploadFileDir, 0755, true);
+            }
+            $dest_path = $uploadFileDir . 'Intro.mp4';
+            if (!move_uploaded_file($fileTmpPath, $dest_path)) {
+                throw new Exception('Failed to save uploaded video file.');
+            }
+        }
+
         admin_db_transaction($pdo, function ($pdo) use ($slides, $activeEventId) {
             foreach ($slides as $key => $slideData) {
                 $title = trim((string)($slideData['title'] ?? ''));
@@ -165,7 +183,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
             <!-- Slides Configuration Form -->
             <div class="panel">
                 <div class="page-subtitle mb-4">Slide rotation sequence</div>
-                <form method="POST">
+                <form method="POST" enctype="multipart/form-data">
                     <?= admin_csrf_field() ?>
                     <input type="hidden" name="action" value="save_slides">
 
@@ -177,7 +195,6 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                     <th>Slide Component</th>
                                     <th>Title</th>
                                     <th style="width: 100px;">Duration (sec)</th>
-                                    <th style="width: 120px;">Layout Style</th>
                                     <th style="text-align: center; width: 100px;">On Air</th>
                                     <th style="text-align: center; width: 100px;">Actions</th>
                                 </tr>
@@ -202,30 +219,45 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                                    value="<?= e($c['title']) ?>" 
                                                    class="form-control" 
                                                    required>
+                                            <?php if ($c['slide_key'] === 'intro'): ?>
+                                                <div style="margin-top: 8px; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 6px;">
+                                                    <label style="font-size: 11px; font-weight: 700; color: #10b981; display: block; margin-bottom: 3px;">
+                                                        <i class="fa-solid fa-cloud-arrow-up"></i> Upload Intro Video (.mp4)
+                                                    </label>
+                                                    <input type="file" 
+                                                           name="intro_video" 
+                                                           id="intro-video-upload" 
+                                                           accept="video/mp4" 
+                                                           style="font-size: 11px; width: 100%; max-width: 200px;">
+                                                    <div style="font-size: 9px; color: var(--text-muted); margin-top: 2px;">
+                                                        Auto-detects and locks duration on selection.
+                                                    </div>
+                                                </div>
+                                            <?php endif; ?>
                                         </td>
                                         <td>
-                                            <input type="number" 
-                                                    name="slides[<?= e($c['slide_key']) ?>][duration]" 
-                                                    value="<?= (int)($c['duration'] / 1000) ?>" 
-                                                    min="1" 
-                                                    max="300"
-                                                    class="form-control" 
-                                                    style="width: 70px; padding: 4px;"
-                                                    title="Duration in seconds. Min: 1s. Video/intro slides: 10–30s recommended."
-                                                    required>
-                                        </td>
-                                        <td>
-                                            <?php if ($c['slide_key'] === 'leaderboard'): ?>
-                                                <select name="slides[<?= e($c['slide_key']) ?>][style]" class="form-control" style="padding: 4px; font-size: 13px;">
-                                                    <option value="classic" <?= ($c['style'] ?? 'classic') === 'classic' ? 'selected' : '' ?>>Classic Bars</option>
-                                                    <option value="orbit" <?= ($c['style'] ?? 'classic') === 'orbit' ? 'selected' : '' ?>>Radial Orbit</option>
-                                                    <option value="podium" <?= ($c['style'] ?? 'classic') === 'podium' ? 'selected' : '' ?>>3D Podium</option>
-                                                    <option value="style2" <?= ($c['style'] ?? 'classic') === 'style2' ? 'selected' : '' ?>>Diamond 3D</option>
-                                                    <option value="staggered" <?= ($c['style'] ?? 'classic') === 'staggered' ? 'selected' : '' ?>>Staggered</option>
-                                                </select>
+                                            <?php if ($c['slide_key'] === 'intro'): ?>
+                                                <input type="number" 
+                                                        id="intro-duration-input"
+                                                        name="slides[<?= e($c['slide_key']) ?>][duration]" 
+                                                        value="<?= (int)($c['duration'] / 1000) ?>" 
+                                                        min="1" 
+                                                        max="300"
+                                                        class="form-control" 
+                                                        style="width: 70px; padding: 4px; background: rgba(255,255,255,0.05); color: #888;"
+                                                        title="Intro duration is locked to the video file length. Select a new video to update."
+                                                        readonly
+                                                        required>
                                             <?php else: ?>
-                                                <input type="hidden" name="slides[<?= e($c['slide_key']) ?>][style]" value="classic">
-                                                <span class="text-muted">—</span>
+                                                <input type="number" 
+                                                        name="slides[<?= e($c['slide_key']) ?>][duration]" 
+                                                        value="<?= (int)($c['duration'] / 1000) ?>" 
+                                                        min="1" 
+                                                        max="300"
+                                                        class="form-control" 
+                                                        style="width: 70px; padding: 4px;"
+                                                        title="Duration in seconds. Min: 1s."
+                                                        required>
                                             <?php endif; ?>
                                         </td>
                                         <td style="text-align: center;">
@@ -243,6 +275,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                                     <?= $c['is_enabled'] ? 'On' : 'Off' ?>
                                                 </span>
                                             </div>
+                                            <input type="hidden" name="slides[<?= e($c['slide_key']) ?>][style]" value="<?= e($c['style'] ?? 'classic') ?>">
                                         </td>
                                         <td style="text-align: center;">
                                             <div style="display: flex; gap: 4px; justify-content: center;">
@@ -336,17 +369,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                     </button>
                 </div>
 
-                <!-- Theme Selection Card -->
-                <div style="border-top: 1px solid var(--border); margin-top: 20px; padding-top: 15px;">
-                    <div class="input-group">
-                        <label>TV Theme Color Scheme</label>
-                        <select id="tvThemeSelect">
-                            <option value="emerald" <?= ($tvSettings['theme'] ?? 'emerald') === 'emerald' ? 'selected' : '' ?>>Emerald Theme (Green)</option>
-                            <option value="royal" <?= ($tvSettings['theme'] ?? 'emerald') === 'royal' ? 'selected' : '' ?>>Royal Theme (Blue)</option>
-                            <option value="midnight" <?= ($tvSettings['theme'] ?? 'emerald') === 'midnight' ? 'selected' : '' ?>>Midnight Theme (Dark Slate)</option>
-                        </select>
-                    </div>
-                </div>
+
 
             </div>
         </div>
@@ -473,12 +496,33 @@ require_once __DIR__ . '/../../includes/sidebar.php';
         });
     });
 
-    // Theme selector
-    document.getElementById('tvThemeSelect')?.addEventListener('change', async function() {
-        await postSettings('theme', { theme: this.value });
-    });
 
 
+    // Video Duration Detection on selection
+    const introVideoUpload = document.getElementById('intro-video-upload');
+    const introDurationInput = document.getElementById('intro-duration-input');
+    
+    if (introVideoUpload && introDurationInput) {
+        introVideoUpload.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            const video = document.createElement('video');
+            video.preload = 'metadata';
+            video.src = URL.createObjectURL(file);
+            
+            video.onloadedmetadata = function() {
+                URL.revokeObjectURL(video.src);
+                const duration = Math.round(video.duration);
+                if (duration > 0) {
+                    introDurationInput.value = duration;
+                    if (window.showToast) {
+                        window.showToast('Detected video duration: ' + duration + 's. Locked duration updated.', 'info');
+                    }
+                }
+            };
+        });
+    }
 
 })();
 </script>

@@ -12,8 +12,9 @@ if (!defined('LIVE_DISPLAY_STAGE')) {
     require dirname(__DIR__) . '/includes/header.php';
     echo '<section class="tv-slide tv-slide--active" id="slide-intro" data-slide="intro" style="opacity: 1; visibility: visible; transform: scale(1);">';
 }
-
-$introVideoUrl = asset_url('videos/Intro.mp4');
+$videoPath = app_path('assets/videos/Intro.mp4');
+$version = file_exists($videoPath) ? filemtime($videoPath) : time();
+$introVideoUrl = asset_url('videos/Intro.mp4') . '?v=' . $version;
 ?>
 <style>
 body:has(#slide-intro.tv-slide--active) .tv-topbar,

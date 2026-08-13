@@ -44,7 +44,7 @@ body:has(#slide-leaderboard.tv-slide--active) .tv-topbar {
     padding: 0 !important;
     margin: 0 !important;
     overflow: hidden;
-    background: #f8fafc url('<?= asset_url('images/white-background.png') ?>') center center / cover no-repeat;
+    background: transparent !important;
     font-family: 'Plus Jakarta Sans', 'Outfit', 'Cairo', system-ui, -apple-system, sans-serif;
     color: #0f172a;
     width: 100% !important;

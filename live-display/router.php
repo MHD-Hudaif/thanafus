@@ -21,6 +21,12 @@ function tv_render_slide(string $key, array $settings): void
     }
 
     $slide = $settings['slides'][$key] ?? ['title' => ucfirst($key)];
+    
+    // Do not render disabled slides in HTML
+    if (isset($slide['enabled']) && !$slide['enabled']) {
+        return;
+    }
+
     $isIntro = $key === 'intro';
     $classes = 'tv-slide' . ($isIntro ? ' tv-slide--active' : '');
     ?>

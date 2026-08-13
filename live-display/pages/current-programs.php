@@ -75,9 +75,7 @@ $nextProgTime = !empty($initNextProg['start_label']) ? $initNextProg['start_labe
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;700;800;900&family=Outfit:wght@600;700;800;900&family=Cairo:wght@700;800;900&display=swap');
 
     body.tv-current-programs-theme .tv-topbar,
-    body.tv-current-programs-theme .tv-backdrop,
-    body:has(#slide-current-program.tv-slide--active) .tv-topbar,
-    body:has(#slide-current-program.tv-slide--active) .tv-backdrop {
+    body:has(#slide-current-program.tv-slide--active) .tv-topbar {
         display: none !important;
     }
 
@@ -85,7 +83,7 @@ $nextProgTime = !empty($initNextProg['start_label']) ? $initNextProg['start_labe
         padding: 0 !important;
         margin: 0 !important;
         overflow: hidden;
-        background: #f8fafc url('<?= asset_url('images/white-background.png') ?>') center center / cover no-repeat;
+        background: transparent !important;
         font-family: 'Plus Jakarta Sans', 'Outfit', 'Cairo', system-ui, -apple-system, sans-serif;
         color: #0f172a;
         width: 100% !important;
@@ -105,7 +103,7 @@ $nextProgTime = !empty($initNextProg['start_label']) ? $initNextProg['start_labe
         display: flex;
         align-items: center;
         justify-content: center;
-        background: #f8fafc url('<?= asset_url('images/white-background.png') ?>') center center / cover no-repeat;
+        background: transparent !important;
     }
 
     /* Light Backdrop Mesh with Subtle Pulse Tinted in 1st Rank Team's Color */
