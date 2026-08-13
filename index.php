@@ -143,7 +143,7 @@ try {
             <div class="hero-actions">
                 <a href="live-display-mobile.php" class="btn-primary">Live Dashboard</a>
                 <a href="live-display/" class="btn-secondary" target="_blank">Event Slideshow</a>
-                <a href="<?= app_url('/uploads/kauzariyya-musabaqa.apk') ?>" class="btn-secondary" download>
+                <a href="<?= app_url('/uploads/kauzariyya-musabaqa.apk') ?>" class="btn-secondary mobile-only" download>
                     <i class="fa-solid fa-mobile-screen-button" style="margin-right: 6px; color: var(--brand-gold);"></i> Get Mobile App
                 </a>
             </div>

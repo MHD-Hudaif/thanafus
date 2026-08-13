@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Connection Offline</title>
+    <style>
+        :root {
+            --bg-primary: #0a0f1d;
+            --bg-card: rgba(18, 26, 44, 0.8);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent-indigo: #6366f1;
+            --accent-purple: #8b5cf6;
+            --accent-rose: #f43f5e;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.15) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(139, 92, 246, 0.15) 0px, transparent 50%);
+            color: var(--text-main);
+            font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+            min-height: 100vh;
+            min-height: 100dvh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 24px;
+            overflow: hidden;
+        }
+
+        .error-card {
+            width: 100%;
+            max-width: 400px;
+            background: var(--bg-card);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            padding: 40px 24px;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 24px;
+        }
+
+        .icon-wrap {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: rgba(244, 63, 94, 0.1);
+            border: 2px dashed rgba(244, 63, 94, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--accent-rose);
+            margin-bottom: 8px;
+            animation: pulse 2s infinite ease-in-out;
+        }
+
+        .icon-wrap svg {
+            width: 40px;
+            height: 40px;
+        }
+
+        .brand-logo {
+            width: 42px;
+            height: 42px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, var(--accent-indigo), var(--accent-purple));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            color: #fff;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+            font-weight: 800;
+        }
+
+        .error-title {
+            font-size: 20px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            color: #fff;
+        }
+
+        .error-desc {
+            font-size: 13.5px;
+            color: var(--text-muted);
+            line-height: 1.5;
+            margin-bottom: 8px;
+        }
+
+        .btn-retry {
+            width: 100%;
+            background: linear-gradient(135deg, var(--accent-indigo), var(--accent-purple));
+            color: #fff;
+            border: none;
+            border-radius: 12px;
+            padding: 14px;
+            font-family: inherit;
+            font-weight: 700;
+            font-size: 14px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+            transition: all 0.25s ease;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-retry:hover {
+            opacity: 0.95;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(99, 102, 241, 0.4);
+        }
+
+        .btn-retry:active {
+            transform: translateY(0);
+        }
+
+        .auto-retry-text {
+            font-size: 11px;
+            color: var(--text-muted);
+            opacity: 0.8;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 0.8;
+                transform: scale(1.05);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="error-card">
+        <div class="brand-logo">🏆</div>
+        
+        <div class="icon-wrap">
+            <!-- Inline SVG Wifi Slash for 100% offline support -->
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="1" y1="1" x2="23" y2="23"></line>
+                <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.5"></path>
+                <path d="M5 12.5a10.94 10.94 0 0 1 5.83-2.84"></path>
+                <path d="M12 18a2 2 0 1 1-4 0 2 2 0 0 1 4 0Z"></path>
+                <path d="M1.39 6.25a21.72 21.72 0 0 1 2.39-1.28"></path>
+                <path d="M8.47 3.38a21.54 21.54 0 0 1 14.14 2.87"></path>
+            </svg>
+        </div>
+
+        <div>
+            <h2 class="error-title" style="margin-bottom: 8px;">Connection Offline</h2>
+            <p class="error-desc">We couldn't connect to the scoreboard. Please check your internet connection and try again.</p>
+        </div>
+
+        <button onclick="retryConnection()" class="btn-retry">
+            <span>Try Again</span>
+        </button>
+        
+        <div class="auto-retry-text" id="status-text">Checking connection automatically...</div>
+    </div>
+
+    <script>
+        const targetUrl = 'https://musabaqa.kauzariyya.com/live-display-mobile';
+
+        function retryConnection() {
+            document.getElementById('status-text').innerHTML = 'Connecting...';
+            window.location.href = targetUrl + '?t=' + Date.now();
+        }
+
+        // Auto retry check using browser online API + periodic fetch checks
+        async function checkOnline() {
+            if (navigator.onLine) {
+                try {
+                    // Try a lightweight fetch to verify internet access
+                    const res = await fetch(targetUrl + '?t=' + Date.now(), { mode: 'no-cors', cache: 'no-store' });
+                    retryConnection();
+                } catch(e) {
+                    // Still offline or server unreachable
+                }
+            }
+        }
+
+        // Run auto check every 8 seconds
+        setInterval(checkOnline, 8000);
+        window.addEventListener('online', retryConnection);
+    </script>
+</body>
+</html>
