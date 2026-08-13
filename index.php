@@ -89,7 +89,6 @@ try {
                 <li><a href="<?= app_url('/live-display-mobile.php') ?>" class="nav-link"><i class="fa-solid fa-chart-line" style="margin-right: 5px; color: #166534;"></i> Live Dashboard</a></li>
                 <li><a href="#about" class="nav-link">Articles</a></li>
                 <li><a href="#categories" class="nav-link">Categories</a></li>
-                <li><a href="#scholars" class="nav-link">Working Committee</a></li>
                 <li><a href="#stages" class="nav-link">Stages</a></li>
                 <li><a href="#location" class="nav-link">Location</a></li>
                 <li class="mobile-login-item"><a href="<?= app_url('/admin/event-manager/programs') ?>" class="btn-login">Portal Login</a></li>
@@ -303,42 +302,6 @@ try {
                 <p class="category-card-desc">Visual communication tasks, including calligraphy scripts (<?= term('Thuluth', 'الثلث') ?>, <?= term('Naskh', 'النسخ') ?>), geometric vector illustration, and team wall magazine edits.</p>
             </div>
         </div>
-    </section>
-
-    <!-- Working Committee Section -->
-    <section class="scholars" id="scholars">
-        <div class="section-header reveal-3d">
-            <span class="section-tag">Leadership & Management</span>
-            <h2 class="section-title">Working Committee</h2>
-            <p class="section-desc">The dedicated committee members and mentors managing academic and organizational excellence for the championship.</p>
-        </div>
-        
-        <?php if (!empty($workingCommittee)): ?>
-            <div class="scholars-grid">
-                <?php foreach ($workingCommittee as $member): ?>
-                    <div class="scholar-card reveal-3d">
-                        <div class="scholar-image-container">
-                            <img src="<?= htmlspecialchars($member['image']) ?>" alt="<?= htmlspecialchars($member['name']) ?>" class="scholar-img" loading="lazy">
-                        </div>
-                        
-                        <div class="scholar-verified">
-                            <i class="bi bi-patch-check-fill text-brandGreen"></i>
-                        </div>
-                        
-                        <div class="scholar-info">
-                            <h4 class="scholar-name"><?= htmlspecialchars($member['name']) ?></h4>
-                            <div class="scholar-role"><?= htmlspecialchars($member['role']) ?></div>
-                        </div>
-                    </div>
-                <?php endforeach; ?>
-            </div>
-        <?php else: ?>
-            <div class="text-center py-12 px-4 rounded-2xl bg-white/60 border border-black/5 max-w-xl mx-auto shadow-sm">
-                <i class="fa-solid fa-users-gear text-4xl text-amber-600 mb-3 block"></i>
-                <h3 class="text-xl font-bold text-emerald-950 mb-1">Working Committee</h3>
-                <p class="text-slate-600 text-sm">Working committee assignments are managed directly via the database panel.</p>
-            </div>
-        <?php endif; ?>
     </section>
 
     <!-- Stages Section -->
