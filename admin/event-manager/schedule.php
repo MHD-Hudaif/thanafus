@@ -819,6 +819,354 @@ require_once __DIR__ . '/../../includes/sidebar.php';
 .modal-overlay.active {
     display: flex !important;
 }
+
+/* Premium UI Styles for Sessions Dashboard */
+.session-card {
+    background: rgba(15, 23, 42, 0.45) !important;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.05) !important;
+    border-radius: 20px !important;
+    box-shadow: 0 12px 40px -12px rgba(0, 0, 0, 0.6) !important;
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.3s ease, box-shadow 0.3s ease !important;
+}
+.session-card:hover {
+    transform: translateY(-5px);
+    border-color: rgba(99, 102, 241, 0.3) !important;
+    box-shadow: 0 24px 50px -15px rgba(99, 102, 241, 0.2) !important;
+}
+
+.day-tab-btn {
+    background: rgba(255, 255, 255, 0.02) !important;
+    border: 1px solid rgba(255, 255, 255, 0.05) !important;
+    color: rgba(255, 255, 255, 0.6) !important;
+    padding: 9px 18px !important;
+    border-radius: 99px !important;
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    cursor: pointer;
+}
+.day-tab-btn:hover {
+    background: rgba(255, 255, 255, 0.07) !important;
+    color: #fff !important;
+    transform: translateY(-1px);
+    border-color: rgba(255, 255, 255, 0.1) !important;
+}
+.day-tab-btn.active {
+    background: linear-gradient(135deg, #6366f1, #4f46e5) !important;
+    border-color: rgba(99, 102, 241, 0.5) !important;
+    color: #fff !important;
+    box-shadow: 0 8px 24px -6px rgba(99, 102, 241, 0.5) !important;
+}
+
+.program-drag-card {
+    background: rgba(255, 255, 255, 0.02) !important;
+    border: 1px solid rgba(255, 255, 255, 0.04) !important;
+    border-left: 3px solid rgba(99, 102, 241, 0.6) !important;
+    border-radius: 10px !important;
+    padding: 11px 14px !important;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
+    cursor: grab;
+}
+.program-drag-card:hover {
+    transform: translateY(-2px) translateX(2px);
+    background: rgba(255, 255, 255, 0.04) !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+    border-left-color: #6366f1 !important;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4) !important;
+}
+.program-drag-card.dragging {
+    opacity: 0.3 !important;
+    transform: scale(0.96) rotate(-1.5deg) !important;
+    border: 1px dashed rgba(99, 102, 241, 0.6) !important;
+    border-left: 1px dashed rgba(99, 102, 241, 0.6) !important;
+    box-shadow: 0 20px 30px rgba(0, 0, 0, 0.5) !important;
+}
+
+.session-drop-zone {
+    border: 2px dashed rgba(255, 255, 255, 0.03) !important;
+    border-radius: 14px !important;
+    background: rgba(0, 0, 0, 0.08) !important;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    min-height: 140px;
+}
+.session-drop-zone.drag-over {
+    background: rgba(99, 102, 241, 0.07) !important;
+    border-color: rgba(99, 102, 241, 0.5) !important;
+    box-shadow: inset 0 0 24px rgba(99, 102, 241, 0.15) !important;
+}
+
+#sessionsSearch {
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+#sessionsSearch:focus {
+    background: rgba(255, 255, 255, 0.06) !important;
+    border-color: #6366f1 !important;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25) !important;
+    width: 280px !important;
+}
+
+.progress-bar-container {
+    background: rgba(255, 255, 255, 0.05) !important;
+    border-radius: 99px !important;
+    overflow: hidden !important;
+    height: 6px !important;
+}
+.progress-bar-fill {
+    border-radius: 99px !important;
+}
+
+#unassignedList {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
+}
+#unassignedList::-webkit-scrollbar {
+    width: 5px;
+}
+#unassignedList::-webkit-scrollbar-track {
+    background: transparent;
+}
+#unassignedList::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.08);
+    border-radius: 99px;
+}
+
+.toast {
+    background: rgba(15, 23, 42, 0.9) !important;
+    backdrop-filter: blur(16px) !important;
+    -webkit-backdrop-filter: blur(16px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    border-radius: 14px !important;
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4) !important;
+    padding: 14px 22px !important;
+    color: #fff !important;
+    font-weight: 600 !important;
+}
+
+/* Division-specific card indicators */
+.program-drag-card[data-tier="senior"] { border-left-color: #a78bfa !important; }
+.program-drag-card[data-tier="junior"] { border-left-color: #38bdf8 !important; }
+.program-drag-card[data-tier="subjunior"] { border-left-color: #34d399 !important; }
+.program-drag-card[data-tier="general"] { border-left-color: #facc15 !important; }
+
+/* Custom design polish for drag elements */
+.unassign-btn {
+    border-radius: 6px !important;
+    width: 22px !important;
+    height: 22px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: rgba(239, 68, 68, 0.08) !important;
+    border: 1px solid rgba(239, 68, 68, 0.15) !important;
+    transition: all 0.2s ease !important;
+    color: #f87171 !important;
+}
+.unassign-btn:hover {
+    background: #ef4444 !important;
+    color: #fff !important;
+    border-color: #ef4444 !important;
+    transform: scale(1.1);
+}
+.unassign-btn i {
+    font-size: 11px !important;
+}
+
+/* ===== Premium Modal Redesign ===== */
+#sectionModal .modal-box {
+    background: rgba(13, 17, 28, 0.95) !important;
+    backdrop-filter: blur(32px) !important;
+    -webkit-backdrop-filter: blur(32px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.07) !important;
+    border-radius: 20px !important;
+    box-shadow: 0 30px 70px -20px rgba(0,0,0,0.7), 0 0 0 1px rgba(99,102,241,0.08) !important;
+    overflow: hidden !important;
+    max-width: 540px !important;
+    width: 100% !important;
+    padding: 0 !important;
+}
+
+.sm-modal-header {
+    background: linear-gradient(135deg, rgba(99,102,241,0.15) 0%, rgba(79,70,229,0.08) 100%);
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    padding: 24px 28px 20px;
+    position: relative;
+}
+.sm-modal-header::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, #6366f1, #8b5cf6, #06b6d4);
+    border-radius: 20px 20px 0 0;
+}
+.sm-modal-icon {
+    width: 44px; height: 44px;
+    background: linear-gradient(135deg, #6366f1, #4f46e5);
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; color: #fff;
+    box-shadow: 0 8px 20px -6px rgba(99,102,241,0.6);
+    flex-shrink: 0;
+}
+.sm-modal-title-wrap { display: flex; align-items: center; gap: 14px; }
+.sm-modal-title { font-size: 19px; font-weight: 800; color: #fff; line-height: 1.2; }
+.sm-modal-subtitle { font-size: 12.5px; color: rgba(255,255,255,0.45); margin-top: 3px; }
+.sm-modal-close {
+    position: absolute; top: 18px; right: 18px;
+    width: 32px; height: 32px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 8px;
+    color: rgba(255,255,255,0.5);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+.sm-modal-close:hover {
+    background: rgba(239,68,68,0.15);
+    border-color: rgba(239,68,68,0.3);
+    color: #ef4444;
+}
+
+.sm-modal-body {
+    padding: 24px 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.sm-field {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+}
+.sm-field-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+}
+.sm-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.55);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.sm-label i {
+    font-size: 11px;
+    color: rgba(99,102,241,0.8);
+}
+.sm-label .sm-req {
+    color: #f87171;
+    margin-left: 1px;
+}
+.sm-input-wrap {
+    position: relative;
+}
+.sm-input {
+    width: 100%;
+    background: rgba(255,255,255,0.04) !important;
+    border: 1px solid rgba(255,255,255,0.07) !important;
+    border-radius: 10px !important;
+    color: #fff !important;
+    font-size: 14px !important;
+    padding: 11px 14px !important;
+    transition: all 0.25s ease !important;
+    outline: none !important;
+    box-sizing: border-box;
+    -webkit-appearance: none;
+    color-scheme: dark;
+}
+.sm-input::placeholder { color: rgba(255,255,255,0.22) !important; }
+.sm-input:focus {
+    background: rgba(99,102,241,0.07) !important;
+    border-color: rgba(99,102,241,0.5) !important;
+    box-shadow: 0 0 0 3px rgba(99,102,241,0.12) !important;
+}
+.sm-input:hover:not(:focus) {
+    border-color: rgba(255,255,255,0.14) !important;
+    background: rgba(255,255,255,0.055) !important;
+}
+.sm-field-hint {
+    font-size: 11.5px;
+    color: rgba(255,255,255,0.3);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+.sm-field-hint i { font-size: 10px; }
+
+.sm-divider {
+    border: none;
+    border-top: 1px solid rgba(255,255,255,0.05);
+    margin: 0;
+}
+
+.sm-modal-footer {
+    padding: 18px 28px;
+    border-top: 1px solid rgba(255,255,255,0.05);
+    background: rgba(0,0,0,0.15);
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 10px;
+}
+.sm-btn-cancel {
+    background: rgba(255,255,255,0.05) !important;
+    border: 1px solid rgba(255,255,255,0.08) !important;
+    color: rgba(255,255,255,0.65) !important;
+    border-radius: 10px !important;
+    padding: 10px 20px !important;
+    font-size: 13.5px !important;
+    font-weight: 600 !important;
+    cursor: pointer;
+    transition: all 0.2s ease !important;
+}
+.sm-btn-cancel:hover {
+    background: rgba(255,255,255,0.09) !important;
+    color: #fff !important;
+}
+.sm-btn-save {
+    background: linear-gradient(135deg, #6366f1, #4f46e5) !important;
+    border: none !important;
+    color: #fff !important;
+    border-radius: 10px !important;
+    padding: 10px 22px !important;
+    font-size: 13.5px !important;
+    font-weight: 700 !important;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    display: flex; align-items: center; gap: 7px;
+    box-shadow: 0 8px 20px -6px rgba(99,102,241,0.5) !important;
+}
+.sm-btn-save:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 12px 28px -6px rgba(99,102,241,0.65) !important;
+    background: linear-gradient(135deg, #818cf8, #6366f1) !important;
+}
+.sm-btn-save:active { transform: translateY(0) !important; }
+
+/* Dashboard layout grid for sessions */
+.dashboard-layout-grid {
+    display: flex;
+    gap: 24px;
+    align-items: flex-start;
+}
+@media (max-width: 991px) {
+    .dashboard-layout-grid {
+        flex-direction: column;
+    }
+    .dashboard-sidebar-col {
+        width: 100% !important;
+    }
+}
 </style>
 
 <div class="main-content">
@@ -842,6 +1190,18 @@ require_once __DIR__ . '/../../includes/sidebar.php';
     <?php if ($flash): ?>
         <div class="alert <?= $flash['type'] === 'success' ? 'alert-success' : 'alert-error' ?>" style="border-radius: 10px; font-weight: 600; margin-bottom: 20px;"><?= e($flash['message']) ?></div>
     <?php endif; ?>
+
+    <!-- UNIFIED PAGE TABS -->
+    <div class="tabs-container" style="display: flex; gap: 8px; border-bottom: 1px solid rgba(255,255,255,0.08); margin-bottom: 24px; padding-bottom: 2px;">
+        <button class="tab-trigger active" data-target="timelineTab" style="background: none; border: none; padding: 12px 20px; color: #fff; font-weight: 700; font-size: 14.5px; display: flex; align-items: center; gap: 8px; cursor: pointer; border-bottom: 3px solid #6366f1; transition: all 0.2s;">
+            <i class="fa-solid fa-timeline" style="color: #6366f1;"></i> Timeline Schedule
+        </button>
+        <button class="tab-trigger" data-target="sessionsTab" style="background: none; border: none; padding: 12px 20px; color: var(--muted); font-weight: 700; font-size: 14.5px; display: flex; align-items: center; gap: 8px; cursor: pointer; border-bottom: 3px solid transparent; transition: all 0.2s;">
+            <i class="fa-solid fa-clock" style="color: #a78bfa;"></i> Manage Sessions
+        </button>
+    </div>
+
+    <div id="timelineTabContent" class="tab-content-panel active">
 
     <!-- FILTER BAR -->
     <div class="panel mb-6" style="padding: 16px 20px; background: rgba(15, 23, 42, 0.4); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 14px; margin-bottom: 24px;">
@@ -1333,6 +1693,411 @@ require_once __DIR__ . '/../../includes/sidebar.php';
         </aside>
     </div>
 </div>
+</div><!-- timelineTabContent -->
+
+<div id="sessionsTabContent" class="tab-content-panel" style="display: none;">
+    <!-- Controls Bar -->
+    <div style="display: flex; justify-content: flex-end; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
+        <form method="POST" style="display: inline;">
+            <?= admin_csrf_field() ?>
+            <input type="hidden" name="action" value="generate_defaults_sessions">
+            <button class="btn btn-secondary btn-md" type="submit" onclick="return confirm('This will recreate Morning, Evening, and Night sessions for all event days and auto-assign scheduled programs. Existing empty sessions might be deleted. Proceed?');" style="border-radius: 10px; font-weight: 700; background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.1);"><i class="fa-solid fa-wand-magic-sparkles mr-1" style="color: #a78bfa;"></i> Generate Defaults</button>
+        </form>
+        <form method="POST" style="display: inline;">
+            <?= admin_csrf_field() ?>
+            <input type="hidden" name="action" value="auto_assign_sessions">
+            <button class="btn btn-secondary btn-md" type="submit" style="border-radius: 10px; font-weight: 700; background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.1);"><i class="fa-solid fa-magic mr-1" style="color: #fbbf24;"></i> Auto-Assign Programs</button>
+        </form>
+        <button class="btn btn-success btn-md" type="button" data-open-add style="border-radius: 10px; font-weight: 700; box-shadow: 0 4px 14px rgba(16,185,129,0.2);"><i class="fa-solid fa-plus mr-1"></i> Add Session</button>
+    </div>
+
+    <!-- Real-time Filter & Search Panel -->
+    <div class="panel mb-6" style="padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; background: rgba(255,255,255,0.015); border-color: rgba(255,255,255,0.03); border-radius: 12px; margin-bottom: 24px;">
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;" id="dayFilterTabs">
+            <button class="day-tab-btn active" data-day="all">
+                All Days <span class="badge badge-neutral ml-1" style="font-size: 10px; opacity: 0.8;"><?= $sessionDayCounts['all'] ?></span>
+            </button>
+            <?php 
+            $sortedDates = array_keys($sessionUniqueDays);
+            sort($sortedDates);
+            foreach ($sortedDates as $date): 
+            ?>
+                <button class="day-tab-btn" data-day="<?= e($date) ?>">
+                    <?= e($sessionUniqueDays[$date]) ?> 
+                    <span class="badge badge-neutral ml-1" style="font-size: 10px; opacity: 0.8;"><?= $sessionDayCounts[$date] ?? 0 ?></span>
+                </button>
+            <?php endforeach; ?>
+            <?php if (($sessionDayCounts['undated'] ?? 0) > 0): ?>
+                <button class="day-tab-btn" data-day="undated">
+                    General / Undated 
+                    <span class="badge badge-neutral ml-1" style="font-size: 10px; opacity: 0.8;"><?= $sessionDayCounts['undated'] ?></span>
+                </button>
+            <?php endif; ?>
+        </div>
+        
+        <div style="position: relative; display: flex; align-items: center;">
+            <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 12px; color: var(--muted); font-size: 13px;"></i>
+            <input type="text" id="sessionsSearch" placeholder="Search programs..." class="form-input" style="padding-left: 34px; height: 38px; font-size: 13px; width: 240px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; color: #fff;">
+        </div>
+    </div>
+
+    <!-- Dashboard layout grid -->
+    <div class="dashboard-layout-grid">
+        <!-- Main: Sessions Cards Grid -->
+        <div class="dashboard-main-col" style="flex: 2;">
+            <?php if (empty($sessionList)): ?>
+                <div class="empty-state" style="padding: 40px; text-align: center; background: rgba(255,255,255,0.01); border: 1.5px dashed rgba(255,255,255,0.05); border-radius: 16px;">
+                    <div class="empty-icon" style="font-size: 40px; color: rgba(255,255,255,0.1); margin-bottom: 12px;"><i class="fa-solid fa-clock"></i></div>
+                    <div class="empty-title" style="font-size: 16px; font-weight: 700; color: #fff;">No Schedule Sessions</div>
+                    <div class="empty-subtitle" style="font-size: 13px; color: var(--muted); margin-bottom: 16px;">Create sessions (Morning, Evening, Night) to group programs.</div>
+                </div>
+            <?php else: ?>
+                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 20px;" id="sessionsContainer">
+                    <?php 
+                    foreach ($sessionList as $section): 
+                        $sectionId = (int)$section['id'];
+                        $assignedProgs = $programsBySection[$sectionId] ?? [];
+                        
+                        // Calculate allocated duration vs total duration of session
+                        $secStart = new DateTime($section['start_time']);
+                        $secEnd = new DateTime($section['end_time']);
+                        if ($secEnd < $secStart) {
+                            $secEnd->modify('+1 day');
+                        }
+                        $sessionTotalMins = (int)(($secEnd->getTimestamp() - $secStart->getTimestamp()) / 60);
+                        
+                        $allocatedMins = calculate_session_allocated_minutes($assignedProgs);
+                        
+                        $isOverallocated = $allocatedMins > $sessionTotalMins;
+                        $percentage = $sessionTotalMins > 0 ? min(100, (int)(($allocatedMins / $sessionTotalMins) * 100)) : 0;
+                        
+                        // Find Day Accent class
+                        $accentClass = 'card-day-accent-gen';
+                        $dateVal = $section['section_date'] ?: 'undated';
+                        if ($section['section_date'] && $eventStart) {
+                            $secDate = new DateTime($section['section_date']);
+                            $diff = $secDate->diff($eventStart)->days + 1;
+                            $accentClass = 'card-day-accent-' . (($diff % 3) ?: 3);
+                        }
+                        
+                        // Define inline style colors for accentClass fallback
+                        $accentColor = match($accentClass) {
+                            'card-day-accent-1' => '#6366f1',
+                            'card-day-accent-2' => '#a78bfa',
+                            'card-day-accent-3' => '#34d399',
+                            default => '#94a3b8'
+                        };
+                        ?>
+                        <div class="panel session-card" 
+                             data-day="<?= e($dateVal) ?>"
+                             data-section-id="<?= $sectionId ?>"
+                             style="display: flex; flex-direction: column; height: 100%; border: 1px solid rgba(255,255,255,0.04); background: rgba(255,255,255,0.015); border-radius: 12px; padding: 0; overflow: hidden; position: relative;">
+                            
+                            <!-- Top color strip -->
+                            <div style="height: 4px; width: 100%; background: <?= $accentColor ?>;"></div>
+                            
+                            <!-- Card Header -->
+                            <div style="padding: 16px 20px; background: rgba(255,255,255,0.02); border-bottom: 1px solid rgba(255,255,255,0.04);">
+                                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                                    <div style="flex: 1; min-width: 0;">
+                                        <h4 style="font-size: 15px; font-weight: 800; color: #fff; margin: 0; display:flex; align-items:center; gap:8px;">
+                                            <i class="fa-regular fa-clock" style="color: <?= $accentColor ?>; font-size:14px;"></i>
+                                            <?= e($section['name']) ?>
+                                        </h4>
+                                        <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px;">
+                                            <span class="badge badge-info" style="font-size: 11px; padding: 2px 6px;">
+                                                <?= e(date('h:i A', strtotime($section['start_time']))) ?> - <?= e(date('h:i A', strtotime($section['end_time']))) ?>
+                                            </span>
+                                            <?php if ($section['section_date']): ?>
+                                                <span class="badge badge-neutral" style="font-size: 11px; padding: 2px 6px;">
+                                                    <i class="fa-regular fa-calendar-days mr-1"></i> <?= e(date('M d, Y', strtotime($section['section_date']))) ?>
+                                                </span>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                    <div class="flex gap-1" style="margin-left: 10px;">
+                                        <button 
+                                            type="button"
+                                            class="btn btn-secondary btn-xs" 
+                                            data-edit-section='<?= e(json_encode($section, JSON_HEX_APOS | JSON_HEX_QUOT)) ?>'
+                                            style="height:26px; width:26px; padding:0; display:inline-flex; align-items:center; justify-content:center; font-size:11px;"
+                                            title="Edit Session"
+                                        >
+                                            <i class="fa-solid fa-pen"></i>
+                                        </button>
+                                        <button 
+                                            type="button"
+                                            class="btn btn-danger btn-xs" 
+                                            data-delete-id="<?= $sectionId ?>" 
+                                            data-delete-name="<?= e($section['name']) ?>"
+                                            style="height:26px; width:26px; padding:0; display:inline-flex; align-items:center; justify-content:center; font-size:11px;"
+                                            title="Delete Session"
+                                        >
+                                            <i class="fa-solid fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <!-- Session Allocation Metrics -->
+                                <div style="margin-top: 12px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11.5px; font-weight: 500;">
+                                        <span class="allocated-text" style="color: <?= $isOverallocated ? 'var(--danger, #ef4444)' : 'var(--muted)' ?>;">
+                                            Allocated: <span class="alloc-mins"><?= $allocatedMins ?></span>m / <?= $sessionTotalMins ?>m (<?= $percentage ?>%)
+                                        </span>
+                                        <?php if ($isOverallocated): ?>
+                                            <span class="warning-badge" style="color: var(--danger, #ef4444); font-weight: 700; font-size: 10px; text-transform: uppercase;">
+                                                <i class="fa-solid fa-triangle-exclamation mr-1"></i> Overallocated
+                                            </span>
+                                        <?php endif; ?>
+                                    </div>
+                                    <div class="progress-bar-container" style="background: rgba(255,255,255,0.05); height: 5px; border-radius: 99px; overflow: hidden; margin-top: 6px;">
+                                        <div class="progress-bar-fill" 
+                                             data-total="<?= $sessionTotalMins ?>"
+                                             style="background: <?= $isOverallocated ? 'var(--danger, #ef4444)' : '#6366f1' ?>; width: <?= $percentage ?>%; height: 100%; transition: width 0.3s ease, background-color 0.3s ease;"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Droppable list wrapper -->
+                            <div class="session-drop-zone" 
+                                 data-drop-section-id="<?= $sectionId ?>"
+                                 style="padding: 16px 20px; flex: 1; display: flex; flex-direction: column; min-height: 120px;">
+                                
+                                <div class="assigned-list" style="flex: 1; display:flex; flex-direction:column; gap:8px;">
+                                    <?php if (empty($assignedProgs)): ?>
+                                        <div class="empty-sec-placeholder" style="text-align: center; color: var(--muted); font-size: 12.5px; padding: 30px 0; border: 1.5px dashed rgba(255,255,255,0.03); border-radius: 8px; margin: auto 0; display:flex; flex-direction:column; align-items:center; gap:8px;">
+                                            <i class="fa-solid fa-arrow-pointer-drag" style="font-size: 18px; color:rgba(255,255,255,0.2);"></i>
+                                            <span>Drag programs here</span>
+                                        </div>
+                                    <?php else: ?>
+                                        <?php foreach ($assignedProgs as $prog): ?>
+                                            <?php 
+                                            $progDuration = 0;
+                                            if ($prog['start_time'] && $prog['end_time']) {
+                                                $pStart = new DateTime($prog['start_time']);
+                                                $pEnd = new DateTime($prog['end_time']);
+                                                $progDuration = (int)(($pEnd->getTimestamp() - $pStart->getTimestamp()) / 60);
+                                            }
+                                            $classTier = admin_class_type_tier_from_name($prog['class_type_name'] ?? '');
+                                            $tierClass = admin_class_type_badge_class($classTier);
+                                            $tierName = $classTier ? admin_class_type_tier_label($classTier) : 'General';
+                                            ?>
+                                            <div class="program-drag-card" 
+                                                 draggable="true"
+                                                 data-program-id="<?= (int)$prog['id'] ?>"
+                                                 data-duration="<?= $progDuration ?>"
+                                                 data-tier="<?= $classTier ?: 'general' ?>"
+                                                 data-time="<?= $prog['start_time'] ? e($prog['start_time']) : '' ?>"
+                                                 style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.04); border-radius: 8px; padding: 8px 12px; gap: 8px;">
+                                                <div style="min-width: 0;">
+                                                    <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                                                        <strong class="prog-title" style="font-size: 13.0px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 170px;"><?= e($prog['title']) ?></strong>
+                                                        <span class="badge badge-neutral <?= $tierClass ?>" style="font-size: 9.0px; padding: 1px 5px; border-radius: 4px; font-weight: 800; transform: translateY(-0.5px);"><?= e($tierName) ?></span>
+                                                    </div>
+                                                    <span style="font-size: 11px; color: var(--muted); display: block; margin-top: 4px;">
+                                                        <i class="fa-solid fa-location-dot mr-1"></i> <?= e($prog['stage_type_name'] ?: 'TBD') ?>
+                                                        <?php if ($prog['start_time']): ?>
+                                                             • <?= e(date('h:i A', strtotime($prog['start_time']))) ?> (<?= $progDuration ?>m)
+                                                         <?php endif; ?>
+                                                    </span>
+                                                </div>
+                                                <div style="display:flex; align-items:center; gap:8px;">
+                                                    <i class="fa-solid fa-grip-vertical mr-1" style="color:rgba(255,255,255,0.2); font-size:12px; cursor:grab;"></i>
+                                                    <button type="button" class="btn btn-link btn-sm unassign-btn" data-unassign-id="<?= (int)$prog['id'] ?>" style="color: var(--danger, #ef4444); padding:4px;" title="Unassign">
+                                                        <i class="fa-solid fa-xmark" style="font-size: 14px;"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
+                                </div>
+
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+        </div>
+
+        <!-- Sidebar Area: Unassigned Programs -->
+        <div class="dashboard-sidebar-col" style="flex: 1; min-width: 280px;">
+            <div class="panel" style="border: 1px solid rgba(255,255,255,0.04); background: rgba(255,255,255,0.015); border-radius: 12px; position: sticky; top: 20px;">
+                <h3 class="mb-4" style="font-size: 15px; font-weight: 800; display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <span><i class="fa-solid fa-list-ul mr-2" style="color:var(--warning);"></i> Unassigned Programs</span>
+                    <span class="badge badge-warning" id="unassignedCount" style="font-size: 11px; padding: 2px 8px;"><?= count($sessionUnassignedPrograms) ?></span>
+                </h3>
+
+                <div id="unassignedList" 
+                     class="session-drop-zone" 
+                     data-drop-section-id="0"
+                     style="display: flex; flex-direction: column; gap: 10px; max-height: 550px; overflow-y: auto; padding: 4px; min-height: 150px; border-radius: 8px;">
+                    
+                    <?php if (empty($sessionUnassignedPrograms)): ?>
+                        <div class="all-assigned-msg" style="text-align: center; color: var(--success); padding: 40px 0; font-size: 13px;">
+                           <i class="fa-solid fa-circle-check" style="font-size:24px; display:block; margin-bottom:10px; color:var(--success);"></i>
+                           All programs assigned!
+                        </div>
+                    <?php else: ?>
+                        <?php foreach ($sessionUnassignedPrograms as $uProg): ?>
+                            <?php 
+                            $progDuration = 0;
+                            if ($uProg['start_time'] && $uProg['end_time']) {
+                                $pStart = new DateTime($uProg['start_time']);
+                                $pEnd = new DateTime($uProg['end_time']);
+                                $progDuration = (int)(($pEnd->getTimestamp() - $pStart->getTimestamp()) / 60);
+                            }
+                            $classTier = admin_class_type_tier_from_name($uProg['class_type_name'] ?? '');
+                            $tierClass = admin_class_type_badge_class($classTier);
+                            $tierName = $classTier ? admin_class_type_tier_label($classTier) : 'General';
+                            ?>
+                            <div class="program-drag-card" 
+                                 draggable="true"
+                                 data-program-id="<?= (int)$uProg['id'] ?>"
+                                 data-duration="<?= $progDuration ?>"
+                                 data-tier="<?= $classTier ?: 'general' ?>"
+                                 data-time="<?= $uProg['start_time'] ? e($uProg['start_time']) : '' ?>"
+                                 style="background: rgba(255,255,255,0.025); border: 1px solid rgba(255,255,255,0.04); border-radius: 8px; padding: 10px 12px; display:flex; justify-content:space-between; align-items:center; gap:8px;">
+                                <div style="min-width: 0;">
+                                    <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                                        <strong class="prog-title" style="font-size: 13.0px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 170px;"><?= e($uProg['title']) ?></strong>
+                                        <span class="badge badge-neutral <?= $tierClass ?>" style="font-size: 9.0px; padding: 1px 5px; border-radius: 4px; font-weight: 800; transform: translateY(-0.5px);"><?= e($tierName) ?></span>
+                                    </div>
+                                    <span style="font-size: 11px; color: var(--muted); display: block; margin-top: 4px;">
+                                        <i class="fa-solid fa-location-dot mr-1"></i> <?= e($uProg['stage_type_name'] ?: 'TBD') ?>
+                                        <?php if ($uProg['start_time']): ?>
+                                             • <?= e(date('h:i A', strtotime($uProg['start_time']))) ?> (<?= $progDuration ?>m)
+                                         <?php endif; ?>
+                                    </span>
+                                </div>
+                                <div style="display:flex; align-items:center;">
+                                    <i class="fa-solid fa-grip-vertical" style="color:rgba(255,255,255,0.2); font-size:12px; cursor:grab;"></i>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Section Modal -->
+    <div class="modal-overlay" id="sectionModal">
+        <div class="modal-box" style="padding:0;max-width:540px;width:100%;">
+            <form method="POST" id="sectionForm">
+                <?= admin_csrf_field() ?>
+                <input type="hidden" name="action" id="formAction" value="add_session">
+                <input type="hidden" name="section_id" id="sectionId">
+
+                <!-- Header -->
+                <div class="sm-modal-header">
+                    <button class="sm-modal-close" type="button" data-close="sectionModal" title="Close">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                    <div class="sm-modal-title-wrap">
+                        <div class="sm-modal-icon" id="modalIconEl">
+                            <i class="fa-solid fa-calendar-plus"></i>
+                        </div>
+                        <div>
+                            <div class="sm-modal-title" id="modalTitle">Add Session</div>
+                            <div class="sm-modal-subtitle" id="modalSubtitle">Fill in the details to create a new session block</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Body -->
+                <div class="sm-modal-body">
+
+                    <!-- Session Name -->
+                    <div class="sm-field">
+                        <label class="sm-label">
+                            <i class="fa-solid fa-pen-nib"></i> Session Name <span class="sm-req">*</span>
+                        </label>
+                        <input type="text" class="sm-input" name="name" id="sectionName"
+                               placeholder="e.g. Day 1 – Morning" required autocomplete="off">
+                    </div>
+
+                    <!-- Date + Sort Row -->
+                    <div class="sm-field-row">
+                        <div class="sm-field">
+                            <label class="sm-label">
+                                <i class="fa-solid fa-calendar-day"></i> Session Date <span class="sm-req">*</span>
+                            </label>
+                            <input type="date" class="sm-input" name="section_date" id="sectionDate"
+                                   min="<?= e($activeEvent['start_date'] ?: '') ?>"
+                                   max="<?= e($activeEvent['end_date'] ?: '') ?>" required>
+                        </div>
+                        <div class="sm-field">
+                            <label class="sm-label">
+                                <i class="fa-solid fa-arrow-up-9-1"></i> Sort Order
+                            </label>
+                            <input type="number" class="sm-input" name="sort_order" id="sectionSortOrder"
+                                   value="0" min="0" step="1" placeholder="0">
+                        </div>
+                    </div>
+
+                    <!-- Time Row -->
+                    <div class="sm-field-row">
+                        <div class="sm-field">
+                            <label class="sm-label">
+                                <i class="fa-solid fa-clock"></i> Start Time <span class="sm-req">*</span>
+                            </label>
+                            <input type="time" class="sm-input" name="start_time" id="sectionStartTime" required>
+                        </div>
+                        <div class="sm-field">
+                            <label class="sm-label">
+                                <i class="fa-solid fa-clock"></i> End Time <span class="sm-req">*</span>
+                            </label>
+                            <input type="time" class="sm-input" name="end_time" id="sectionEndTime" required>
+                        </div>
+                    </div>
+
+                    <div class="sm-field-hint">
+                        <i class="fa-solid fa-circle-info"></i>
+                        Sessions are sorted automatically by date &amp; start time.
+                    </div>
+
+                </div>
+
+                <!-- Footer -->
+                <div class="sm-modal-footer">
+                    <button class="sm-btn-cancel" type="button" data-close="sectionModal">Cancel</button>
+                    <button class="sm-btn-save" type="submit">
+                        <i class="fa-solid fa-floppy-disk"></i>
+                        <span id="saveSessionBtnText">Save Session</span>
+                    </button>
+                </div>
+
+            </form>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div class="modal-overlay" id="deleteSessionModal">
+        <div class="modal-box modal-sm" style="border-radius: 16px; border: 1px solid rgba(255,255,255,0.1); background: #0f172a;">
+            <div class="modal-header">
+                <div class="modal-title">Delete Session</div>
+                <button class="modal-close" type="button" data-close="deleteSessionModal"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form method="POST">
+                <?= admin_csrf_field() ?>
+                <input type="hidden" name="action" value="delete_session">
+                <input type="hidden" name="section_id" id="deleteSessionId">
+                <div style="padding: 20px;">
+                    <p>Are you sure you want to delete <strong id="deleteSessionName">this session</strong>?</p>
+                    <p class="muted mt-2 text-sm">Programs assigned to this session will be marked as unassigned. This action cannot be undone.</p>
+                </div>
+                <div class="form-actions" style="padding: 16px 20px; border-top: 1px solid rgba(255,255,255,0.06); display: flex; justify-content: flex-end; gap: 10px;">
+                    <button class="btn btn-secondary btn-md" type="button" data-close="deleteSessionModal">Cancel</button>
+                    <button class="btn btn-danger btn-md" type="submit">Delete Session</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- CSRF Token helper for JS -->
+<div id="csrfTokenStorage" data-csrf="<?= e(generate_csrf_token()) ?>" style="display:none;"></div>
+
 
 
 <div class="modal-overlay" id="scheduleModal">
@@ -1500,6 +2265,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
 
 <script>
 const STAGE_TYPES = <?= json_encode($stageTypes, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
+window.ALL_PROGRAMS = <?= json_encode($allSessionProgramsPayload, JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
 const offStageMap = {
     <?php foreach ($stageTypes as $st): ?>
         '<?= (int)$st['id'] ?>': <?= (($st['category'] ?? '') === 'off_stage') ? 'true' : 'false' ?>,
@@ -2153,5 +2919,571 @@ document.getElementById('scheduleForm')?.addEventListener('submit', function() {
     }
     setTimeout(() => closeModal('scheduleModal'), 50);
 });
+
+// ==========================================
+// UNIFIED TABS SWITCHING & PERSISTENCE
+// ==========================================
+document.querySelectorAll('.tab-trigger').forEach(trigger => {
+    trigger.addEventListener('click', () => {
+        const target = trigger.dataset.target;
+        
+        // Update trigger styles
+        document.querySelectorAll('.tab-trigger').forEach(btn => {
+            btn.classList.remove('active');
+            btn.style.color = 'var(--muted)';
+            btn.style.borderBottomColor = 'transparent';
+        });
+        trigger.classList.add('active');
+        trigger.style.color = '#fff';
+        if (target === 'timelineTab') {
+            trigger.style.borderBottomColor = '#6366f1';
+        } else {
+            trigger.style.borderBottomColor = '#a78bfa';
+        }
+        
+        // Show/hide content panels
+        document.getElementById('timelineTabContent').style.display = (target === 'timelineTab') ? '' : 'none';
+        document.getElementById('sessionsTabContent').style.display = (target === 'sessionsTab') ? '' : 'none';
+        
+        // Persist tab
+        localStorage.setItem('activeScheduleTab', target);
+    });
+});
+
+// Restore persisted tab on page load
+document.addEventListener('DOMContentLoaded', () => {
+    const activeTab = localStorage.getItem('activeScheduleTab') || 'timelineTab';
+    const targetTrigger = document.querySelector(`.tab-trigger[data-target="${activeTab}"]`);
+    if (targetTrigger) {
+        targetTrigger.click();
+    }
+});
+
+// ==========================================
+// SESSIONS DRAG-AND-DROP & ACTION HANDLERS
+// ==========================================
+document.addEventListener('click', (e) => {
+    const closeBtn = e.target.closest('[data-close]');
+    if (closeBtn) {
+        closeModal(closeBtn.dataset.close);
+        return;
+    }
+
+    const addBtn = e.target.closest('[data-open-add]');
+    if (addBtn) {
+        document.getElementById('modalTitle').textContent = 'Add Session';
+        document.getElementById('modalSubtitle').textContent = 'Fill in the details to create a new session block';
+        document.getElementById('modalIconEl').innerHTML = '<i class="fa-solid fa-calendar-plus"></i>';
+        document.getElementById('saveSessionBtnText').textContent = 'Save Session';
+        document.getElementById('formAction').value = 'add_session';
+        document.getElementById('sectionId').value = '';
+        document.getElementById('sectionName').value = '';
+        document.getElementById('sectionStartTime').value = '08:00';
+        document.getElementById('sectionEndTime').value = '13:00';
+        document.getElementById('sectionDate').value = '';
+        document.getElementById('sectionSortOrder').value = '0';
+        openModal('sectionModal');
+        return;
+    }
+
+    const editBtn = e.target.closest('[data-edit-section]');
+    if (editBtn) {
+        try {
+            const s = JSON.parse(editBtn.dataset.editSection);
+            document.getElementById('modalTitle').textContent = 'Edit Session';
+            document.getElementById('modalSubtitle').textContent = 'Update the details for this session block';
+            document.getElementById('modalIconEl').innerHTML = '<i class="fa-solid fa-pen-to-square"></i>';
+            document.getElementById('saveSessionBtnText').textContent = 'Update Session';
+            document.getElementById('formAction').value = 'update_session';
+            document.getElementById('sectionId').value = s.id || '';
+            document.getElementById('sectionName').value = s.name || '';
+            
+            const formatTime = (timeStr) => {
+                if (!timeStr) return '';
+                const parts = timeStr.split(':');
+                return parts.slice(0, 2).join(':');
+            };
+            
+            document.getElementById('sectionStartTime').value = formatTime(s.start_time);
+            document.getElementById('sectionEndTime').value = formatTime(s.end_time);
+            document.getElementById('sectionDate').value = s.section_date || '';
+            document.getElementById('sectionSortOrder').value = s.sort_order || '0';
+
+            openModal('sectionModal');
+        } catch (err) {
+            console.error('Error parsing session metadata:', err);
+        }
+        return;
+    }
+
+    const deleteBtn = e.target.closest('[data-delete-id]');
+    if (deleteBtn) {
+        document.getElementById('deleteSessionId').value = deleteBtn.dataset.deleteId;
+        document.getElementById('deleteSessionName').textContent = deleteBtn.dataset.deleteName || 'this session';
+        openModal('deleteSessionModal');
+        return;
+    }
+
+    const unassignBtn = e.target.closest('.unassign-btn');
+    if (unassignBtn) {
+        const card = unassignBtn.closest('.program-drag-card');
+        const programId = unassignBtn.dataset.unassignId || (card ? card.dataset.programId : null);
+        if (programId) {
+            const sourceZone = card ? card.closest('.session-drop-zone') : null;
+            const unassignedZone = document.getElementById('unassignedList');
+            ajaxUnassignProgram(programId, unassignedZone, sourceZone);
+        }
+        return;
+    }
+});
+
+// Toast Notification System
+function showToast(message, type = 'success') {
+    const container = document.getElementById('toast-container');
+    if (!container) {
+        // Create if not exists
+        const c = document.createElement('div');
+        c.id = 'toast-container';
+        c.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 999999; display: flex; flex-direction: column; gap: 10px;';
+        document.body.appendChild(c);
+    }
+    const targetContainer = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    
+    const icon = type === 'success' ? 'fa-circle-check' : 'fa-circle-exclamation';
+    toast.innerHTML = `<i class="fa-solid ${icon}"></i> <span>${escapeHtml(message)}</span>`;
+    
+    targetContainer.appendChild(toast);
+    
+    // Force reflow
+    toast.offsetHeight;
+    toast.classList.add('active');
+    
+    setTimeout(() => {
+        toast.classList.remove('active');
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+
+function escapeHtml(value) {
+    return String(value ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
+}
+
+// Day Tab Filters & Live Search
+const dayButtons = document.querySelectorAll('.day-tab-btn');
+const searchInput = document.getElementById('sessionsSearch');
+const sessionCards = document.querySelectorAll('.session-card');
+
+let currentDayFilter = 'all';
+let currentSearchQuery = '';
+
+function filterSessions() {
+    sessionCards.forEach(card => {
+        const cardDay = card.dataset.day;
+        const matchesDay = (currentDayFilter === 'all') || 
+                           (currentDayFilter === 'undated' && cardDay === 'undated') || 
+                           (cardDay === currentDayFilter);
+
+        let matchesSearch = true;
+        if (currentSearchQuery !== '') {
+            let programFound = false;
+            card.querySelectorAll('.prog-title').forEach(title => {
+                if (title.textContent.toLowerCase().includes(currentSearchQuery)) {
+                    programFound = true;
+                    title.style.background = 'rgba(250, 204, 21, 0.2)';
+                } else {
+                    title.style.background = 'none';
+                }
+            });
+            const secName = card.querySelector('h4').textContent.toLowerCase();
+            if (secName.includes(currentSearchQuery)) {
+                programFound = true;
+            }
+            matchesSearch = programFound;
+        } else {
+            card.querySelectorAll('.prog-title').forEach(title => title.style.background = 'none');
+        }
+
+        if (matchesDay && matchesSearch) {
+            card.style.display = 'flex';
+        } else {
+            card.style.display = 'none';
+        }
+    });
+}
+
+dayButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+        dayButtons.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentDayFilter = btn.dataset.day;
+        filterSessions();
+    });
+});
+
+searchInput?.addEventListener('input', () => {
+    currentSearchQuery = searchInput.value.trim().toLowerCase();
+    
+    // Filter unassigned sidebar
+    const unassignedCards = document.querySelectorAll('#unassignedList .program-drag-card');
+    unassignedCards.forEach(card => {
+        const title = card.querySelector('.prog-title').textContent.toLowerCase();
+        if (currentSearchQuery === '' || title.includes(currentSearchQuery)) {
+            card.style.display = 'flex';
+            if (currentSearchQuery !== '') {
+                card.querySelector('.prog-title').style.background = 'rgba(250, 204, 21, 0.2)';
+            } else {
+                card.querySelector('.prog-title').style.background = 'none';
+            }
+        } else {
+            card.style.display = 'none';
+        }
+    });
+
+    filterSessions();
+});
+
+// HTML5 Drag & Drop Delegation & AJAX Handlers
+const csrfTokenStorage = document.getElementById('csrfTokenStorage');
+const csrfToken = csrfTokenStorage ? csrfTokenStorage.dataset.csrf : '';
+let draggedElement = null;
+
+document.addEventListener('dragstart', (e) => {
+    const card = e.target.closest('.program-drag-card');
+    if (card) {
+        draggedElement = card;
+        card.classList.add('dragging');
+        e.dataTransfer.setData('text/plain', card.dataset.programId);
+        e.dataTransfer.effectAllowed = 'move';
+    }
+});
+
+document.addEventListener('dragend', (e) => {
+    const card = e.target.closest('.program-drag-card');
+    if (card) {
+        card.classList.remove('dragging');
+        draggedElement = null;
+    }
+});
+
+const dropZones = document.querySelectorAll('.session-drop-zone');
+dropZones.forEach(zone => {
+    zone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+    });
+
+    zone.addEventListener('dragenter', () => {
+        zone.classList.add('drag-over');
+    });
+
+    zone.addEventListener('dragleave', () => {
+        zone.classList.remove('drag-over');
+    });
+
+    zone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        zone.classList.remove('drag-over');
+        
+        const programId = e.dataTransfer.getData('text/plain');
+        const targetSectionId = zone.dataset.dropSectionId;
+
+        if (!draggedElement || draggedElement.dataset.programId !== programId) return;
+
+        const sourceZone = draggedElement.closest('.session-drop-zone');
+        const sourceSectionId = sourceZone ? sourceZone.dataset.dropSectionId : null;
+
+        if (sourceSectionId === targetSectionId) return;
+
+        if (targetSectionId === '0') {
+            ajaxUnassignProgram(programId, zone, sourceZone);
+        } else {
+            ajaxAssignProgram(programId, targetSectionId, zone, sourceZone);
+        }
+    });
+});
+
+function ajaxAssignProgram(programId, sectionId, targetZone, sourceZone) {
+    const formData = new FormData();
+    formData.append('ajax', '1');
+    formData.append('csrf_token', csrfToken);
+    formData.append('action', 'assign_program');
+    formData.append('program_id', programId);
+    formData.append('section_id', sectionId);
+
+    fetch(window.location.href, {
+        method: 'POST',
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            moveProgramDOM(programId, targetZone, sourceZone, data.program);
+            showToast(data.message, 'success');
+        } else {
+            showToast(data.error || 'Assignment failed.', 'error');
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        showToast('Connection error. Could not assign program.', 'error');
+    });
+}
+
+function ajaxUnassignProgram(programId, targetZone, sourceZone) {
+    const formData = new FormData();
+    formData.append('ajax', '1');
+    formData.append('csrf_token', csrfToken);
+    formData.append('action', 'unassign_program');
+    formData.append('program_id', programId);
+
+    fetch(window.location.href, {
+        method: 'POST',
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            moveProgramDOM(programId, targetZone, sourceZone, data.program, true);
+            showToast(data.message, 'success');
+        } else {
+            showToast(data.error || 'Unassignment failed.', 'error');
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        showToast('Connection error. Could not unassign program.', 'error');
+    });
+}
+
+function sortProgramList(container) {
+    const cards = Array.from(container.querySelectorAll('.program-drag-card'));
+    if (cards.length <= 1) return;
+
+    cards.sort((a, b) => {
+        const timeA = a.getAttribute('data-time') || '';
+        const timeB = b.getAttribute('data-time') || '';
+        
+        if (timeA && timeB) {
+            return timeA.localeCompare(timeB);
+        }
+        if (timeA) return -1;
+        if (timeB) return 1;
+        
+        const titleA = a.querySelector('.prog-title').textContent.trim().toLowerCase();
+        const titleB = b.querySelector('.prog-title').textContent.trim().toLowerCase();
+        return titleA.localeCompare(titleB);
+    });
+
+    cards.forEach(card => container.appendChild(card));
+}
+
+function moveProgramDOM(programId, targetZone, sourceZone, programData, toUnassigned = false) {
+    let card = document.querySelector(`.program-drag-card[data-program-id="${programId}"]`);
+    
+    const targetEmptyPlaceholder = targetZone.querySelector('.empty-sec-placeholder');
+    if (targetEmptyPlaceholder) targetEmptyPlaceholder.remove();
+    const targetAllAssignedMsg = targetZone.querySelector('.all-assigned-msg');
+    if (targetAllAssignedMsg) targetAllAssignedMsg.remove();
+
+    const targetList = targetZone.querySelector('.assigned-list') || targetZone;
+    const tier = programData.class_tier || 'general';
+    
+    let badgeClass = 'badge-neutral';
+    let tierLabel = 'General';
+    if (tier === 'senior') { badgeClass = 'badge-primary'; tierLabel = 'Senior'; }
+    else if (tier === 'junior') { badgeClass = 'badge-info'; tierLabel = 'Junior'; }
+    else if (tier === 'subjunior') { badgeClass = 'badge-success'; tierLabel = 'Sub Junior'; }
+
+    if (toUnassigned) {
+        const newCard = document.createElement('div');
+        newCard.className = 'program-drag-card';
+        newCard.setAttribute('draggable', 'true');
+        newCard.setAttribute('data-program-id', programId);
+        newCard.setAttribute('data-duration', programData.duration);
+        newCard.setAttribute('data-tier', tier);
+        newCard.setAttribute('data-time', programData.start_time || '');
+        newCard.style.padding = '10px 12px';
+        newCard.style.display = 'flex';
+        newCard.style.justifyContent = 'space-between';
+        newCard.style.alignItems = 'center';
+        newCard.style.gap = '8px';
+
+        newCard.innerHTML = `
+            <div style="min-width: 0;">
+                <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                    <strong class="prog-title" style="font-size: 13.0px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 170px;">${escapeHtml(programData.title)}</strong>
+                    <span class="badge badge-neutral ${badgeClass}" style="font-size: 9.0px; padding: 1px 5px; border-radius: 4px; font-weight: 800; transform: translateY(-0.5px);">${escapeHtml(tierLabel)}</span>
+                </div>
+                <span style="font-size: 11px; color: var(--muted); display: block; margin-top: 4px;">
+                    <i class="fa-solid fa-location-dot mr-1"></i> ${escapeHtml(programData.stage)}
+                    ${programData.time ? `• ${programData.time} (${programData.duration}m)` : ''}
+                </span>
+            </div>
+            <div style="display:flex; align-items:center;">
+                <i class="fa-solid fa-grip-vertical" style="color:rgba(255,255,255,0.2); font-size:12px; cursor:grab;"></i>
+            </div>
+        `;
+        targetList.appendChild(newCard);
+        if (card) card.remove();
+    } else {
+        const newCard = document.createElement('div');
+        newCard.className = 'program-drag-card';
+        newCard.setAttribute('draggable', 'true');
+        newCard.setAttribute('data-program-id', programId);
+        newCard.setAttribute('data-duration', programData.duration);
+        newCard.setAttribute('data-tier', tier);
+        newCard.setAttribute('data-time', programData.start_time || '');
+        newCard.style.display = 'flex';
+        newCard.style.justifyContent = 'space-between';
+        newCard.style.alignItems = 'center';
+        newCard.style.padding = '8px 12px';
+        newCard.style.gap = '8px';
+
+        newCard.innerHTML = `
+            <div style="min-width: 0;">
+                <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                    <strong class="prog-title" style="font-size: 13.0px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 170px;">${escapeHtml(programData.title)}</strong>
+                    <span class="badge badge-neutral ${badgeClass}" style="font-size: 9.0px; padding: 1px 5px; border-radius: 4px; font-weight: 800; transform: translateY(-0.5px);">${escapeHtml(tierLabel)}</span>
+                </div>
+                <span style="font-size: 11px; color: var(--muted); display: block; margin-top: 4px;">
+                    <i class="fa-solid fa-location-dot mr-1"></i> ${escapeHtml(programData.stage)}
+                    ${programData.time ? `• ${programData.time} (${programData.duration}m)` : ''}
+                </span>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+                <i class="fa-solid fa-grip-vertical mr-1" style="color:rgba(255,255,255,0.2); font-size:12px; cursor:grab;"></i>
+                <button type="button" class="btn btn-link btn-sm unassign-btn" data-unassign-id="${programId}" style="color: var(--danger, #ef4444); padding:4px;" title="Unassign">
+                    <i class="fa-solid fa-xmark" style="font-size: 14px;"></i>
+                </button>
+            </div>
+        `;
+        targetList.appendChild(newCard);
+        if (card) card.remove();
+    }
+
+    // Auto-sort list chronologically
+    sortProgramList(targetList);
+
+    if (sourceZone) {
+        const sourceList = sourceZone.querySelector('.assigned-list') || sourceZone;
+        if (sourceList.children.length === 0) {
+            if (sourceZone.id === 'unassignedList') {
+                sourceZone.innerHTML = `
+                    <div class="all-assigned-msg" style="text-align: center; color: var(--success); padding: 40px 0; font-size: 13px;">
+                        <i class="fa-solid fa-circle-check" style="font-size:24px; display:block; margin-bottom:10px; color:var(--success);"></i>
+                        All programs assigned!
+                    </div>
+                `;
+            } else {
+                sourceList.innerHTML = `
+                    <div class="empty-sec-placeholder" style="text-align: center; color: var(--muted); font-size: 12.5px; padding: 30px 0; border: 1.5px dashed rgba(255,255,255,0.03); border-radius: 8px; margin: auto 0; display:flex; flex-direction:column; align-items:center; gap:8px;">
+                        <i class="fa-solid fa-arrow-pointer-drag" style="font-size: 18px; color:rgba(255,255,255,0.2);"></i>
+                        <span>Drag programs here</span>
+                    </div>
+                `;
+            }
+        }
+    }
+
+    // Sync in-memory state
+    if (window.ALL_PROGRAMS) {
+        const pIdNum = parseInt(programId, 10);
+        const targetSecIdNum = toUnassigned ? 0 : parseInt(targetZone.dataset.dropSectionId || '0', 10);
+        const pObj = window.ALL_PROGRAMS.find(p => p.id === pIdNum);
+        if (pObj) {
+            pObj.section_id = targetSecIdNum;
+        }
+    }
+
+    recalculateSessionCapacity(targetZone);
+    recalculateSessionCapacity(sourceZone);
+
+    const unassignedList = document.getElementById('unassignedList');
+    const count = unassignedList.querySelectorAll('.program-drag-card').length;
+    const unassignedCountEl = document.getElementById('unassignedCount');
+    if (unassignedCountEl) unassignedCountEl.textContent = count;
+}
+
+function recalculateSessionCapacity(zone) {
+    if (!zone || zone.id === 'unassignedList') return;
+
+    const cardContainer = zone.closest('.session-card');
+    if (!cardContainer) return;
+
+    const durationElements = zone.querySelectorAll('.program-drag-card');
+    const intervals = [];
+    durationElements.forEach(item => {
+        const startTimeStr = item.getAttribute('data-time') || '';
+        const duration = parseInt(item.getAttribute('data-duration') || '0', 10);
+        
+        if (startTimeStr && duration > 0) {
+            const startMs = Date.parse(startTimeStr);
+            if (!isNaN(startMs)) {
+                const endMs = startMs + (duration * 60 * 1000);
+                intervals.push({ start: startMs, end: endMs });
+            }
+        }
+    });
+
+    let totalAllocated = 0;
+    if (intervals.length > 0) {
+        intervals.sort((a, b) => a.start - b.start);
+        
+        const merged = [];
+        let current = intervals[0];
+        
+        for (let i = 1; i < intervals.length; i++) {
+            let next = intervals[i];
+            if (next.start <= current.end) {
+                current.end = Math.max(current.end, next.end);
+            } else {
+                merged.push(current);
+                current = next;
+            }
+        }
+        merged.push(current);
+        
+        let totalMs = 0;
+        merged.forEach(interval => {
+            totalMs += (interval.end - interval.start);
+        });
+        totalAllocated = Math.round(totalMs / (60 * 1000));
+    }
+
+    const fillBar = cardContainer.querySelector('.progress-bar-fill');
+    if (!fillBar) return;
+    const totalCapacity = parseInt(fillBar.dataset.total || '0', 10);
+
+    const percentage = totalCapacity > 0 ? Math.min(100, Math.round((totalAllocated / totalCapacity) * 100)) : 0;
+
+    fillBar.style.width = `${percentage}%`;
+    
+    const allocMinsSpan = cardContainer.querySelector('.alloc-mins');
+    if (allocMinsSpan) allocMinsSpan.textContent = totalAllocated;
+
+    const isOverallocated = totalAllocated > totalCapacity;
+    const allocatedText = cardContainer.querySelector('.allocated-text');
+    
+    let warningBadge = cardContainer.querySelector('.warning-badge');
+
+    if (isOverallocated) {
+        fillBar.style.backgroundColor = 'var(--danger, #ef4444)';
+        if (allocatedText) allocatedText.style.color = 'var(--danger, #ef4444)';
+        
+        if (!warningBadge && allocatedText && allocatedText.parentNode) {
+            warningBadge = document.createElement('span');
+            warningBadge.className = 'warning-badge';
+            warningBadge.style.cssText = 'color: var(--danger, #ef4444); font-weight: 700; font-size: 10px; text-transform: uppercase;';
+            warningBadge.innerHTML = '<i class="fa-solid fa-triangle-exclamation mr-1"></i> Overallocated';
+            allocatedText.parentNode.appendChild(warningBadge);
+        }
+    } else {
+        fillBar.style.backgroundColor = 'var(--accent, #6366f1)';
+        if (allocatedText) allocatedText.style.color = 'var(--muted)';
+        if (warningBadge) warningBadge.remove();
+    }
+}
 </script>
 <?php admin_close_page(); ?>

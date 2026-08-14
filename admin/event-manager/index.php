@@ -142,12 +142,12 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                             </div>
                         </a>
 
-                        <a href="<?= app_url('/admin/event-manager/sections.php') ?>" class="sidebar-action-btn">
+                        <a href="<?= app_url('/admin/event-manager/schedule.php') ?>" class="sidebar-action-btn">
                             <div class="sidebar-action-icon" style="background: rgba(139, 92, 246, 0.15); color: var(--accent);">
                                 <i class="fa-solid fa-clock"></i>
                             </div>
                             <div class="sidebar-action-info">
-                                <div class="sidebar-action-title">Schedule Sessions</div>
+                                <div class="sidebar-action-title">Schedule & Sessions</div>
                                 <div class="sidebar-action-subtitle">Morning, Evening & Night sessions</div>
                             </div>
                         </a>

@@ -1061,8 +1061,8 @@ require_once __DIR__ . '/../../includes/sidebar.php';
             <div class="page-subtitle">Select a program to record participant judge scores</div>
         </div>
         <div class="flex gap-2">
-            <a href="<?= app_url('/admin/event-manager/sections.php') ?>" class="btn btn-secondary btn-md">
-                <i class="fa-solid fa-clock mr-1"></i> Sessions
+            <a href="<?= app_url('/admin/event-manager/schedule.php') ?>" class="btn btn-secondary btn-md">
+                <i class="fa-solid fa-clock mr-1"></i> Schedule & Sessions
             </a>
             <a href="<?= app_url('/admin/event-manager/programs.php') ?>" class="btn btn-secondary btn-md">
                 <i class="fa-solid fa-microphone-lines mr-1"></i> Programs

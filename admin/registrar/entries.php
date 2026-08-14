@@ -812,8 +812,8 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                 <div class="page-subtitle">Manage program entries grouped by Schedule Sessions or Class Divisions</div>
             </div>
             <div class="flex gap-2">
-                <a href="<?= app_url('/admin/event-manager/sections.php') ?>" class="btn btn-secondary btn-md">
-                    <i class="fa-solid fa-clock mr-1"></i> Schedule Sessions
+                <a href="<?= app_url('/admin/event-manager/schedule.php') ?>" class="btn btn-secondary btn-md">
+                    <i class="fa-solid fa-clock mr-1"></i> Schedule & Sessions
                 </a>
                 <a href="<?= app_url('/admin/event-manager/programs.php') ?>" class="btn btn-secondary btn-md">
                     <i class="fa-solid fa-gear mr-1"></i> Manage Programs

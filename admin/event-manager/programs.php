@@ -1201,7 +1201,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                         <?php if (empty($scheduleSections)): ?>
                             <div style="background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.2); border-radius: 8px; padding: 10px 14px; font-size: 13px; color: #f87171; display: flex; align-items: center; gap: 10px;">
                                 <i class="fa-solid fa-calendar-xmark" style="font-size: 16px; flex-shrink: 0;"></i>
-                                <span>No schedule sessions exist yet. <a href="<?= app_url('/admin/event-manager/sections') ?>" style="color: #fb923c; font-weight: 700; text-decoration: underline;">Create sessions first</a> — programs must be scheduled within a session window.</span>
+                                <span>No schedule sessions exist yet. <a href="<?= app_url('/admin/event-manager/schedule.php') ?>" style="color: #fb923c; font-weight: 700; text-decoration: underline;">Create sessions first</a> — programs must be scheduled within a session window.</span>
                             </div>
                             <input type="hidden" name="section_id" value="">
                         <?php else: ?>
