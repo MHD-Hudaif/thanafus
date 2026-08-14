@@ -145,30 +145,57 @@ function validate_session_no_program_overflow(
         $sesEnd = $sesEnd->modify('+1 day');
     }
 
-    $startSql = $sesStart->format('Y-m-d H:i:s');
-    $endSql   = $sesEnd->format('Y-m-d H:i:s');
-
-    // Find any program in this section whose time falls outside the new window
+    // Find all programs currently assigned to this section
     $stmt = $pdo->prepare("
-        SELECT title, start_time, end_time
+        SELECT id, title, start_time, end_time
         FROM musabaqa_programs
         WHERE section_id = ?
           AND event_id = ?
           AND start_time IS NOT NULL
           AND end_time IS NOT NULL
-          AND (start_time < ? OR end_time > ?)
-        LIMIT 1
     ");
-    $stmt->execute([$sectionId, $eventId, $startSql, $endSql]);
-    $offender = $stmt->fetch(PDO::FETCH_ASSOC);
+    $stmt->execute([$sectionId, $eventId]);
+    $programs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    if ($offender) {
-        $fmtProg = date('h:i A', strtotime($offender['start_time'])) . '–' . date('h:i A', strtotime($offender['end_time']));
-        $fmtSes  = date('h:i A', strtotime($startTime)) . '–' . date('h:i A', strtotime($endTime));
-        throw new RuntimeException(
-            "Cannot update session: \"{$offender['title']}\" ({$fmtProg}) would fall outside the new window ({$fmtSes}). " .
-            "Reschedule or unschedule the program first."
-        );
+    $toUnassignIds = [];
+
+    foreach ($programs as $prog) {
+        $pStart = DateTimeImmutable::createFromFormat('Y-m-d H:i:s', $prog['start_time'])
+               ?: DateTimeImmutable::createFromFormat('Y-m-d H:i',   $prog['start_time']);
+        $pEnd   = DateTimeImmutable::createFromFormat('Y-m-d H:i:s', $prog['end_time'])
+               ?: DateTimeImmutable::createFromFormat('Y-m-d H:i',   $prog['end_time']);
+
+        if (!$pStart || !$pEnd) {
+            continue;
+        }
+
+        // Check if completely outside
+        $isCompletelyOutside = ($pEnd <= $sesStart || $pStart >= $sesEnd);
+        
+        // Check if completely inside
+        $isCompletelyInside = ($pStart >= $sesStart && $pEnd <= $sesEnd);
+
+        if ($isCompletelyOutside) {
+            $toUnassignIds[] = (int)$prog['id'];
+        } elseif (!$isCompletelyInside) {
+            $fmtProg = date('h:i A', $pStart->getTimestamp()) . '–' . date('h:i A', $pEnd->getTimestamp());
+            $fmtSes  = date('h:i A', $sesStart->getTimestamp()) . '–' . date('h:i A', $sesEnd->getTimestamp());
+            throw new RuntimeException(
+                "Cannot update session: \"{$prog['title']}\" ({$fmtProg}) would partially overlap the new window ({$fmtSes}). " .
+                "Reschedule or unschedule the program first."
+            );
+        }
+    }
+
+    // Auto-unassign completely outside programs so they can be reassigned
+    if (!empty($toUnassignIds)) {
+        $placeholders = implode(',', array_fill(0, count($toUnassignIds), '?'));
+        $unassignStmt = $pdo->prepare("
+            UPDATE musabaqa_programs
+            SET section_id = NULL
+            WHERE id IN ($placeholders)
+        ");
+        $unassignStmt->execute($toUnassignIds);
     }
 }
 
