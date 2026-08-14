@@ -568,7 +568,7 @@
         const scoreEls = root.querySelectorAll('.orbital-score-digit');
 
         if (centerNode) {
-            gsap.fromTo(centerNode, { scale: 0.5, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.9, ease: 'back.out(1.6)' });
+            gsap.fromTo(centerNode, { scale: 0.5, opacity: 0, rotationZ: -90 }, { scale: 1, opacity: 1, rotationZ: 0, duration: 1.1, ease: 'back.out(1.5)' });
         }
 
         if (ringPath) {
@@ -580,16 +580,16 @@
         }
 
         if (card1) {
-            gsap.fromTo(card1, { y: -80, opacity: 0 }, { y: 0, opacity: 1, duration: 0.85, delay: 0.15, ease: 'power3.out' });
+            gsap.fromTo(card1, { y: -150, rotationX: -35, scale: 0.8, opacity: 0 }, { y: 0, rotationX: 0, scale: 1, opacity: 1, duration: 0.95, delay: 0.15, ease: 'power4.out' });
         }
         if (card2) {
-            gsap.fromTo(card2, { x: 80, opacity: 0 }, { x: 0, opacity: 1, duration: 0.85, delay: 0.25, ease: 'power3.out' });
+            gsap.fromTo(card2, { x: 150, rotationY: 35, scale: 0.8, opacity: 0 }, { x: 0, rotationY: 0, scale: 1, opacity: 1, duration: 0.95, delay: 0.25, ease: 'power4.out' });
         }
         if (card3) {
-            gsap.fromTo(card3, { x: -80, opacity: 0 }, { x: 0, opacity: 1, duration: 0.85, delay: 0.35, ease: 'power3.out' });
+            gsap.fromTo(card3, { x: -150, rotationY: -35, scale: 0.8, opacity: 0 }, { x: 0, rotationY: 0, scale: 1, opacity: 1, duration: 0.95, delay: 0.35, ease: 'power4.out' });
         }
         if (card4) {
-            gsap.fromTo(card4, { y: 80, opacity: 0 }, { y: 0, opacity: 1, duration: 0.85, delay: 0.45, ease: 'power3.out' });
+            gsap.fromTo(card4, { y: 150, rotationX: 35, scale: 0.8, opacity: 0 }, { y: 0, rotationX: 0, scale: 1, opacity: 1, duration: 0.95, delay: 0.45, ease: 'power4.out' });
         }
 
         scoreEls.forEach(el => {
@@ -1091,9 +1091,6 @@
             document.body.appendChild(overlay);
         }
 
-        let countdownSec = 10;
-        const totalCircumference = 283;
-
         // Shuffle teams randomly for phase 2 reveal
         const originalTeams = Array.isArray(reveal.teams) ? reveal.teams : [];
         const randomTeams = [...originalTeams].sort(() => Math.random() - 0.5);
@@ -1107,13 +1104,13 @@
             ? `${programsList.length} UPDATED PROGRAMS APPROVED` 
             : 'NEW PROGRAM SCORES APPROVED';
 
-        // Render Phase 1 HTML: 10-Second Suspense Countdown with List of Included Programs
+        // Render base overlay HTML
         overlay.innerHTML = `
             <button type="button" class="reveal-close-btn" id="btnCloseReveal"><i class="fa-solid fa-xmark mr-1"></i> Close</button>
             <div class="reveal-header-badge">
                 <span class="pulse-dot-red"></span> ${escapeHtml(programCountLabel)}
             </div>
-            <h1 class="reveal-title">SCORE REVEAL & UPDATE</h1>
+            <h1 class="reveal-title">UPDATED TEAM STANDINGS</h1>
             
             <div class="reveal-programs-list">
                 ${programsList.map(p => `
@@ -1124,17 +1121,9 @@
                     </div>
                 `).join('')}
             </div>
-
-            <div class="reveal-countdown-box" id="revealCountdownBox">
-                <svg viewBox="0 0 100 100">
-                    <circle cx="50" cy="50" r="45" class="reveal-circle-bg"></circle>
-                    <circle cx="50" cy="50" r="45" class="reveal-circle-progress" id="revealProgressCircle"></circle>
-                </svg>
-                <div class="reveal-countdown-num" id="revealCountdownNum">10</div>
-            </div>
             
             <div style="font-size: 15px; font-weight: 800; color: #64748b; letter-spacing: 2px; text-transform: uppercase;" id="revealStatusText">
-                STAND BY FOR UPDATED TEAM SCORES...
+                REVEALING UPDATED TEAM SCORES...
             </div>
         `;
 
@@ -1142,36 +1131,9 @@
 
         document.getElementById('btnCloseReveal')?.addEventListener('click', closeScoreRevealOverlay);
 
-        // Start 10-Second Countdown Timer
-        const countInterval = setInterval(() => {
-            countdownSec--;
-            const numEl = document.getElementById('revealCountdownNum');
-            const circleEl = document.getElementById('revealProgressCircle');
-
-            if (numEl) {
-                numEl.textContent = countdownSec;
-                numEl.style.animation = 'none';
-                void numEl.offsetWidth; // trigger reflow
-                numEl.style.animation = 'countdown-pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
-            }
-
-            if (circleEl) {
-                const offset = totalCircumference * (1 - (countdownSec / 10));
-                circleEl.style.strokeDashoffset = String(offset);
-                if (countdownSec <= 3) {
-                    circleEl.style.stroke = '#ef4444';
-                }
-            }
-
-            if (countdownSec > 0) {
-                playTone(countdownSec <= 3 ? 880 : 580, 'sine', 0.1, 0.12);
-            } else {
-                clearInterval(countInterval);
-                playTone(1100, 'triangle', 0.4, 0.25);
-                // Transition to Team Scores Reveal (Shows points gained per team from this list of programs)
-                startPhase2TeamReveal(overlay, reveal, randomTeams, programsList);
-            }
-        }, 1000);
+        // Play reveal start tone and display results immediately (bypass 10s wait)
+        playTone(1100, 'triangle', 0.4, 0.25);
+        startPhase2TeamReveal(overlay, reveal, randomTeams, programsList);
     }
 
     function startPhase2TeamReveal(overlay, reveal, randomTeams, programsList) {

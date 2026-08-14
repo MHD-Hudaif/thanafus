@@ -533,8 +533,10 @@ function admin_recalculate_program_results(PDO $pdo, int $eventId, int $programI
                 $teamScore = $pointConfig[1] ?? 0;
             } elseif ($idx === 1) {
                 $c1 = $groupCounts[0];
-                if ($c1 === 1 || $c1 === 2) {
+                if ($c1 === 1) {
                     $teamScore = $pointConfig[2] ?? 0;
+                } elseif ($c1 === 2) {
+                    $teamScore = $pointConfig[3] ?? 0;
                 } else {
                     $teamScore = 0;
                 }

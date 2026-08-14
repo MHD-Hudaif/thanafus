@@ -134,9 +134,27 @@ function program_scores_render_row(array $entry, array $categories, int $judgesC
                         style="width: 130px; background: rgba(15,23,42,0.8); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 4px 6px; border-radius: 6px; display: inline-block;"
                         <?= ($scoresLocked || ($activeJudgeNo === 0 && !$isAdmin)) ? 'disabled' : '' ?>>
                     <option value="0">None</option>
-                    <option value="1" <?= (int)($entry['final_rank'] ?? 0) === 1 ? 'selected' : '' ?>>1st Place</option>
-                    <option value="2" <?= (int)($entry['final_rank'] ?? 0) === 2 ? 'selected' : '' ?>>2nd Place</option>
-                    <option value="3" <?= (int)($entry['final_rank'] ?? 0) === 3 ? 'selected' : '' ?>>3rd Place</option>
+                    <?php
+                    $progVal = $GLOBALS['program'] ?? [];
+                    $teamPoints = [];
+                    if (!empty($progVal['team_points_config'])) {
+                        $teamPoints = json_decode($progVal['team_points_config'], true);
+                    }
+                    if (is_array($teamPoints) && count($teamPoints) > 0) {
+                        foreach ($teamPoints as $r => $pts) {
+                            $rInt = (int)$r;
+                            $suffix = match($rInt) { 1 => 'st', 2 => 'nd', 3 => 'rd', default => 'th' };
+                            $selected = (int)($entry['final_rank'] ?? 0) === $rInt ? 'selected' : '';
+                            echo "<option value=\"{$rInt}\" {$selected}>{$rInt}{$suffix} Place</option>";
+                        }
+                    } else {
+                        ?>
+                        <option value="1" <?= (int)($entry['final_rank'] ?? 0) === 1 ? 'selected' : '' ?>>1st Place</option>
+                        <option value="2" <?= (int)($entry['final_rank'] ?? 0) === 2 ? 'selected' : '' ?>>2nd Place</option>
+                        <option value="3" <?= (int)($entry['final_rank'] ?? 0) === 3 ? 'selected' : '' ?>>3rd Place</option>
+                        <?php
+                    }
+                    ?>
                 </select>
             </td>
         <?php else: ?>

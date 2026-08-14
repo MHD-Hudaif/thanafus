@@ -276,8 +276,55 @@ body:has(#slide-leaderboard.tv-slide--active) .tv-topbar {
     transition: transform 0.4s ease, box-shadow 0.4s ease;
 }
 
+/* Card hover animation disabled */
 .orbital-card:hover {
-    transform: scale(1.03) !important;
+    transform: none !important;
+}
+
+/* 3D stage perspective container support */
+.orbital-stage-container {
+    perspective: 1200px !important;
+    transform-style: preserve-3d !important;
+}
+
+/* Slide Entrance & Exiting Transitions */
+#slide-leaderboard {
+    transition: opacity 0.45s ease, transform 0.45s ease, visibility 0.45s ease !important;
+}
+
+#slide-leaderboard.tv-slide--exiting {
+    opacity: 0 !important;
+    transform: scale(0.96) rotateX(12deg) !important;
+}
+
+#slide-leaderboard.tv-slide--exiting .orbital-card[data-pos="1"] {
+    transform: translateY(-150px) rotateX(-30deg) scale(0.75) !important;
+    opacity: 0 !important;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+#slide-leaderboard.tv-slide--exiting .orbital-card[data-pos="2"] {
+    transform: translateX(150px) rotateY(30deg) scale(0.75) !important;
+    opacity: 0 !important;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+#slide-leaderboard.tv-slide--exiting .orbital-card[data-pos="3"] {
+    transform: translateX(-150px) rotateY(-30deg) scale(0.75) !important;
+    opacity: 0 !important;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+#slide-leaderboard.tv-slide--exiting .orbital-card[data-pos="4"] {
+    transform: translateY(150px) rotateX(30deg) scale(0.75) !important;
+    opacity: 0 !important;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+#slide-leaderboard.tv-slide--exiting .orbital-center-node {
+    transform: scale(0.4) rotateZ(90deg) !important;
+    opacity: 0 !important;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
 /* Embedded Card Chevron Animations (Stroked in Team Color) */

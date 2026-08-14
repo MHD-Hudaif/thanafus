@@ -194,7 +194,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             admin_db_transaction($pdo, function ($pdo) use ($activeEventId) {
                 // Clear scores
                 $pdo->prepare("DELETE FROM musabaqa_member_scores WHERE program_id IN (SELECT id FROM musabaqa_programs WHERE event_id = ?)")->execute([$activeEventId]);
-                $pdo->prepare("DELETE FROM musabaqa_category_scores WHERE program_id IN (SELECT id FROM musabaqa_programs WHERE event_id = ?)")->execute([$activeEventId]);
+                $pdo->prepare("DELETE FROM musabaqa_category_scores WHERE score_sheet_id IN (SELECT id FROM musabaqa_score_sheets WHERE program_id IN (SELECT id FROM musabaqa_programs WHERE event_id = ?))")->execute([$activeEventId]);
                 $pdo->prepare("DELETE FROM musabaqa_score_sheets WHERE program_id IN (SELECT id FROM musabaqa_programs WHERE event_id = ?)")->execute([$activeEventId]);
                 $pdo->prepare("DELETE FROM musabaqa_scores WHERE program_id IN (SELECT id FROM musabaqa_programs WHERE event_id = ?)")->execute([$activeEventId]);
                 
@@ -229,9 +229,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 foreach ($tablesToDelete as $table) {
                     try {
-                        if ($table === 'musabaqa_member_scores' || $table === 'musabaqa_program_categories') {
-                            $pdo->prepare("DELETE FROM {$table} WHERE program_id IN (SELECT id FROM musabaqa_programs WHERE event_id = ?)")->execute([$activeEventId]);
-                        } elseif ($table === 'musabaqa_category_scores' || $table === 'musabaqa_score_sheets') {
+                        if ($table === 'musabaqa_category_scores') {
+                            $pdo->prepare("DELETE FROM {$table} WHERE score_sheet_id IN (SELECT id FROM musabaqa_score_sheets WHERE program_id IN (SELECT id FROM musabaqa_programs WHERE event_id = ?))")->execute([$activeEventId]);
+                        } elseif ($table === 'musabaqa_member_scores' || $table === 'musabaqa_program_categories' || $table === 'musabaqa_score_sheets' || $table === 'musabaqa_scores') {
                             $pdo->prepare("DELETE FROM {$table} WHERE program_id IN (SELECT id FROM musabaqa_programs WHERE event_id = ?)")->execute([$activeEventId]);
                         } elseif ($table === 'musabaqa_entry_members') {
                             $pdo->prepare("DELETE FROM {$table} WHERE entry_id IN (SELECT id FROM musabaqa_program_entries WHERE event_id = ?)")->execute([$activeEventId]);
