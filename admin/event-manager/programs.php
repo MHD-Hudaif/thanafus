@@ -343,7 +343,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $responsibleTeacherId = $respTeacherIdsArr ? $respTeacherIdsArr[0] : null;
 
         $sectionId = isset($_POST['section_id']) && $_POST['section_id'] !== '' ? (int)$_POST['section_id'] : null;
-        $stageTypeId = isset($_POST['stage_type_id']) && $_POST['stage_type_id'] !== '' ? (int)$_POST['stage_type_id'] : 1;
+        $firstStageId = (int)$pdo->query('SELECT id FROM musabaqa_stage_types LIMIT 1')->fetchColumn();
+        $stageTypeId = isset($_POST['stage_type_id']) && $_POST['stage_type_id'] !== '' ? (int)$_POST['stage_type_id'] : $firstStageId;
         $location = isset($_POST['location']) && $_POST['location'] !== '' ? trim((string)$_POST['location']) : null;
 
         if ($action === 'update' && $programId > 0) {
@@ -979,7 +980,8 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                     </div>
 
                     <?php
-                    $defaultStageId = $latestProgramData ? $latestProgramData['stage_type_id'] : 1;
+                    $firstStageId = (int)$pdo->query('SELECT id FROM musabaqa_stage_types LIMIT 1')->fetchColumn();
+                    $defaultStageId = $latestProgramData ? $latestProgramData['stage_type_id'] : $firstStageId;
                     $defaultLocation = $latestProgramData ? $latestProgramData['location'] : '';
                     ?>
 

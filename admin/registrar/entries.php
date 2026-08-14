@@ -1091,7 +1091,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                                 <i class="fa-solid fa-folder-open mr-1.5" style="color: var(--accent); font-size: 13px;"></i>
                                                 <?= e($prog['title']) ?>
                                             </a>
-                                            <div class="muted" style="font-size: 12px; font-weight: 500; margin-top: 2px;"><?= e($prog['location'] ?: '-') ?></div>
+                                            <div class="muted" style="font-size: 12px; font-weight: 500; margin-top: 2px;"><?= ($prog['stage_category'] ?? '') === 'off_stage' ? 'Off Stage' : 'On Stage' ?></div>
                                         </td>
                                         <td>
                                             <span class="badge <?= strtolower((string)$prog['program_type']) === 'individual' ? 'badge-info' : 'badge-neutral' ?>">
