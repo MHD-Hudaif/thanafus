@@ -424,118 +424,125 @@ window.ALL_PROGRAMS = <?= json_encode($allProgramsPayload, JSON_HEX_APOS | JSON_
 
 /* Premium UI Styles for Sessions Dashboard */
 .session-card {
-    background: rgba(30, 41, 59, 0.4) !important;
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+    background: rgba(15, 23, 42, 0.45) !important;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
     border: 1px solid rgba(255, 255, 255, 0.05) !important;
-    border-radius: 16px !important;
-    box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5) !important;
-    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.3s ease, box-shadow 0.3s ease !important;
+    border-radius: 20px !important;
+    box-shadow: 0 12px 40px -12px rgba(0, 0, 0, 0.6) !important;
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.3s ease, box-shadow 0.3s ease !important;
 }
 .session-card:hover {
-    transform: translateY(-4px);
-    border-color: rgba(99, 102, 241, 0.25) !important;
-    box-shadow: 0 20px 40px -15px rgba(99, 102, 241, 0.15) !important;
+    transform: translateY(-5px);
+    border-color: rgba(99, 102, 241, 0.3) !important;
+    box-shadow: 0 24px 50px -15px rgba(99, 102, 241, 0.2) !important;
 }
 
 .day-tab-btn {
     background: rgba(255, 255, 255, 0.02) !important;
-    border: 1px solid rgba(255, 255, 255, 0.06) !important;
+    border: 1px solid rgba(255, 255, 255, 0.05) !important;
     color: rgba(255, 255, 255, 0.6) !important;
-    padding: 8px 16px !important;
-    border-radius: 20px !important;
+    padding: 9px 18px !important;
+    border-radius: 99px !important;
     font-size: 13px !important;
-    font-weight: 600 !important;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-    box-shadow: none !important;
+    font-weight: 700 !important;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    cursor: pointer;
 }
 .day-tab-btn:hover {
-    background: rgba(255, 255, 255, 0.08) !important;
+    background: rgba(255, 255, 255, 0.07) !important;
     color: #fff !important;
     transform: translateY(-1px);
+    border-color: rgba(255, 255, 255, 0.1) !important;
 }
 .day-tab-btn.active {
     background: linear-gradient(135deg, #6366f1, #4f46e5) !important;
-    border-color: #6366f1 !important;
+    border-color: rgba(99, 102, 241, 0.5) !important;
     color: #fff !important;
-    box-shadow: 0 8px 20px -6px rgba(99, 102, 241, 0.6) !important;
+    box-shadow: 0 8px 24px -6px rgba(99, 102, 241, 0.5) !important;
 }
 
 .program-drag-card {
     background: rgba(255, 255, 255, 0.02) !important;
-    border: 1px solid rgba(255, 255, 255, 0.05) !important;
-    border-radius: 12px !important;
-    padding: 10px 14px !important;
-    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
+    border: 1px solid rgba(255, 255, 255, 0.04) !important;
+    border-left: 3px solid rgba(99, 102, 241, 0.6) !important;
+    border-radius: 10px !important;
+    padding: 11px 14px !important;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
+    cursor: grab;
 }
 .program-drag-card:hover {
-    transform: translateY(-2px);
+    transform: translateY(-2px) translateX(2px);
     background: rgba(255, 255, 255, 0.04) !important;
-    border-color: rgba(255, 255, 255, 0.12) !important;
-    box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.3) !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+    border-left-color: #6366f1 !important;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4) !important;
 }
 .program-drag-card.dragging {
-    opacity: 0.35 !important;
-    transform: scale(0.94) rotate(-1deg) !important;
-    border: 1px dashed #6366f1 !important;
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5) !important;
+    opacity: 0.3 !important;
+    transform: scale(0.96) rotate(-1.5deg) !important;
+    border: 1px dashed rgba(99, 102, 241, 0.6) !important;
+    border-left: 1px dashed rgba(99, 102, 241, 0.6) !important;
+    box-shadow: 0 20px 30px rgba(0, 0, 0, 0.5) !important;
 }
 
 .session-drop-zone {
-    border: 2px dashed rgba(255, 255, 255, 0.04) !important;
-    border-radius: 12px !important;
-    transition: all 0.3s ease !important;
+    border: 2px dashed rgba(255, 255, 255, 0.03) !important;
+    border-radius: 14px !important;
+    background: rgba(0, 0, 0, 0.08) !important;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    min-height: 140px;
 }
 .session-drop-zone.drag-over {
-    background: rgba(99, 102, 241, 0.08) !important;
-    border-color: #6366f1 !important;
-    box-shadow: inset 0 0 20px rgba(99, 102, 241, 0.15) !important;
+    background: rgba(99, 102, 241, 0.07) !important;
+    border-color: rgba(99, 102, 241, 0.5) !important;
+    box-shadow: inset 0 0 24px rgba(99, 102, 241, 0.15) !important;
 }
 
 #sessionsSearch {
-    transition: all 0.3s ease !important;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 #sessionsSearch:focus {
     background: rgba(255, 255, 255, 0.06) !important;
     border-color: #6366f1 !important;
-    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2) !important;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25) !important;
     width: 280px !important;
 }
 
 .progress-bar-container {
-    background: rgba(255, 255, 255, 0.06) !important;
-    border-radius: 8px !important;
+    background: rgba(255, 255, 255, 0.05) !important;
+    border-radius: 99px !important;
     overflow: hidden !important;
     height: 6px !important;
 }
 .progress-bar-fill {
-    border-radius: 8px !important;
+    border-radius: 99px !important;
 }
 
 #unassignedList {
     scrollbar-width: thin;
-    scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+    scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
 }
 #unassignedList::-webkit-scrollbar {
-    width: 6px;
+    width: 5px;
 }
 #unassignedList::-webkit-scrollbar-track {
     background: transparent;
 }
 #unassignedList::-webkit-scrollbar-thumb {
-    background-color: rgba(255, 255, 255, 0.1);
-    border-radius: 3px;
+    background-color: rgba(255, 255, 255, 0.08);
+    border-radius: 99px;
 }
 
 .toast {
-    background: rgba(30, 41, 59, 0.85) !important;
-    backdrop-filter: blur(12px) !important;
-    -webkit-backdrop-filter: blur(12px) !important;
+    background: rgba(15, 23, 42, 0.9) !important;
+    backdrop-filter: blur(16px) !important;
+    -webkit-backdrop-filter: blur(16px) !important;
     border: 1px solid rgba(255, 255, 255, 0.08) !important;
-    border-radius: 12px !important;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3) !important;
-    padding: 12px 20px !important;
+    border-radius: 14px !important;
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4) !important;
+    padding: 14px 22px !important;
     color: #fff !important;
     font-weight: 600 !important;
 }
@@ -931,17 +938,6 @@ window.ALL_PROGRAMS = <?= json_encode($allProgramsPayload, JSON_HEX_APOS | JSON_
                                     <?php endif; ?>
                                 </div>
 
-                                <!-- Assign Dropdown Selector -->
-                                <div style="margin-top: auto; border-top: 1px solid rgba(255,255,255,0.03); padding-top: 12px; display: flex; gap: 8px; align-items: center;">
-                                    <select class="form-input dropdown-quick-assign" style="height: 32px; font-size: 12px; padding: 0 8px; flex: 1;">
-                                        <option value="">-- Quick Assign Program --</option>
-                                        <?php foreach ($allPrograms as $pOption): ?>
-                                            <?php if ((int)$pOption['section_id'] !== $sectionId): ?>
-                                                <option value="<?= (int)$pOption['id'] ?>"><?= e($pOption['title']) ?><?= $pOption['section_id'] ? ' (Reassign)' : '' ?></option>
-                                            <?php endif; ?>
-                                        <?php endforeach; ?>
-                                    </select>
-                                </div>
                             </div>
                         </div>
                     <?php endforeach; ?>
@@ -1576,7 +1572,6 @@ window.ALL_PROGRAMS = <?= json_encode($allProgramsPayload, JSON_HEX_APOS | JSON_
             }
         }
 
-        updateQuickAssignDropdowns();
         recalculateSessionCapacity(targetZone);
         recalculateSessionCapacity(sourceZone);
 
@@ -1631,50 +1626,6 @@ window.ALL_PROGRAMS = <?= json_encode($allProgramsPayload, JSON_HEX_APOS | JSON_
             if (warningBadge) warningBadge.remove();
         }
     }
-
-    function updateQuickAssignDropdowns() {
-        const assignedIds = Array.from(document.querySelectorAll('.session-card .program-drag-card'))
-                                 .map(el => String(el.dataset.programId));
-
-        const allPrograms = window.ALL_PROGRAMS || [];
-
-        document.querySelectorAll('.dropdown-quick-assign').forEach(dropdown => {
-            const card = dropdown.closest('.session-card');
-            if (!card) return;
-            const sectionId = card.dataset.sectionId;
-
-            dropdown.innerHTML = '<option value="">-- Quick Assign Program --</option>';
-            allPrograms.forEach(p => {
-                const isAssignedToThis = card.querySelector(`.program-drag-card[data-program-id="${p.id}"]`) !== null;
-                if (!isAssignedToThis) {
-                    const isReassign = assignedIds.includes(String(p.id));
-                    const opt = document.createElement('option');
-                    opt.value = p.id;
-                    opt.textContent = p.title + (isReassign ? ' (Reassign)' : '');
-                    dropdown.appendChild(opt);
-                }
-            });
-        });
-    }
-
-    // Handle Dropdown Quick Assign selection
-    document.addEventListener('change', (e) => {
-        const dropdown = e.target.closest('.dropdown-quick-assign');
-        if (dropdown && dropdown.value !== '') {
-            const programId = dropdown.value;
-            const card = dropdown.closest('.session-card');
-            const targetSectionId = card.dataset.sectionId;
-            const targetZone = card.querySelector('.session-drop-zone');
-            
-            const sourceCard = document.querySelector(`.program-drag-card[data-program-id="${programId}"]`);
-            const sourceZone = sourceCard ? sourceCard.closest('.session-drop-zone') : null;
-
-            ajaxAssignProgram(programId, targetSectionId, targetZone, sourceZone);
-            dropdown.value = '';
-        }
-    });
-
-    updateQuickAssignDropdowns();
 
 })();
 </script>
