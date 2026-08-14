@@ -470,6 +470,10 @@ body.sidebar-collapsed .sidebar-collapse-trigger svg {
 
 /* COLLAPSED STATE UI ADJUSTMENTS */
 @media (min-width: 921px) {
+    body.sidebar-collapsed .sidebar-vertical {
+        padding: 20px 8px !important;
+    }
+
     body.sidebar-collapsed .sidebar-brand-info,
     body.sidebar-collapsed .sidebar-search-launcher span,
     body.sidebar-collapsed .sidebar-search-shortcut,
