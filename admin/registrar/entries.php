@@ -83,6 +83,7 @@ $scheduleSessions = $stmtSec->fetchAll(PDO::FETCH_ASSOC);
 $stmt = $pdo->prepare("
     SELECT mp.*, ct.name AS class_type_name,
            mst.name AS stage_type_name,
+           mst.category AS stage_category,
            mss.id AS schedule_section_id, mss.name AS schedule_section_name,
            mss.start_time AS schedule_section_start, mss.end_time AS schedule_section_end,
            mss.section_date AS schedule_section_date, mss.sort_order AS schedule_section_sort,
@@ -882,7 +883,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
 
             foreach ($filteredPrograms as $program) {
                 $isGroup = strtolower((string)$program['program_type']) === 'group';
-                $isOffStage = str_contains(strtolower((string)($program['stage_type_name'] ?? '')), 'off');
+                $isOffStage = ($program['stage_category'] ?? '') === 'off_stage';
 
                 if ($isGroup) {
                     $groupedByDivision['group']['programs'][] = $program;

@@ -38,7 +38,7 @@ $scheduleSections = $pdo->prepare("SELECT id, name FROM musabaqa_schedule_sectio
 $scheduleSections->execute([$activeEventId]);
 $scheduleSections = $scheduleSections->fetchAll(PDO::FETCH_ASSOC);
 
-$stageTypes = $pdo->query("SELECT id, name FROM musabaqa_stage_types ORDER BY id ASC")->fetchAll(PDO::FETCH_ASSOC);
+$stageTypes = $pdo->query("SELECT id, name, category FROM musabaqa_stage_types ORDER BY id ASC")->fetchAll(PDO::FETCH_ASSOC);
 
 function programs_redirect(): void
 {
@@ -110,6 +110,61 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     $action = (string)($_POST['action'] ?? '');
+
+    if ($action === 'manage_stages') {
+        $stageAction = (string)($_POST['stage_action'] ?? '');
+        try {
+            if ($stageAction === 'create') {
+                $name = trim((string)($_POST['stage_name'] ?? ''));
+                $category = trim((string)($_POST['stage_category'] ?? 'on_stage'));
+                if ($name === '') {
+                    throw new RuntimeException('Stage name is required.');
+                }
+                if (!in_array($category, ['on_stage', 'off_stage'], true)) {
+                    throw new RuntimeException('Invalid stage category.');
+                }
+                // Check for duplicate stage name
+                $chk = $pdo->prepare('SELECT COUNT(*) FROM musabaqa_stage_types WHERE name = ?');
+                $chk->execute([$name]);
+                if ($chk->fetchColumn() > 0) {
+                    throw new RuntimeException("A stage with the name '{$name}' already exists.");
+                }
+                $stmt = $pdo->prepare('INSERT INTO musabaqa_stage_types (name, category) VALUES (?, ?)');
+                $stmt->execute([$name, $category]);
+                admin_flash('success', 'New stage created successfully.');
+            } elseif ($stageAction === 'delete') {
+                $stageId = (int)($_POST['stage_id'] ?? 0);
+                
+                admin_db_transaction($pdo, function ($pdo) use ($stageId) {
+                    // Find a fallback stage ID (any stage that is not the one being deleted)
+                    $fallbackStmt = $pdo->prepare('SELECT id FROM musabaqa_stage_types WHERE id != ? LIMIT 1');
+                    $fallbackStmt->execute([$stageId]);
+                    $fallbackId = $fallbackStmt->fetchColumn();
+                    
+                    if ($fallbackId === false) {
+                        throw new RuntimeException('Cannot delete the last remaining stage in the system.');
+                    }
+                    
+                    // Update programs using this stage: set to fallback stage and clear location string
+                    $upProg = $pdo->prepare('UPDATE musabaqa_programs SET stage_type_id = ?, location = NULL WHERE stage_type_id = ?');
+                    $upProg->execute([(int)$fallbackId, $stageId]);
+                    
+                    // Update breaks using this stage: set to fallback stage
+                    $upBreak = $pdo->prepare('UPDATE musabaqa_breaks SET stage_type_id = ? WHERE stage_type_id = ?');
+                    $upBreak->execute([(int)$fallbackId, $stageId]);
+                    
+                    // Now delete the stage itself
+                    $delStage = $pdo->prepare('DELETE FROM musabaqa_stage_types WHERE id = ?');
+                    $delStage->execute([$stageId]);
+                });
+                
+                admin_flash('success', 'Stage deleted and removed from all associated programs.');
+            }
+        } catch (Throwable $e) {
+            admin_flash('error', $e->getMessage());
+        }
+        admin_redirect('/admin/event-manager/programs.php', ['open_stages' => 1]);
+    }
     $programId = (int)($_POST['program_id'] ?? 0);
 
     try {
@@ -387,7 +442,7 @@ $typeFilter = trim((string)($_GET['type'] ?? 'all'));
 $classFilter = trim((string)($_GET['class'] ?? 'all'));
 
 $classTypes = $dashboardPdo->query('SELECT id, name FROM class_types ORDER BY name ASC')->fetchAll(PDO::FETCH_ASSOC);
-$stageTypes = $pdo->query('SELECT id, name FROM musabaqa_stage_types ORDER BY name ASC')->fetchAll(PDO::FETCH_ASSOC);
+$stageTypes = $pdo->query('SELECT id, name, category FROM musabaqa_stage_types ORDER BY name ASC')->fetchAll(PDO::FETCH_ASSOC);
 
 $where = 'WHERE mp.event_id = ?';
 $params = [$activeEventId];
@@ -419,6 +474,7 @@ $stmt = $pdo->prepare("
     SELECT
         mp.*,
         mst.name AS stage_type_name,
+        mst.category AS stage_category,
         ct.name AS class_type_name,
         t.full_name AS responsible_teacher_name,
         mss.name AS schedule_section_name,
@@ -491,7 +547,10 @@ require_once __DIR__ . '/../../includes/sidebar.php';
             </div>
             <div class="page-subtitle"><?= e($activeEvent['title']) ?> timetable and scoring categories</div>
         </div>
-        <button class="btn btn-success btn-md" data-open-program><i class="fa-solid fa-plus"></i> Add Program</button>
+        <div style="display: flex; gap: 10px; align-items: center;">
+            <button class="btn btn-secondary btn-md" type="button" onclick="openModal('stagesModal')"><i class="fa-solid fa-layer-group"></i> Stage Management</button>
+            <button class="btn btn-success btn-md" data-open-program><i class="fa-solid fa-plus"></i> Add Program</button>
+        </div>
     </div>
 
     <?php if ($flash): ?>
@@ -589,7 +648,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
 
         foreach ($programs as $program) {
             $isGroup = strtolower((string)$program['program_type']) === 'group';
-            $isOffStage = str_contains(strtolower((string)($program['stage_type_name'] ?? '')), 'off');
+            $isOffStage = ($program['stage_category'] ?? '') === 'off_stage';
 
             if ($isGroup) {
                 $panels['group']['programs'][] = $program;
@@ -648,7 +707,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                 <tr>
                                     <td>
                                         <strong><?= e($program['title']) ?></strong>
-                                        <div class="muted"><?= e($program['location'] ?: '-') ?></div>
+                                        <div class="muted"><?= ($program['stage_category'] ?? '') === 'off_stage' ? 'Off Stage' : 'On Stage' ?></div>
                                     </td>
                                     <td><span class="badge badge-neutral"><?= e(ucfirst($program['program_type'])) ?></span></td>
                                     <td>
@@ -727,6 +786,161 @@ require_once __DIR__ . '/../../includes/sidebar.php';
     </div>
 </div>
 
+<!-- STAGE MANAGEMENT MODAL -->
+<div class="modal-overlay" id="stagesModal">
+    <div class="modal-box" style="max-height: calc(100vh - 60px); display: flex; flex-direction: column; overflow: hidden; padding: 24px; width: 480px; background: #0b0f19; border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7); position: relative;">
+        
+        <!-- Header -->
+        <div class="modal-header" style="flex-shrink: 0; margin-bottom: 16px; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+            <div class="modal-title" style="font-size: 16px; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 10px;">
+                <div style="background: rgba(20, 184, 166, 0.1); color: #14b8a6; padding: 8px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center;">
+                    <i class="fa-solid fa-layer-group" style="font-size: 16px;"></i>
+                </div>
+                Stage Management
+            </div>
+            <button class="modal-close" type="button" data-close="stagesModal" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); color: #94a3b8; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s;"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        
+        <!-- Content List -->
+        <div style="flex: 1; overflow-y: auto; padding-right: 4px; display: flex; flex-direction: column; gap: 20px;">
+            
+            <!-- Category: On Stage -->
+            <div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid rgba(16, 185, 129, 0.15); padding-bottom: 6px;">
+                    <h4 style="font-size: 13px; font-weight: 700; color: #10b981; display: flex; align-items: center; gap: 8px; margin: 0;">
+                        <i class="fa-solid fa-microphone"></i> On Stage (Normal Stage)
+                    </h4>
+                    <span style="font-size: 11px; background: rgba(16, 185, 129, 0.1); color: #10b981; padding: 2px 8px; border-radius: 99px; font-weight: 700;">
+                        <?= count(array_filter($stageTypes, fn($s) => ($s['category'] ?? 'on_stage') === 'on_stage')) ?>
+                    </span>
+                </div>
+                
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <?php
+                    $onStages = array_filter($stageTypes, fn($s) => ($s['category'] ?? 'on_stage') === 'on_stage');
+                    if (empty($onStages)):
+                    ?>
+                        <div style="font-size: 12px; color: #64748b; font-style: italic; text-align: center; padding: 12px; border: 1px dashed rgba(255,255,255,0.05); border-radius: 8px;">No on-stage venues configured.</div>
+                    <?php
+                    else:
+                        foreach ($onStages as $st):
+                    ?>
+                        <div class="stage-item-row" style="display: flex; justify-content: space-between; align-items: center; background: rgba(255, 255, 255, 0.02); padding: 10px 14px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); transition: all 0.2s;">
+                            <span style="font-weight: 600; color: #f1f5f9; font-size: 13px; display: flex; align-items: center; gap: 8px;">
+                                <span style="width: 6px; height: 6px; border-radius: 50%; background: #10b981; display: inline-block;"></span>
+                                <?= e($st['name']) ?>
+                            </span>
+                            <button type="button" onclick="confirmDeleteStage(<?= $st['id'] ?>)" style="background: rgba(239, 68, 68, 0.05); border: 1px solid rgba(239, 68, 68, 0.1); color: #ef4444; cursor: pointer; padding: 6px; border-radius: 6px; transition: all 0.2s; font-size: 12px;" title="Delete Stage" onmouseover="this.style.background='rgba(239, 68, 68, 0.15)'" onmouseout="this.style.background='rgba(239, 68, 68, 0.05)'"><i class="fa-solid fa-trash-can"></i></button>
+                        </div>
+                    <?php 
+                        endforeach;
+                    endif;
+                    ?>
+                </div>
+            </div>
+
+            <!-- Category: Off Stage -->
+            <div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid rgba(245, 158, 11, 0.15); padding-bottom: 6px;">
+                    <h4 style="font-size: 13px; font-weight: 700; color: #f59e0b; display: flex; align-items: center; gap: 8px; margin: 0;">
+                        <i class="fa-solid fa-door-closed"></i> Off Stage
+                    </h4>
+                    <span style="font-size: 11px; background: rgba(245, 158, 11, 0.1); color: #f59e0b; padding: 2px 8px; border-radius: 99px; font-weight: 700;">
+                        <?= count(array_filter($stageTypes, fn($s) => ($s['category'] ?? 'on_stage') === 'off_stage')) ?>
+                    </span>
+                </div>
+                
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <?php
+                    $offStages = array_filter($stageTypes, fn($s) => ($s['category'] ?? 'on_stage') === 'off_stage');
+                    if (empty($offStages)):
+                    ?>
+                        <div style="font-size: 12px; color: #64748b; font-style: italic; text-align: center; padding: 12px; border: 1px dashed rgba(255,255,255,0.05); border-radius: 8px;">No off-stage venues configured.</div>
+                    <?php
+                    else:
+                        foreach ($offStages as $st):
+                    ?>
+                        <div class="stage-item-row" style="display: flex; justify-content: space-between; align-items: center; background: rgba(255, 255, 255, 0.02); padding: 10px 14px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); transition: all 0.2s;">
+                            <span style="font-weight: 600; color: #f1f5f9; font-size: 13px; display: flex; align-items: center; gap: 8px;">
+                                <span style="width: 6px; height: 6px; border-radius: 50%; background: #f59e0b; display: inline-block;"></span>
+                                <?= e($st['name']) ?>
+                            </span>
+                            <button type="button" onclick="confirmDeleteStage(<?= $st['id'] ?>)" style="background: rgba(239, 68, 68, 0.05); border: 1px solid rgba(239, 68, 68, 0.1); color: #ef4444; cursor: pointer; padding: 6px; border-radius: 6px; transition: all 0.2s; font-size: 12px;" title="Delete Stage" onmouseover="this.style.background='rgba(239, 68, 68, 0.15)'" onmouseout="this.style.background='rgba(239, 68, 68, 0.05)'"><i class="fa-solid fa-trash-can"></i></button>
+                        </div>
+                    <?php 
+                        endforeach;
+                    endif;
+                    ?>
+                </div>
+            </div>
+            
+        </div>
+
+        <!-- Add New Stage Action Button -->
+        <div style="flex-shrink: 0; margin-top: 16px; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 16px;">
+            <button type="button" class="btn btn-success" onclick="openModal('addStageModal')" style="width: 100%; padding: 10px; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px; border-radius: 8px; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15); transition: all 0.2s;"><i class="fa-solid fa-plus"></i> Add New Stage</button>
+        </div>
+
+    </div>
+</div>
+
+<!-- ADD STAGE MODAL (MODAL-IN-MODAL) -->
+<div class="modal-overlay" id="addStageModal" style="z-index: 1085;">
+    <div class="modal-box" style="width: 420px; padding: 24px; background: #0b0f19; border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);">
+        <div class="modal-header" style="flex-shrink: 0; margin-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+            <div class="modal-title" style="font-size: 15px; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 8px;">
+                <i class="fa-solid fa-plus-circle" style="color: #14b8a6;"></i> Add New Stage
+            </div>
+            <button class="modal-close" type="button" onclick="closeModal('addStageModal')" style="background: none; border: none; color: #94a3b8; font-size: 16px; cursor: pointer;"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <form method="POST" style="margin: 0; display: flex; flex-direction: column; gap: 16px;">
+            <?= admin_csrf_field() ?>
+            <input type="hidden" name="action" value="manage_stages">
+            <input type="hidden" name="stage_action" value="create">
+            
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="font-size: 11px; font-weight: 600; color: #94a3b8;">Stage / Venue Name</label>
+                <input type="text" name="stage_name" placeholder="e.g. Stage 3, Masjid, Classroom B" required style="width: 100%; padding: 10px 12px; background: rgba(15,23,42,0.6); border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; color: #fff; font-size: 13px; outline: none; transition: all 0.2s;" onfocus="this.style.borderColor='#14b8a6'; this.style.boxShadow='0 0 0 2px rgba(20, 184, 166, 0.15)'" onblur="this.style.borderColor='rgba(255,255,255,0.12)'; this.style.boxShadow='none'">
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="font-size: 11px; font-weight: 600; color: #94a3b8;">Stage Category</label>
+                <select name="stage_category" style="width: 100%; padding: 10px 12px; background: rgba(15,23,42,0.6); border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; color: #fff; font-size: 13px; outline: none; transition: all 0.2s;" onfocus="this.style.borderColor='#14b8a6'" onblur="this.style.borderColor='rgba(255,255,255,0.12)'">
+                    <option value="on_stage">On Stage (Normal Stage)</option>
+                    <option value="off_stage">Off Stage</option>
+                </select>
+            </div>
+
+            <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 8px;">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('addStageModal')" style="padding: 9px 16px; font-size: 13px; font-weight: 600; border-radius: 8px;">Cancel</button>
+                <button type="submit" class="btn btn-success" style="padding: 9px 16px; font-size: 13px; font-weight: 700; border-radius: 8px; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15);">Create Stage</button>
+            </div>
+        </form>
+    </div>
+</div>v>
+
+<!-- DELETE STAGE CONFIRMATION MODAL -->
+<div class="modal-overlay" id="deleteStageConfirmModal" style="z-index: 1100;">
+    <div class="modal-box" style="width: 400px; padding: 24px; background: #0f172a; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; text-align: center; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);">
+        <div style="font-size: 40px; color: #ef4444; margin-bottom: 16px;">
+            <i class="fa-solid fa-circle-exclamation"></i>
+        </div>
+        <h4 style="font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 8px;">Confirm Stage Deletion</h4>
+        <p style="font-size: 13px; color: #94a3b8; line-height: 1.5; margin-bottom: 24px;">
+            Are you sure you want to delete this stage? This will remove the stage/venue name from all programs using it.
+        </p>
+        <div style="display: flex; gap: 12px; justify-content: center;">
+            <button type="button" class="btn btn-secondary" onclick="closeModal('deleteStageConfirmModal')" style="padding: 8px 16px; font-size: 13px; font-weight: 600;">Cancel</button>
+            <form method="POST" style="margin: 0;">
+                <?= admin_csrf_field() ?>
+                <input type="hidden" name="action" value="manage_stages">
+                <input type="hidden" name="stage_action" value="delete">
+                <input type="hidden" name="stage_id" id="deleteStageConfirmId">
+                <button type="submit" class="btn btn-danger" style="padding: 8px 16px; font-size: 13px; font-weight: 600; background: #ef4444; border: none; color: #fff;">Yes, Delete</button>
+            </form>
+        </div>
+    </div>
+</div>
 
 <div class="modal-overlay" id="programModal">
     <div class="modal-box modal-lg" style="max-height: calc(100vh - 50px); display: flex; flex-direction: column; overflow: hidden; padding: 20px;">
@@ -768,22 +982,25 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                     $defaultStageId = $latestProgramData ? $latestProgramData['stage_type_id'] : 1;
                     $defaultLocation = $latestProgramData ? $latestProgramData['location'] : '';
                     ?>
+
                     <div class="input-group">
-                        <label>Stage Category <span class="required">*</span></label>
-                        <select name="stage_type_id" id="programStageTypeId" required>
+                        <label>Stage Type <span class="required">*</span></label>
+                        <select id="programStageTypeFilter" required style="width: 100%;">
+                            <option value="on_stage">On Stage (Normal Stage)</option>
+                            <option value="off_stage">Off Stage</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Specific Venue / Stage <span class="required">*</span></label>
+                        <select name="stage_type_id" id="programStageTypeId" required style="width: 100%;">
+                            <option value="">-- Select Venue --</option>
                             <?php foreach ($stageTypes as $st): ?>
-                                <option value="<?= (int)$st['id'] ?>" <?= (int)$st['id'] === (int)$defaultStageId ? 'selected' : '' ?>><?= e($st['name']) ?></option>
+                                <option value="<?= (int)$st['id'] ?>" data-category="<?= e($st['category'] ?? 'on_stage') ?>" data-name="<?= e($st['name']) ?>"><?= e($st['name']) ?></option>
                             <?php endforeach; ?>
                         </select>
+                        <input type="hidden" name="location" id="programLocation">
                     </div>
-                    <div class="input-group">
-                        <label>Specific Venue/Location</label>
-                        <select name="location" id="programLocation">
-                            <option value="">-- Select Stage --</option>
-                            <option value="Darul Quran" <?= $defaultLocation === 'Darul Quran' ? 'selected' : '' ?>>Darul Quran (Normal Stage)</option>
-                            <option value="Kauzariyya Library" <?= $defaultLocation === 'Kauzariyya Library' ? 'selected' : '' ?>>Kauzariyya Library (Off Stage)</option>
-                        </select>
-                    </div>
+
                     <div class="input-group full-width" style="grid-column: span 2;">
                         <label style="font-weight: 600; margin-bottom: 8px; display: block; color: var(--muted);">Allowed Sections (Class Types) <span class="required">*</span></label>
                         <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 5px;">
@@ -1149,6 +1366,86 @@ function updateSelectedTeachersDisplay() {
     }
 }
 
+// Function to sync Specific Venue / Stage dropdown based on selected Category filter
+function syncVenues(category, selectedVal = '') {
+    const stageSelect = document.getElementById('programStageTypeId');
+    if (!stageSelect) return;
+    
+    // Store all options on first call
+    if (!window.ALL_STAGE_OPTIONS) {
+        window.ALL_STAGE_OPTIONS = Array.from(stageSelect.options).map(opt => ({
+            value: opt.value,
+            text: opt.text,
+            category: opt.getAttribute('data-category'),
+            name: opt.getAttribute('data-name')
+        }));
+    }
+    
+    // Clear and rebuild options list
+    stageSelect.innerHTML = '<option value="">-- Select Venue --</option>';
+    
+    const filtered = window.ALL_STAGE_OPTIONS.filter(opt => opt.value === '' || opt.category === category);
+    filtered.forEach(opt => {
+        if (opt.value === '') return;
+        const o = document.createElement('option');
+        o.value = opt.value;
+        o.text = opt.text;
+        o.setAttribute('data-category', opt.category);
+        o.setAttribute('data-name', opt.name);
+        if (String(opt.value) === String(selectedVal)) {
+            o.selected = true;
+        }
+        stageSelect.appendChild(o);
+    });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const filterSelect = document.getElementById('programStageTypeFilter');
+    const stageSelect = document.getElementById('programStageTypeId');
+    const locationInput = document.getElementById('programLocation');
+
+    if (filterSelect && stageSelect) {
+        // Cache initial options
+        if (!window.ALL_STAGE_OPTIONS) {
+            window.ALL_STAGE_OPTIONS = Array.from(stageSelect.options).map(opt => ({
+                value: opt.value,
+                text: opt.text,
+                category: opt.getAttribute('data-category'),
+                name: opt.getAttribute('data-name')
+            }));
+        }
+
+        // When Stage Type changes, filter specific venues
+        filterSelect.addEventListener('change', () => {
+            syncVenues(filterSelect.value);
+            if (locationInput) {
+                locationInput.value = stageSelect.options[stageSelect.selectedIndex]?.getAttribute('data-name') || '';
+            }
+        });
+
+        // When venue changes, update the hidden location input
+        stageSelect.addEventListener('change', () => {
+            if (locationInput) {
+                const opt = stageSelect.options[stageSelect.selectedIndex];
+                locationInput.value = opt ? (opt.getAttribute('data-name') || '') : '';
+            }
+        });
+    }
+
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('open_stages') === '1') {
+        openModal('stagesModal');
+    }
+});
+
+function confirmDeleteStage(id) {
+    const input = document.getElementById('deleteStageConfirmId');
+    if (input) {
+        input.value = id;
+    }
+    openModal('deleteStageConfirmModal');
+}
+
 // Special Fields always visible
 
 document.addEventListener('click', (e) => {
@@ -1173,10 +1470,14 @@ document.addEventListener('click', (e) => {
         const secEl = document.getElementById('programSectionId');
         if (secEl) secEl.value = '';
 
+        const filterSelect = document.getElementById('programStageTypeFilter');
+        if (filterSelect) filterSelect.value = 'on_stage';
+        syncVenues('on_stage', '1');
+
         const pStageType = document.getElementById('programStageTypeId');
         if (pStageType) pStageType.value = '1';
         const pLocation = document.getElementById('programLocation');
-        if (pLocation) pLocation.value = '';
+        if (pLocation) pLocation.value = 'Normal Stage';
         
         const jCount = document.getElementById('judgesCount');
         if (jCount) jCount.value = window.GLOBAL_DEFAULT_JUDGES || '2';
@@ -1232,6 +1533,12 @@ document.addEventListener('click', (e) => {
             document.querySelectorAll('.allowed-section-chk').forEach(chk => {
                 chk.checked = allowed.includes(chk.value) || (p.class_type_id && String(p.class_type_id) === String(chk.value));
             });
+
+            const filterSelect = document.getElementById('programStageTypeFilter');
+            const catVal = p.stage_category || 'on_stage';
+            if (filterSelect) filterSelect.value = catVal;
+            
+            syncVenues(catVal, p.stage_type_id || '1');
 
             const pStageType = document.getElementById('programStageTypeId');
             if (pStageType) pStageType.value = String(p.stage_type_id || '1');
