@@ -963,7 +963,7 @@ if ($programId > 0) {
 // ---------------------------------------------------------
 // IF PROGRAM_ID == 0: WORKSPACE PROGRAM PICKER
 // ---------------------------------------------------------
-$stmtSec = $pdo->prepare("SELECT * FROM musabaqa_schedule_sections WHERE event_id = ? ORDER BY sort_order ASC, start_time ASC");
+$stmtSec = $pdo->prepare("SELECT * FROM musabaqa_schedule_sections WHERE event_id = ? ORDER BY section_date ASC, start_time ASC, sort_order ASC");
 $stmtSec->execute([$activeEventId]);
 $scheduleSessions = $stmtSec->fetchAll(PDO::FETCH_ASSOC);
 

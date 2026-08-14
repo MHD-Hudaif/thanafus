@@ -124,6 +124,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($startTime === '' || $endTime === '') {
                 throw new RuntimeException('Start time and end time are required.');
             }
+            if ($sectionDate === '') {
+                throw new RuntimeException('Session date is required.');
+            }
 
             $stmt = $pdo->prepare("
                 INSERT INTO musabaqa_schedule_sections (event_id, name, start_time, end_time, section_date, sort_order)
@@ -134,7 +137,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $name,
                 $startTime,
                 $endTime,
-                $sectionDate !== '' ? $sectionDate : null,
+                $sectionDate,
                 $sortOrder
             ]);
             admin_auto_assign_programs_to_sections($pdo, $activeEventId);
@@ -153,6 +156,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($startTime === '' || $endTime === '') {
                 throw new RuntimeException('Start time and end time are required.');
             }
+            if ($sectionDate === '') {
+                throw new RuntimeException('Session date is required.');
+            }
 
             $stmt = $pdo->prepare("
                 UPDATE musabaqa_schedule_sections
@@ -163,7 +169,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $name,
                 $startTime,
                 $endTime,
-                $sectionDate !== '' ? $sectionDate : null,
+                $sectionDate,
                 $sortOrder,
                 $sectionId,
                 $activeEventId
@@ -190,6 +196,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $startDateStr = $activeEvent['start_date'] ?? null;
             $endDateStr = $activeEvent['end_date'] ?? null;
 
+            if (!$startDateStr || !$endDateStr) {
+                throw new RuntimeException('Event start date and end date must be set before generating default sessions.');
+            }
+
             $defaults = [
                 ['Morning', '08:00:00', '13:00:00', 1],
                 ['Evening', '14:00:00', '18:00:00', 2],
@@ -204,27 +214,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     VALUES (?, ?, ?, ?, ?, ?)
                 ");
 
-                if ($startDateStr && $endDateStr) {
-                    $start = new DateTime($startDateStr);
-                    $end = new DateTime($endDateStr);
-                    $end->modify('+1 day');
-                    $interval = new DateInterval('P1D');
-                    $period = new DatePeriod($start, $interval, $end);
+                $start = new DateTime($startDateStr);
+                $end = new DateTime($endDateStr);
+                $end->modify('+1 day');
+                $interval = new DateInterval('P1D');
+                $period = new DatePeriod($start, $interval, $end);
 
-                    $dayNum = 1;
-                    foreach ($period as $dt) {
-                        $dateSql = $dt->format('Y-m-d');
-                        $dayLabel = "Day " . $dayNum;
-                        foreach ($defaults as $def) {
-                            $name = $dayLabel . " - " . $def[0];
-                            $ins->execute([$activeEventId, $name, $def[1], $def[2], $dateSql, ($dayNum - 1) * 10 + $def[3]]);
-                        }
-                        $dayNum++;
-                    }
-                } else {
+                $dayNum = 1;
+                foreach ($period as $dt) {
+                    $dateSql = $dt->format('Y-m-d');
+                    $dayLabel = "Day " . $dayNum;
                     foreach ($defaults as $def) {
-                        $ins->execute([$activeEventId, $def[0], $def[1], $def[2], null, $def[3]]);
+                        $name = $dayLabel . " - " . $def[0];
+                        $ins->execute([$activeEventId, $name, $def[1], $def[2], $dateSql, ($dayNum - 1) * 10 + $def[3]]);
                     }
+                    $dayNum++;
                 }
 
                 admin_auto_assign_programs_to_sections($pdo, $activeEventId);
@@ -255,7 +259,7 @@ $stmt = $pdo->prepare("
     SELECT *
     FROM musabaqa_schedule_sections
     WHERE event_id = ?
-    ORDER BY sort_order ASC, section_date ASC, start_time ASC, id ASC
+    ORDER BY section_date ASC, start_time ASC, sort_order ASC, id ASC
 ");
 $stmt->execute([$activeEventId]);
 $sections = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -336,6 +340,124 @@ window.ALL_PROGRAMS = <?= json_encode($allProgramsPayload, JSON_HEX_APOS | JSON_
 }
 .modal-overlay.active {
     display: flex !important;
+}
+
+/* Premium UI Styles for Sessions Dashboard */
+.session-card {
+    background: rgba(30, 41, 59, 0.4) !important;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.05) !important;
+    border-radius: 16px !important;
+    box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5) !important;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.3s ease, box-shadow 0.3s ease !important;
+}
+.session-card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(99, 102, 241, 0.25) !important;
+    box-shadow: 0 20px 40px -15px rgba(99, 102, 241, 0.15) !important;
+}
+
+.day-tab-btn {
+    background: rgba(255, 255, 255, 0.02) !important;
+    border: 1px solid rgba(255, 255, 255, 0.06) !important;
+    color: rgba(255, 255, 255, 0.6) !important;
+    padding: 8px 16px !important;
+    border-radius: 20px !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    box-shadow: none !important;
+}
+.day-tab-btn:hover {
+    background: rgba(255, 255, 255, 0.08) !important;
+    color: #fff !important;
+    transform: translateY(-1px);
+}
+.day-tab-btn.active {
+    background: linear-gradient(135deg, #6366f1, #4f46e5) !important;
+    border-color: #6366f1 !important;
+    color: #fff !important;
+    box-shadow: 0 8px 20px -6px rgba(99, 102, 241, 0.6) !important;
+}
+
+.program-drag-card {
+    background: rgba(255, 255, 255, 0.02) !important;
+    border: 1px solid rgba(255, 255, 255, 0.05) !important;
+    border-radius: 12px !important;
+    padding: 10px 14px !important;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
+}
+.program-drag-card:hover {
+    transform: translateY(-2px);
+    background: rgba(255, 255, 255, 0.04) !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+    box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.3) !important;
+}
+.program-drag-card.dragging {
+    opacity: 0.35 !important;
+    transform: scale(0.94) rotate(-1deg) !important;
+    border: 1px dashed #6366f1 !important;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5) !important;
+}
+
+.session-drop-zone {
+    border: 2px dashed rgba(255, 255, 255, 0.04) !important;
+    border-radius: 12px !important;
+    transition: all 0.3s ease !important;
+}
+.session-drop-zone.drag-over {
+    background: rgba(99, 102, 241, 0.08) !important;
+    border-color: #6366f1 !important;
+    box-shadow: inset 0 0 20px rgba(99, 102, 241, 0.15) !important;
+}
+
+#sessionsSearch {
+    transition: all 0.3s ease !important;
+}
+#sessionsSearch:focus {
+    background: rgba(255, 255, 255, 0.06) !important;
+    border-color: #6366f1 !important;
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2) !important;
+    width: 280px !important;
+}
+
+.progress-bar-container {
+    background: rgba(255, 255, 255, 0.06) !important;
+    border-radius: 8px !important;
+    overflow: hidden !important;
+    height: 6px !important;
+}
+.progress-bar-fill {
+    border-radius: 8px !important;
+}
+
+#unassignedList {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+}
+#unassignedList::-webkit-scrollbar {
+    width: 6px;
+}
+#unassignedList::-webkit-scrollbar-track {
+    background: transparent;
+}
+#unassignedList::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+}
+
+.toast {
+    background: rgba(30, 41, 59, 0.85) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3) !important;
+    padding: 12px 20px !important;
+    color: #fff !important;
+    font-weight: 600 !important;
 }
 </style>
 
@@ -648,9 +770,9 @@ window.ALL_PROGRAMS = <?= json_encode($allProgramsPayload, JSON_HEX_APOS | JSON_
                         <input type="time" name="end_time" id="sectionEndTime" required>
                     </div>
                     <div class="input-group">
-                        <label>Session Date (Optional)</label>
-                        <input type="date" name="section_date" id="sectionDate" min="<?= e($activeEvent['start_date'] ?: '') ?>" max="<?= e($activeEvent['end_date'] ?: '') ?>">
-                        <div class="field-help">If specified, only matches programs scheduled on this date.</div>
+                        <label>Session Date <span class="required">*</span></label>
+                        <input type="date" name="section_date" id="sectionDate" min="<?= e($activeEvent['start_date'] ?: '') ?>" max="<?= e($activeEvent['end_date'] ?: '') ?>" required>
+                        <div class="field-help">Select the date for this session.</div>
                     </div>
                     <div class="input-group">
                         <label>Sort Order</label>

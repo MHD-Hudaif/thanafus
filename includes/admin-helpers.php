@@ -191,7 +191,14 @@ function admin_require_active_event(PDO $pdo): array
             $pdo->exec("ALTER TABLE musabaqa_programs MODIFY stage_type_id INT DEFAULT NULL");
             $pdo->exec("ALTER TABLE musabaqa_programs ADD COLUMN responsible_teacher_id INT UNSIGNED DEFAULT NULL");
             $pdo->exec("ALTER TABLE musabaqa_programs ADD COLUMN responsible_teacher_ids VARCHAR(255) DEFAULT NULL");
-            try { $pdo->exec("ALTER TABLE musabaqa_programs DROP FOREIGN KEY fk_program_class_type"); } catch (Throwable) {}
+            try { $pdo->exec("ALTER TABLE musabaqa_programs DROP FOREIGN KEY fk_program_class_type"); } catch (Throwable $e) {}
+            
+            // Auto-migrate musabaqa_stage_types to support category column
+            try {
+                $pdo->exec("ALTER TABLE musabaqa_stage_types ADD COLUMN category VARCHAR(50) NOT NULL DEFAULT 'on_stage'");
+                $pdo->exec("UPDATE musabaqa_stage_types SET category = 'off_stage' WHERE name LIKE '%off%' OR name = 'Off Stage'");
+            } catch (Throwable $e) {}
+            
             $migrated = true;
         } catch (Throwable $e) {}
     }
@@ -1526,7 +1533,7 @@ if (!function_exists('get_user_default_category_url')) {
 function admin_auto_assign_programs_to_sections(PDO $pdo, int $eventId): int
 {
     // 1. Fetch all schedule sections for the event
-    $stmt = $pdo->prepare("SELECT * FROM musabaqa_schedule_sections WHERE event_id = ? ORDER BY sort_order ASC, start_time ASC");
+    $stmt = $pdo->prepare("SELECT * FROM musabaqa_schedule_sections WHERE event_id = ? ORDER BY section_date ASC, start_time ASC, sort_order ASC");
     $stmt->execute([$eventId]);
     $sections = $stmt->fetchAll(PDO::FETCH_ASSOC);
     

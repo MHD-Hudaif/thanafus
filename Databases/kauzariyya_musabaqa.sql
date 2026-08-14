@@ -295,16 +295,17 @@ CREATE TABLE `musabaqa_settings` (
 
 CREATE TABLE `musabaqa_stage_types` (
   `id` int NOT NULL,
-  `name` varchar(100) NOT NULL
+  `name` varchar(100) NOT NULL,
+  `category` varchar(50) NOT NULL DEFAULT 'on_stage'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
 -- Dumping data for table `musabaqa_stage_types`
 --
 
-INSERT INTO `musabaqa_stage_types` (`id`, `name`) VALUES
-(1, 'Normal Stage'),
-(2, 'Off Stage');
+INSERT INTO `musabaqa_stage_types` (`id`, `name`, `category`) VALUES
+(1, 'Normal Stage', 'on_stage'),
+(2, 'Off Stage', 'off_stage');
 
 -- --------------------------------------------------------
 

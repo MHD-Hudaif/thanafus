@@ -26,7 +26,7 @@ $search = trim((string)($_GET['search'] ?? ''));
 $currentTab = trim((string)($_GET['tab'] ?? 'program'));
 
 // Load Schedule Sessions
-$sessionsStmt = $pdo->prepare("SELECT id, name FROM musabaqa_schedule_sections WHERE event_id = ? ORDER BY sort_order ASC, name ASC");
+$sessionsStmt = $pdo->prepare("SELECT id, name FROM musabaqa_schedule_sections WHERE event_id = ? ORDER BY section_date ASC, start_time ASC, sort_order ASC, name ASC");
 $sessionsStmt->execute([$eventId]);
 $scheduleSessions = $sessionsStmt->fetchAll(PDO::FETCH_ASSOC);
 

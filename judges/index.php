@@ -60,7 +60,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $activeJudgeNo = (int)($_SESSION['authenticated_judge_no'] ?? 0);
 $flash = admin_take_flash();
 
-$stmtSec = $pdo->prepare("SELECT * FROM musabaqa_schedule_sections WHERE event_id = ? ORDER BY sort_order ASC, start_time ASC");
+$stmtSec = $pdo->prepare("SELECT * FROM musabaqa_schedule_sections WHERE event_id = ? ORDER BY section_date ASC, start_time ASC, sort_order ASC");
 $stmtSec->execute([$activeEventId]);
 $scheduleSessions = $stmtSec->fetchAll(PDO::FETCH_ASSOC);
 

@@ -34,7 +34,7 @@ function get_musabaqa_settings($pdo) {
 
 $settings = get_musabaqa_settings($pdo);
 
-$scheduleSections = $pdo->prepare("SELECT id, name FROM musabaqa_schedule_sections WHERE event_id = ? ORDER BY sort_order ASC, name ASC");
+$scheduleSections = $pdo->prepare("SELECT id, name FROM musabaqa_schedule_sections WHERE event_id = ? ORDER BY section_date ASC, start_time ASC, sort_order ASC, name ASC");
 $scheduleSections->execute([$activeEventId]);
 $scheduleSections = $scheduleSections->fetchAll(PDO::FETCH_ASSOC);
 

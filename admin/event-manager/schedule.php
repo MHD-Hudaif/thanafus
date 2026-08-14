@@ -273,7 +273,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $matchedSectionId = null;
             $progDate = date('Y-m-d', strtotime($startSql));
             
-            $secStmt = $pdo->prepare("SELECT * FROM musabaqa_schedule_sections WHERE event_id = ? ORDER BY sort_order ASC, start_time ASC");
+            $secStmt = $pdo->prepare("SELECT * FROM musabaqa_schedule_sections WHERE event_id = ? ORDER BY section_date ASC, start_time ASC, sort_order ASC");
             $secStmt->execute([$activeEventId]);
             $sections = $secStmt->fetchAll(PDO::FETCH_ASSOC);
             

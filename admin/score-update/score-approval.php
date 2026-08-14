@@ -54,7 +54,7 @@ function admin_get_sessions_approval_stats(PDO $pdo, int $eventId): array
         WHERE mss.event_id = ?
         GROUP BY mss.id, mss.name, mss.section_date, mss.start_time, mss.end_time, mss.sort_order
         HAVING COUNT(p.id) > 0
-        ORDER BY mss.sort_order ASC, mss.section_date ASC, mss.start_time ASC
+        ORDER BY mss.section_date ASC, mss.start_time ASC, mss.sort_order ASC
     ");
     $stmt->execute([$eventId]);
     $sessions = $stmt->fetchAll(PDO::FETCH_ASSOC);

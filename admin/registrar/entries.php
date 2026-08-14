@@ -75,7 +75,7 @@ function entries_load_program(PDO $pdo, int $eventId, int $programId): ?array
 $classTypes = $dashboardPdo->query("SELECT id, name FROM class_types ORDER BY name ASC")->fetchAll(PDO::FETCH_ASSOC);
 
 // Fetch all schedule sessions for this event
-$stmtSec = $pdo->prepare("SELECT * FROM musabaqa_schedule_sections WHERE event_id = ? ORDER BY sort_order ASC, start_time ASC");
+$stmtSec = $pdo->prepare("SELECT * FROM musabaqa_schedule_sections WHERE event_id = ? ORDER BY section_date ASC, start_time ASC, sort_order ASC");
 $stmtSec->execute([$activeEventId]);
 $scheduleSessions = $stmtSec->fetchAll(PDO::FETCH_ASSOC);
 
