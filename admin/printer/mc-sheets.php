@@ -397,7 +397,7 @@ if ($activeEvent) {
     <div class="musabaqa-hub-header">
         <div>
             <h1><i class="fa-solid fa-microphone" style="color:#38bdf8;"></i> Bulk MC Stage Sheets Printer</h1>
-            <p>A4 Landscape side-by-side sheets (Matching sample layout strictly)</p>
+            <p>A4 Portrait Sheets (Clean layout for Emcee stage running order)</p>
         </div>
         <div>
             <a href="<?= app_url('/admin/printer/index.php') ?>" class="btn btn-secondary btn-md">

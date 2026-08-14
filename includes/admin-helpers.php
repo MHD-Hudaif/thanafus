@@ -1941,6 +1941,32 @@ if (!function_exists('admin_render_renewal_modal_html')) {
     }
 }
 
+/**
+ * Reshuffle (randomize) the performance order of all program participants in an event.
+ */
+if (!function_exists('admin_reshuffle_all_event_program_entries')) {
+    function admin_reshuffle_all_event_program_entries(PDO $pdo, int $eventId): void
+    {
+        $stmt = $pdo->prepare("SELECT id FROM musabaqa_programs WHERE event_id = ?");
+        $stmt->execute([$eventId]);
+        $programIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        
+        foreach ($programIds as $programId) {
+            $eStmt = $pdo->prepare("SELECT id FROM musabaqa_program_entries WHERE event_id = ? AND program_id = ?");
+            $eStmt->execute([$eventId, $programId]);
+            $entryIds = $eStmt->fetchAll(PDO::FETCH_COLUMN);
+            
+            if ($entryIds) {
+                shuffle($entryIds);
+                $updateStmt = $pdo->prepare("UPDATE musabaqa_program_entries SET performance_order = ? WHERE id = ?");
+                foreach ($entryIds as $index => $id) {
+                    $updateStmt->execute([$index + 1, $id]);
+                }
+            }
+        }
+    }
+}
+
 
 
 

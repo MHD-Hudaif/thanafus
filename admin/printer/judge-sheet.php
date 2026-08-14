@@ -83,7 +83,7 @@ if (empty($chestNumbers)) {
     }
 }
 
-$pageSize = 'A4 landscape';
+$pageSize = 'A4 portrait';
 $rowHeight = ($participantsCount <= 6) ? 40 : (($participantsCount <= 12) ? 32 : 26);
 ?>
 <!DOCTYPE html>
@@ -95,7 +95,7 @@ $rowHeight = ($participantsCount <= 6) ? 40 : (($participantsCount <= 12) ? 32 :
     <script src="<?= asset_url('js/print-helpers.js') ?>" defer></script>
     <style>
         @page {
-            size: A4 landscape;
+            size: A4 portrait;
             margin: 6mm 8mm;
         }
         * {
@@ -321,7 +321,7 @@ $rowHeight = ($participantsCount <= 6) ? 40 : (($participantsCount <= 12) ? 32 :
 
         @media print {
             @page {
-                size: A4 landscape;
+                size: A4 portrait;
                 margin: 15mm 20mm;
             }
             html, body {
@@ -378,7 +378,7 @@ $rowHeight = ($participantsCount <= 6) ? 40 : (($participantsCount <= 12) ? 32 :
         }
     </style>
 </head>
-<body data-print-orientation="landscape">
+<body data-print-orientation="portrait">
 
     <!-- SCREEN-ONLY CONTROL PANEL -->
     <div class="no-print-controls">
@@ -443,13 +443,18 @@ $rowHeight = ($participantsCount <= 6) ? 40 : (($participantsCount <= 12) ? 32 :
                             </tr>
                         </thead>
                         <tbody>
-                            <?php foreach ($chestNumbers as $chest): ?>
+                             <?php foreach ($chestNumbers as $chest): ?>
                                 <tr>
-                                    <td class="chest-col" style="font-weight: 900; font-size: <?= $chestFontSize ?>; padding: <?= $cellPadding ?>;">#<?= e($chest) ?></td>
-                                    <td style="padding: <?= $cellPadding ?>;"></td>
-                                    <td style="padding: <?= $cellPadding ?>;"></td>
-                                    <td style="padding: <?= $cellPadding ?>;"></td>
-                                    <td style="padding: <?= $cellPadding ?>;"></td>
+                                    <td class="chest-col" rowspan="2" style="font-weight: 900; font-size: <?= $chestFontSize ?>; padding: <?= $cellPadding ?>; border-bottom: 1.5px solid #000; vertical-align: middle;">#<?= e($chest) ?></td>
+                                    <td style="padding: <?= $cellPadding ?>; border-bottom: 1px dashed #ccc;"></td>
+                                    <td style="padding: <?= $cellPadding ?>; border-bottom: 1px dashed #ccc;"></td>
+                                    <td style="padding: <?= $cellPadding ?>; border-bottom: 1px dashed #ccc;"></td>
+                                    <td style="padding: <?= $cellPadding ?>; border-bottom: 1px dashed #ccc;"></td>
+                                </tr>
+                                <tr class="notes-row">
+                                    <td colspan="4" class="notes-span-cell" style="height: 42px; border-bottom: 1.5px solid #000; border-top: none; border-left: none; border-right: 1.5px solid #000; text-align: left; padding: 4px 8px; font-size: 10px; color: #888; font-style: italic; letter-spacing: 0.05em; vertical-align: top;">
+                                        Notes: 
+                                    </td>
                                 </tr>
                             <?php endforeach; ?>
                         </tbody>

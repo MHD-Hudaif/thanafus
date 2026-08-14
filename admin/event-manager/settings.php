@@ -245,6 +245,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             });
             admin_flash('success', 'All event configuration, teams, programs, entries, and scores were wiped successfully.');
             admin_redirect('/admin/event-manager/settings.php?tab=database');
+        } elseif ($action === 'reshuffle_all_participants') {
+            if (!is_admin()) {
+                throw new RuntimeException('Unauthorized.');
+            }
+            admin_reshuffle_all_event_program_entries($pdo, $activeEventId);
+            admin_flash('success', 'All program participant orders have been randomized successfully.');
+            admin_redirect('/admin/event-manager/settings.php?tab=database');
         }
 
         $defaultJudgesCount = max(1, min(10, (int)($_POST['default_judges_count'] ?? 2)));
@@ -919,6 +926,25 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                             <input type="hidden" name="action" value="reset_whole_event">
                             <button type="submit" class="btn btn-danger btn-md" style="width: 100%; font-weight: 700; border-radius: 10px; padding: 12px; background: rgba(239,68,68,0.22); border-color: rgba(239,68,68,0.5); color: #ef4444; cursor: pointer;">
                                 <i class="fa-solid fa-skull-crossbones mr-1"></i> Wipe Event Data
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Card 4: Reshuffle Program Participant Order -->
+                    <div class="panel" style="padding: 24px; background: rgba(15, 23, 42, 0.4); border: 1px solid rgba(59, 130, 246, 0.15); border-radius: 16px; display: flex; flex-direction: column; justify-content: space-between; gap: 16px;">
+                        <div>
+                            <strong style="color: #93c5fd; font-size: 16px; display: block; margin-bottom: 8px;">
+                                <i class="fa-solid fa-shuffle" style="color: #3b82f6; margin-right: 8px;"></i> Reshuffle Participant Order
+                            </strong>
+                            <span style="font-size: 12.5px; color: var(--muted); display: block; line-height: 1.5;">
+                                Randomizes the performance and stage order of participants for all programs in this event. <strong>Note: This overrides existing manually assigned sorting orders.</strong>
+                            </span>
+                        </div>
+                        <form method="POST" style="margin: 0;" onsubmit="return confirm('Are you sure you want to reshuffle and randomize the performance order of all participants across all programs in this event?');">
+                            <input type="hidden" name="csrf_token" value="<?= generate_csrf_token() ?>">
+                            <input type="hidden" name="action" value="reshuffle_all_participants">
+                            <button type="submit" class="btn btn-primary btn-md" style="width: 100%; font-weight: 700; border-radius: 10px; padding: 12px; background: rgba(59,130,246,0.12); border-color: rgba(59,130,246,0.3); color: #93c5fd; cursor: pointer;">
+                                <i class="fa-solid fa-shuffle mr-1"></i> Reshuffle All Programs
                             </button>
                         </form>
                     </div>
