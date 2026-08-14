@@ -103,7 +103,194 @@ function format_admin_datetime_for_input(?string $value): string
     return str_replace(' ', 'T', substr($value, 0, 16));
 }
 
+// ---------------------------------------------------------------------------
+// Validation helpers: session ↔ program coupling
+// ---------------------------------------------------------------------------
+
+/**
+ * Validate that a program's datetime window fits inside its assigned session.
+ *
+ * Sessions store TIME + DATE; programs store full DATETIME.
+ * We reconstruct the session's full datetime window and require the program
+ * to start AND end within it (inclusive on both edges).
+ *
+ * @throws RuntimeException on any violation
+ */
+function validate_program_session_window(
+    PDO $pdo,
+    int $sectionId,
+    string $progStartDt,
+    string $progEndDt,
+    int $eventId
+): void {
+    $stmt = $pdo->prepare("
+        SELECT id, name, section_date, start_time, end_time
+        FROM musabaqa_schedule_sections
+        WHERE id = ? AND event_id = ?
+        LIMIT 1
+    ");
+    $stmt->execute([$sectionId, $eventId]);
+    $section = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$section) {
+        throw new RuntimeException("The selected session does not exist or does not belong to this event.");
+    }
+
+    // Resolve program dates as DateTimeImmutable
+    $pStart = DateTimeImmutable::createFromFormat('Y-m-d H:i:s', $progStartDt)
+           ?: DateTimeImmutable::createFromFormat('Y-m-d H:i', $progStartDt);
+    $pEnd   = DateTimeImmutable::createFromFormat('Y-m-d H:i:s', $progEndDt)
+           ?: DateTimeImmutable::createFromFormat('Y-m-d H:i', $progEndDt);
+
+    if (!$pStart || !$pEnd) {
+        // Can't validate – let the program through (incomplete times)
+        return;
+    }
+
+    if (!$section['section_date']) {
+        throw new RuntimeException("Session \"{$section['name']}\" has no date set. Set a date on the session before assigning programs.");
+    }
+
+    // Build full datetimes for the session window
+    $sesStart = DateTimeImmutable::createFromFormat(
+        'Y-m-d H:i:s',
+        $section['section_date'] . ' ' . $section['start_time']
+    );
+    $sesEnd = DateTimeImmutable::createFromFormat(
+        'Y-m-d H:i:s',
+        $section['section_date'] . ' ' . $section['end_time']
+    );
+
+    if (!$sesStart || !$sesEnd) {
+        return; // Malformed session time – skip
+    }
+
+    if ($pStart < $sesStart || $pEnd > $sesEnd) {
+        $fmtDate = date('D, d M Y', strtotime($section['section_date']));
+        $fmtSes  = date('h:i A', strtotime($section['start_time'])) . ' – ' . date('h:i A', strtotime($section['end_time']));
+        $fmtProg = date('h:i A', $pStart->getTimestamp()) . ' – ' . date('h:i A', $pEnd->getTimestamp());
+        throw new RuntimeException(
+            "Program time ({$fmtProg}) falls outside session \"{$section['name']}\" window " .
+            "({$fmtDate}, {$fmtSes}). Adjust the program times or choose a different session."
+        );
+    }
+}
+
+/**
+ * Validate that no existing program on the same stage overlaps the given time window.
+ *
+ * Overlap condition: NOT (existing.end_time <= new.start_time OR existing.start_time >= new.end_time)
+ *
+ * @throws RuntimeException on conflict
+ */
+function validate_program_stage_overlap(
+    PDO $pdo,
+    int $stageTypeId,
+    string $progStartDt,
+    string $progEndDt,
+    int $eventId,
+    int $excludeProgramId = 0
+): void {
+    $pStart = DateTimeImmutable::createFromFormat('Y-m-d H:i:s', $progStartDt)
+           ?: DateTimeImmutable::createFromFormat('Y-m-d H:i', $progStartDt);
+    $pEnd   = DateTimeImmutable::createFromFormat('Y-m-d H:i:s', $progEndDt)
+           ?: DateTimeImmutable::createFromFormat('Y-m-d H:i', $progEndDt);
+
+    if (!$pStart || !$pEnd) {
+        return; // Incomplete times – skip overlap check
+    }
+
+    $stmt = $pdo->prepare("
+        SELECT id, title, start_time, end_time
+        FROM musabaqa_programs
+        WHERE event_id = ?
+          AND stage_type_id = ?
+          AND id != ?
+          AND start_time IS NOT NULL
+          AND end_time IS NOT NULL
+          AND start_time < ?
+          AND end_time > ?
+        LIMIT 1
+    ");
+    $stmt->execute([
+        $eventId,
+        $stageTypeId,
+        $excludeProgramId,
+        $progEndDt,   // existing.start_time < new.end_time
+        $progStartDt  // existing.end_time   > new.start_time
+    ]);
+    $conflict = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if ($conflict) {
+        $fmtProg    = date('h:i A', strtotime($conflict['start_time'])) . ' – ' . date('h:i A', strtotime($conflict['end_time']));
+        $fmtNew     = date('h:i A', $pStart->getTimestamp()) . ' – ' . date('h:i A', $pEnd->getTimestamp());
+        throw new RuntimeException(
+            "Time overlap detected! \"{$conflict['title']}\" ({$fmtProg}) is already on this stage at {$fmtNew}. " .
+            "Adjust the time or assign to a different stage."
+        );
+    }
+}
+
+// ---------------------------------------------------------------------------
+// AJAX: suggest which session best matches given program times
+// ---------------------------------------------------------------------------
+if (isset($_GET['ajax_suggest_session'])) {
+    header('Content-Type: application/json');
+    try {
+        $pdo = $GLOBALS['musabaqa_pdo'];
+        $activeEvent = admin_require_active_event($pdo);
+        $activeEventId = (int)$activeEvent['id'];
+
+        $startDt = trim((string)($_GET['start_time'] ?? ''));
+        $endDt   = trim((string)($_GET['end_time'] ?? ''));
+
+        if (!$startDt || !$endDt) {
+            echo json_encode(['suggestions' => []]);
+            exit;
+        }
+
+        $pStart = DateTimeImmutable::createFromFormat('Y-m-d H:i', $startDt)
+               ?: DateTimeImmutable::createFromFormat('Y-m-d H:i:s', $startDt);
+        $pEnd   = DateTimeImmutable::createFromFormat('Y-m-d H:i', $endDt)
+               ?: DateTimeImmutable::createFromFormat('Y-m-d H:i:s', $endDt);
+
+        if (!$pStart || !$pEnd) {
+            echo json_encode(['suggestions' => []]);
+            exit;
+        }
+
+        $progDate  = $pStart->format('Y-m-d');
+        $progSTime = $pStart->format('H:i:s');
+        $progETime = $pEnd->format('H:i:s');
+
+        // Find sessions whose date matches program date and time window contains the program
+        $stmt = $pdo->prepare("
+            SELECT id, name, section_date, start_time, end_time
+            FROM musabaqa_schedule_sections
+            WHERE event_id = ?
+              AND section_date = ?
+              AND start_time <= ?
+              AND end_time >= ?
+            ORDER BY start_time ASC
+        ");
+        $stmt->execute([$activeEventId, $progDate, $progSTime, $progETime]);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $suggestions = array_map(fn($r) => [
+            'id'   => (int)$r['id'],
+            'name' => $r['name'],
+            'time' => date('h:i A', strtotime($r['start_time'])) . ' – ' . date('h:i A', strtotime($r['end_time'])),
+        ], $rows);
+
+        echo json_encode(['suggestions' => $suggestions]);
+    } catch (Throwable $e) {
+        echo json_encode(['suggestions' => [], 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+
     if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
         admin_flash('error', 'Invalid security token.');
         programs_redirect();
@@ -347,7 +534,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stageTypeId = isset($_POST['stage_type_id']) && $_POST['stage_type_id'] !== '' ? (int)$_POST['stage_type_id'] : $firstStageId;
         $location = isset($_POST['location']) && $_POST['location'] !== '' ? trim((string)$_POST['location']) : null;
 
+        // ------------------------------------------------------------------
+        // Resolve existing program start/end times for overlap validation.
+        // The programs form does NOT expose time pickers (timing is managed in
+        // schedule.php), so we read the current DB values for the update case.
+        // For create, there is no existing time yet → skip time-based checks.
+        // ------------------------------------------------------------------
+        $existingStartDt = null;
+        $existingEndDt   = null;
         if ($action === 'update' && $programId > 0) {
+            $existingStmt = $pdo->prepare(
+                "SELECT start_time, end_time FROM musabaqa_programs WHERE id = ? AND event_id = ? LIMIT 1"
+            );
+            $existingStmt->execute([$programId, $activeEventId]);
+            $existingRow = $existingStmt->fetch(PDO::FETCH_ASSOC);
+            if ($existingRow) {
+                $existingStartDt = $existingRow['start_time'];
+                $existingEndDt   = $existingRow['end_time'];
+            }
+        }
+
+        // Only validate when the program already has a scheduled time
+        if ($existingStartDt && $existingEndDt) {
+            // Rule 1: Program time must fit inside the assigned session window
+            if ($sectionId !== null) {
+                validate_program_session_window($pdo, $sectionId, $existingStartDt, $existingEndDt, $activeEventId);
+            }
+            // Rule 2: No two programs on the same stage can overlap in time
+            validate_program_stage_overlap($pdo, $stageTypeId, $existingStartDt, $existingEndDt, $activeEventId, $programId);
+        }
+
+        if ($action === 'update' && $programId > 0) {
+
             $stmt = $pdo->prepare("
                 UPDATE musabaqa_programs
                 SET title = ?, program_type = ?, class_type_id = ?,
@@ -969,14 +1187,31 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                         </select>
                     </div>
                     <div class="input-group full-width" style="grid-column: span 2;">
-                        <label>Schedule Section (Timing Group)</label>
-                        <select name="section_id" id="programSectionId">
-                            <option value="">-- No Section (Auto-detect by Timing) --</option>
-                            <?php foreach ($scheduleSections as $sec): ?>
-                                <option value="<?= (int)$sec['id'] ?>"><?= e($sec['name']) ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                        <div class="field-help" style="margin-top: 4px;">Assign to group programs into Morning, Evening, or Night slots. If set to Auto-detect, the TV display will place it based on program timing.</div>
+                        <label>Schedule Section (Timing Group)
+                            <?php if (empty($scheduleSections)): ?>
+                                <span style="background: rgba(239,68,68,0.15); color: #f87171; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 6px; margin-left: 6px; vertical-align: middle;">
+                                    <i class="fa-solid fa-triangle-exclamation" style="margin-right: 3px;"></i>No sessions yet
+                                </span>
+                            <?php endif; ?>
+                        </label>
+                        <?php if (empty($scheduleSections)): ?>
+                            <div style="background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.2); border-radius: 8px; padding: 10px 14px; font-size: 13px; color: #f87171; display: flex; align-items: center; gap: 10px;">
+                                <i class="fa-solid fa-calendar-xmark" style="font-size: 16px; flex-shrink: 0;"></i>
+                                <span>No schedule sessions exist yet. <a href="<?= app_url('/admin/event-manager/sections') ?>" style="color: #fb923c; font-weight: 700; text-decoration: underline;">Create sessions first</a> — programs must be scheduled within a session window.</span>
+                            </div>
+                            <input type="hidden" name="section_id" value="">
+                        <?php else: ?>
+                            <select name="section_id" id="programSectionId">
+                                <option value="">-- No Section (Auto-detect by Timing) --</option>
+                                <?php foreach ($scheduleSections as $sec): ?>
+                                    <option value="<?= (int)$sec['id'] ?>"><?= e($sec['name']) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                            <div class="field-help" style="margin-top: 4px;">
+                                <i class="fa-solid fa-circle-info" style="color: rgba(99,102,241,0.7); margin-right: 4px;"></i>
+                                Session is auto-detected when you assign a time in <strong>Schedule</strong>. The program's time must fit within the session window — overlap will be blocked.
+                            </div>
+                        <?php endif; ?>
                     </div>
 
                     <?php

@@ -102,7 +102,68 @@ if (isset($_POST['ajax'])) {
     exit;
 }
 
+// ---------------------------------------------------------------------------
+// Validation: ensure no scheduled program overflows the session window
+// ---------------------------------------------------------------------------
+
+/**
+ * Throw if any program assigned to $sectionId has a datetime that falls
+ * outside [$sectionDate $startTime, $sectionDate $endTime].
+ *
+ * Pass $excludeSectionId = 0 for 'add' (no existing section yet).
+ *
+ * @throws RuntimeException
+ */
+function validate_session_no_program_overflow(
+    PDO $pdo,
+    int $sectionId,       // 0 means 'add' — skip check
+    string $sectionDate,
+    string $startTime,    // HH:MM or HH:MM:SS
+    string $endTime,
+    int $eventId
+): void {
+    if ($sectionId <= 0) {
+        return; // New section — no programs assigned yet
+    }
+
+    $sesStart = DateTimeImmutable::createFromFormat('Y-m-d H:i:s', $sectionDate . ' ' . $startTime)
+             ?: DateTimeImmutable::createFromFormat('Y-m-d H:i',   $sectionDate . ' ' . $startTime);
+    $sesEnd   = DateTimeImmutable::createFromFormat('Y-m-d H:i:s', $sectionDate . ' ' . $endTime)
+             ?: DateTimeImmutable::createFromFormat('Y-m-d H:i',   $sectionDate . ' ' . $endTime);
+
+    if (!$sesStart || !$sesEnd) {
+        return;
+    }
+
+    $startSql = $sesStart->format('Y-m-d H:i:s');
+    $endSql   = $sesEnd->format('Y-m-d H:i:s');
+
+    // Find any program in this section whose time falls outside the new window
+    $stmt = $pdo->prepare("
+        SELECT title, start_time, end_time
+        FROM musabaqa_programs
+        WHERE section_id = ?
+          AND event_id = ?
+          AND start_time IS NOT NULL
+          AND end_time IS NOT NULL
+          AND (start_time < ? OR end_time > ?)
+        LIMIT 1
+    ");
+    $stmt->execute([$sectionId, $eventId, $startSql, $endSql]);
+    $offender = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if ($offender) {
+        $fmtProg = date('h:i A', strtotime($offender['start_time'])) . '–' . date('h:i A', strtotime($offender['end_time']));
+        $fmtSes  = date('h:i A', strtotime($startTime)) . '–' . date('h:i A', strtotime($endTime));
+        throw new RuntimeException(
+            "Cannot update session: \"{$offender['title']}\" ({$fmtProg}) would fall outside the new window ({$fmtSes}). " .
+            "Reschedule or unschedule the program first."
+        );
+    }
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+
     if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
         admin_flash('error', 'Invalid security token.');
         admin_redirect('/admin/event-manager/sections');
@@ -160,6 +221,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new RuntimeException('Session date is required.');
             }
 
+            // Prevent narrowing the window when scheduled programs would overflow
+            validate_session_no_program_overflow($pdo, $sectionId, $sectionDate, $startTime, $endTime, $activeEventId);
+
             $stmt = $pdo->prepare("
                 UPDATE musabaqa_schedule_sections
                 SET name = ?, start_time = ?, end_time = ?, section_date = ?, sort_order = ?
@@ -180,6 +244,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $sectionId = (int)($_POST['section_id'] ?? 0);
 
             if ($sectionId > 0) {
+                // Check for programs with explicit schedule times — those must be rescheduled first
+
+                $scheduledStmt = $pdo->prepare("
+                    SELECT COUNT(*) FROM musabaqa_programs
+                    WHERE section_id = ? AND event_id = ? AND start_time IS NOT NULL AND end_time IS NOT NULL
+                ");
+                $scheduledStmt->execute([$sectionId, $activeEventId]);
+                $scheduledCount = (int)$scheduledStmt->fetchColumn();
+
+                if ($scheduledCount > 0) {
+                    throw new RuntimeException(
+                        "Cannot delete session: {$scheduledCount} program(s) have times scheduled within it. " .
+                        "Unschedule those programs first (in the Schedule page), then delete the session."
+                    );
+                }
+
                 admin_db_transaction($pdo, function ($pdo) use ($sectionId, $activeEventId) {
                     $stmt = $pdo->prepare("UPDATE musabaqa_programs SET section_id = NULL WHERE section_id = ? AND event_id = ?");
                     $stmt->execute([$sectionId, $activeEventId]);

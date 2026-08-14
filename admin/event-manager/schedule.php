@@ -296,6 +296,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
 
+            // ------------------------------------------------------------------
+            // Session-window enforcement:
+            // If sessions exist for the program's date, the program's full time
+            // window must fit entirely within a matched session.  Programs are
+            // NOT allowed to span session boundaries.
+            // ------------------------------------------------------------------
+            $sessionsOnDate = array_filter($sections, fn($s) => ($s['section_date'] ?? '') === $progDate);
+
+            if (!empty($sessionsOnDate)) {
+                if ($matchedSectionId === null) {
+                    // No session covers the start time — find closest for a helpful message
+                    $sessionNames = array_map(fn($s) => '"' . $s['name'] . '" (' .
+                        date('h:i A', strtotime($s['start_time'])) . '–' . date('h:i A', strtotime($s['end_time'])) . ')',
+                        array_values($sessionsOnDate)
+                    );
+                    throw new RuntimeException(
+                        'No session covers ' . date('h:i A', strtotime($startSql)) . ' on ' . date('D, d M Y', strtotime($progDate)) . '. ' .
+                        'Available sessions: ' . implode(', ', $sessionNames) . '. ' .
+                        'Create a session that includes this time, or adjust the program time.'
+                    );
+                }
+
+                // Also verify the END time fits within the matched session
+                $matchedSec = null;
+                foreach ($sections as $sec) {
+                    if ((int)$sec['id'] === $matchedSectionId) {
+                        $matchedSec = $sec;
+                        break;
+                    }
+                }
+                if ($matchedSec) {
+                    $sesEndFull = $matchedSec['section_date'] . ' ' . $matchedSec['end_time'];
+                    if ($endSql > $sesEndFull) {
+                        throw new RuntimeException(
+                            'Program end time ' . date('h:i A', strtotime($endSql)) . ' exceeds session "' . $matchedSec['name'] . '" end (' .
+                            date('h:i A', strtotime($matchedSec['end_time'])) . '). ' .
+                            'Shorten the program or extend the session.'
+                        );
+                    }
+                }
+            }
+
             // Save schedule
             $stmt = $pdo->prepare("
                 UPDATE musabaqa_programs
@@ -314,6 +356,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             admin_log_activity($pdo, (int)($_SESSION['user_id'] ?? 0), $activeEventId, 'schedule_program', 'musabaqa_programs', $programId, 'Scheduled program.');
             admin_flash('success', 'Program scheduled successfully.');
+
 
         } elseif ($action === 'unschedule_program') {
             $programId = (int)($_POST['program_id'] ?? 0);
