@@ -149,11 +149,7 @@ if ($activeEventId) {
                 </a>
                 <a href="<?= app_url('/admin/event-manager/schedule.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('schedule.php') ?>">
                     <i data-lucide="calendar" class="sidebar-icon"></i>
-                    <span class="sidebar-label">Schedule Grid</span>
-                </a>
-                <a href="<?= app_url('/admin/event-manager/sections.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('sections.php') ?>">
-                    <i data-lucide="layers" class="sidebar-icon"></i>
-                    <span class="sidebar-label">Schedule Sessions</span>
+                    <span class="sidebar-label">Schedule &amp; Sessions</span>
                 </a>
                 <a href="<?= app_url('/admin/event-manager/teams.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('teams.php') ?>">
                     <i data-lucide="users" class="sidebar-icon"></i>

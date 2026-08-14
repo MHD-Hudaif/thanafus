@@ -9,6 +9,232 @@ $dashboardPdo = $GLOBALS['dashboard_pdo'];
 $activeEvent = admin_require_active_event($pdo);
 $activeEventId = (int)$activeEvent['id'];
 
+// AJAX request handler (for session drag-and-drop)
+if (isset($_POST['ajax'])) {
+    header('Content-Type: application/json');
+    try {
+        if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
+            throw new RuntimeException('Security token expired. Please refresh the page.');
+        }
+        $action = (string)($_POST['action'] ?? '');
+        
+        if ($action === 'assign_program') {
+            $programId = (int)($_POST['program_id'] ?? 0);
+            $sectionId = (int)($_POST['section_id'] ?? 0);
+            if ($programId > 0 && $sectionId > 0) {
+                $stmt = $pdo->prepare("UPDATE musabaqa_programs SET section_id = ? WHERE id = ? AND event_id = ?");
+                $stmt->execute([$sectionId, $programId, $activeEventId]);
+                
+                // Fetch program details for return payload
+                $progStmt = $pdo->prepare("
+                    SELECT mp.id, mp.title, mp.start_time, mp.end_time, mst.name AS stage_type_name,
+                           ct.name AS class_type_name
+                    FROM musabaqa_programs mp
+                    LEFT JOIN musabaqa_stage_types mst ON mst.id = mp.stage_type_id
+                    LEFT JOIN " . DB_MAIN_NAME . ".class_types ct ON ct.id = mp.class_type_id
+                    WHERE mp.id = ?
+                ");
+                $progStmt->execute([$programId]);
+                $prog = $progStmt->fetch(PDO::FETCH_ASSOC);
+                
+                $duration = 0;
+                if ($prog && $prog['start_time'] && $prog['end_time']) {
+                    $pStart = new DateTime($prog['start_time']);
+                    $pEnd = new DateTime($prog['end_time']);
+                    $duration = (int)(($pEnd->getTimestamp() - $pStart->getTimestamp()) / 60);
+                }
+                
+                echo json_encode([
+                    'success' => true, 
+                    'message' => 'Program successfully assigned.',
+                    'program' => [
+                        'id' => (int)$prog['id'],
+                        'title' => $prog['title'],
+                        'duration' => $duration,
+                        'stage' => $prog['stage_type_name'] ?: 'TBD',
+                        'time' => $prog['start_time'] ? date('h:i A', strtotime($prog['start_time'])) : null,
+                        'start_time' => $prog['start_time'],
+                        'class_tier' => admin_class_type_tier_from_name($prog['class_type_name'] ?? '')
+                    ]
+                ]);
+            } else {
+                throw new RuntimeException('Invalid program or session.');
+            }
+        } elseif ($action === 'unassign_program') {
+            $programId = (int)($_POST['program_id'] ?? 0);
+            if ($programId > 0) {
+                $progStmt = $pdo->prepare("
+                    SELECT mp.id, mp.title, mp.start_time, mp.end_time, mst.name AS stage_type_name,
+                           ct.name AS class_type_name
+                    FROM musabaqa_programs mp
+                    LEFT JOIN musabaqa_stage_types mst ON mst.id = mp.stage_type_id
+                    LEFT JOIN " . DB_MAIN_NAME . ".class_types ct ON ct.id = mp.class_type_id
+                    WHERE mp.id = ?
+                ");
+                $progStmt->execute([$programId]);
+                $prog = $progStmt->fetch(PDO::FETCH_ASSOC);
+                
+                $duration = 0;
+                if ($prog && $prog['start_time'] && $prog['end_time']) {
+                    $pStart = new DateTime($prog['start_time']);
+                    $pEnd = new DateTime($prog['end_time']);
+                    $duration = (int)(($pEnd->getTimestamp() - $pStart->getTimestamp()) / 60);
+                }
+
+                $stmt = $pdo->prepare("UPDATE musabaqa_programs SET section_id = NULL WHERE id = ? AND event_id = ?");
+                $stmt->execute([$programId, $activeEventId]);
+                
+                echo json_encode([
+                    'success' => true, 
+                    'message' => 'Program successfully unassigned.',
+                    'program' => [
+                        'id' => (int)$prog['id'],
+                        'title' => $prog['title'],
+                        'duration' => $duration,
+                        'stage' => $prog['stage_type_name'] ?: 'TBD',
+                        'time' => $prog['start_time'] ? date('h:i A', strtotime($prog['start_time'])) : null,
+                        'start_time' => $prog['start_time'],
+                        'class_tier' => admin_class_type_tier_from_name($prog['class_type_name'] ?? '')
+                    ]
+                ]);
+            } else {
+                throw new RuntimeException('Invalid program.');
+            }
+        } else {
+            throw new RuntimeException('Invalid AJAX action.');
+        }
+    } catch (Throwable $e) {
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+function validate_session_no_program_overflow(
+    PDO $pdo,
+    int $sectionId,       // 0 means 'add' — skip check
+    string $sectionDate,
+    string $startTime,    // HH:MM or HH:MM:SS
+    string $endTime,
+    int $eventId
+): void {
+    if ($sectionId <= 0) {
+        return; // New section — no programs assigned yet
+    }
+
+    $sesStart = DateTimeImmutable::createFromFormat('Y-m-d H:i:s', $sectionDate . ' ' . $startTime)
+             ?: DateTimeImmutable::createFromFormat('Y-m-d H:i',   $sectionDate . ' ' . $startTime);
+    $sesEnd   = DateTimeImmutable::createFromFormat('Y-m-d H:i:s', $sectionDate . ' ' . $endTime)
+             ?: DateTimeImmutable::createFromFormat('Y-m-d H:i',   $sectionDate . ' ' . $endTime);
+
+    if (!$sesStart || !$sesEnd) {
+        return;
+    }
+
+    if ($sesEnd < $sesStart) {
+        $sesEnd = $sesEnd->modify('+1 day');
+    }
+
+    // Find all programs currently assigned to this section
+    $stmt = $pdo->prepare("
+        SELECT id, title, start_time, end_time
+        FROM musabaqa_programs
+        WHERE section_id = ?
+          AND event_id = ?
+          AND start_time IS NOT NULL
+          AND end_time IS NOT NULL
+    ");
+    $stmt->execute([$sectionId, $eventId]);
+    $programs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    $toUnassignIds = [];
+
+    foreach ($programs as $prog) {
+        $pStart = DateTimeImmutable::createFromFormat('Y-m-d H:i:s', $prog['start_time'])
+               ?: DateTimeImmutable::createFromFormat('Y-m-d H:i',   $prog['start_time']);
+        $pEnd   = DateTimeImmutable::createFromFormat('Y-m-d H:i:s', $prog['end_time'])
+               ?: DateTimeImmutable::createFromFormat('Y-m-d H:i',   $prog['end_time']);
+
+        if (!$pStart || !$pEnd) {
+            continue;
+        }
+
+        // Check if completely outside
+        $isCompletelyOutside = ($pEnd <= $sesStart || $pStart >= $sesEnd);
+        
+        // Check if completely inside
+        $isCompletelyInside = ($pStart >= $sesStart && $pEnd <= $sesEnd);
+
+        if ($isCompletelyOutside) {
+            $toUnassignIds[] = (int)$prog['id'];
+        } elseif (!$isCompletelyInside) {
+            $fmtProg = date('h:i A', $pStart->getTimestamp()) . '–' . date('h:i A', $pEnd->getTimestamp());
+            $fmtSes  = date('h:i A', $sesStart->getTimestamp()) . '–' . date('h:i A', $sesEnd->getTimestamp());
+            throw new RuntimeException(
+                "Cannot update session: \"{$prog['title']}\" ({$fmtProg}) would partially overlap the new window ({$fmtSes}). " .
+                "Reschedule or unschedule the program first."
+            );
+        }
+    }
+
+    // Auto-unassign completely outside programs so they can be reassigned
+    if (!empty($toUnassignIds)) {
+        $placeholders = implode(',', array_fill(0, count($toUnassignIds), '?'));
+        $unassignStmt = $pdo->prepare("
+            UPDATE musabaqa_programs
+            SET section_id = NULL
+            WHERE id IN ($placeholders)
+        ");
+        $unassignStmt->execute($toUnassignIds);
+    }
+}
+
+/**
+ * Calculates the total allocated minutes of a session by merging overlapping program intervals.
+ */
+function calculate_session_allocated_minutes(array $assignedProgs): int
+{
+    $intervals = [];
+    foreach ($assignedProgs as $prog) {
+        if (!empty($prog['start_time']) && !empty($prog['end_time'])) {
+            $start = strtotime($prog['start_time']);
+            $end = strtotime($prog['end_time']);
+            if ($start < $end) {
+                $intervals[] = ['start' => $start, 'end' => $end];
+            }
+        }
+    }
+    
+    if (empty($intervals)) {
+        return 0;
+    }
+    
+    // Sort intervals by start time
+    usort($intervals, function($a, $b) {
+        return $a['start'] <=> $b['start'];
+    });
+    
+    $merged = [];
+    $current = $intervals[0];
+    
+    for ($i = 1, $count = count($intervals); $i < $count; $i++) {
+        $next = $intervals[$i];
+        if ($next['start'] <= $current['end']) {
+            $current['end'] = max($current['end'], $next['end']);
+        } else {
+            $merged[] = $current;
+            $current = $next;
+        }
+    }
+    $merged[] = $current;
+    
+    $totalMinutes = 0;
+    foreach ($merged as $interval) {
+        $totalMinutes += (int)(($interval['end'] - $interval['start']) / 60);
+    }
+    
+    return $totalMinutes;
+}
+
 function schedule_redirect(int $stageTypeId = 0): void
 {
     $query = $stageTypeId > 0 ? ['stage_id' => $stageTypeId] : [];
@@ -50,66 +276,6 @@ function schedule_load_program(PDO $pdo, int $eventId, int $programId): ?array
     return $program ?: null;
 }
 
-function schedule_validate_gap(PDO $pdo, int $eventId, int $stageTypeId, int $previousProgramId, int $nextProgramId): array
-{
-    $previous = schedule_load_program($pdo, $eventId, $previousProgramId);
-    $next = schedule_load_program($pdo, $eventId, $nextProgramId);
-
-    if (!$previous || !$next || empty($previous['end_at']) || empty($next['start_at'])) {
-        throw new RuntimeException('Selected timeline gap is invalid.');
-    }
-    if ((int)$previous['stage_type_id'] !== $stageTypeId || (int)$next['stage_type_id'] !== $stageTypeId) {
-        throw new RuntimeException('Selected programs are not in the chosen stage.');
-    }
-
-    $start = new DateTime((string)$previous['end_at']);
-    $end = new DateTime((string)$next['start_at']);
-
-    if ($start >= $end) {
-        throw new RuntimeException('There is no time gap between these programs.');
-    }
-
-    $startSql = $start->format('Y-m-d H:i:s');
-    $endSql = $end->format('Y-m-d H:i:s');
-
-    $stageStmt = $pdo->prepare("SELECT name FROM musabaqa_stage_types WHERE id = ?");
-    $stageStmt->execute([$stageTypeId]);
-    $stageName = (string)$stageStmt->fetchColumn();
-    $isOffStage = (stripos($stageName, 'off') !== false);
-
-    if (!$isOffStage) {
-        [$startExpr, $endExpr] = schedule_program_datetime_columns($pdo);
-        $stmt = $pdo->prepare("
-            SELECT COUNT(*)
-            FROM musabaqa_programs
-            WHERE event_id = ?
-              AND stage_type_id = ?
-              AND id NOT IN (?, ?)
-              AND {$startExpr} < ?
-              AND {$endExpr} > ?
-        ");
-        $stmt->execute([$eventId, $stageTypeId, $previousProgramId, $nextProgramId, $endSql, $startSql]);
-        if ((int)$stmt->fetchColumn() > 0) {
-            throw new RuntimeException('Extra item time overlaps another program.');
-        }
-    }
-
-    $stmt = $pdo->prepare("
-        SELECT COUNT(*)
-        FROM musabaqa_breaks
-        WHERE event_id = ?
-          AND stage_type_id = ?
-          AND start_datetime < ?
-          AND end_datetime > ?
-    ");
-    $stmt->execute([$eventId, $stageTypeId, $endSql, $startSql]);
-    if ((int)$stmt->fetchColumn() > 0) {
-        throw new RuntimeException('An extra item already exists in this gap.');
-    }
-
-    return [$startSql, $endSql];
-}
-
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
         admin_flash('error', 'Invalid security token.');
@@ -119,92 +285,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = (string)($_POST['action'] ?? '');
 
     try {
-        if ($action === 'add_break' || $action === 'add_extra') {
-            $name = trim((string)($_POST['name'] ?? ''));
-            $description = trim((string)($_POST['description'] ?? ''));
-            $previousProgramId = (int)($_POST['previous_program_id'] ?? 0);
-            $nextProgramId = (int)($_POST['next_program_id'] ?? 0);
-            $stageTypeId = (int)($_POST['stage_type_id'] ?? 0);
-            $startTime = trim((string)($_POST['start_time'] ?? ''));
-            $endTime = trim((string)($_POST['end_time'] ?? ''));
-            $durationMinutes = (int)($_POST['duration_minutes'] ?? 0);
-
-            if ($name === '') {
-                throw new RuntimeException('Extra item title is required.');
-            }
-            if ($stageTypeId <= 0) {
-                throw new RuntimeException('Stage is required.');
-            }
-
-            if ($previousProgramId > 0 && $nextProgramId > 0) {
-                [$start, $end] = schedule_validate_gap($pdo, $activeEventId, $stageTypeId, $previousProgramId, $nextProgramId);
-            } elseif ($startTime !== '') {
-                $startDt = new DateTime($startTime);
-                if ($durationMinutes > 0) {
-                    $endDt = clone $startDt;
-                    $endDt->modify("+{$durationMinutes} minutes");
-                } elseif ($endTime !== '') {
-                    $endDt = new DateTime($endTime);
-                } else {
-                    throw new RuntimeException('Either duration or end time must be specified.');
-                }
-                if ($endDt <= $startDt) {
-                    throw new RuntimeException('End time must be after start time.');
-                }
-                $start = $startDt->format('Y-m-d H:i:s');
-                $end = $endDt->format('Y-m-d H:i:s');
-
-                // Overlap checks for custom times
-                $stageStmt = $pdo->prepare("SELECT name FROM musabaqa_stage_types WHERE id = ?");
-                $stageStmt->execute([$stageTypeId]);
-                $stageName = (string)$stageStmt->fetchColumn();
-                $isOffStage = (stripos($stageName, 'off') !== false);
-
-                if (!$isOffStage) {
-                    [$startExpr, $endExpr] = schedule_program_datetime_columns($pdo);
-                    $stmt = $pdo->prepare("
-                        SELECT COUNT(*)
-                        FROM musabaqa_programs
-                        WHERE event_id = ?
-                          AND stage_type_id = ?
-                          AND {$startExpr} < ?
-                          AND {$endExpr} > ?
-                    ");
-                    $stmt->execute([$activeEventId, $stageTypeId, $end, $start]);
-                    if ((int)$stmt->fetchColumn() > 0) {
-                        throw new RuntimeException('Extra item time overlaps another program.');
-                    }
-                }
-
-                $stmt = $pdo->prepare("
-                    SELECT COUNT(*)
-                    FROM musabaqa_breaks
-                    WHERE event_id = ?
-                      AND stage_type_id = ?
-                      AND start_datetime < ?
-                      AND end_datetime > ?
-                ");
-                $stmt->execute([$activeEventId, $stageTypeId, $end, $start]);
-                if ((int)$stmt->fetchColumn() > 0) {
-                    throw new RuntimeException('An extra item already exists in this gap.');
-                }
-            } else {
-                throw new RuntimeException('Start time or valid timeline gap is required.');
-            }
-
-            $stmt = $pdo->prepare("
-                INSERT INTO musabaqa_breaks
-                    (event_id, stage_type_id, name, description, start_datetime, end_datetime)
-                VALUES (?, ?, ?, ?, ?, ?)
-            ");
-            $stmt->execute([$activeEventId, $stageTypeId, $name, $description ?: null, $start, $end]);
-            admin_flash('success', 'Extra item added to timeline.');
-        } elseif ($action === 'delete_break' || $action === 'delete_extra') {
-            $breakId = (int)($_POST['break_id'] ?? 0);
-            $stmt = $pdo->prepare('DELETE FROM musabaqa_breaks WHERE id = ? AND event_id = ?');
-            $stmt->execute([$breakId, $activeEventId]);
-            admin_flash('success', 'Extra item removed.');
-        } elseif ($action === 'schedule_program') {
+        if ($action === 'schedule_program') {
             $programId = (int)($_POST['program_id'] ?? 0);
             $stageTypeId = (int)($_POST['stage_type_id'] ?? 0);
             $location = trim((string)($_POST['location'] ?? ''));
@@ -384,6 +465,151 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             admin_log_activity($pdo, (int)($_SESSION['user_id'] ?? 0), $activeEventId, 'unschedule_program', 'musabaqa_programs', $programId, 'Unscheduled program.');
             admin_flash('success', 'Program unscheduled.');
+        } elseif ($action === 'add_session') {
+            $name = trim((string)($_POST['name'] ?? ''));
+            $startTime = trim((string)($_POST['start_time'] ?? ''));
+            $endTime = trim((string)($_POST['end_time'] ?? ''));
+            $sectionDate = trim((string)($_POST['section_date'] ?? ''));
+            $sortOrder = (int)($_POST['sort_order'] ?? 0);
+
+            if ($name === '') {
+                throw new RuntimeException('Session name is required.');
+            }
+            if ($startTime === '' || $endTime === '') {
+                throw new RuntimeException('Start time and end time are required.');
+            }
+            if ($sectionDate === '') {
+                throw new RuntimeException('Session date is required.');
+            }
+
+            $stmt = $pdo->prepare("
+                INSERT INTO musabaqa_schedule_sections (event_id, name, start_time, end_time, section_date, sort_order)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ");
+            $stmt->execute([
+                $activeEventId,
+                $name,
+                $startTime,
+                $endTime,
+                $sectionDate,
+                $sortOrder
+            ]);
+            admin_auto_assign_programs_to_sections($pdo, $activeEventId);
+            admin_flash('success', 'Session added successfully.');
+        } elseif ($action === 'update_session') {
+            $sectionId = (int)($_POST['section_id'] ?? 0);
+            $name = trim((string)($_POST['name'] ?? ''));
+            $startTime = trim((string)($_POST['start_time'] ?? ''));
+            $endTime = trim((string)($_POST['end_time'] ?? ''));
+            $sectionDate = trim((string)($_POST['section_date'] ?? ''));
+            $sortOrder = (int)($_POST['sort_order'] ?? 0);
+
+            if ($name === '') {
+                throw new RuntimeException('Session name is required.');
+            }
+            if ($startTime === '' || $endTime === '') {
+                throw new RuntimeException('Start time and end time are required.');
+            }
+            if ($sectionDate === '') {
+                throw new RuntimeException('Session date is required.');
+            }
+
+            // Prevent narrowing the window when scheduled programs would overflow
+            validate_session_no_program_overflow($pdo, $sectionId, $sectionDate, $startTime, $endTime, $activeEventId);
+
+            $stmt = $pdo->prepare("
+                UPDATE musabaqa_schedule_sections
+                SET name = ?, start_time = ?, end_time = ?, section_date = ?, sort_order = ?
+                WHERE id = ? AND event_id = ?
+            ");
+            $stmt->execute([
+                $name,
+                $startTime,
+                $endTime,
+                $sectionDate,
+                $sortOrder,
+                $sectionId,
+                $activeEventId
+            ]);
+            admin_auto_assign_programs_to_sections($pdo, $activeEventId);
+            admin_flash('success', 'Session updated successfully.');
+        } elseif ($action === 'delete_session') {
+            $sectionId = (int)($_POST['section_id'] ?? 0);
+
+            if ($sectionId > 0) {
+                // Check for programs with explicit schedule times — those must be rescheduled first
+                $scheduledStmt = $pdo->prepare("
+                    SELECT COUNT(*) FROM musabaqa_programs
+                    WHERE section_id = ? AND event_id = ? AND start_time IS NOT NULL AND end_time IS NOT NULL
+                ");
+                $scheduledStmt->execute([$sectionId, $activeEventId]);
+                $scheduledCount = (int)$scheduledStmt->fetchColumn();
+
+                if ($scheduledCount > 0) {
+                    throw new RuntimeException(
+                        "Cannot delete session: {$scheduledCount} program(s) have times scheduled within it. " .
+                        "Unschedule those programs first (in the Schedule page), then delete the session."
+                    );
+                }
+
+                admin_db_transaction($pdo, function ($pdo) use ($sectionId, $activeEventId) {
+                    $stmt = $pdo->prepare("UPDATE musabaqa_programs SET section_id = NULL WHERE section_id = ? AND event_id = ?");
+                    $stmt->execute([$sectionId, $activeEventId]);
+
+                    $stmt = $pdo->prepare("DELETE FROM musabaqa_schedule_sections WHERE id = ? AND event_id = ?");
+                    $stmt->execute([$sectionId, $activeEventId]);
+                });
+
+                admin_flash('success', 'Session removed.');
+            } else {
+                throw new RuntimeException('Invalid session ID for deletion.');
+            }
+        } elseif ($action === 'generate_defaults_sessions') {
+            $startDateStr = $activeEvent['start_date'] ?? null;
+            $endDateStr = $activeEvent['end_date'] ?? null;
+
+            if (!$startDateStr || !$endDateStr) {
+                throw new RuntimeException('Event start date and end date must be set before generating default sessions.');
+            }
+
+            $defaults = [
+                ['Morning', '08:00:00', '13:00:00', 1],
+                ['Evening', '14:00:00', '18:00:00', 2],
+                ['Night', '19:30:00', '23:30:00', 3]
+            ];
+
+            admin_db_transaction($pdo, function ($pdo) use ($activeEventId, $startDateStr, $endDateStr, $defaults) {
+                $pdo->prepare("DELETE FROM musabaqa_schedule_sections WHERE event_id = ?")->execute([$activeEventId]);
+
+                $ins = $pdo->prepare("
+                    INSERT INTO musabaqa_schedule_sections (event_id, name, start_time, end_time, section_date, sort_order)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                ");
+
+                $start = new DateTime($startDateStr);
+                $end = new DateTime($endDateStr);
+                $end->modify('+1 day');
+                $interval = new DateInterval('P1D');
+                $period = new DatePeriod($start, $interval, $end);
+
+                $dayNum = 1;
+                foreach ($period as $dt) {
+                    $dateSql = $dt->format('Y-m-d');
+                    $dayLabel = "Day " . $dayNum;
+                    foreach ($defaults as $def) {
+                        $name = $dayLabel . " - " . $def[0];
+                        $ins->execute([$activeEventId, $name, $def[1], $def[2], $dateSql, ($dayNum - 1) * 10 + $def[3]]);
+                    }
+                    $dayNum++;
+                }
+
+                admin_auto_assign_programs_to_sections($pdo, $activeEventId);
+            });
+
+            admin_flash('success', 'Default sessions (Morning, Evening, Night) generated and programs auto-assigned.');
+        } elseif ($action === 'auto_assign_sessions') {
+            $count = admin_auto_assign_programs_to_sections($pdo, $activeEventId);
+            admin_flash('success', "Auto-assignment completed. {$count} program(s) matched.");
         } else {
             throw new RuntimeException('Invalid schedule action.');
         }
@@ -449,23 +675,7 @@ foreach ($allScheduledPrograms as $p) {
     $programsByStage[(int)$p['stage_type_id']][] = $p;
 }
 
-$stmt = $pdo->prepare("
-    SELECT *
-    FROM musabaqa_breaks
-    WHERE event_id = ?
-    ORDER BY start_datetime ASC, id ASC
-");
-$stmt->execute([$activeEventId]);
-$allBreaks = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Group breaks by stage
-$breakMapByStage = [];
-foreach ($stageTypes as $st) {
-    $breakMapByStage[(int)$st['id']] = [];
-}
-foreach ($allBreaks as $break) {
-    $breakMapByStage[(int)$break['stage_type_id']][] = $break;
-}
 
 $stmt = $pdo->prepare("
     SELECT mp.id, mp.title, mp.program_type, mp.class_type_id, ct.name AS class_type_name,
@@ -509,6 +719,76 @@ foreach ($unscheduledPrograms as $prog) {
         $unscheduledGrouped[$classTier][] = $prog;
     }
 }
+
+// --- SESSION MANAGEMENT DATA LOADER ---
+// Automatically auto-assign scheduled programs (main stage & offstage) to matching sections
+admin_auto_assign_programs_to_sections($pdo, $activeEventId);
+
+// Load all sessions
+$stmt = $pdo->prepare("
+    SELECT *
+    FROM musabaqa_schedule_sections
+    WHERE event_id = ?
+    ORDER BY section_date ASC, start_time ASC, sort_order ASC, id ASC
+");
+$stmt->execute([$activeEventId]);
+$sessionList = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Fetch all programs for assignment view
+$stmt = $pdo->prepare("
+    SELECT mp.id, mp.title, mp.section_id, mp.start_time, mp.end_time, mst.name AS stage_type_name,
+           ct.name AS class_type_name
+    FROM musabaqa_programs mp
+    LEFT JOIN musabaqa_stage_types mst ON mst.id = mp.stage_type_id
+    LEFT JOIN " . DB_MAIN_NAME . ".class_types ct ON ct.id = mp.class_type_id
+    WHERE mp.event_id = ?
+    ORDER BY (mp.start_time IS NULL) ASC, mp.start_time ASC, mp.title ASC
+");
+$stmt->execute([$activeEventId]);
+$allSessionPrograms = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Group programs by section
+$programsBySection = [];
+$sessionUnassignedPrograms = [];
+
+foreach ($allSessionPrograms as $prog) {
+    if ($prog['section_id']) {
+        $programsBySection[(int)$prog['section_id']][] = $prog;
+    } else {
+        $sessionUnassignedPrograms[] = $prog;
+    }
+}
+
+// Map dates to Days and compute counts
+$eventStartStr = $activeEvent['start_date'] ?? null;
+$eventStart = $eventStartStr ? new DateTime($eventStartStr) : null;
+
+$sessionUniqueDays = [];
+$sessionDayCounts = ['all' => count($sessionList), 'undated' => 0];
+
+foreach ($sessionList as $sec) {
+    if ($sec['section_date']) {
+        $dateVal = $sec['section_date'];
+        $sessionDayCounts[$dateVal] = ($sessionDayCounts[$dateVal] ?? 0) + 1;
+        if ($eventStart) {
+            $secDate = new DateTime($dateVal);
+            $diff = $secDate->diff($eventStart)->days + 1;
+            $sessionUniqueDays[$dateVal] = "Day " . $diff;
+        } else {
+            $sessionUniqueDays[$dateVal] = date('M d, Y', strtotime($dateVal));
+        }
+    } else {
+        $sessionDayCounts['undated']++;
+    }
+}
+
+$allSessionProgramsPayload = array_map(function($p) {
+    return [
+        'id' => (int)$p['id'],
+        'title' => $p['title'],
+        'section_id' => (int)($p['section_id'] ?? 0)
+    ];
+}, $allSessionPrograms);
 
 require_once __DIR__ . '/../../includes/header.php';
 require_once __DIR__ . '/../../includes/sidebar.php';
@@ -859,154 +1139,96 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                         <?php endif; ?>
                                     <?php endforeach; ?>
                                 <?php else: ?>
-                                    <?php
-                                    $timeline = [];
-                                    foreach ($stageProgs as $p) {
-                                        $timeline[] = [
-                                            'type' => 'program',
-                                            'start' => $p['start_at'],
-                                            'end' => $p['end_at'],
-                                            'data' => $p
-                                        ];
-                                    }
-                                    foreach ($stageBreakMap as $b) {
-                                        $timeline[] = [
-                                            'type' => 'break',
-                                            'start' => $b['start_datetime'],
-                                            'end' => $b['end_datetime'],
-                                            'data' => $b
-                                        ];
-                                    }
-                                    usort($timeline, function($a, $b) {
-                                        $cmp = strcmp($a['start'], $b['start']);
-                                        if ($cmp === 0) {
-                                            return strcmp($a['end'], $b['end']);
-                                        }
-                                        return $cmp;
-                                    });
-                                    ?>
-                                    <?php foreach ($timeline as $index => $item): ?>
-                                        <?php if ($item['type'] === 'program'): ?>
-                                            <?php
-                                            $program = $item['data'];
-                                            $secNames = [];
-                                            if (!empty($program['allowed_sections'])) {
-                                                $secIds = array_filter(array_map('intval', explode(',', $program['allowed_sections'])));
-                                                foreach ($secIds as $sid) {
-                                                    if (isset($classTypesMap[$sid])) {
-                                                        $classTier = admin_class_type_tier_from_name($classTypesMap[$sid]);
-                                                        $label = $classTier ? admin_class_type_tier_label($classTier) : $classTypesMap[$sid];
-                                                        if ($label && !in_array($label, $secNames, true)) {
-                                                            $secNames[] = $label;
-                                                        }
+                                    <?php foreach ($stageProgs as $index => $program): ?>
+                                        <?php
+                                        $secNames = [];
+                                        if (!empty($program['allowed_sections'])) {
+                                            $secIds = array_filter(array_map('intval', explode(',', $program['allowed_sections'])));
+                                            foreach ($secIds as $sid) {
+                                                if (isset($classTypesMap[$sid])) {
+                                                    $classTier = admin_class_type_tier_from_name($classTypesMap[$sid]);
+                                                    $label = $classTier ? admin_class_type_tier_label($classTier) : $classTypesMap[$sid];
+                                                    if ($label && !in_array($label, $secNames, true)) {
+                                                        $secNames[] = $label;
                                                     }
                                                 }
                                             }
-                                            $sectionDisplay = implode(' & ', $secNames);
-                                            if ($sectionDisplay === '') {
-                                                $classTier = admin_class_type_tier_from_name($program['class_type_name'] ?? '');
-                                                $sectionDisplay = $classTier ? admin_class_type_tier_label($classTier) : ($program['class_type_name'] ?? '—');
-                                            }
-
+                                        }
+                                        $sectionDisplay = implode(' & ', $secNames);
+                                        if ($sectionDisplay === '') {
                                             $classTier = admin_class_type_tier_from_name($program['class_type_name'] ?? '');
-                                            $allowedCount = !empty($program['allowed_sections']) ? count(explode(',', $program['allowed_sections'])) : 0;
-                                            $itemSection = ($allowedCount > 1 || !$classTier) ? 'general' : $classTier;
+                                            $sectionDisplay = $classTier ? admin_class_type_tier_label($classTier) : ($program['class_type_name'] ?? '—');
+                                        }
 
-                                            $startDt = new DateTime((string)$program['start_at']);
-                                            $endDt = new DateTime((string)$program['end_at']);
-                                            $durMins = max(1, (int)round(($endDt->getTimestamp() - $startDt->getTimestamp()) / 60));
+                                        $classTier = admin_class_type_tier_from_name($program['class_type_name'] ?? '');
+                                        $allowedCount = !empty($program['allowed_sections']) ? count(explode(',', $program['allowed_sections'])) : 0;
+                                        $itemSection = ($allowedCount > 1 || !$classTier) ? 'general' : $classTier;
 
-                                            $borderAccent = match($classTier) {
-                                                'senior' => '#a78bfa',
-                                                'junior' => '#38bdf8',
-                                                'subjunior' => '#34d399',
-                                                default => '#f43f5e'
-                                            };
-                                            ?>
-                                            <div class="timeline-item-container timeline-row" data-title="<?= e($program['title']) ?>" data-location="<?= e($program['location'] ?? '') ?>" data-section="<?= e($itemSection) ?>">
-                                                <div class="panel" style="padding: 16px 18px; border-left: 5px solid <?= $borderAccent ?>; background: rgba(30, 41, 59, 0.4); border-color: rgba(255,255,255,0.06); border-radius: 12px; transition: transform 0.2s ease, box-shadow 0.2s ease;">
-                                                    <div style="display: flex; flex-direction: column; gap: 10px;">
-                                                        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;">
-                                                            <div style="min-width: 0; flex: 1;">
-                                                                <div class="dashboard-heading" style="font-size: 15px; font-weight: 800; color: #fff; margin-bottom: 4px; line-height: 1.3;"><?= e($program['title']) ?></div>
-                                                                <div class="page-subtitle" style="margin-top: 6px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                                                                    <span class="badge <?= admin_class_type_badge_class($classTier) ?>" style="font-size: 10px; padding: 2px 7px; border-radius: 6px; font-weight: 700;">
-                                                                        <?= e($sectionDisplay) ?>
-                                                                    </span>
-                                                                    <?php if (!empty($program['location'])): ?>
-                                                                        <span style="color: #38bdf8; font-size: 11.5px; font-weight: 600;"><i class="fa-solid fa-location-dot mr-1"></i> <?= e($program['location']) ?></span>
-                                                                    <?php endif; ?>
-                                                                    <?php if (!empty($program['responsible_teacher_name'])): ?>
-                                                                        <span style="color: var(--muted); font-size: 11.5px; font-weight: 500;"><i class="fa-solid fa-chalkboard-user mr-1"></i> <?= e($program['responsible_teacher_name']) ?></span>
-                                                                    <?php endif; ?>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                        <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 10px; margin-top: 4px; flex-wrap: wrap; gap: 8px;">
-                                                            <div style="display: flex; align-items: center; gap: 8px;">
-                                                                <span class="badge badge-info" style="font-size: 11px; font-weight: 800; padding: 4px 10px; border-radius: 8px; background: rgba(56,189,248,0.12); color: #38bdf8; border: 1px solid rgba(56,189,248,0.25); display: inline-flex; align-items: center; gap: 4px; vertical-align: middle;">
-                                                                    <i class="fa-regular fa-calendar-days"></i>
-                                                                    <?= e(date('M d, Y', strtotime($program['start_at']))) ?>
+                                        $startDt = new DateTime((string)$program['start_at']);
+                                        $endDt = new DateTime((string)$program['end_at']);
+                                        $durMins = max(1, (int)round(($endDt->getTimestamp() - $startDt->getTimestamp()) / 60));
+
+                                        $borderAccent = match($classTier) {
+                                            'senior' => '#a78bfa',
+                                            'junior' => '#38bdf8',
+                                            'subjunior' => '#34d399',
+                                            default => '#f43f5e'
+                                        };
+                                        ?>
+                                        <div class="timeline-item-container timeline-row" data-title="<?= e($program['title']) ?>" data-location="<?= e($program['location'] ?? '') ?>" data-section="<?= e($itemSection) ?>">
+                                            <div class="panel" style="padding: 16px 18px; border-left: 5px solid <?= $borderAccent ?>; background: rgba(30, 41, 59, 0.4); border-color: rgba(255,255,255,0.06); border-radius: 12px; transition: transform 0.2s ease, box-shadow 0.2s ease;">
+                                                <div style="display: flex; flex-direction: column; gap: 10px;">
+                                                    <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;">
+                                                        <div style="min-width: 0; flex: 1;">
+                                                            <div class="dashboard-heading" style="font-size: 15px; font-weight: 800; color: #fff; margin-bottom: 4px; line-height: 1.3;"><?= e($program['title']) ?></div>
+                                                            <div class="page-subtitle" style="margin-top: 6px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                                                                <span class="badge <?= admin_class_type_badge_class($classTier) ?>" style="font-size: 10px; padding: 2px 7px; border-radius: 6px; font-weight: 700;">
+                                                                    <?= e($sectionDisplay) ?>
                                                                 </span>
-                                                                <span class="badge badge-info" style="font-size: 11px; font-weight: 800; padding: 4px 10px; border-radius: 8px; background: rgba(56,189,248,0.12); color: #38bdf8; border: 1px solid rgba(56,189,248,0.25); display: inline-flex; align-items: center; gap: 4px; vertical-align: middle;">
-                                                                    <i class="fa-regular fa-clock"></i>
-                                                                    <?= e(date('h:i A', strtotime($program['start_at']))) ?> - <?= e(date('h:i A', strtotime($program['end_at']))) ?>
-                                                                </span>
-                                                                <span style="font-size: 11px; color: var(--muted); font-weight: 700; background: rgba(255,255,255,0.05); padding: 3px 8px; border-radius: 6px;">
-                                                                    <?= $durMins ?> mins
-                                                                </span>
-                                                            </div>
-                                                            <div class="flex gap-2">
-                                                                <button class="btn btn-secondary btn-sm" type="button" data-edit-schedule-btn='<?= e(json_encode($program, JSON_HEX_APOS | JSON_HEX_QUOT)) ?>' title="Edit Schedule" style="padding: 5px 10px; font-size: 11px; border-radius: 6px; font-weight: 600;"><i class="fa-solid fa-pen mr-1"></i> Edit</button>
-                                                                
-                                                                <form method="POST" style="display: inline;" onsubmit="return confirm('Are you sure you want to unschedule <?= e(addslashes($program['title'])) ?>?');">
-                                                                    <?= admin_csrf_field() ?>
-                                                                    <input type="hidden" name="action" value="unschedule_program">
-                                                                    <input type="hidden" name="stage_type_id" value="<?= $stageId ?>">
-                                                                    <input type="hidden" name="program_id" value="<?= (int)$program['id'] ?>">
-                                                                    <button class="btn btn-danger btn-sm" type="submit" title="Unschedule" style="padding: 5px 10px; font-size: 11px; border-radius: 6px; font-weight: 600;"><i class="fa-solid fa-calendar-minus mr-1"></i> Unschedule</button>
-                                                                </form>
+                                                                <?php if (!empty($program['location'])): ?>
+                                                                    <span style="color: #38bdf8; font-size: 11.5px; font-weight: 600;"><i class="fa-solid fa-location-dot mr-1"></i> <?= e($program['location']) ?></span>
+                                                                <?php endif; ?>
+                                                                <?php if (!empty($program['responsible_teacher_name'])): ?>
+                                                                    <span style="color: var(--muted); font-size: 11.5px; font-weight: 500;"><i class="fa-solid fa-chalkboard-user mr-1"></i> <?= e($program['responsible_teacher_name']) ?></span>
+                                                                <?php endif; ?>
                                                             </div>
                                                         </div>
                                                     </div>
-                                                </div>
-                                            </div>
-                                        <?php else: ?>
-                                            <?php $break = $item['data']; ?>
-                                            <div class="timeline-gap-container timeline-row" style="margin: 10px 0; padding-left: 20px; border-left: 2px dashed rgba(250,204,21,.4); position: relative;">
-                                                <div class="panel" style="border-color: rgba(250,204,21,.3); padding: 10px 14px; background: rgba(250,204,21,.05); border-radius: 10px;">
-                                                    <div class="flex-between" style="gap: 10px; flex-wrap: wrap;">
-                                                        <div>
-                                                            <div class="dashboard-heading" style="font-size: 13px; font-weight: 700; margin: 0; color: #facc15;"><i class="fa-solid fa-puzzle-piece mr-2" style="color: #facc15;"></i> <?= e($break['name']) ?></div>
-                                                            <div class="page-subtitle" style="font-size: 11px; color: var(--muted); margin-top: 2px;"><?= e($break['description'] ?: 'Intermission / Schedule Gap') ?></div>
-                                                        </div>
-                                                        <div class="flex gap-2 flex-wrap" style="align-items: center;">
-                                                            <span class="badge badge-warning" style="font-size: 10px; padding: 3px 8px; border-radius: 6px; font-weight: 800; background: rgba(250,204,21,0.15); color: #facc15; border: 1px solid rgba(250,204,21,0.3); display: inline-flex; align-items: center; gap: 4px; vertical-align: middle;">
+                                                    <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 10px; margin-top: 4px; flex-wrap: wrap; gap: 8px;">
+                                                        <div style="display: flex; align-items: center; gap: 8px;">
+                                                            <span class="badge badge-info" style="font-size: 11px; font-weight: 800; padding: 4px 10px; border-radius: 8px; background: rgba(56,189,248,0.12); color: #38bdf8; border: 1px solid rgba(56,189,248,0.25); display: inline-flex; align-items: center; gap: 4px; vertical-align: middle;">
                                                                 <i class="fa-regular fa-calendar-days"></i>
-                                                                <?= e(date('M d, Y', strtotime($break['start_datetime']))) ?>
+                                                                <?= e(date('M d, Y', strtotime($program['start_at']))) ?>
                                                             </span>
-                                                            <span class="badge badge-warning" style="font-size: 10px; padding: 3px 8px; border-radius: 6px; font-weight: 800; background: rgba(250,204,21,0.15); color: #facc15; border: 1px solid rgba(250,204,21,0.3); display: inline-flex; align-items: center; gap: 4px; vertical-align: middle;">
+                                                            <span class="badge badge-info" style="font-size: 11px; font-weight: 800; padding: 4px 10px; border-radius: 8px; background: rgba(56,189,248,0.12); color: #38bdf8; border: 1px solid rgba(56,189,248,0.25); display: inline-flex; align-items: center; gap: 4px; vertical-align: middle;">
                                                                 <i class="fa-regular fa-clock"></i>
-                                                                <?= e(date('h:i A', strtotime($break['start_datetime']))) ?> - <?= e(date('h:i A', strtotime($break['end_datetime']))) ?>
+                                                                <?= e(date('h:i A', strtotime($program['start_at']))) ?> - <?= e(date('h:i A', strtotime($program['end_at']))) ?>
                                                             </span>
-                                                            <form method="POST">
+                                                            <span style="font-size: 11px; color: var(--muted); font-weight: 700; background: rgba(255,255,255,0.05); padding: 3px 8px; border-radius: 6px;">
+                                                                <?= $durMins ?> mins
+                                                            </span>
+                                                        </div>
+                                                        <div class="flex gap-2">
+                                                            <button class="btn btn-secondary btn-sm" type="button" data-edit-schedule-btn='<?= e(json_encode($program, JSON_HEX_APOS | JSON_HEX_QUOT)) ?>' title="Edit Schedule" style="padding: 5px 10px; font-size: 11px; border-radius: 6px; font-weight: 600;"><i class="fa-solid fa-pen mr-1"></i> Edit</button>
+                                                            
+                                                            <form method="POST" style="display: inline;" onsubmit="return confirm('Are you sure you want to unschedule <?= e(addslashes($program['title'])) ?>?');">
                                                                 <?= admin_csrf_field() ?>
-                                                                <input type="hidden" name="action" value="delete_extra">
+                                                                <input type="hidden" name="action" value="unschedule_program">
                                                                 <input type="hidden" name="stage_type_id" value="<?= $stageId ?>">
-                                                                <input type="hidden" name="break_id" value="<?= (int)$break['id'] ?>">
-                                                                <button class="btn btn-danger btn-sm" type="submit" style="padding: 4px 8px; font-size: 10px; border-radius: 6px;" title="Remove Extra Item"><i class="fa-solid fa-trash"></i></button>
+                                                                <input type="hidden" name="program_id" value="<?= (int)$program['id'] ?>">
+                                                                <button class="btn btn-danger btn-sm" type="submit" title="Unschedule" style="padding: 5px 10px; font-size: 11px; border-radius: 6px; font-weight: 600;"><i class="fa-solid fa-calendar-minus mr-1"></i> Unschedule</button>
                                                             </form>
                                                         </div>
                                                     </div>
                                                 </div>
                                             </div>
-                                        <?php endif; ?>
-
-                                        <?php if (isset($timeline[$index + 1])): ?>
+                                        </div>
+                                        
+                                        <?php if (isset($stageProgs[$index + 1])): ?>
                                             <?php
-                                            $nextItem = $timeline[$index + 1];
-                                            $gapStart = new DateTime((string)$item['end']);
-                                            $gapEnd = new DateTime((string)$nextItem['start']);
+                                            $nextItem = $stageProgs[$index + 1];
+                                            $gapStart = new DateTime((string)$program['end_at']);
+                                            $gapEnd = new DateTime((string)$nextItem['start_at']);
                                             $hasGap = $gapStart < $gapEnd;
                                             $gapStartSql = $gapStart->format('Y-m-d H:i:s');
                                             $gapEndSql = $gapEnd->format('Y-m-d H:i:s');
@@ -1017,21 +1239,6 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                                         <div>
                                                             <div class="page-subtitle" style="font-size: 12px; margin: 0; color: var(--muted); font-weight: 600;"><i class="fa-solid fa-hourglass-half mr-2" style="color: #fbbf24;"></i> Timeline Gap (<?= e(date('M d', strtotime($gapStartSql))) ?>): <?= e(date('h:i A', strtotime($gapStartSql))) ?> - <?= e(date('h:i A', strtotime($gapEndSql))) ?></div>
                                                         </div>
-                                                        <button
-                                                            class="btn btn-success btn-sm"
-                                                            type="button"
-                                                            data-open-extra
-                                                            data-open-break
-                                                            data-stage-id="<?= $stageId ?>"
-                                                            data-previous-program="<?= $item['type'] === 'program' ? (int)$item['data']['id'] : 0 ?>"
-                                                            data-next-program="<?= $nextItem['type'] === 'program' ? (int)$nextItem['data']['id'] : 0 ?>"
-                                                            data-gap-label="<?= e(date('h:i A', strtotime($gapStartSql)) . ' - ' . date('h:i A', strtotime($gapEndSql))) ?>"
-                                                            data-gap-start="<?= $gapStartSql ?>"
-                                                            data-gap-duration="<?= max(1, (int)round(($gapEnd->getTimestamp() - $gapStart->getTimestamp()) / 60)) ?>"
-                                                            style="padding: 4px 10px; font-size: 11px; border-radius: 6px; font-weight: 700;"
-                                                        >
-                                                            <i class="fa-solid fa-plus mr-1"></i> Add Extra Item
-                                                        </button>
                                                     </div>
                                                 </div>
                                             <?php endif; ?>
@@ -1127,68 +1334,6 @@ require_once __DIR__ . '/../../includes/sidebar.php';
     </div>
 </div>
 
-<div class="modal-overlay" id="breakModal">
-    <div class="modal-box modal-md" style="border-radius: 16px; border: 1px solid rgba(255,255,255,0.1); background: #0f172a;">
-        <div class="modal-header">
-            <div>
-                <div class="modal-title" style="font-size: 18px; font-weight: 800; display: flex; align-items: center; gap: 8px;"><i class="fa-solid fa-puzzle-piece" style="color: #facc15;"></i> Add Extra Item</div>
-                <div class="page-subtitle" id="breakGapLabel" style="font-size: 12px; color: var(--muted); margin-top: 4px;"></div>
-            </div>
-            <button class="modal-close" type="button" data-close="breakModal"><i class="fa-solid fa-xmark"></i></button>
-        </div>
-        <form method="POST" id="breakForm">
-            <?= admin_csrf_field() ?>
-            <input type="hidden" name="action" value="add_extra">
-            <input type="hidden" name="previous_program_id" id="previousProgramId">
-            <input type="hidden" name="next_program_id" id="nextProgramId">
-            <div class="form-grid" style="padding: 20px; gap: 16px;">
-                <div class="input-group full-width">
-                    <label style="font-size: 12.5px; font-weight: 700;">Extra Title / Name <span class="required">*</span></label>
-                    <input type="text" name="name" id="breakNameInput" required class="form-input" placeholder="e.g. Intermission / Tea Break / Announcements" style="height: 40px; border-radius: 8px;">
-                </div>
-                <div class="input-group full-width" id="breakStageSelectGroup">
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
-                        <div>
-                            <label style="font-size: 12.5px; font-weight: 700;">Stage Type <span class="required">*</span></label>
-                            <select id="breakStageTypeFilter" class="form-input" required style="height: 40px; border-radius: 8px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color: #fff;">
-                                <option value="on_stage">On Stage (Normal Stage)</option>
-                                <option value="off_stage">Off Stage</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label style="font-size: 12.5px; font-weight: 700;">Specific Venue / Stage <span class="required">*</span></label>
-                            <select name="stage_type_id" id="breakStageTypeId" class="form-input" required style="height: 40px; border-radius: 8px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color: #fff;">
-                                <?php foreach ($stageTypes as $stage): ?>
-                                    <option value="<?= (int)$stage['id'] ?>" data-category="<?= e($stage['category'] ?? 'on_stage') ?>" data-name="<?= e($stage['name']) ?>"><?= e($stage['name']) ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-                <div class="input-group full-width" id="breakTimeFieldsGroup">
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
-                        <div>
-                            <label style="font-size: 12.5px; font-weight: 700;">Start Date & Time</label>
-                            <input type="datetime-local" name="start_time" id="breakStartTime" class="form-input" style="height: 40px; border-radius: 8px;">
-                        </div>
-                        <div>
-                            <label style="font-size: 12.5px; font-weight: 700;">Duration (Minutes)</label>
-                            <input type="number" name="duration_minutes" id="breakDurationMinutes" min="1" placeholder="e.g. 15" class="form-input" value="15" style="height: 40px; border-radius: 8px;">
-                        </div>
-                    </div>
-                </div>
-                <div class="input-group full-width">
-                    <label style="font-size: 12.5px; font-weight: 700;">Description</label>
-                    <textarea name="description" id="breakDescriptionInput" rows="3" class="form-input" placeholder="Optional details about this extra item..." style="border-radius: 8px;"></textarea>
-                </div>
-            </div>
-            <div class="form-actions" style="padding: 16px 20px; border-top: 1px solid rgba(255,255,255,0.06); display: flex; justify-content: flex-end; gap: 10px;">
-                <button class="btn btn-secondary btn-md" type="button" data-close="breakModal" style="border-radius: 8px;">Cancel</button>
-                <button class="btn btn-success btn-md" type="submit" style="border-radius: 8px; font-weight: 700;">Save Extra Item</button>
-            </div>
-        </form>
-    </div>
-</div>
 
 <div class="modal-overlay" id="scheduleModal">
     <div class="modal-box modal-md" style="border-radius: 16px; border: 1px solid rgba(255,255,255,0.1); background: #0f172a;">
@@ -1384,27 +1529,6 @@ function syncScheduleVenues(category, selectedVal = '') {
     });
 }
 
-// Sync Specific Venue dropdown for Break Modal based on Category
-function syncBreakVenues(category, selectedVal = '') {
-    const stageSelect = document.getElementById('breakStageTypeId');
-    if (!stageSelect) return;
-    
-    const targetVal = selectedVal || stageSelect.value;
-    stageSelect.innerHTML = '<option value="">-- Select Venue --</option>';
-    
-    const filtered = STAGE_TYPES.filter(opt => !category || (opt.category || 'on_stage') === category);
-    filtered.forEach(opt => {
-        const o = document.createElement('option');
-        o.value = opt.id;
-        o.textContent = opt.name;
-        o.setAttribute('data-category', opt.category || 'on_stage');
-        o.setAttribute('data-name', opt.name);
-        if (String(opt.id) === String(targetVal)) {
-            o.selected = true;
-        }
-        stageSelect.appendChild(o);
-    });
-}
 
 // Set stage helper for Schedule Modal (updates Stage Type and syncs venue)
 function setScheduleStage(stageId) {
@@ -1421,29 +1545,8 @@ function setScheduleStage(stageId) {
     syncScheduleVenues(category, stageId);
 }
 
-// Set stage helper for Break Modal
-function setBreakStage(stageId) {
-    const filterSelect = document.getElementById('breakStageTypeFilter');
-    const stageSelect = document.getElementById('breakStageTypeId');
-    if (!stageSelect) return;
-
-    const found = STAGE_TYPES.find(opt => String(opt.id) === String(stageId));
-    const category = found ? (found.category || 'on_stage') : 'on_stage';
-
-    if (filterSelect) {
-        filterSelect.value = category;
-    }
-    syncBreakVenues(category, stageId);
-}
-
 function updateActiveStage(stageId) {
     currentActiveStageId = String(stageId);
-
-    const isOffStage = !!offStageMap[currentActiveStageId];
-    const addNewExtraBtn = document.getElementById('addNewExtraBtn');
-    if (addNewExtraBtn) {
-        addNewExtraBtn.style.display = isOffStage ? 'none' : '';
-    }
 
     // 1. Update Stage Tab buttons active state
     document.querySelectorAll('.stage-tab-btn').forEach(btn => {
@@ -1560,11 +1663,6 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('scheduleLocation').value = locName;
         filterModalProgramOptions();
         applyNextAvailableSlotForStage();
-    });
-
-    // Stage Type change listener in breakModal
-    document.getElementById('breakStageTypeFilter')?.addEventListener('change', (e) => {
-        syncBreakVenues(e.target.value);
     });
 });
 
@@ -1877,58 +1975,7 @@ document.querySelectorAll('.modal-overlay form').forEach(form => {
     });
 });
 
-// Click topbar "Add Extra Item" button
-document.getElementById('addNewExtraBtn')?.addEventListener('click', () => {
-    document.getElementById('breakForm').reset();
-    const submitBtn = document.querySelector('#breakForm button[type="submit"]');
-    if (submitBtn) {
-        submitBtn.style.pointerEvents = '';
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = 'Save Extra Item';
-    }
-    document.getElementById('previousProgramId').value = '';
-    document.getElementById('nextProgramId').value = '';
-    document.getElementById('breakGapLabel').textContent = 'Custom Extra Item / Intermission';
-    
-    document.getElementById('breakStageSelectGroup').style.display = '';
-    document.getElementById('breakTimeFieldsGroup').style.display = '';
-    setBreakStage(currentActiveStageId || '1');
-    
-    const targetPanel = document.querySelector(`.stage-panel-item[data-stage-id="${currentActiveStageId}"]`);
-    if (targetPanel && targetPanel.dataset.lastEndAt) {
-        document.getElementById('breakStartTime').value = toLocalDatetime(targetPanel.dataset.lastEndAt);
-    } else {
-        document.getElementById('breakStartTime').value = formatLocalDatetime(new Date());
-    }
-    document.getElementById('breakDurationMinutes').value = '15';
-    openModal('breakModal');
-});
 
-// Click timeline gap "Add Extra Item" button
-document.querySelectorAll('[data-open-extra], [data-open-break]').forEach(button => button.addEventListener('click', () => {
-    document.getElementById('breakForm').reset();
-    const submitBtn = document.querySelector('#breakForm button[type="submit"]');
-    if (submitBtn) {
-        submitBtn.style.pointerEvents = '';
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = 'Save Extra Item';
-    }
-    setBreakStage(button.dataset.stageId || '');
-    document.getElementById('previousProgramId').value = button.dataset.previousProgram || '';
-    document.getElementById('nextProgramId').value = button.dataset.nextProgram || '';
-    document.getElementById('breakGapLabel').textContent = button.dataset.gapLabel ? ('Timeline Gap: ' + button.dataset.gapLabel) : '';
-    
-    document.getElementById('breakStageSelectGroup').style.display = 'none';
-    document.getElementById('breakTimeFieldsGroup').style.display = '';
-    
-    if (button.dataset.gapStart) {
-        document.getElementById('breakStartTime').value = toLocalDatetime(button.dataset.gapStart);
-    }
-    if (button.dataset.gapDuration) {
-        document.getElementById('breakDurationMinutes').value = button.dataset.gapDuration;
-    }
-    openModal('breakModal');
-}));
 
 // Auto-fill location and venue stage when selecting a program in dropdown
 document.getElementById('scheduleProgramSelect')?.addEventListener('change', (e) => {
@@ -2105,15 +2152,6 @@ document.getElementById('scheduleForm')?.addEventListener('submit', function() {
         submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Saving...';
     }
     setTimeout(() => closeModal('scheduleModal'), 50);
-});
-
-document.getElementById('breakForm')?.addEventListener('submit', function() {
-    const submitBtn = this.querySelector('button[type="submit"]');
-    if (submitBtn) {
-        submitBtn.style.pointerEvents = 'none';
-        submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Saving...';
-    }
-    setTimeout(() => closeModal('breakModal'), 50);
 });
 </script>
 <?php admin_close_page(); ?>
