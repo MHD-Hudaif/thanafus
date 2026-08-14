@@ -1006,6 +1006,7 @@ require_once __DIR__ . '/../../includes/header.php';
     </div>
 </div>
 
+<script>
 const stageQueue = <?= json_encode($stageQueue, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
 const csrfToken = <?= json_encode(generate_csrf_token()) ?>;
 

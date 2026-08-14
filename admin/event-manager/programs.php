@@ -536,6 +536,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $sectionId = isset($_POST['section_id']) && $_POST['section_id'] !== '' ? (int)$_POST['section_id'] : null;
         $firstStageId = (int)$pdo->query('SELECT id FROM musabaqa_stage_types LIMIT 1')->fetchColumn();
         $stageTypeId = isset($_POST['stage_type_id']) && $_POST['stage_type_id'] !== '' ? (int)$_POST['stage_type_id'] : $firstStageId;
+
+        $stageCategory = 'on_stage';
+        if ($stageTypeId > 0) {
+            $catStmt = $pdo->prepare("SELECT category FROM musabaqa_stage_types WHERE id = ? LIMIT 1");
+            $catStmt->execute([$stageTypeId]);
+            $stageCategory = $catStmt->fetchColumn() ?: 'on_stage';
+        }
+        if ($stageCategory === 'off_stage') {
+            $sectionId = null;
+        }
+
         $location = isset($_POST['location']) && $_POST['location'] !== '' ? trim((string)$_POST['location']) : null;
 
         // ------------------------------------------------------------------
@@ -1190,7 +1201,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                             <option value="group">Group</option>
                         </select>
                     </div>
-                    <div class="input-group full-width" style="grid-column: span 2;">
+                    <div class="input-group full-width" id="scheduleSectionGroup" style="grid-column: span 2;">
                         <label>Schedule Section (Timing Group)
                             <?php if (empty($scheduleSections)): ?>
                                 <span style="background: rgba(239,68,68,0.15); color: #f87171; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 6px; margin-left: 6px; vertical-align: middle;">
@@ -1656,12 +1667,27 @@ document.addEventListener('DOMContentLoaded', () => {
             }));
         }
 
+        const toggleSectionGroup = () => {
+            const secGroup = document.getElementById('scheduleSectionGroup');
+            if (secGroup) {
+                if (filterSelect.value === 'off_stage') {
+                    secGroup.style.display = 'none';
+                    const secIdInput = document.getElementById('programSectionId');
+                    if (secIdInput) secIdInput.value = '';
+                } else {
+                    secGroup.style.display = '';
+                }
+            }
+        };
+        window.toggleProgramSectionGroup = toggleSectionGroup;
+
         // When Stage Type changes, filter specific venues
         filterSelect.addEventListener('change', () => {
             syncVenues(filterSelect.value);
             if (locationInput) {
                 locationInput.value = stageSelect.options[stageSelect.selectedIndex]?.getAttribute('data-name') || '';
             }
+            toggleSectionGroup();
         });
 
         // When venue changes, update the hidden location input
@@ -1671,6 +1697,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 locationInput.value = opt ? (opt.getAttribute('data-name') || '') : '';
             }
         });
+        
+        // Run initial check
+        toggleSectionGroup();
     }
 
     const urlParams = new URLSearchParams(window.location.search);
@@ -1714,6 +1743,7 @@ document.addEventListener('click', (e) => {
         const filterSelect = document.getElementById('programStageTypeFilter');
         if (filterSelect) filterSelect.value = 'on_stage';
         syncVenues('on_stage', '1');
+        if (window.toggleProgramSectionGroup) window.toggleProgramSectionGroup();
 
         const pStageType = document.getElementById('programStageTypeId');
         if (pStageType) pStageType.value = '1';
@@ -1780,6 +1810,7 @@ document.addEventListener('click', (e) => {
             if (filterSelect) filterSelect.value = catVal;
             
             syncVenues(catVal, p.stage_type_id || '1');
+            if (window.toggleProgramSectionGroup) window.toggleProgramSectionGroup();
 
             const pStageType = document.getElementById('programStageTypeId');
             if (pStageType) pStageType.value = String(p.stage_type_id || '1');
