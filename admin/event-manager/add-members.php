@@ -40,7 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     try {
-        admin_db_transaction($pdo, function ($pdo) use ($studentIds, $activeEventId, $activeTeamId) {
+        admin_db_transaction($pdo, function ($pdo) use ($studentIds, $activeEventId, $activeTeamId, $dashboardPdo, $activeTeam) {
             $placeholders = implode(',', array_fill(0, count($studentIds), '?'));
             $stmt = $pdo->prepare("
                 SELECT student_id
