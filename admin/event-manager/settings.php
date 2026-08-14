@@ -291,6 +291,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $judgePasskeys = $settings['judge_passkeys'] ?? [1 => '1111', 2 => '2222', 3 => '3333', 4 => '4444', 5 => '5555'];
         }
 
+        $emceePasskey = trim((string)($_POST['emcee_passkey'] ?? ''));
+        if ($emceePasskey === '') {
+            $emceePasskey = $settings['emcee_passkey'] ?? '8888';
+        }
+
         $settings = [
             'default_judges_count' => $defaultJudgesCount,
             'max_judges_count' => $maxJudgesCount,
@@ -304,7 +309,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'tied_rank_mode' => $tiedRankMode,
             'active_sections' => $activeSections,
             'section_limits' => $sectionLimits,
-            'judge_passkeys' => $judgePasskeys
+            'judge_passkeys' => $judgePasskeys,
+            'emcee_passkey' => $emceePasskey
         ];
         
         save_musabaqa_settings($pdo, $settings);
@@ -823,9 +829,9 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                 <div class="panel-header" style="margin-bottom: 20px;">
                     <h3 class="panel-title" style="font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 10px;">
                         <i class="fa-solid fa-key" style="color: #14b8a6;"></i> 
-                        Judge Passkey PIN Configurations
+                        Judge &amp; Emcee Passkey PIN Configurations
                     </h3>
-                    <p style="font-size: 13px; color: var(--muted); margin-top: 4px;">Set 4-digit security passkey PINs for each judge identity (Judge 1, Judge 2, Judge 3, etc.). Judges use these passkeys to unlock criteria mark entries on the Judges Marking Portal.</p>
+                    <p style="font-size: 13px; color: var(--muted); margin-top: 4px;">Set security passkey PINs for judges and the Emcee. Judges use these to unlock marking portals, while the Emcee uses the passkey to open mobile controls.</p>
                 </div>
 
                 <div class="grid grid-2 gap-4" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;">
@@ -842,6 +848,14 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                             <input type="text" name="judge_passkeys[<?= $j ?>]" value="<?= e($pinVal) ?>" class="form-control" placeholder="1111" maxlength="8" style="background: rgba(15,23,42,0.8); border: 1px solid rgba(255,255,255,0.1); color: #34d399; font-weight: 700; font-size: 18px; letter-spacing: 3px; text-align: center;">
                         </div>
                     <?php endfor; ?>
+
+                    <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 18px; border-radius: 14px;">
+                        <label class="form-label" style="display: flex; align-items: center; justify-content: space-between; font-weight: 700; color: #fff; margin-bottom: 8px;">
+                            <span><i class="fa-solid fa-microphone mr-2" style="color: #38bdf8;"></i> Emcee Passkey</span>
+                            <span class="badge badge-neutral" style="font-size: 10px;">PIN</span>
+                        </label>
+                        <input type="text" name="emcee_passkey" value="<?= e($settings['emcee_passkey'] ?? '8888') ?>" class="form-control" placeholder="8888" maxlength="8" style="background: rgba(15,23,42,0.8); border: 1px solid rgba(255,255,255,0.1); color: #38bdf8; font-weight: 700; font-size: 18px; letter-spacing: 3px; text-align: center;">
+                    </div>
                 </div>
             </div>
 
