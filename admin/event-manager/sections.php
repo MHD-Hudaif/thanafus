@@ -459,6 +459,185 @@ window.ALL_PROGRAMS = <?= json_encode($allProgramsPayload, JSON_HEX_APOS | JSON_
     color: #fff !important;
     font-weight: 600 !important;
 }
+
+/* ===== Premium Modal Redesign ===== */
+#sectionModal .modal-box {
+    background: rgba(13, 17, 28, 0.95) !important;
+    backdrop-filter: blur(32px) !important;
+    -webkit-backdrop-filter: blur(32px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.07) !important;
+    border-radius: 20px !important;
+    box-shadow: 0 30px 70px -20px rgba(0,0,0,0.7), 0 0 0 1px rgba(99,102,241,0.08) !important;
+    overflow: hidden !important;
+    max-width: 540px !important;
+    width: 100% !important;
+    padding: 0 !important;
+}
+
+.sm-modal-header {
+    background: linear-gradient(135deg, rgba(99,102,241,0.15) 0%, rgba(79,70,229,0.08) 100%);
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    padding: 24px 28px 20px;
+    position: relative;
+}
+.sm-modal-header::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, #6366f1, #8b5cf6, #06b6d4);
+    border-radius: 20px 20px 0 0;
+}
+.sm-modal-icon {
+    width: 44px; height: 44px;
+    background: linear-gradient(135deg, #6366f1, #4f46e5);
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; color: #fff;
+    box-shadow: 0 8px 20px -6px rgba(99,102,241,0.6);
+    flex-shrink: 0;
+}
+.sm-modal-title-wrap { display: flex; align-items: center; gap: 14px; }
+.sm-modal-title { font-size: 19px; font-weight: 800; color: #fff; line-height: 1.2; }
+.sm-modal-subtitle { font-size: 12.5px; color: rgba(255,255,255,0.45); margin-top: 3px; }
+.sm-modal-close {
+    position: absolute; top: 18px; right: 18px;
+    width: 32px; height: 32px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 8px;
+    color: rgba(255,255,255,0.5);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+.sm-modal-close:hover {
+    background: rgba(239,68,68,0.15);
+    border-color: rgba(239,68,68,0.3);
+    color: #ef4444;
+}
+
+.sm-modal-body {
+    padding: 24px 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.sm-field {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+}
+.sm-field-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+}
+.sm-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.55);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.sm-label i {
+    font-size: 11px;
+    color: rgba(99,102,241,0.8);
+}
+.sm-label .sm-req {
+    color: #f87171;
+    margin-left: 1px;
+}
+.sm-input-wrap {
+    position: relative;
+}
+.sm-input {
+    width: 100%;
+    background: rgba(255,255,255,0.04) !important;
+    border: 1px solid rgba(255,255,255,0.07) !important;
+    border-radius: 10px !important;
+    color: #fff !important;
+    font-size: 14px !important;
+    padding: 11px 14px !important;
+    transition: all 0.25s ease !important;
+    outline: none !important;
+    box-sizing: border-box;
+    -webkit-appearance: none;
+    color-scheme: dark;
+}
+.sm-input::placeholder { color: rgba(255,255,255,0.22) !important; }
+.sm-input:focus {
+    background: rgba(99,102,241,0.07) !important;
+    border-color: rgba(99,102,241,0.5) !important;
+    box-shadow: 0 0 0 3px rgba(99,102,241,0.12) !important;
+}
+.sm-input:hover:not(:focus) {
+    border-color: rgba(255,255,255,0.14) !important;
+    background: rgba(255,255,255,0.055) !important;
+}
+.sm-field-hint {
+    font-size: 11.5px;
+    color: rgba(255,255,255,0.3);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+.sm-field-hint i { font-size: 10px; }
+
+.sm-divider {
+    border: none;
+    border-top: 1px solid rgba(255,255,255,0.05);
+    margin: 0;
+}
+
+.sm-modal-footer {
+    padding: 18px 28px;
+    border-top: 1px solid rgba(255,255,255,0.05);
+    background: rgba(0,0,0,0.15);
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 10px;
+}
+.sm-btn-cancel {
+    background: rgba(255,255,255,0.05) !important;
+    border: 1px solid rgba(255,255,255,0.08) !important;
+    color: rgba(255,255,255,0.65) !important;
+    border-radius: 10px !important;
+    padding: 10px 20px !important;
+    font-size: 13.5px !important;
+    font-weight: 600 !important;
+    cursor: pointer;
+    transition: all 0.2s ease !important;
+}
+.sm-btn-cancel:hover {
+    background: rgba(255,255,255,0.09) !important;
+    color: #fff !important;
+}
+.sm-btn-save {
+    background: linear-gradient(135deg, #6366f1, #4f46e5) !important;
+    border: none !important;
+    color: #fff !important;
+    border-radius: 10px !important;
+    padding: 10px 22px !important;
+    font-size: 13.5px !important;
+    font-weight: 700 !important;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    display: flex; align-items: center; gap: 7px;
+    box-shadow: 0 8px 20px -6px rgba(99,102,241,0.5) !important;
+}
+.sm-btn-save:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 12px 28px -6px rgba(99,102,241,0.65) !important;
+    background: linear-gradient(135deg, #818cf8, #6366f1) !important;
+}
+.sm-btn-save:active { transform: translateY(0) !important; }
 </style>
 
 
@@ -745,44 +924,91 @@ window.ALL_PROGRAMS = <?= json_encode($allProgramsPayload, JSON_HEX_APOS | JSON_
 
     <!-- Add/Edit Section Modal -->
     <div class="modal-overlay" id="sectionModal">
-        <div class="modal-box modal-md">
-            <div class="modal-header">
-                <div>
-                    <div class="modal-title" id="modalTitle">Add Session</div>
-                </div>
-                <button class="modal-close" type="button" data-close="sectionModal"><i class="fa-solid fa-xmark"></i></button>
-            </div>
+        <div class="modal-box" style="padding:0;max-width:540px;width:100%;">
             <form method="POST" id="sectionForm">
                 <?= admin_csrf_field() ?>
                 <input type="hidden" name="action" id="formAction" value="add">
                 <input type="hidden" name="section_id" id="sectionId">
-                <div class="form-grid">
-                    <div class="input-group full-width">
-                        <label>Session Name <span class="required">*</span></label>
-                        <input type="text" name="name" id="sectionName" placeholder="e.g. Day 1 - Morning" required>
-                    </div>
-                    <div class="input-group">
-                        <label>Start Time <span class="required">*</span></label>
-                        <input type="time" name="start_time" id="sectionStartTime" required>
-                    </div>
-                    <div class="input-group">
-                        <label>End Time <span class="required">*</span></label>
-                        <input type="time" name="end_time" id="sectionEndTime" required>
-                    </div>
-                    <div class="input-group">
-                        <label>Session Date <span class="required">*</span></label>
-                        <input type="date" name="section_date" id="sectionDate" min="<?= e($activeEvent['start_date'] ?: '') ?>" max="<?= e($activeEvent['end_date'] ?: '') ?>" required>
-                        <div class="field-help">Select the date for this session.</div>
-                    </div>
-                    <div class="input-group">
-                        <label>Sort Order</label>
-                        <input type="number" name="sort_order" id="sectionSortOrder" value="0" min="0" step="1">
+
+                <!-- Header -->
+                <div class="sm-modal-header">
+                    <button class="sm-modal-close" type="button" data-close="sectionModal" title="Close">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                    <div class="sm-modal-title-wrap">
+                        <div class="sm-modal-icon" id="modalIconEl">
+                            <i class="fa-solid fa-calendar-plus"></i>
+                        </div>
+                        <div>
+                            <div class="sm-modal-title" id="modalTitle">Add Session</div>
+                            <div class="sm-modal-subtitle" id="modalSubtitle">Fill in the details to create a new session block</div>
+                        </div>
                     </div>
                 </div>
-                <div class="form-actions mt-6">
-                    <button class="btn btn-secondary btn-md" type="button" data-close="sectionModal">Cancel</button>
-                    <button class="btn btn-success btn-md" type="submit">Save Session</button>
+
+                <!-- Body -->
+                <div class="sm-modal-body">
+
+                    <!-- Session Name -->
+                    <div class="sm-field">
+                        <label class="sm-label">
+                            <i class="fa-solid fa-pen-nib"></i> Session Name <span class="sm-req">*</span>
+                        </label>
+                        <input type="text" class="sm-input" name="name" id="sectionName"
+                               placeholder="e.g. Day 1 – Morning" required autocomplete="off">
+                    </div>
+
+                    <!-- Date + Sort Row -->
+                    <div class="sm-field-row">
+                        <div class="sm-field">
+                            <label class="sm-label">
+                                <i class="fa-solid fa-calendar-day"></i> Session Date <span class="sm-req">*</span>
+                            </label>
+                            <input type="date" class="sm-input" name="section_date" id="sectionDate"
+                                   min="<?= e($activeEvent['start_date'] ?: '') ?>"
+                                   max="<?= e($activeEvent['end_date'] ?: '') ?>" required>
+                        </div>
+                        <div class="sm-field">
+                            <label class="sm-label">
+                                <i class="fa-solid fa-arrow-up-9-1"></i> Sort Order
+                            </label>
+                            <input type="number" class="sm-input" name="sort_order" id="sectionSortOrder"
+                                   value="0" min="0" step="1" placeholder="0">
+                        </div>
+                    </div>
+
+                    <!-- Time Row -->
+                    <div class="sm-field-row">
+                        <div class="sm-field">
+                            <label class="sm-label">
+                                <i class="fa-solid fa-clock"></i> Start Time <span class="sm-req">*</span>
+                            </label>
+                            <input type="time" class="sm-input" name="start_time" id="sectionStartTime" required>
+                        </div>
+                        <div class="sm-field">
+                            <label class="sm-label">
+                                <i class="fa-solid fa-clock"></i> End Time <span class="sm-req">*</span>
+                            </label>
+                            <input type="time" class="sm-input" name="end_time" id="sectionEndTime" required>
+                        </div>
+                    </div>
+
+                    <div class="sm-field-hint">
+                        <i class="fa-solid fa-circle-info"></i>
+                        Sessions are sorted automatically by date &amp; start time.
+                    </div>
+
                 </div>
+
+                <!-- Footer -->
+                <div class="sm-modal-footer">
+                    <button class="sm-btn-cancel" type="button" data-close="sectionModal">Cancel</button>
+                    <button class="sm-btn-save" type="submit">
+                        <i class="fa-solid fa-floppy-disk"></i>
+                        <span id="saveSessionBtnText">Save Session</span>
+                    </button>
+                </div>
+
             </form>
         </div>
     </div>
@@ -880,6 +1106,9 @@ window.ALL_PROGRAMS = <?= json_encode($allProgramsPayload, JSON_HEX_APOS | JSON_
         const addBtn = e.target.closest('[data-open-add]');
         if (addBtn) {
             document.getElementById('modalTitle').textContent = 'Add Session';
+            document.getElementById('modalSubtitle').textContent = 'Fill in the details to create a new session block';
+            document.getElementById('modalIconEl').innerHTML = '<i class="fa-solid fa-calendar-plus"></i>';
+            document.getElementById('saveSessionBtnText').textContent = 'Save Session';
             document.getElementById('formAction').value = 'add';
             document.getElementById('sectionId').value = '';
             document.getElementById('sectionName').value = '';
@@ -896,6 +1125,9 @@ window.ALL_PROGRAMS = <?= json_encode($allProgramsPayload, JSON_HEX_APOS | JSON_
             try {
                 const s = JSON.parse(editBtn.dataset.editSection);
                 document.getElementById('modalTitle').textContent = 'Edit Session';
+                document.getElementById('modalSubtitle').textContent = 'Update the details for this session block';
+                document.getElementById('modalIconEl').innerHTML = '<i class="fa-solid fa-pen-to-square"></i>';
+                document.getElementById('saveSessionBtnText').textContent = 'Update Session';
                 document.getElementById('formAction').value = 'update';
                 document.getElementById('sectionId').value = s.id || '';
                 document.getElementById('sectionName').value = s.name || '';
