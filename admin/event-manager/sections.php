@@ -201,6 +201,53 @@ function validate_session_no_program_overflow(
     }
 }
 
+/**
+ * Calculates the total allocated minutes of a session by merging overlapping program intervals.
+ */
+function calculate_session_allocated_minutes(array $assignedProgs): int
+{
+    $intervals = [];
+    foreach ($assignedProgs as $prog) {
+        if (!empty($prog['start_time']) && !empty($prog['end_time'])) {
+            $start = strtotime($prog['start_time']);
+            $end = strtotime($prog['end_time']);
+            if ($start < $end) {
+                $intervals[] = ['start' => $start, 'end' => $end];
+            }
+        }
+    }
+    
+    if (empty($intervals)) {
+        return 0;
+    }
+    
+    // Sort intervals by start time
+    usort($intervals, function($a, $b) {
+        return $a['start'] <=> $b['start'];
+    });
+    
+    $merged = [];
+    $current = $intervals[0];
+    
+    for ($i = 1, $count = count($intervals); $i < $count; $i++) {
+        $next = $intervals[$i];
+        if ($next['start'] <= $current['end']) {
+            $current['end'] = max($current['end'], $next['end']);
+        } else {
+            $merged[] = $current;
+            $current = $next;
+        }
+    }
+    $merged[] = $current;
+    
+    $totalMinutes = 0;
+    foreach ($merged as $interval) {
+        $totalMinutes += (int)(($interval['end'] - $interval['start']) / 60);
+    }
+    
+    return $totalMinutes;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
@@ -871,14 +918,7 @@ window.ALL_PROGRAMS = <?= json_encode($allProgramsPayload, JSON_HEX_APOS | JSON_
                         }
                         $sessionTotalMins = (int)(($secEnd->getTimestamp() - $secStart->getTimestamp()) / 60);
                         
-                        $allocatedMins = 0;
-                        foreach ($assignedProgs as $prog) {
-                            if ($prog['start_time'] && $prog['end_time']) {
-                                $pStart = new DateTime($prog['start_time']);
-                                $pEnd = new DateTime($prog['end_time']);
-                                $allocatedMins += (int)(($pEnd->getTimestamp() - $pStart->getTimestamp()) / 60);
-                            }
-                        }
+                        $allocatedMins = calculate_session_allocated_minutes($assignedProgs);
                         
                         $isOverallocated = $allocatedMins > $sessionTotalMins;
                         $percentage = $sessionTotalMins > 0 ? min(100, (int)(($allocatedMins / $sessionTotalMins) * 100)) : 0;
@@ -1710,10 +1750,44 @@ window.ALL_PROGRAMS = <?= json_encode($allProgramsPayload, JSON_HEX_APOS | JSON_
         if (!cardContainer) return;
 
         const durationElements = zone.querySelectorAll('.program-drag-card');
-        let totalAllocated = 0;
+        const intervals = [];
         durationElements.forEach(item => {
-            totalAllocated += parseInt(item.dataset.duration || '0', 10);
+            const startTimeStr = item.getAttribute('data-time') || '';
+            const duration = parseInt(item.getAttribute('data-duration') || '0', 10);
+            
+            if (startTimeStr && duration > 0) {
+                const startMs = Date.parse(startTimeStr);
+                if (!isNaN(startMs)) {
+                    const endMs = startMs + (duration * 60 * 1000);
+                    intervals.push({ start: startMs, end: endMs });
+                }
+            }
         });
+
+        let totalAllocated = 0;
+        if (intervals.length > 0) {
+            intervals.sort((a, b) => a.start - b.start);
+            
+            const merged = [];
+            let current = intervals[0];
+            
+            for (let i = 1; i < intervals.length; i++) {
+                let next = intervals[i];
+                if (next.start <= current.end) {
+                    current.end = Math.max(current.end, next.end);
+                } else {
+                    merged.push(current);
+                    current = next;
+                }
+            }
+            merged.push(current);
+            
+            let totalMs = 0;
+            merged.forEach(interval => {
+                totalMs += (interval.end - interval.start);
+            });
+            totalAllocated = Math.round(totalMs / (60 * 1000));
+        }
 
         const fillBar = cardContainer.querySelector('.progress-bar-fill');
         if (!fillBar) return;
