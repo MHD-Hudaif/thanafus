@@ -653,8 +653,30 @@ require_once __DIR__ . '/../../includes/header.php';
 require_once __DIR__ . '/../../includes/sidebar.php';
 
 $programs = [];
+$eventTeams = [];
+$totalTeamsCount = 0;
+$entriesByProgTeam = [];
+$fullQuotaProgramsCount = 0;
+
 if ($activeEvent) {
     $activeEventId = (int)$activeEvent['id'];
+
+    $stmtTeams = $pdo->prepare("SELECT id, team_name FROM musabaqa_teams WHERE event_id = ?");
+    $stmtTeams->execute([$activeEventId]);
+    $eventTeams = $stmtTeams->fetchAll(PDO::FETCH_ASSOC);
+    $totalTeamsCount = count($eventTeams);
+
+    $stmtCounts = $pdo->prepare("
+        SELECT program_id, team_id, COUNT(*) as cnt
+        FROM musabaqa_program_entries
+        WHERE event_id = ?
+        GROUP BY program_id, team_id
+    ");
+    $stmtCounts->execute([$activeEventId]);
+    while ($row = $stmtCounts->fetch(PDO::FETCH_ASSOC)) {
+        $entriesByProgTeam[(int)$row['program_id']][(int)$row['team_id']] = (int)$row['cnt'];
+    }
+
     $stmt = $pdo->prepare("
         SELECT p.*, ct.name AS class_type_name,
                (SELECT COUNT(*) FROM musabaqa_program_entries WHERE program_id = p.id AND event_id = p.event_id) AS entry_count
@@ -666,6 +688,34 @@ if ($activeEvent) {
     ");
     $stmt->execute([$activeEventId]);
     $programs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    foreach ($programs as &$prog) {
+        $pId = (int)$prog['id'];
+        $pType = strtolower((string)($prog['program_type'] ?? 'individual'));
+        $limit = (int)($prog['entries_limit'] ?? 10);
+        if ($limit <= 0) $limit = ($pType === 'group' ? 1 : 2);
+        $expectedPerTeam = ($pType === 'group') ? 1 : $limit;
+        $expectedTotal = $totalTeamsCount * $expectedPerTeam;
+
+        $isFull = ($totalTeamsCount > 0);
+        if ($totalTeamsCount > 0) {
+            foreach ($eventTeams as $t) {
+                $tId = (int)$t['id'];
+                $teamCnt = $entriesByProgTeam[$pId][$tId] ?? 0;
+                if ($teamCnt < $expectedPerTeam) {
+                    $isFull = false;
+                    break;
+                }
+            }
+        }
+
+        $prog['is_full_quota'] = $isFull;
+        $prog['expected_total_entries'] = $expectedTotal;
+        if ($isFull) {
+            $fullQuotaProgramsCount++;
+        }
+    }
+    unset($prog);
 }
 ?>
 
@@ -696,12 +746,16 @@ if ($activeEvent) {
                     <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
                         <div class="btn-group" style="display: flex; gap: 6px; background: rgba(0,0,0,0.25); padding: 3px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08);">
                             <button type="button" class="btn btn-xs btn-primary filter-tab active" data-type="all">All Programs</button>
-                            <button type="button" class="btn btn-xs btn-secondary filter-tab" data-type="individual"><i class="fa-solid fa-user mr-1"></i> Individual Only</button>
-                            <button type="button" class="btn btn-xs btn-secondary filter-tab" data-type="group"><i class="fa-solid fa-users mr-1"></i> Group Only</button>
+                            <button type="button" class="btn btn-xs btn-secondary filter-tab" data-type="individual"><i class="fa-solid fa-user mr-1"></i> Individual</button>
+                            <button type="button" class="btn btn-xs btn-secondary filter-tab" data-type="group"><i class="fa-solid fa-users mr-1"></i> Group</button>
+                            <button type="button" class="btn btn-xs btn-secondary filter-tab" data-type="full" title="Filter to programs where all teams reached entry limit"><i class="fa-solid fa-circle-check mr-1" style="color: #34d399;"></i> Full Quota (<?= $fullQuotaProgramsCount ?>)</button>
                         </div>
 
-                        <input type="text" id="programSearch" class="form-input" placeholder="Search programs..." style="width: 170px; height: 34px; font-size: 13px;">
+                        <input type="text" id="programSearch" class="form-input" placeholder="Search programs..." style="width: 150px; height: 34px; font-size: 13px;">
                         <button class="btn btn-secondary btn-sm" id="btnSelectAll" type="button">Select All</button>
+                        <button class="btn btn-sm" id="btnSelectFull" type="button" style="background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); font-weight: 700;" title="Select only programs that have reached the limit for all teams">
+                            <i class="fa-solid fa-check-double mr-1"></i> Select Full Quota (<?= $fullQuotaProgramsCount ?>)
+                        </button>
                         <button class="btn btn-secondary btn-sm" id="btnDeselectAll" type="button">Deselect All</button>
                         <button type="submit" class="btn btn-primary btn-sm" style="background: #3b82f6; border-color: #3b82f6; font-weight: 700;">
                             <i class="fa-solid fa-print mr-1"></i> Print Selected Sheets
@@ -801,14 +855,21 @@ if ($activeEvent) {
                                     $pId = (int)$p['id'];
                                     $pType = strtolower((string)($p['program_type'] ?? 'individual'));
                                     ?>
-                                    <tr data-title="<?= e(strtolower($p['title'])) ?>" data-class="<?= e(strtolower($p['class_type_name'] ?? '')) ?>" data-type="<?= e($pType) ?>">
+                                    <tr data-title="<?= e(strtolower($p['title'])) ?>" data-class="<?= e(strtolower($p['class_type_name'] ?? '')) ?>" data-type="<?= e($pType) ?>" data-full="<?= !empty($p['is_full_quota']) ? '1' : '0' ?>">
                                         <td style="text-align: center;">
                                             <label class="pro-checkbox-wrap">
                                                 <input type="checkbox" name="program_ids[]" value="<?= $pId ?>" class="program-checkbox pro-checkbox" checked>
                                             </label>
                                         </td>
                                         <td><strong>#<?= (int)($p['schedule_order'] ?? $pId) ?></strong></td>
-                                        <td><strong><?= e($p['title']) ?></strong></td>
+                                        <td>
+                                            <strong><?= e($p['title']) ?></strong>
+                                            <?php if (!empty($p['is_full_quota'])): ?>
+                                                <span title="Limit reached for all teams" style="display: inline-flex; align-items: center; margin-left: 6px; font-size: 11px; padding: 2px 7px; border-radius: 9999px; background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); font-weight: 700;">
+                                                    <i class="fa-solid fa-check mr-1"></i> Limit Reached
+                                                </span>
+                                            <?php endif; ?>
+                                        </td>
                                         <td><?= e(admin_class_type_display($p['class_type_name'] ?? null, (int)($p['class_type_id'] ?? 0))) ?></td>
                                         <td>
                                             <span class="badge <?= $pType === 'group' ? 'badge-info' : 'badge-neutral' ?>">
@@ -817,9 +878,15 @@ if ($activeEvent) {
                                             </span>
                                         </td>
                                         <td>
-                                            <span class="badge badge-neutral" style="color: <?= $p['entry_count'] > 0 ? '#60a5fa' : 'var(--muted)' ?>;">
-                                                <?= (int)$p['entry_count'] ?> entries
-                                            </span>
+                                            <?php if (!empty($p['is_full_quota'])): ?>
+                                                <span class="badge" style="background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); font-weight: 800;">
+                                                    <i class="fa-solid fa-circle-check mr-1"></i> <?= (int)$p['entry_count'] ?> / <?= (int)$p['expected_total_entries'] ?> entries
+                                                </span>
+                                            <?php else: ?>
+                                                <span class="badge badge-neutral" style="color: <?= $p['entry_count'] > 0 ? '#60a5fa' : 'var(--muted)' ?>;">
+                                                    <?= (int)$p['entry_count'] ?> / <?= (int)$p['expected_total_entries'] ?> entries
+                                                </span>
+                                            <?php endif; ?>
                                         </td>
                                         <td style="text-align: right;">
                                             <a href="<?= app_url('/admin/printer/score-sheets.php') ?>?action=print&print_type=scores&program_ids[]=<?= $pId ?>" target="_blank" class="btn btn-primary btn-xs">
@@ -842,6 +909,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const tableBody = document.getElementById('programsTableBody');
     const headerCheckbox = document.getElementById('headerCheckbox');
     const btnSelectAll = document.getElementById('btnSelectAll');
+    const btnSelectFull = document.getElementById('btnSelectFull');
     const btnDeselectAll = document.getElementById('btnDeselectAll');
     const filterTabs = document.querySelectorAll('.filter-tab');
     const searchInput = document.getElementById('programSearch');
@@ -896,9 +964,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const title = r.getAttribute('data-title') || '';
             const cls = r.getAttribute('data-class') || '';
             const type = r.getAttribute('data-type') || 'individual';
+            const isFull = r.getAttribute('data-full') || '0';
 
             const matchesSearch = title.includes(term) || cls.includes(term);
-            const matchesType = (currentTypeFilter === 'all') || (type === currentTypeFilter);
+            const matchesType = (currentTypeFilter === 'all') 
+                || (currentTypeFilter === 'full' && isFull === '1')
+                || (type === currentTypeFilter);
 
             if (matchesSearch && matchesType) {
                 r.style.display = '';
@@ -961,6 +1032,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
             if (headerCheckbox) headerCheckbox.checked = true;
+            saveCheckedState();
+        });
+    }
+
+    if (btnSelectFull) {
+        btnSelectFull.addEventListener('click', () => {
+            const checkboxes = tableBody.querySelectorAll('.program-checkbox');
+            checkboxes.forEach(cb => {
+                const row = cb.closest('tr');
+                if (row) {
+                    const isFull = (row.getAttribute('data-full') === '1');
+                    if (row.style.display !== 'none') {
+                        cb.checked = isFull;
+                    } else {
+                        cb.checked = false;
+                    }
+                }
+            });
+            updateHeaderCheckboxState();
             saveCheckedState();
         });
     }
