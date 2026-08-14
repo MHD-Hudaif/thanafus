@@ -327,13 +327,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                 }
                 if ($matchedSec) {
-                    $sesEndFull = $matchedSec['section_date'] . ' ' . $matchedSec['end_time'];
-                    if ($endSql > $sesEndFull) {
-                        throw new RuntimeException(
-                            'Program end time ' . date('h:i A', strtotime($endSql)) . ' exceeds session "' . $matchedSec['name'] . '" end (' .
-                            date('h:i A', strtotime($matchedSec['end_time'])) . '). ' .
-                            'Shorten the program or extend the session.'
-                        );
+                    $sesStartDt = DateTimeImmutable::createFromFormat('Y-m-d H:i:s', $matchedSec['section_date'] . ' ' . $matchedSec['start_time'])
+                               ?: DateTimeImmutable::createFromFormat('Y-m-d H:i',   $matchedSec['section_date'] . ' ' . $matchedSec['start_time']);
+                    $sesEndDt   = DateTimeImmutable::createFromFormat('Y-m-d H:i:s', $matchedSec['section_date'] . ' ' . $matchedSec['end_time'])
+                               ?: DateTimeImmutable::createFromFormat('Y-m-d H:i',   $matchedSec['section_date'] . ' ' . $matchedSec['end_time']);
+                    
+                    if ($sesStartDt && $sesEndDt) {
+                        if ($sesEndDt < $sesStartDt) {
+                            $sesEndDt = $sesEndDt->modify('+1 day');
+                        }
+                        $sesEndFull = $sesEndDt->format('Y-m-d H:i:s');
+                        if ($endSql > $sesEndFull) {
+                            throw new RuntimeException(
+                                'Program end time ' . date('h:i A', strtotime($endSql)) . ' exceeds session "' . $matchedSec['name'] . '" end (' .
+                                date('h:i A', $sesEndDt->getTimestamp()) . '). ' .
+                                'Shorten the program or extend the session.'
+                            );
+                        }
                     }
                 }
             }

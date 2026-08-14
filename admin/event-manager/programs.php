@@ -165,6 +165,10 @@ function validate_program_session_window(
         return; // Malformed session time – skip
     }
 
+    if ($sesEnd < $sesStart) {
+        $sesEnd = $sesEnd->modify('+1 day');
+    }
+
     if ($pStart < $sesStart || $pEnd > $sesEnd) {
         $fmtDate = date('D, d M Y', strtotime($section['section_date']));
         $fmtSes  = date('h:i A', strtotime($section['start_time'])) . ' – ' . date('h:i A', strtotime($section['end_time']));

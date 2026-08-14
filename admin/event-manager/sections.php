@@ -141,6 +141,10 @@ function validate_session_no_program_overflow(
         return;
     }
 
+    if ($sesEnd < $sesStart) {
+        $sesEnd = $sesEnd->modify('+1 day');
+    }
+
     $startSql = $sesStart->format('Y-m-d H:i:s');
     $endSql   = $sesEnd->format('Y-m-d H:i:s');
 
