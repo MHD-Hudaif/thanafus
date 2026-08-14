@@ -1648,12 +1648,12 @@ function admin_entry_chest_number_subquery(string $peAlias = 'pe'): string
 {
     return "
         COALESCE(
-            NULLIF(TRIM($peAlias.entry_number), ''),
             NULLIF(TRIM((
                 SELECT tm.chest_number
                 FROM musabaqa_entry_members mem
                 JOIN musabaqa_team_members tm ON tm.id = mem.team_member_id
                 WHERE mem.entry_id = $peAlias.id
+                  AND tm.chest_number IS NOT NULL AND TRIM(tm.chest_number) <> ''
                 LIMIT 1
             )), ''),
             NULLIF(TRIM((
@@ -1662,8 +1662,10 @@ function admin_entry_chest_number_subquery(string $peAlias = 'pe'): string
                 JOIN " . DB_MAIN_NAME . ".students s ON s.id = tm.student_id
                 WHERE tm.team_id = $peAlias.team_id
                   AND TRIM(LOWER(s.full_name)) = TRIM(LOWER($peAlias.entry_name))
+                  AND tm.chest_number IS NOT NULL AND TRIM(tm.chest_number) <> ''
                 LIMIT 1
             )), ''),
+            NULLIF(TRIM($peAlias.entry_number), ''),
             '-'
         ) AS chest_number
     ";

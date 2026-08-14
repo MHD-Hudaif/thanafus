@@ -8,23 +8,48 @@ $activeEvent = get_active_musabaqa();
 $pdo = $GLOBALS['musabaqa_pdo'];
 
 // Parameter extraction
-$programId = (int)($_GET['program_id'] ?? 0);
-$programName1 = trim((string)($_GET['program1'] ?? $_GET['program'] ?? 'QIRATH THARTHEEL - SENIOR'));
-$programName2 = trim((string)($_GET['program2'] ?? 'EBARATH READING'));
+$programId1 = (int)($_GET['program_id'] ?? 0);
+$programId2 = (int)($_GET['program_id2'] ?? 0);
+$programName1 = trim((string)($_GET['program1'] ?? $_GET['program'] ?? ''));
+$programName2 = trim((string)($_GET['program2'] ?? ''));
 $participantsCount = max(1, min(50, (int)($_GET['participants'] ?? 8)));
+
+if (!empty($_GET['program_ids']) && is_array($_GET['program_ids'])) {
+    $programIds = array_values(array_filter(array_map('intval', $_GET['program_ids'])));
+    if ($programId1 <= 0 && isset($programIds[0])) {
+        $programId1 = $programIds[0];
+    }
+    if ($programId2 <= 0 && isset($programIds[1])) {
+        $programId2 = $programIds[1];
+    }
+}
 
 $chestNumbers1 = [];
 $chestNumbers2 = [];
+$eventPrograms = [];
+$titleCounts = [];
 
-if ($programId > 0 && $activeEvent) {
-    $allEvtProgramsStmt = $pdo->prepare("SELECT id, title FROM musabaqa_programs WHERE event_id = ?");
-    $allEvtProgramsStmt->execute([(int)$activeEvent['id']]);
-    $allEvtPrograms = $allEvtProgramsStmt->fetchAll(PDO::FETCH_ASSOC);
+$resolveChestNumber = static function (array $entry): string {
+    $cNo = trim((string)($entry['chest_number'] ?? ''));
+    if ($cNo === '' || $cNo === '-') {
+        return '-';
+    }
 
-    $titleCounts = [];
-    foreach ($allEvtPrograms as $ap) {
-        $tKey = strtolower(trim($ap['title']));
-        $titleCounts[$tKey] = ($titleCounts[$tKey] ?? 0) + 1;
+    // GROUP_CONCAT may return multiple chest numbers for group entries; use the first for display.
+    if (str_contains($cNo, ',')) {
+        $parts = array_values(array_filter(array_map('trim', explode(',', $cNo))));
+        $cNo = $parts[0] ?? '';
+        if ($cNo === '') {
+            return '-';
+        }
+    }
+
+    return is_numeric($cNo) ? str_pad((string)$cNo, 3, '0', STR_PAD_LEFT) : $cNo;
+};
+
+$loadProgramSheet = static function (PDO $pdo, int $programId, int $eventId, array $titleCounts) use ($resolveChestNumber): ?array {
+    if ($programId <= 0) {
+        return null;
     }
 
     $stmt = $pdo->prepare("
@@ -34,67 +59,112 @@ if ($programId > 0 && $activeEvent) {
         WHERE p.id = ? AND p.event_id = ?
         LIMIT 1
     ");
-    $stmt->execute([$programId, (int)$activeEvent['id']]);
+    $stmt->execute([$programId, $eventId]);
     $programData = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$programData) {
+        return null;
+    }
 
-    if ($programData) {
-        $rawTitle = trim($programData['title']);
-        $tKey = strtolower($rawTitle);
-        $hasMultipleSectionsWithSameTitle = ($titleCounts[$tKey] ?? 0) > 1;
+    $rawTitle = trim((string)$programData['title']);
+    $tKey = strtolower($rawTitle);
+    $hasMultipleSectionsWithSameTitle = ($titleCounts[$tKey] ?? 0) > 1;
 
-        $tier = admin_class_type_tier_from_name($programData['class_type_name'] ?? '');
-        $sectionLabel = $tier ? admin_class_type_tier_label($tier) : '';
+    $tier = admin_class_type_tier_from_name($programData['class_type_name'] ?? '');
+    $sectionLabel = $tier ? admin_class_type_tier_label($tier) : '';
 
-        if (!$sectionLabel && !empty($programData['allowed_sections'])) {
-            $secParts = array_filter(array_map('trim', explode(',', $programData['allowed_sections'])));
-            if (count($secParts) === 1) {
-                $sectionLabel = reset($secParts);
-            }
+    if (!$sectionLabel && !empty($programData['allowed_sections'])) {
+        $secParts = array_filter(array_map('trim', explode(',', (string)$programData['allowed_sections'])));
+        if (count($secParts) === 1) {
+            $sectionLabel = reset($secParts);
         }
+    }
 
-        $isGeneral = !$sectionLabel || in_array(strtolower($sectionLabel), ['general', 'all classes', 'general / multi-section'], true);
+    $isGeneral = !$sectionLabel || in_array(strtolower($sectionLabel), ['general', 'all classes', 'general / multi-section'], true);
+    $displayName = (!$isGeneral && $hasMultipleSectionsWithSameTitle)
+        ? $rawTitle . ' - ' . $sectionLabel
+        : $rawTitle;
 
-        if (!$isGeneral && $hasMultipleSectionsWithSameTitle) {
-            $programName1 = $rawTitle . ' - ' . $sectionLabel;
-        } else {
-            $programName1 = $rawTitle;
+    $entStmt = $pdo->prepare("
+        SELECT pe.*,
+               (SELECT GROUP_CONCAT(tm.chest_number SEPARATOR ', ')
+                FROM musabaqa_entry_members em
+                JOIN musabaqa_team_members tm ON tm.id = em.team_member_id
+                WHERE em.entry_id = pe.id AND tm.chest_number IS NOT NULL AND TRIM(tm.chest_number) <> '') AS chest_number,
+               (SELECT tm.chest_number
+                FROM musabaqa_team_members tm
+                JOIN " . DB_MAIN_NAME . ".students s ON s.id = tm.student_id
+                WHERE tm.team_id = pe.team_id
+                  AND TRIM(LOWER(s.full_name)) = TRIM(LOWER(pe.entry_name))
+                  AND tm.chest_number IS NOT NULL AND TRIM(tm.chest_number) <> ''
+                LIMIT 1) AS matched_chest_number
+        FROM musabaqa_program_entries pe
+        WHERE pe.event_id = ? AND pe.program_id = ?
+        ORDER BY pe.performance_order ASC, pe.id ASC
+    ");
+    $entStmt->execute([$eventId, $programId]);
+    $dbEntries = $entStmt->fetchAll(PDO::FETCH_ASSOC);
+
+    $chestNumbers = [];
+    foreach ($dbEntries as $entry) {
+        if (empty(trim((string)($entry['chest_number'] ?? ''))) && !empty(trim((string)($entry['matched_chest_number'] ?? '')))) {
+            $entry['chest_number'] = $entry['matched_chest_number'];
         }
+        $chestNumbers[] = $resolveChestNumber($entry);
+    }
 
-        $entStmt = $pdo->prepare("
-            SELECT pe.*,
-                   " . admin_entry_chest_number_subquery() . "
-            FROM musabaqa_program_entries pe
-            WHERE pe.event_id = ? AND pe.program_id = ?
-            ORDER BY pe.performance_order ASC, pe.id ASC
-        ");
-        $entStmt->execute([(int)$activeEvent['id'], $programId]);
-        $dbEntries = $entStmt->fetchAll(PDO::FETCH_ASSOC);
+    return [
+        'name' => $displayName,
+        'chest_numbers' => $chestNumbers,
+    ];
+};
 
-        if (!empty($dbEntries)) {
-            $participantsCount = count($dbEntries);
-            foreach ($dbEntries as $ent) {
-                $cNo = !empty($ent['chest_number']) ? $ent['chest_number'] : $ent['entry_number'];
-                $chestNumbers1[] = is_numeric($cNo) ? str_pad((string)$cNo, 3, '0', STR_PAD_LEFT) : (string)$cNo;
-            }
-        }
+if ($activeEvent) {
+    $eventId = (int)$activeEvent['id'];
+    $allEvtProgramsStmt = $pdo->prepare("
+        SELECT p.id, p.title, ct.name AS class_type_name
+        FROM musabaqa_programs p
+        LEFT JOIN " . DB_MAIN_NAME . ".class_types ct ON ct.id = p.class_type_id
+        WHERE p.event_id = ?
+        ORDER BY COALESCE(p.start_time, '23:59:59') ASC, p.id ASC
+    ");
+    $allEvtProgramsStmt->execute([$eventId]);
+    $eventPrograms = $allEvtProgramsStmt->fetchAll(PDO::FETCH_ASSOC);
+
+    foreach ($eventPrograms as $ap) {
+        $tKey = strtolower(trim((string)$ap['title']));
+        $titleCounts[$tKey] = ($titleCounts[$tKey] ?? 0) + 1;
+    }
+
+    $loaded1 = $loadProgramSheet($pdo, $programId1, $eventId, $titleCounts);
+    if ($loaded1) {
+        $programName1 = $loaded1['name'];
+        $chestNumbers1 = $loaded1['chest_numbers'];
+    }
+
+    $loaded2 = $loadProgramSheet($pdo, $programId2, $eventId, $titleCounts);
+    if ($loaded2) {
+        $programName2 = $loaded2['name'];
+        $chestNumbers2 = $loaded2['chest_numbers'];
     }
 }
 
-if (empty($chestNumbers1)) {
-    $presetDemo1 = ['105', '205', '407', '104', '400', '207', '308', '307'];
-    for ($i = 0; $i < $participantsCount; $i++) {
-        $chestNumbers1[] = $presetDemo1[$i] ?? str_pad((string)(100 + $i + 1), 3, '0', STR_PAD_LEFT);
-    }
+if ($programName1 === '') {
+    $programName1 = 'Left Program';
+}
+if ($programName2 === '') {
+    $programName2 = 'Right Program';
 }
 
-if (empty($chestNumbers2)) {
-    $presetDemo2 = ['120', '219', '435', '319', '223', '434', '326', '119'];
-    for ($i = 0; $i < $participantsCount; $i++) {
-        $chestNumbers2[] = $presetDemo2[$i] ?? str_pad((string)(200 + $i + 1), 3, '0', STR_PAD_LEFT);
-    }
+$displayRowCount = max(
+    count($chestNumbers1),
+    count($chestNumbers2),
+    ($programId1 <= 0 && $programId2 <= 0) ? $participantsCount : 0
+);
+if ($displayRowCount <= 0) {
+    $displayRowCount = 1;
 }
 
-$rowHeight = $participantsCount <= 5 ? 48 : ($participantsCount <= 10 ? 36 : 24);
+$rowHeight = $displayRowCount <= 5 ? 48 : ($displayRowCount <= 10 ? 36 : 24);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -285,24 +355,55 @@ $rowHeight = $participantsCount <= 5 ? 48 : ($participantsCount <= 10 ? 36 : 24)
             </div>
 
             <form method="GET" class="controls-form">
-                <?php if ($programId > 0): ?>
-                    <input type="hidden" name="program_id" value="<?= $programId ?>">
+                <?php if (!empty($eventPrograms)): ?>
+                    <div>
+                        <label style="font-size: 11px; color: #94a3b8; display: block; margin-bottom: 2px;">Left Program</label>
+                        <select name="program_id" class="control-input" style="width: 220px;">
+                            <option value="">-- Select program --</option>
+                            <?php foreach ($eventPrograms as $prog): ?>
+                                <option value="<?= (int)$prog['id'] ?>" <?= $programId1 === (int)$prog['id'] ? 'selected' : '' ?>>
+                                    <?= e($prog['title']) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label style="font-size: 11px; color: #94a3b8; display: block; margin-bottom: 2px;">Right Program</label>
+                        <select name="program_id2" class="control-input" style="width: 220px;">
+                            <option value="">-- Select program --</option>
+                            <?php foreach ($eventPrograms as $prog): ?>
+                                <option value="<?= (int)$prog['id'] ?>" <?= $programId2 === (int)$prog['id'] ? 'selected' : '' ?>>
+                                    <?= e($prog['title']) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                <?php else: ?>
+                    <?php if ($programId1 > 0): ?>
+                        <input type="hidden" name="program_id" value="<?= $programId1 ?>">
+                    <?php endif; ?>
+                    <?php if ($programId2 > 0): ?>
+                        <input type="hidden" name="program_id2" value="<?= $programId2 ?>">
+                    <?php endif; ?>
                 <?php endif; ?>
 
                 <div>
-                    <label style="font-size: 11px; color: #94a3b8; display: block; margin-bottom: 2px;">Left Program (50%)</label>
+                    <label style="font-size: 11px; color: #94a3b8; display: block; margin-bottom: 2px;">Left Title Override</label>
                     <input type="text" name="program1" value="<?= e($programName1) ?>" class="control-input" style="width: 220px;">
                 </div>
 
                 <div>
-                    <label style="font-size: 11px; color: #94a3b8; display: block; margin-bottom: 2px;">Right Program (50%)</label>
+                    <label style="font-size: 11px; color: #94a3b8; display: block; margin-bottom: 2px;">Right Title Override</label>
                     <input type="text" name="program2" value="<?= e($programName2) ?>" class="control-input" style="width: 220px;">
                 </div>
 
-                <div>
-                    <label style="font-size: 11px; color: #94a3b8; display: block; margin-bottom: 2px;">Participants</label>
-                    <input type="number" name="participants" value="<?= $participantsCount ?>" min="1" max="50" class="control-input" style="width: 80px; text-align: center;">
-                </div>
+                <?php if ($programId1 <= 0 && $programId2 <= 0): ?>
+                    <div>
+                        <label style="font-size: 11px; color: #94a3b8; display: block; margin-bottom: 2px;">Preview Rows</label>
+                        <input type="number" name="participants" value="<?= $participantsCount ?>" min="1" max="50" class="control-input" style="width: 80px; text-align: center;">
+                    </div>
+                <?php endif; ?>
 
                 <button type="submit" class="control-input" style="background: #3b82f6; cursor: pointer; border: none; font-weight: 700; margin-top: 14px;">
                     Update
@@ -334,13 +435,21 @@ $rowHeight = $participantsCount <= 5 ? 48 : ($participantsCount <= 10 ? 36 : 24)
                         </tr>
                     </thead>
                     <tbody>
-                        <?php $orderIdx = 1; ?>
-                        <?php foreach ($chestNumbers1 as $chest): ?>
+                        <?php if (empty($chestNumbers1)): ?>
                             <tr>
-                                <td class="order-col" style="height: <?= $rowHeight ?>px;"><?= $orderIdx++ ?></td>
-                                <td class="chest-col" style="height: <?= $rowHeight ?>px;">#<?= e($chest) ?></td>
+                                <td colspan="2" style="text-align: center; padding: 24px; color: #64748b; font-size: 14px;">
+                                    <?= $programId1 > 0 ? 'No entries registered for this program.' : 'Select a left program to load chest numbers.' ?>
+                                </td>
                             </tr>
-                        <?php endforeach; ?>
+                        <?php else: ?>
+                            <?php $orderIdx = 1; ?>
+                            <?php foreach ($chestNumbers1 as $chest): ?>
+                                <tr>
+                                    <td class="order-col" style="height: <?= $rowHeight ?>px;"><?= $orderIdx++ ?></td>
+                                    <td class="chest-col" style="height: <?= $rowHeight ?>px;"><?= $chest === '-' ? e($chest) : '#' . e($chest) ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
                     </tbody>
                 </table>
             </div>
@@ -359,13 +468,21 @@ $rowHeight = $participantsCount <= 5 ? 48 : ($participantsCount <= 10 ? 36 : 24)
                         </tr>
                     </thead>
                     <tbody>
-                        <?php $orderIdx = 1; ?>
-                        <?php foreach ($chestNumbers2 as $chest): ?>
+                        <?php if (empty($chestNumbers2)): ?>
                             <tr>
-                                <td class="order-col" style="height: <?= $rowHeight ?>px;"><?= $orderIdx++ ?></td>
-                                <td class="chest-col" style="height: <?= $rowHeight ?>px;">#<?= e($chest) ?></td>
+                                <td colspan="2" style="text-align: center; padding: 24px; color: #64748b; font-size: 14px;">
+                                    <?= $programId2 > 0 ? 'No entries registered for this program.' : 'Select a right program to load chest numbers.' ?>
+                                </td>
                             </tr>
-                        <?php endforeach; ?>
+                        <?php else: ?>
+                            <?php $orderIdx = 1; ?>
+                            <?php foreach ($chestNumbers2 as $chest): ?>
+                                <tr>
+                                    <td class="order-col" style="height: <?= $rowHeight ?>px;"><?= $orderIdx++ ?></td>
+                                    <td class="chest-col" style="height: <?= $rowHeight ?>px;"><?= $chest === '-' ? e($chest) : '#' . e($chest) ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
                     </tbody>
                 </table>
             </div>
