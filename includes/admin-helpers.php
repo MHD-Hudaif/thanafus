@@ -1754,5 +1754,193 @@ if (!function_exists('admin_get_default_categories_for_program_title')) {
     }
 }
 
+/**
+ * Fetches all active event team members for ID cards CSV export.
+ */
+if (!function_exists('id_card_members')) {
+    function id_card_members(PDO $pdo, int $eventId): array
+    {
+        $stmt = $pdo->prepare("
+            SELECT
+                mtm.chest_number,
+                COALESCE(NULLIF(s.display_name, ''), s.full_name) AS display_name,
+                t.team_name,
+                t.team_color,
+                ct.name AS class_type_name,
+                c.class_type_id
+            FROM musabaqa_team_members mtm
+            JOIN musabaqa_teams t ON t.id = mtm.team_id
+            JOIN " . DB_MAIN_NAME . ".students s ON s.id = mtm.student_id
+            LEFT JOIN " . DB_MAIN_NAME . ".classes c ON c.id = s.class_id
+            LEFT JOIN " . DB_MAIN_NAME . ".class_types ct ON ct.id = c.class_type_id
+            WHERE mtm.event_id = ?
+              AND mtm.status = 'active'
+            ORDER BY mtm.chest_number ASC, mtm.id ASC
+        ");
+        $stmt->execute([$eventId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
+}
+
+if (!function_exists('admin_handle_renewal_resolutions')) {
+    function admin_handle_renewal_resolutions(PDO $pdo, PDO $dashboardPdo, int $activeEventId): void
+    {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'resolve_renewal') {
+            if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
+                admin_flash('error', 'Invalid security token.');
+                admin_redirect($_SERVER['REQUEST_URI']);
+            }
+
+            $deletedEntryId = (int)$_POST['deleted_entry_id'];
+            $resolveAction = (string)$_POST['resolve_action']; // 'replace' or 'discard'
+            $existingEntryId = (int)($_POST['existing_entry_id'] ?? 0);
+            $studentId = (int)$_POST['student_id'];
+            $teamMemberId = (int)$_POST['team_member_id'];
+            $programId = (int)$_POST['program_id'];
+            $teamId = (int)$_POST['team_id'];
+
+            try {
+                admin_db_transaction($pdo, function ($pdo) use ($deletedEntryId, $resolveAction, $existingEntryId, $studentId, $teamMemberId, $programId, $teamId, $activeEventId, $dashboardPdo) {
+                    // Verify record in deleted_member_entries
+                    $stmt = $pdo->prepare('SELECT * FROM musabaqa_deleted_member_entries WHERE id = ? AND student_id = ? AND program_id = ? AND event_id = ? LIMIT 1');
+                    $stmt->execute([$deletedEntryId, $studentId, $programId, $activeEventId]);
+                    $delEntry = $stmt->fetch(PDO::FETCH_ASSOC);
+                    
+                    if (!$delEntry) {
+                        throw new RuntimeException('Renewal request not found.');
+                    }
+
+                    if ($resolveAction === 'discard') {
+                        // Just delete the saved entry
+                        $stmt = $pdo->prepare('DELETE FROM musabaqa_deleted_member_entries WHERE id = ?');
+                        $stmt->execute([$deletedEntryId]);
+                    } elseif ($resolveAction === 'replace') {
+                        if ($existingEntryId <= 0) {
+                            throw new RuntimeException('Please select an existing participant to replace.');
+                        }
+                        
+                        // Delete the existing entry membership
+                        $stmt = $pdo->prepare('DELETE FROM musabaqa_entry_members WHERE entry_id = ?');
+                        $stmt->execute([$existingEntryId]);
+                        
+                        // Delete the entry itself
+                        $stmt = $pdo->prepare('DELETE FROM musabaqa_program_entries WHERE id = ? AND program_id = ? AND team_id = ? AND event_id = ?');
+                        $stmt->execute([$existingEntryId, $programId, $teamId, $activeEventId]);
+                        
+                        // Create the new entry for this student
+                        $stmtName = $dashboardPdo->prepare("SELECT COALESCE(NULLIF(display_name, ''), full_name) AS name FROM students WHERE id = ? LIMIT 1");
+                        $stmtName->execute([$studentId]);
+                        $studentName = (string)$stmtName->fetchColumn();
+                        
+                        $tMax = $pdo->prepare("SELECT COALESCE(MAX(entry_number), 0) + 1 FROM musabaqa_program_entries WHERE event_id = ? AND program_id = ?");
+                        $tMax->execute([$activeEventId, $programId]);
+                        $entryNumber = (int)$tMax->fetchColumn();
+                        
+                        $perfOrder = mt_rand(1, 999999);
+                        
+                        $insEntry = $pdo->prepare("
+                            INSERT INTO musabaqa_program_entries
+                                (event_id, program_id, team_id, entry_name, entry_number, performance_order, status)
+                            VALUES (?, ?, ?, ?, ?, ?, 'approved')
+                        ");
+                        $insEntry->execute([$activeEventId, $programId, $teamId, $studentName, $entryNumber, $perfOrder]);
+                        $newEntryId = (int)$pdo->lastInsertId();
+                        
+                        $insMem = $pdo->prepare("INSERT INTO musabaqa_entry_members (entry_id, team_member_id, role_name) VALUES (?, ?, ?)");
+                        $insMem->execute([$newEntryId, $teamMemberId, (string)$delEntry['role_name']]);
+                        
+                        // Delete from deleted_member_entries
+                        $stmt = $pdo->prepare('DELETE FROM musabaqa_deleted_member_entries WHERE id = ?');
+                        $stmt->execute([$deletedEntryId]);
+                    }
+                });
+                
+                // Remove from session pending renewals
+                if (isset($_SESSION['pending_renewals'])) {
+                    foreach ($_SESSION['pending_renewals'] as $k => $item) {
+                        if ((int)$item['deleted_entry_id'] === $deletedEntryId) {
+                            unset($_SESSION['pending_renewals'][$k]);
+                            break;
+                        }
+                    }
+                    $_SESSION['pending_renewals'] = array_values($_SESSION['pending_renewals']);
+                }
+                
+                admin_flash('success', 'Participant limit conflict resolved successfully.');
+            } catch (Throwable $e) {
+                admin_flash('error', $e->getMessage() ?: 'Unable to resolve conflict.');
+            }
+            
+            $redirectUrl = $_SERVER['PHP_SELF'];
+            if ($_GET) {
+                $redirectUrl .= '?' . http_build_query($_GET);
+            }
+            admin_redirect($redirectUrl);
+        }
+    }
+}
+
+if (!function_exists('admin_render_renewal_modal_html')) {
+    function admin_render_renewal_modal_html(): void
+    {
+        if (empty($_SESSION['pending_renewals'])) {
+            return;
+        }
+        
+        $item = $_SESSION['pending_renewals'][0];
+        ?>
+        <div class="modal-overlay active" id="renewalModal" style="display: flex; align-items: center; justify-content: center; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999;">
+            <div class="modal-box modal-md" style="background: var(--panel-bg, #1e293b); border: 1px solid var(--border-color, #334155); border-radius: 12px; padding: 24px; width: 500px; max-width: 95%;">
+                <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                    <div class="modal-title" style="font-size: 1.25rem; font-weight: 600; color: #fff;">Participant Limit Overlap</div>
+                </div>
+                <form method="POST">
+                    <?= admin_csrf_field() ?>
+                    <input type="hidden" name="action" value="resolve_renewal">
+                    <input type="hidden" name="deleted_entry_id" value="<?= (int)$item['deleted_entry_id'] ?>">
+                    <input type="hidden" name="student_id" value="<?= (int)$item['student_id'] ?>">
+                    <input type="hidden" name="team_member_id" value="<?= (int)$item['team_member_id'] ?>">
+                    <input type="hidden" name="program_id" value="<?= (int)$item['program_id'] ?>">
+                    <input type="hidden" name="team_id" value="<?= (int)$item['team_id'] ?>">
+                    
+                    <div class="panel" style="margin-bottom: 20px; color: #cbd5e1; font-size: 0.95rem; line-height: 1.5; background: rgba(0,0,0,0.2); padding: 12px; border-radius: 6px; border: 1px solid #334155;">
+                        <strong style="color: #38bdf8;"><?= e($item['student_name']) ?></strong> has a previous registration in 
+                        <strong style="color: #fff;"><?= e($item['program_title']) ?></strong>.
+                        <br><br>
+                        However, team <strong style="color: #38bdf8;"><?= e($item['team_name']) ?></strong> has already reached the limit of 
+                        <strong><?= (int)$item['limit'] ?></strong> entry/entries for this program.
+                    </div>
+                    
+                    <div class="input-group" style="margin-bottom: 20px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #94a3b8;">Choose Resolution Option:</label>
+                        
+                        <div style="display: flex; flex-direction: column; gap: 12px;">
+                            <?php foreach ($item['existing_entries'] as $idx => $exist): ?>
+                                <label style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer; color: #fff; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 6px; border: 1px solid #334155;">
+                                    <input type="radio" name="resolve_action" value="replace" <?= $idx === 0 ? 'checked' : '' ?> style="margin-top: 4px;" onclick="document.getElementById('existing_entry_id').value = '<?= (int)$exist['id'] ?>'">
+                                    <span>Replace <strong><?= e($exist['entry_name']) ?></strong> (Entry #<?= (int)$exist['entry_number'] ?>) in this program</span>
+                                </label>
+                            <?php endforeach; ?>
+                            
+                            <label style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer; color: #cbd5e1; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 6px; border: 1px solid #334155;">
+                                    <input type="radio" name="resolve_action" value="discard" style="margin-top: 4px;" onclick="document.getElementById('existing_entry_id').value = '0'">
+                                    <span>Discard previous entry (Do not register <?= e($item['student_name']) ?> for this program)</span>
+                            </label>
+                        </div>
+                        
+                        <input type="hidden" name="existing_entry_id" id="existing_entry_id" value="<?= (int)($item['existing_entries'][0]['id'] ?? 0) ?>">
+                    </div>
+                    
+                    <div class="form-actions" style="display: flex; justify-content: flex-end; gap: 12px;">
+                        <button class="btn btn-success btn-md" type="submit">Resolve</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <?php
+    }
+}
+
+
 
 

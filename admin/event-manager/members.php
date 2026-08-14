@@ -8,6 +8,7 @@ $pdo = $GLOBALS['musabaqa_pdo'];
 $dashboardPdo = $GLOBALS['dashboard_pdo'];
 $activeEvent = admin_require_active_event($pdo);
 $activeEventId = (int)$activeEvent['id'];
+admin_handle_renewal_resolutions($pdo, $dashboardPdo, $activeEventId);
 $activeTeamId = (int)($_GET['team'] ?? $_SESSION['active_team_id'] ?? 0);
 
 if ($activeTeamId <= 0) {
@@ -52,16 +53,59 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         if ($action === 'delete') {
-            $stmt = $pdo->prepare('SELECT COUNT(*) FROM musabaqa_entry_members WHERE team_member_id = ?');
-            $stmt->execute([$memberId]);
-            if ((int)$stmt->fetchColumn() > 0) {
-                $stmt = $pdo->prepare('UPDATE musabaqa_team_members SET status = "inactive" WHERE id = ? AND team_id = ? AND event_id = ?');
-                $stmt->execute([$memberId, $activeTeamId, $activeEventId]);
-                admin_flash('success', 'Member has entries, so they were marked inactive.');
-            } else {
-                $stmt = $pdo->prepare('DELETE FROM musabaqa_team_members WHERE id = ? AND team_id = ? AND event_id = ?');
-                $stmt->execute([$memberId, $activeTeamId, $activeEventId]);
-                admin_flash('success', 'Member removed successfully.');
+            try {
+                admin_db_transaction($pdo, function ($pdo) use ($memberId, $activeTeamId, $activeEventId) {
+                    // Get student_id
+                    $stmt = $pdo->prepare('SELECT student_id FROM musabaqa_team_members WHERE id = ? AND team_id = ? AND event_id = ? LIMIT 1');
+                    $stmt->execute([$memberId, $activeTeamId, $activeEventId]);
+                    $studentId = $stmt->fetchColumn();
+                    if ($studentId === false) {
+                        throw new RuntimeException('Team member not found.');
+                    }
+                    $studentId = (int)$studentId;
+
+                    // Get their program entries
+                    $stmt = $pdo->prepare('
+                        SELECT em.entry_id, em.role_name, pe.program_id
+                        FROM musabaqa_entry_members em
+                        JOIN musabaqa_program_entries pe ON em.entry_id = pe.id
+                        WHERE em.team_member_id = ?
+                    ');
+                    $stmt->execute([$memberId]);
+                    $entries = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+                    // Store entries in deleted_member_entries
+                    $ins = $pdo->prepare('
+                        INSERT INTO musabaqa_deleted_member_entries (event_id, student_id, program_id, role_name)
+                        VALUES (?, ?, ?, ?)
+                    ');
+                    $delMem = $pdo->prepare('DELETE FROM musabaqa_entry_members WHERE team_member_id = ? AND entry_id = ?');
+                    
+                    $affectedEntries = [];
+                    foreach ($entries as $entry) {
+                        $ins->execute([$activeEventId, $studentId, (int)$entry['program_id'], (string)$entry['role_name']]);
+                        $delMem->execute([$memberId, (int)$entry['entry_id']]);
+                        $affectedEntries[] = (int)$entry['entry_id'];
+                    }
+
+                    // Delete orphan program entries
+                    if (!empty($affectedEntries)) {
+                        $placeholders = implode(',', array_fill(0, count($affectedEntries), '?'));
+                        $stmtClean = $pdo->prepare("
+                            DELETE FROM musabaqa_program_entries 
+                            WHERE id IN ({$placeholders}) 
+                              AND id NOT IN (SELECT DISTINCT entry_id FROM musabaqa_entry_members)
+                        ");
+                        $stmtClean->execute($affectedEntries);
+                    }
+
+                    // Delete the team member record
+                    $stmtDelTm = $pdo->prepare('DELETE FROM musabaqa_team_members WHERE id = ? AND team_id = ? AND event_id = ?');
+                    $stmtDelTm->execute([$memberId, $activeTeamId, $activeEventId]);
+                });
+                admin_flash('success', 'Member removed from team. Program entries saved for renewal.');
+            } catch (Throwable $e) {
+                admin_flash('error', $e->getMessage() ?: 'Unable to remove member.');
             }
         }
     } catch (Throwable $e) {
@@ -270,5 +314,6 @@ document.addEventListener('click', (e) => {
 })();
 </script>
 </div>
+<?php admin_render_renewal_modal_html(); ?>
 <?= admin_ajax_pagination_script() ?>
 <?php admin_close_page(); ?>

@@ -8,6 +8,7 @@ $pdo = $GLOBALS['musabaqa_pdo'];
 $dashboardPdo = $GLOBALS['dashboard_pdo'];
 $activeEvent = admin_require_active_event($pdo);
 $activeEventId = (int)$activeEvent['id'];
+admin_handle_renewal_resolutions($pdo, $dashboardPdo, $activeEventId);
 $requestedTeamId = (int)($_GET['team'] ?? 0);
 $activeTeamId = $requestedTeamId > 0 ? $requestedTeamId : (int)($_SESSION['active_team_id'] ?? 0);
 
@@ -58,6 +59,97 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $insert = $pdo->prepare('INSERT INTO musabaqa_team_members (event_id, team_id, student_id, chest_number, status) VALUES (?, ?, ?, ?, "active")');
             foreach ($newStudentIds as $studentId) {
                 $insert->execute([$activeEventId, $activeTeamId, $studentId, null]);
+            }
+
+            // Check for previous entries in deleted_member_entries
+            $stmtDel = $pdo->prepare('SELECT * FROM musabaqa_deleted_member_entries WHERE student_id = ? AND event_id = ?');
+            
+            // Get student name
+            $stmtName = $dashboardPdo->prepare("SELECT COALESCE(NULLIF(display_name, ''), full_name) AS name FROM students WHERE id = ? LIMIT 1");
+            
+            // Get program details
+            $stmtProg = $pdo->prepare("SELECT * FROM musabaqa_programs WHERE id = ? AND event_id = ? LIMIT 1");
+            
+            // Count current entries for this team
+            $stmtCount = $pdo->prepare("
+                SELECT pe.id, pe.entry_name, pe.entry_number 
+                FROM musabaqa_program_entries pe 
+                WHERE pe.program_id = ? AND pe.team_id = ? AND pe.event_id = ?
+            ");
+            
+            // Find the team member ID
+            $stmtTm = $pdo->prepare('SELECT id FROM musabaqa_team_members WHERE event_id = ? AND team_id = ? AND student_id = ? LIMIT 1');
+            
+            $overlaps = [];
+            
+            foreach ($newStudentIds as $studentId) {
+                // Find team member ID
+                $stmtTm->execute([$activeEventId, $activeTeamId, $studentId]);
+                $teamMemberId = (int)$stmtTm->fetchColumn();
+                if (!$teamMemberId) continue;
+                
+                $stmtName->execute([$studentId]);
+                $studentName = (string)$stmtName->fetchColumn();
+                
+                $stmtDel->execute([$studentId, $activeEventId]);
+                $delEntries = $stmtDel->fetchAll(PDO::FETCH_ASSOC);
+                
+                foreach ($delEntries as $delEntry) {
+                    $programId = (int)$delEntry['program_id'];
+                    $stmtProg->execute([$programId, $activeEventId]);
+                    $program = $stmtProg->fetch(PDO::FETCH_ASSOC);
+                    if (!$program) continue;
+                    
+                    $stmtCount->execute([$programId, $activeTeamId, $activeEventId]);
+                    $currentEntries = $stmtCount->fetchAll(PDO::FETCH_ASSOC);
+                    
+                    $perTeamLimit = (int)($program['entries_limit'] ?? 10);
+                    
+                    if (count($currentEntries) < $perTeamLimit) {
+                        // Recreate entry automatically
+                        $tMax = $pdo->prepare("SELECT COALESCE(MAX(entry_number), 0) + 1 FROM musabaqa_program_entries WHERE event_id = ? AND program_id = ?");
+                        $tMax->execute([$activeEventId, $programId]);
+                        $entryNumber = (int)$tMax->fetchColumn();
+                        
+                        $perfOrder = mt_rand(1, 999999);
+                        
+                        $insEntry = $pdo->prepare("
+                            INSERT INTO musabaqa_program_entries
+                                (event_id, program_id, team_id, entry_name, entry_number, performance_order, status)
+                            VALUES (?, ?, ?, ?, ?, ?, 'approved')
+                        ");
+                        $insEntry->execute([$activeEventId, $programId, $activeTeamId, $studentName, $entryNumber, $perfOrder]);
+                        $newEntryId = (int)$pdo->lastInsertId();
+                        
+                        $insMem = $pdo->prepare("INSERT INTO musabaqa_entry_members (entry_id, team_member_id, role_name) VALUES (?, ?, ?)");
+                        $insMem->execute([$newEntryId, $teamMemberId, (string)$delEntry['role_name']]);
+                        
+                        // Clean up
+                        $delSql = $pdo->prepare('DELETE FROM musabaqa_deleted_member_entries WHERE id = ?');
+                        $delSql->execute([(int)$delEntry['id']]);
+                    } else {
+                        // Conflict
+                        $overlaps[] = [
+                            'deleted_entry_id' => (int)$delEntry['id'],
+                            'student_id' => $studentId,
+                            'student_name' => $studentName,
+                            'team_member_id' => $teamMemberId,
+                            'team_id' => $activeTeamId,
+                            'team_name' => $activeTeam['team_name'],
+                            'program_id' => $programId,
+                            'program_title' => $program['title'],
+                            'limit' => $perTeamLimit,
+                            'existing_entries' => $currentEntries
+                        ];
+                    }
+                }
+            }
+            
+            if (!empty($overlaps)) {
+                if (!isset($_SESSION['pending_renewals'])) {
+                    $_SESSION['pending_renewals'] = [];
+                }
+                $_SESSION['pending_renewals'] = array_merge($_SESSION['pending_renewals'], $overlaps);
             }
         });
         admin_flash('success', 'Members added successfully.');
@@ -385,4 +477,5 @@ updateSelectionCount();
 
 })();
 </script>
+<?php admin_render_renewal_modal_html(); ?>
 <?php admin_close_page(); ?>
