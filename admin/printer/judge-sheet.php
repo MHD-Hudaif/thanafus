@@ -392,6 +392,9 @@ $rowHeight = ($participantsCount <= 6) ? 40 : (($participantsCount <= 12) ? 32 :
                 <a href="<?= app_url('/admin/printer/score-sheets.php') ?>" class="control-input" style="padding: 7px 14px; text-decoration: none; color: #fff; background: #334155; border-radius: 6px; font-size: 13px; font-weight: 600;">
                     <i class="fa-solid fa-arrow-left mr-1"></i> Selection
                 </a>
+                <button type="button" onclick="exportAllTablesToExcel('table')" class="control-input" style="padding: 7px 14px; text-decoration: none; color: #fff; background: #16a34a; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 4px;">
+                    <i class="fa-solid fa-file-excel"></i> Copy for Excel
+                </button>
                 <button type="button" onclick="window.print()" class="print-trigger-btn">
                     <i class="fa-solid fa-print"></i> Print Sheet (Ctrl+P)
                 </button>

@@ -262,6 +262,9 @@ if ($action === 'print' && $activeEvent) {
                 <a href="<?= app_url('/admin/printer/mc-sheets.php') ?>" class="btn btn-secondary" style="padding: 6px 14px; text-decoration: none; color: #fff; background: #334155; border-radius: 6px; font-size: 12px; font-weight: 600;">
                     <i class="fa-solid fa-arrow-left"></i> Exit
                 </a>
+                <button type="button" onclick="exportAllTablesToExcel('table')" class="btn" style="padding: 6px 16px; background: #16a34a; color: #fff; border: none; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">
+                    <i class="fa-solid fa-file-excel"></i> Copy for Excel
+                </button>
                 <button data-print-action="print" class="btn btn-success" style="padding: 6px 16px; background: #10b981; color: #fff; border: none; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer;">
                     <i class="fa-solid fa-print"></i> Print Sheets (Ctrl+P)
                 </button>

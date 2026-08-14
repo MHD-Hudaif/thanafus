@@ -439,6 +439,10 @@ if ($action === 'print' && $activeEvent) {
                         <i class="fa-solid fa-arrow-left mr-1"></i> Selection
                     </a>
 
+                    <button type="button" onclick="exportAllTablesToExcel('table')" class="btn" style="padding: 7px 16px; background: #16a34a; color: #fff; border: none; border-radius: 6px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; vertical-align: middle;">
+                        <i class="fa-solid fa-file-excel"></i> Copy for Excel
+                    </button>
+
                     <button type="button" onclick="window.print()" class="btn btn-success" style="padding: 7px 18px; background: #10b981; color: #fff; border: none; border-radius: 6px; font-size: 13px; font-weight: 700; cursor: pointer;">
                         <i class="fa-solid fa-print mr-1"></i> Print Sheets (Ctrl+P)
                     </button>

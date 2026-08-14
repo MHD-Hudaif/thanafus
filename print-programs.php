@@ -315,7 +315,10 @@ try {
         <!-- Control Bar (hidden during print) -->
         <div class="control-bar">
             <span>Bluehost Production Database Connection Active</span>
-            <button class="btn-print" onclick="window.print()">Print Program List</button>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn-print" style="background-color: #10b981;" onclick="exportAllTablesToExcel('table')">📊 Copy for Excel</button>
+                <button class="btn-print" onclick="window.print()">Print Program List</button>
+            </div>
         </div>
 
         <!-- Programs List Table -->
@@ -359,6 +362,7 @@ try {
         </footer>
     </div>
 
+    <script src="assets/js/print-helpers.js"></script>
     <script>
         // Automatically open the print dialog after rendering
         window.addEventListener('DOMContentLoaded', () => {
