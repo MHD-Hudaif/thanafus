@@ -1344,6 +1344,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
 
 
 <script>
+const STAGE_TYPES = <?= json_encode($stageTypes, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
 const offStageMap = {
     <?php foreach ($stageTypes as $st): ?>
         '<?= (int)$st['id'] ?>': <?= (($st['category'] ?? '') === 'off_stage') ? 'true' : 'false' ?>,
@@ -1356,26 +1357,17 @@ function syncScheduleVenues(category, selectedVal = '') {
     const stageSelect = document.getElementById('scheduleStageTypeId');
     if (!stageSelect) return;
     
-    if (!window.ALL_SCHEDULE_STAGE_OPTIONS) {
-        window.ALL_SCHEDULE_STAGE_OPTIONS = Array.from(stageSelect.options).map(opt => ({
-            value: opt.value,
-            text: opt.text,
-            category: opt.getAttribute('data-category'),
-            name: opt.getAttribute('data-name')
-        }));
-    }
-    
+    const targetVal = selectedVal || stageSelect.value;
     stageSelect.innerHTML = '<option value="">-- Select Venue --</option>';
     
-    const filtered = window.ALL_SCHEDULE_STAGE_OPTIONS.filter(opt => opt.value === '' || opt.category === category);
+    const filtered = STAGE_TYPES.filter(opt => !category || (opt.category || 'on_stage') === category);
     filtered.forEach(opt => {
-        if (opt.value === '') return;
         const o = document.createElement('option');
-        o.value = opt.value;
-        o.text = opt.text;
-        o.setAttribute('data-category', opt.category);
+        o.value = opt.id;
+        o.textContent = opt.name;
+        o.setAttribute('data-category', opt.category || 'on_stage');
         o.setAttribute('data-name', opt.name);
-        if (String(opt.value) === String(selectedVal)) {
+        if (String(opt.id) === String(targetVal)) {
             o.selected = true;
         }
         stageSelect.appendChild(o);
@@ -1387,26 +1379,17 @@ function syncBreakVenues(category, selectedVal = '') {
     const stageSelect = document.getElementById('breakStageTypeId');
     if (!stageSelect) return;
     
-    if (!window.ALL_BREAK_STAGE_OPTIONS) {
-        window.ALL_BREAK_STAGE_OPTIONS = Array.from(stageSelect.options).map(opt => ({
-            value: opt.value,
-            text: opt.text,
-            category: opt.getAttribute('data-category'),
-            name: opt.getAttribute('data-name')
-        }));
-    }
-    
+    const targetVal = selectedVal || stageSelect.value;
     stageSelect.innerHTML = '<option value="">-- Select Venue --</option>';
     
-    const filtered = window.ALL_BREAK_STAGE_OPTIONS.filter(opt => opt.value === '' || opt.category === category);
+    const filtered = STAGE_TYPES.filter(opt => !category || (opt.category || 'on_stage') === category);
     filtered.forEach(opt => {
-        if (opt.value === '') return;
         const o = document.createElement('option');
-        o.value = opt.value;
-        o.text = opt.text;
-        o.setAttribute('data-category', opt.category);
+        o.value = opt.id;
+        o.textContent = opt.name;
+        o.setAttribute('data-category', opt.category || 'on_stage');
         o.setAttribute('data-name', opt.name);
-        if (String(opt.value) === String(selectedVal)) {
+        if (String(opt.id) === String(targetVal)) {
             o.selected = true;
         }
         stageSelect.appendChild(o);
@@ -1419,16 +1402,7 @@ function setScheduleStage(stageId) {
     const stageSelect = document.getElementById('scheduleStageTypeId');
     if (!stageSelect) return;
 
-    if (!window.ALL_SCHEDULE_STAGE_OPTIONS) {
-        window.ALL_SCHEDULE_STAGE_OPTIONS = Array.from(stageSelect.options).map(opt => ({
-            value: opt.value,
-            text: opt.text,
-            category: opt.getAttribute('data-category'),
-            name: opt.getAttribute('data-name')
-        }));
-    }
-
-    const found = window.ALL_SCHEDULE_STAGE_OPTIONS.find(opt => String(opt.value) === String(stageId));
+    const found = STAGE_TYPES.find(opt => String(opt.id) === String(stageId));
     const category = found ? (found.category || 'on_stage') : 'on_stage';
 
     if (filterSelect) {
@@ -1443,16 +1417,7 @@ function setBreakStage(stageId) {
     const stageSelect = document.getElementById('breakStageTypeId');
     if (!stageSelect) return;
 
-    if (!window.ALL_BREAK_STAGE_OPTIONS) {
-        window.ALL_BREAK_STAGE_OPTIONS = Array.from(stageSelect.options).map(opt => ({
-            value: opt.value,
-            text: opt.text,
-            category: opt.getAttribute('data-category'),
-            name: opt.getAttribute('data-name')
-        }));
-    }
-
-    const found = window.ALL_BREAK_STAGE_OPTIONS.find(opt => String(opt.value) === String(stageId));
+    const found = STAGE_TYPES.find(opt => String(opt.id) === String(stageId));
     const category = found ? (found.category || 'on_stage') : 'on_stage';
 
     if (filterSelect) {
@@ -1564,27 +1529,8 @@ function filterModalProgramOptions() {
     }
 }
 
-// Initialize stage caching and register event listeners on DOMContentLoaded
+// Register event listeners on DOMContentLoaded
 document.addEventListener('DOMContentLoaded', () => {
-    const scheduleSelect = document.getElementById('scheduleStageTypeId');
-    if (scheduleSelect) {
-        window.ALL_SCHEDULE_STAGE_OPTIONS = Array.from(scheduleSelect.options).map(opt => ({
-            value: opt.value,
-            text: opt.text,
-            category: opt.getAttribute('data-category'),
-            name: opt.getAttribute('data-name')
-        }));
-    }
-
-    const breakSelect = document.getElementById('breakStageTypeId');
-    if (breakSelect) {
-        window.ALL_BREAK_STAGE_OPTIONS = Array.from(breakSelect.options).map(opt => ({
-            value: opt.value,
-            text: opt.text,
-            category: opt.getAttribute('data-category'),
-            name: opt.getAttribute('data-name')
-        }));
-    }
 
     // Stage Type change listener in scheduleModal
     document.getElementById('scheduleStageTypeFilter')?.addEventListener('change', (e) => {
