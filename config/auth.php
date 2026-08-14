@@ -166,18 +166,110 @@ function load_user(int $userId): ?array
 
 /*
 |--------------------------------------------------------------------------
+| PERMANENT AUTHENTICATION TOKENS (NEVER RUNS OUT)
+|--------------------------------------------------------------------------
+*/
+
+function generate_persistent_auth_token(int $userId): string
+{
+    $pdo = $GLOBALS['dashboard_pdo'] ?? null;
+    if (!$pdo) {
+        return '';
+    }
+
+    try {
+        $stmt = $pdo->prepare("SELECT password, created_at FROM users WHERE id = ? LIMIT 1");
+        $stmt->execute([$userId]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$user) {
+            return '';
+        }
+
+        $secret = defined('APP_KEY') ? APP_KEY : 'kauzariyya_musabaqa_permanent_secret_key_2026';
+        $payload = $userId . '|' . substr($user['password'], 0, 24) . '|' . ($user['created_at'] ?? '');
+        $signature = hash_hmac('sha256', $payload, $secret);
+
+        return base64_encode($userId . ':' . $signature);
+    } catch (Throwable $e) {
+        return '';
+    }
+}
+
+function verify_persistent_auth_token(string $cookieVal): ?int
+{
+    $decoded = base64_decode($cookieVal, true);
+    if (!$decoded || !str_contains($decoded, ':')) {
+        return null;
+    }
+
+    [$userIdStr, $signature] = explode(':', $decoded, 2);
+    $userId = (int)$userIdStr;
+    if ($userId <= 0) {
+        return null;
+    }
+
+    $pdo = $GLOBALS['dashboard_pdo'] ?? null;
+    if (!$pdo) {
+        return null;
+    }
+
+    try {
+        $stmt = $pdo->prepare("SELECT id, password, created_at, status FROM users WHERE id = ? LIMIT 1");
+        $stmt->execute([$userId]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$user || ($user['status'] ?? '') !== 'active') {
+            return null;
+        }
+
+        $secret = defined('APP_KEY') ? APP_KEY : 'kauzariyya_musabaqa_permanent_secret_key_2026';
+        $payload = $userId . '|' . substr($user['password'], 0, 24) . '|' . ($user['created_at'] ?? '');
+        $expectedSignature = hash_hmac('sha256', $payload, $secret);
+
+        if (hash_equals($expectedSignature, $signature)) {
+            return $userId;
+        }
+    } catch (Throwable $e) {
+        return null;
+    }
+
+    return null;
+}
+
+/*
+|--------------------------------------------------------------------------
 | LOGIN SESSION
 |--------------------------------------------------------------------------
 */
 
 function login_user_session(int $userId): void
 {
+    if (session_status() !== PHP_SESSION_ACTIVE) {
+        @session_start();
+    }
+
     // Regenerate session ID to prevent fixation
-    session_regenerate_id(true);
+    @session_regenerate_id(true);
 
     $_SESSION['user_id'] = $userId;
     $_SESSION['user'] = load_user($userId);
     $_SESSION['last_activity'] = time();
+
+    // Set permanent persistent remember cookie (10 years) so login never expires
+    $secure = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
+    if (env('APP_ENV') === 'production') {
+        $secure = true;
+    }
+    $token = generate_persistent_auth_token($userId);
+    if ($token && !headers_sent()) {
+        $sameSite = env('SESSION_SAMESITE', 'Lax');
+        setcookie('KAUZARIYYA_PERM_AUTH', $token, [
+            'expires' => time() + 315360000, // 10 years / permanent
+            'path' => '/',
+            'secure' => $secure,
+            'httponly' => true,
+            'samesite' => $sameSite,
+        ]);
+    }
 
     // Clear rate limit on successful login
     $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
@@ -193,21 +285,54 @@ function login_user_session(int $userId): void
 
 function validate_session(): void
 {
+    // If session user_id is missing, resurrect it seamlessly from permanent auth cookie
+    if (empty($_SESSION['user_id']) && !empty($_COOKIE['KAUZARIYYA_PERM_AUTH'])) {
+        $recoveredUserId = verify_persistent_auth_token((string)$_COOKIE['KAUZARIYYA_PERM_AUTH']);
+        if ($recoveredUserId && $recoveredUserId > 0) {
+            login_user_session($recoveredUserId);
+        }
+    }
+
     if (empty($_SESSION['user_id'])) {
         return;
     }
 
-    // Keep session alive indefinitely (cookie lifetime = 1 year in bootstrap.php)
+    // Ensure permanent auth cookie is active and synced
+    if (empty($_COOKIE['KAUZARIYYA_PERM_AUTH']) && !headers_sent()) {
+        $token = generate_persistent_auth_token((int)$_SESSION['user_id']);
+        if ($token) {
+            $secure = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
+            if (env('APP_ENV') === 'production') {
+                $secure = true;
+            }
+            setcookie('KAUZARIYYA_PERM_AUTH', $token, [
+                'expires' => time() + 315360000,
+                'path' => '/',
+                'secure' => $secure,
+                'httponly' => true,
+                'samesite' => env('SESSION_SAMESITE', 'Lax'),
+            ]);
+        }
+    }
+
+    // Keep session alive indefinitely
     $_SESSION['last_activity'] = time();
 
-    // Reload user to get fresh roles/status
-    $_SESSION['user'] = load_user((int)$_SESSION['user_id']);
+    // Reload user if missing or verify active status
+    if (empty($_SESSION['user'])) {
+        $_SESSION['user'] = load_user((int)$_SESSION['user_id']);
+    }
 
     if (
         empty($_SESSION['user'])
-        || ($_SESSION['user']['status'] ?? '') !== 'active'
+        || (($_SESSION['user']['status'] ?? '') !== 'active')
     ) {
-        logout_user();
+        $fresh = load_user((int)$_SESSION['user_id']);
+        if (!$fresh || ($fresh['status'] ?? '') !== 'active') {
+            logout_user();
+        } else {
+            $_SESSION['user'] = $fresh;
+        }
     }
 }
 
@@ -343,7 +468,16 @@ function current_user_has_authority(string $authority): bool
 
 function logout_user(): void
 {
+    if (session_status() !== PHP_SESSION_ACTIVE) {
+        @session_start();
+    }
+
     $_SESSION = [];
+
+    $secure = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
+    if (env('APP_ENV') === 'production') {
+        $secure = true;
+    }
 
     if (ini_get('session.use_cookies')) {
         $params = session_get_cookie_params();
@@ -358,7 +492,17 @@ function logout_user(): void
         );
     }
 
-    session_destroy();
+    // Clear permanent auth cookie
+    $sameSite = env('SESSION_SAMESITE', 'Lax');
+    setcookie('KAUZARIYYA_PERM_AUTH', '', [
+        'expires' => time() - 42000,
+        'path' => '/',
+        'secure' => $secure,
+        'httponly' => true,
+        'samesite' => $sameSite,
+    ]);
+
+    @session_destroy();
 }
 
 /*

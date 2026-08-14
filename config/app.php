@@ -22,4 +22,4 @@ define('GOOGLE_CLIENT_SECRET', env('GOOGLE_CLIENT_SECRET', ''));
 
 // Security Configuration
 define('CSRF_TOKEN_LENGTH', env('CSRF_TOKEN_LENGTH', 32));
-define('SESSION_LIFETIME', env('SESSION_LIFETIME', 120) * 60); // Convert minutes to seconds
+define('SESSION_LIFETIME', env('SESSION_LIFETIME', 5256000) * 60); // Permanent / 10 years in seconds

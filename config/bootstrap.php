@@ -25,20 +25,34 @@ if (session_status() === PHP_SESSION_NONE) {
         $sameSite = 'None';
     }
 
+    // 10 years in seconds (315,360,000 seconds) - login never runs out of time
+    $lifetime = 315360000;
+
+    // Dedicated session save path so OS / other PHP apps' garbage collector never purges our sessions
+    $sessionSavePath = __DIR__ . '/../storage/sessions';
+    if (!is_dir($sessionSavePath)) {
+        @mkdir($sessionSavePath, 0777, true);
+    }
+    if (is_dir($sessionSavePath) && is_writable($sessionSavePath)) {
+        session_save_path($sessionSavePath);
+    }
+
     session_set_cookie_params([
-        'lifetime' => 31536000, // 1 year lifetime
+        'lifetime' => $lifetime, // 10 years / permanent
         'path' => '/',          // Shared across whole domain
         'secure' => $secure,
         'httponly' => true,
         'samesite' => $sameSite,
     ]);
 
-    // Use strict session mode
+    // Use strict session mode & permanent lifetime
     ini_set('session.use_strict_mode', '1');
     ini_set('session.use_only_cookies', '1');
     ini_set('session.cookie_httponly', '1');
-    // Match GC lifetime to cookie lifetime (1 year) so sessions aren't pruned
-    ini_set('session.gc_maxlifetime', '31536000');
+    ini_set('session.cookie_lifetime', (string)$lifetime);
+    ini_set('session.gc_maxlifetime', (string)$lifetime);
+    ini_set('session.gc_probability', '1');
+    ini_set('session.gc_divisor', '1000');
 
     if ($secure) {
         ini_set('session.cookie_secure', '1');
