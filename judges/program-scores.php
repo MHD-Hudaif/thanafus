@@ -957,7 +957,11 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'print') {
                     <table class="sheet-table">
                         <thead>
                             <tr>
-                                <th class="chest-col">Chest #</th>
+                                <?php if ($pType === 'group'): ?>
+                                    <th class="chest-col">Team Name</th>
+                                <?php else: ?>
+                                    <th class="chest-col">Chest #</th>
+                                <?php endif; ?>
                                 <th class="participant-col">Participant / Team Name</th>
                                 <?php foreach ($categories as $cat): ?>
                                     <th class="score-col">
@@ -984,21 +988,38 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'print') {
                                         $teamColor = !empty($entry['team_color']) ? $entry['team_color'] : null;
                                     ?>
                                     <tr>
-                                        <td class="chest-col" style="font-weight: 900; height: <?= $rowHeight ?>px;">
-                                            #<?= e($formattedChest) ?>
-                                        </td>
-                                        <td class="participant-col" style="font-weight: 700; font-size: 13px; height: <?= $rowHeight ?>px;">
+                                        <?php if ($pType === 'group'): ?>
+                                            <td class="chest-col" rowspan="2" style="font-weight: 900; vertical-align: middle; border-bottom: 1.5px solid #000; text-align: center;">
+                                                <?php if ($teamColor): ?>
+                                                    <span class="team-indicator-dot" style="background: <?= e($teamColor) ?>; width: 10px; height: 10px; display: inline-block; border-radius: 50%; margin-right: 4px; vertical-align: middle;"></span>
+                                                <?php endif; ?>
+                                                <?= e(!empty($entry['team_name']) ? $entry['team_name'] : $pName) ?>
+                                            </td>
+                                        <?php else: ?>
+                                            <td class="chest-col" rowspan="2" style="font-weight: 900; vertical-align: middle; border-bottom: 1.5px solid #000;">
+                                                #<?= e($formattedChest) ?>
+                                            </td>
+                                        <?php endif; ?>
+                                        <td class="participant-col" rowspan="2" style="font-weight: 700; font-size: 13px; height: <?= $rowHeight ?>px; vertical-align: middle; border-bottom: 1.5px solid #000;">
                                             <?php if ($teamColor): ?>
                                                 <span class="team-indicator-dot" style="background: <?= e($teamColor) ?>;"></span>
                                             <?php endif; ?>
                                             <?= e($pName) ?>
                                         </td>
                                         <?php foreach ($categories as $cat): ?>
-                                            <td style="height: <?= $rowHeight ?>px;"></td>
+                                            <td style="height: <?= $rowHeight ?>px; border-bottom: 1px dashed #ccc;"></td>
                                         <?php endforeach; ?>
-                                        <td class="col-total" style="height: <?= $rowHeight ?>px;"></td>
-                                        <td class="col-rank" style="height: <?= $rowHeight ?>px;"></td>
-                                        <td class="col-notes" style="height: <?= $rowHeight ?>px;"></td>
+                                        <td class="col-total" style="height: <?= $rowHeight ?>px; border-bottom: 1px dashed #ccc;"></td>
+                                        <td class="col-rank" style="height: <?= $rowHeight ?>px; border-bottom: 1px dashed #ccc;"></td>
+                                        <td class="col-notes" style="height: <?= $rowHeight ?>px; border-bottom: 1px dashed #ccc;"></td>
+                                    </tr>
+                                    <tr class="notes-row">
+                                        <?php $notesColspan = count($categories) + 1; ?>
+                                        <td colspan="<?= $notesColspan ?>" class="notes-span-cell" style="height: 40px; border-bottom: 1.5px solid #000; border-top: none; border-left: none; border-right: 1.5px solid #000; text-align: left; padding: 4px 8px; font-size: 10px; color: #888; font-style: italic; letter-spacing: 0.05em; vertical-align: top;">
+                                            Notes: 
+                                        </td>
+                                        <td class="col-rank" style="height: 40px; border-bottom: 1.5px solid #000; border-top: none; border-left: none;"></td>
+                                        <td class="col-notes" style="height: 40px; border-bottom: 1.5px solid #000; border-top: none; border-left: none;"></td>
                                     </tr>
                                 <?php endforeach; ?>
                             <?php endif; ?>
@@ -1006,14 +1027,22 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'print') {
                             <!-- Extra Blank Rows -->
                             <?php for ($b = 1; $b <= 10; $b++): ?>
                                 <tr class="extra-blank-row" data-blank-index="<?= $b ?>" style="display: none;">
-                                    <td class="chest-col" style="height: <?= $rowHeight ?>px;"></td>
-                                    <td class="participant-col" style="height: <?= $rowHeight ?>px;"></td>
+                                    <td class="chest-col" rowspan="2" style="height: <?= $rowHeight ?>px; vertical-align: middle; border-bottom: 1.5px solid #000;"></td>
+                                    <td class="participant-col" rowspan="2" style="height: <?= $rowHeight ?>px; vertical-align: middle; border-bottom: 1.5px solid #000;"></td>
                                     <?php foreach ($categories as $cat): ?>
-                                        <td style="height: <?= $rowHeight ?>px;"></td>
+                                        <td style="height: <?= $rowHeight ?>px; border-bottom: 1px dashed #ccc;"></td>
                                     <?php endforeach; ?>
-                                    <td class="col-total" style="height: <?= $rowHeight ?>px;"></td>
-                                    <td class="col-rank" style="height: <?= $rowHeight ?>px;"></td>
-                                    <td class="col-notes" style="height: <?= $rowHeight ?>px;"></td>
+                                    <td class="col-total" style="height: <?= $rowHeight ?>px; border-bottom: 1px dashed #ccc;"></td>
+                                    <td class="col-rank" style="height: <?= $rowHeight ?>px; border-bottom: 1px dashed #ccc;"></td>
+                                    <td class="col-notes" style="height: <?= $rowHeight ?>px; border-bottom: 1px dashed #ccc;"></td>
+                                </tr>
+                                <tr class="extra-blank-row notes-row" data-blank-index="<?= $b ?>" style="display: none;">
+                                    <?php $notesColspan = count($categories) + 1; ?>
+                                    <td colspan="<?= $notesColspan ?>" class="notes-span-cell" style="height: 40px; border-bottom: 1.5px solid #000; border-top: none; border-left: none; border-right: 1.5px solid #000; text-align: left; padding: 4px 8px; font-size: 10px; color: #888; font-style: italic; letter-spacing: 0.05em; vertical-align: top;">
+                                        Notes:
+                                    </td>
+                                    <td class="col-rank" style="height: 40px; border-bottom: 1.5px solid #000; border-top: none; border-left: none;"></td>
+                                    <td class="col-notes" style="height: 40px; border-bottom: 1.5px solid #000; border-top: none; border-left: none;"></td>
                                 </tr>
                             <?php endfor; ?>
                         </tbody>

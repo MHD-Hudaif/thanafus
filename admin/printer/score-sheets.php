@@ -477,6 +477,7 @@ if ($action === 'print' && $activeEvent) {
             $thChestSizeInt = ($entryCount <= 8) ? 16 : (($entryCount <= 14) ? 15 : 13);
             $cellPadding = ($entryCount <= 8) ? '12px 10px' : (($entryCount <= 14) ? '8px 8px' : '5px 6px');
             $chestFontSize = ($entryCount <= 8) ? '22px' : (($entryCount <= 14) ? '19px' : '16px');
+            $rowHeight = ($entryCount <= 8) ? 38 : (($entryCount <= 14) ? 30 : 24);
             
             if ($catCount >= 6) {
                 $thCatSizeInt = min($thCatSizeInt, 9);
@@ -524,7 +525,11 @@ if ($action === 'print' && $activeEvent) {
                         <table class="sheet-table">
                             <thead>
                                 <tr>
-                                    <th class="chest-col" style="font-size: <?= $thChestFontSize ?>; font-weight: 900; padding: 10px 8px; width: 130px;">Chest #</th>
+                                    <?php if ($pType === 'group'): ?>
+                                        <th class="chest-col" style="font-size: <?= $thChestFontSize ?>; font-weight: 900; padding: 10px 8px; width: 140px;">Team Name</th>
+                                    <?php else: ?>
+                                        <th class="chest-col" style="font-size: <?= $thChestFontSize ?>; font-weight: 900; padding: 10px 8px; width: 130px;">Chest #</th>
+                                    <?php endif; ?>
                                     <th class="participant-col">Participant / Team Name</th>
                                     <?php foreach ($categories as $cat): ?>
                                         <th class="score-col" style="font-size: <?= $thCatFontSize ?>; font-weight: 900; padding: 10px 8px;">
@@ -556,9 +561,18 @@ if ($action === 'print' && $activeEvent) {
                                             $teamColor = !empty($entry['team_color']) ? $entry['team_color'] : null;
                                         ?>
                                         <tr>
-                                            <td class="chest-col" rowspan="2" style="font-weight: 900; font-size: <?= $chestFontSize ?>; padding: <?= $cellPadding ?>; border-bottom: 1.5px solid #000; vertical-align: middle;">
-                                                #<?= e($formattedChest) ?>
-                                            </td>
+                                            <?php if ($pType === 'group'): ?>
+                                                <td class="chest-col" rowspan="2" style="font-weight: 900; font-size: <?= $chestFontSize ?>; padding: <?= $cellPadding ?>; border-bottom: 1.5px solid #000; vertical-align: middle; text-align: center;">
+                                                    <?php if ($teamColor): ?>
+                                                        <span class="team-indicator-dot" style="background: <?= e($teamColor) ?>; width: 10px; height: 10px; display: inline-block; border-radius: 50%; margin-right: 4px; vertical-align: middle;"></span>
+                                                    <?php endif; ?>
+                                                    <?= e(!empty($entry['team_name']) ? $entry['team_name'] : $pName) ?>
+                                                </td>
+                                            <?php else: ?>
+                                                <td class="chest-col" rowspan="2" style="font-weight: 900; font-size: <?= $chestFontSize ?>; padding: <?= $cellPadding ?>; border-bottom: 1.5px solid #000; vertical-align: middle;">
+                                                    #<?= e($formattedChest) ?>
+                                                </td>
+                                            <?php endif; ?>
                                             <td class="participant-col" rowspan="2" style="font-weight: 700; font-size: 13px; height: <?= $rowHeight ?>px; border-bottom: 1.5px solid #000; vertical-align: middle;">
                                                 <?php if ($teamColor): ?>
                                                     <span class="team-indicator-dot" style="background: <?= e($teamColor) ?>;"></span>
@@ -678,11 +692,12 @@ if ($activeEvent) {
     }
 
     $stmt = $pdo->prepare("
-        SELECT p.*, ct.name AS class_type_name,
+        SELECT p.*, ct.name AS class_type_name, mst.category AS stage_category,
                (SELECT COUNT(*) FROM musabaqa_program_entries WHERE program_id = p.id AND event_id = p.event_id) AS entry_count
         FROM musabaqa_programs p
         LEFT JOIN " . DB_MAIN_NAME . ".class_types ct ON ct.id = p.class_type_id
         LEFT JOIN musabaqa_schedule_sections mss ON mss.id = p.section_id
+        LEFT JOIN musabaqa_stage_types mst ON mst.id = p.stage_type_id
         WHERE p.event_id = ?
         ORDER BY COALESCE(mss.sort_order, 999) ASC, COALESCE(mss.start_time, '23:59:59') ASC, COALESCE(p.start_time, '23:59:59') ASC, p.id ASC
     ");
@@ -748,6 +763,8 @@ if ($activeEvent) {
                             <button type="button" class="btn btn-xs btn-primary filter-tab active" data-type="all">All Programs</button>
                             <button type="button" class="btn btn-xs btn-secondary filter-tab" data-type="individual"><i class="fa-solid fa-user mr-1"></i> Individual</button>
                             <button type="button" class="btn btn-xs btn-secondary filter-tab" data-type="group"><i class="fa-solid fa-users mr-1"></i> Group</button>
+                            <button type="button" class="btn btn-xs btn-secondary filter-tab" data-type="on_stage"><i class="fa-solid fa-microphone mr-1"></i> On-Stage</button>
+                            <button type="button" class="btn btn-xs btn-secondary filter-tab" data-type="off_stage"><i class="fa-solid fa-building-circle-xmark mr-1"></i> Off-Stage</button>
                             <button type="button" class="btn btn-xs btn-secondary filter-tab" data-type="full" title="Filter to programs where all teams reached entry limit"><i class="fa-solid fa-circle-check mr-1" style="color: #34d399;"></i> Full Quota (<?= $fullQuotaProgramsCount ?>)</button>
                         </div>
 
@@ -855,7 +872,7 @@ if ($activeEvent) {
                                     $pId = (int)$p['id'];
                                     $pType = strtolower((string)($p['program_type'] ?? 'individual'));
                                     ?>
-                                    <tr data-title="<?= e(strtolower($p['title'])) ?>" data-class="<?= e(strtolower($p['class_type_name'] ?? '')) ?>" data-type="<?= e($pType) ?>" data-full="<?= !empty($p['is_full_quota']) ? '1' : '0' ?>">
+                                    <tr data-title="<?= e(strtolower($p['title'])) ?>" data-class="<?= e(strtolower($p['class_type_name'] ?? '')) ?>" data-type="<?= e($pType) ?>" data-full="<?= !empty($p['is_full_quota']) ? '1' : '0' ?>" data-stage="<?= e($p['stage_category'] ?? 'on_stage') ?>">
                                         <td style="text-align: center;">
                                             <label class="pro-checkbox-wrap">
                                                 <input type="checkbox" name="program_ids[]" value="<?= $pId ?>" class="program-checkbox pro-checkbox" checked>
@@ -969,6 +986,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const matchesSearch = title.includes(term) || cls.includes(term);
             const matchesType = (currentTypeFilter === 'all') 
                 || (currentTypeFilter === 'full' && isFull === '1')
+                || (currentTypeFilter === 'on_stage' && r.getAttribute('data-stage') === 'on_stage')
+                || (currentTypeFilter === 'off_stage' && r.getAttribute('data-stage') === 'off_stage')
                 || (type === currentTypeFilter);
 
             if (matchesSearch && matchesType) {

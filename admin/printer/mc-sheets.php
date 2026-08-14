@@ -13,7 +13,7 @@ $pdo = $GLOBALS['musabaqa_pdo'];
 
 $action = $_GET['action'] ?? '';
 $filterType = (string)($_GET['program_type_filter'] ?? 'all');
-$includeOffstage = (bool)($_GET['include_offstage'] ?? false);
+$includeOffstage = isset($_GET['program_ids']) ? true : (bool)($_GET['include_offstage'] ?? false);
 
 if ($action === 'print' && $activeEvent) {
     $activeEventId = (int)$activeEvent['id'];
@@ -41,7 +41,7 @@ if ($action === 'print' && $activeEvent) {
 
     $placeholders = implode(',', array_fill(0, count($programIds), '?'));
     $stmt = $pdo->prepare("
-        SELECT p.*, ct.name AS class_type_name, mst.name AS stage_type_name
+        SELECT p.*, ct.name AS class_type_name, mst.name AS stage_type_name, mst.category AS stage_category
         FROM musabaqa_programs p
         LEFT JOIN " . DB_MAIN_NAME . ".class_types ct ON ct.id = p.class_type_id
         LEFT JOIN musabaqa_schedule_sections mss ON mss.id = p.section_id
@@ -57,7 +57,7 @@ if ($action === 'print' && $activeEvent) {
     foreach ($fetchedPrograms as $p) {
         $stageName = strtolower(trim((string)($p['stage_type_name'] ?? '')));
         $location = strtolower(trim((string)($p['location'] ?? '')));
-        $isOffStageFlag = !empty($p['is_off_stage']) || !empty($p['is_offstage']);
+        $isOffStageFlag = !empty($p['is_off_stage']) || !empty($p['is_offstage']) || ($p['stage_category'] ?? '') === 'off_stage';
 
         $isOffstage = $isOffStageFlag || str_contains($stageName, 'off') || str_contains($location, 'off');
         if (!$isOffstage || $includeOffstage) {
@@ -379,7 +379,7 @@ $programs = [];
 if ($activeEvent) {
     $activeEventId = (int)$activeEvent['id'];
     $stmt = $pdo->prepare("
-        SELECT p.*, ct.name AS class_type_name, mst.name AS stage_type_name,
+        SELECT p.*, ct.name AS class_type_name, mst.name AS stage_type_name, mst.category AS stage_category,
                (SELECT COUNT(*) FROM musabaqa_program_entries WHERE program_id = p.id AND event_id = p.event_id) AS entry_count
         FROM musabaqa_programs p
         LEFT JOIN " . DB_MAIN_NAME . ".class_types ct ON ct.id = p.class_type_id
@@ -418,9 +418,11 @@ if ($activeEvent) {
                     
                     <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
                         <div class="btn-group" style="display: flex; gap: 6px; background: rgba(0,0,0,0.25); padding: 3px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08);">
-                            <button type="button" class="btn btn-xs btn-primary filter-tab active" data-type="all">All On-Stage</button>
-                            <button type="button" class="btn btn-xs btn-secondary filter-tab" data-type="individual"><i class="fa-solid fa-user mr-1"></i> Individual Only</button>
-                            <button type="button" class="btn btn-xs btn-secondary filter-tab" data-type="group"><i class="fa-solid fa-users mr-1"></i> Group Only</button>
+                            <button type="button" class="btn btn-xs btn-primary filter-tab active" data-type="all">All Programs</button>
+                            <button type="button" class="btn btn-xs btn-secondary filter-tab" data-type="individual"><i class="fa-solid fa-user mr-1"></i> Individual</button>
+                            <button type="button" class="btn btn-xs btn-secondary filter-tab" data-type="group"><i class="fa-solid fa-users mr-1"></i> Group</button>
+                            <button type="button" class="btn btn-xs btn-secondary filter-tab" data-type="on_stage"><i class="fa-solid fa-microphone mr-1"></i> On-Stage</button>
+                            <button type="button" class="btn btn-xs btn-secondary filter-tab" data-type="off_stage"><i class="fa-solid fa-building-circle-xmark mr-1"></i> Off-Stage</button>
                         </div>
 
                         <input type="text" id="programSearch" class="form-input" placeholder="Search programs..." style="width: 170px; height: 34px; font-size: 13px;">
@@ -526,14 +528,14 @@ if ($activeEvent) {
                                     $pType = strtolower((string)($p['program_type'] ?? 'individual'));
                                     $stageName = strtolower(trim((string)($p['stage_type_name'] ?? '')));
                                     $location = strtolower(trim((string)($p['location'] ?? '')));
-                                    $isOffStageFlag = !empty($p['is_off_stage']) || !empty($p['is_offstage']);
+                                    $isOffStageFlag = !empty($p['is_off_stage']) || !empty($p['is_offstage']) || ($p['stage_category'] ?? '') === 'off_stage';
 
                                     $isOffstage = $isOffStageFlag || str_contains($stageName, 'off') || str_contains($location, 'off');
                                     ?>
                                     <tr data-title="<?= e(strtolower($p['title'])) ?>" data-class="<?= e(strtolower($p['class_type_name'] ?? '')) ?>" data-type="<?= e($pType) ?>" data-offstage="<?= $isOffstage ? '1' : '0' ?>" style="<?= $isOffstage ? 'opacity:0.5;' : '' ?>">
                                         <td style="text-align: center;">
                                             <label class="pro-checkbox-wrap">
-                                                <input type="checkbox" name="program_ids[]" value="<?= $pId ?>" class="program-checkbox pro-checkbox" <?= !$isOffstage ? 'checked' : '' ?>>
+                                                <input type="checkbox" name="program_ids[]" value="<?= $pId ?>" class="program-checkbox pro-checkbox" checked>
                                             </label>
                                         </td>
                                         <td><strong>#<?= (int)($p['schedule_order'] ?? $pId) ?></strong></td>
@@ -639,9 +641,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const isOffstage = r.getAttribute('data-offstage') === '1';
 
             const matchesSearch = title.includes(term) || cls.includes(term);
-            const matchesType = (currentTypeFilter === 'all') || (type === currentTypeFilter);
+            const matchesType = (currentTypeFilter === 'all')
+                || (currentTypeFilter === 'on_stage' && !isOffstage)
+                || (currentTypeFilter === 'off_stage' && isOffstage)
+                || (type === currentTypeFilter);
 
-            if (matchesSearch && matchesType && !isOffstage) {
+            if (matchesSearch && matchesType) {
                 r.style.display = '';
             } else {
                 r.style.display = 'none';
