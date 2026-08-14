@@ -495,8 +495,6 @@ try {
             
             <div class="footer-bottom">
                 <p>&copy; 2026 Kauzariyya Musabaqa. All rights reserved.</p>
-                <div class="footer-developer">
-                    App created & developed by <span>Haris I M</span>
                 </div>
             </div>
         </div>

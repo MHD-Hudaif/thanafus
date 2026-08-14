@@ -223,6 +223,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
         </div>
         <div id="pagination-container">
             <?= admin_render_pagination_html($page, $perPage, $totalMembers) ?>
+        </div>
     <?php endif; ?>
 
 

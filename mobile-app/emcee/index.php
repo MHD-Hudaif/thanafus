@@ -202,26 +202,24 @@ foreach ($programs as $prog) {
 $totalQueueItems = count($stageQueue);
 $totalProgramsCount = count($programs);
 $selectedIndex = isset($_GET['q_idx']) ? max(0, min($totalQueueItems - 1, (int)$_GET['q_idx'])) : $liveQueueIndex;
-
-require_once __DIR__ . '/../includes/header.php';
+require_once __DIR__ . '/../../includes/header.php';
 ?>
-
 <style>
-    /* CSS REDESIGN FOR EMCEE MASTER STAGE DECK */
+    /* STAGEDECK LIVE BROADCAST CONSOLE STYLING */
     html, body {
         height: 100vh !important;
         margin: 0 !important;
         padding: 0 !important;
-        background: #060907 !important;
+        background: #090e0c !important;
         background-image: 
-            radial-gradient(circle at 50% 0%, rgba(16, 185, 129, 0.08) 0%, transparent 60%),
-            linear-gradient(to bottom, #060907, #020403) !important;
+            radial-gradient(circle at 50% 0%, rgba(16, 185, 129, 0.05) 0%, transparent 70%),
+            linear-gradient(to bottom, #070b09, #020403) !important;
         display: flex !important;
         justify-content: center !important;
         align-items: center !important;
         overflow: hidden !important;
         font-family: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif !important;
-        color: #e5e7eb !important;
+        color: #e2e8f0 !important;
     }
     
     .admin-layout {
@@ -241,38 +239,28 @@ require_once __DIR__ . '/../includes/header.php';
         margin-right: auto !important;
         padding-top: 16px !important;
         width: 100% !important;
-        max-width: 440px !important;
+        max-width: 1100px !important;
     }
 
     .main-content {
         margin: 0 auto !important;
         width: 100% !important;
-        max-width: 440px !important;
+        max-width: 1100px !important;
         height: 100vh !important;
-        padding: 16px !important;
+        padding: 20px !important;
         display: flex !important;
         flex-direction: column !important;
-        justify-content: space-between !important;
         box-sizing: border-box !important;
-        background: #0a0d0b !important;
-        border-left: 1px solid rgba(16, 185, 129, 0.1) !important;
-        border-right: 1px solid rgba(16, 185, 129, 0.1) !important;
-        box-shadow: 0 0 80px rgba(0, 0, 0, 0.85) !important;
+        background: #080c0a !important;
+        border-left: 1px solid rgba(16, 185, 129, 0.08) !important;
+        border-right: 1px solid rgba(16, 185, 129, 0.08) !important;
+        box-shadow: 0 0 100px rgba(0, 0, 0, 0.9) !important;
         overflow-y: auto !important;
         position: relative !important;
-        scrollbar-width: none; /* Hide scrollbar for clean app experience */
+        scrollbar-width: none;
     }
     .main-content::-webkit-scrollbar {
         display: none;
-    }
-    
-    @media (max-width: 440px) {
-        .main-content {
-            border-left: none !important;
-            border-right: none !important;
-            box-shadow: none !important;
-            max-width: 100vw !important;
-        }
     }
 
     /* TOP HEADER BAR */
@@ -281,60 +269,83 @@ require_once __DIR__ . '/../includes/header.php';
         display: flex !important;
         justify-content: space-between !important;
         align-items: center !important;
-        padding: 4px 4px 12px 4px !important;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+        padding-bottom: 14px !important;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.04) !important;
         box-sizing: border-box !important;
         flex-shrink: 0 !important;
-        margin-bottom: 16px !important;
+        margin-bottom: 20px !important;
     }
 
-    .header-status {
+    .header-status-group {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .status-badge {
         display: inline-flex;
         align-items: center;
         gap: 6px;
-        background: rgba(16, 185, 129, 0.08);
-        border: 1px solid rgba(16, 185, 129, 0.2);
-        padding: 6px 12px;
-        border-radius: 999px;
-    }
-
-    .status-label {
+        padding: 6px 14px;
+        border-radius: 99px;
         font-size: 11px;
         font-weight: 800;
-        color: #34d399;
-        letter-spacing: 0.5px;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        transition: all 0.3s ease;
     }
 
-    .status-dot {
+    .status-badge.status-connected {
+        background: rgba(16, 185, 129, 0.08);
+        border: 1px solid rgba(16, 185, 129, 0.2);
+        color: #34d399;
+    }
+
+    .status-badge.status-delayed {
+        background: rgba(245, 158, 11, 0.08);
+        border: 1px solid rgba(245, 158, 11, 0.2);
+        color: #fbbf24;
+    }
+
+    .status-badge.status-offline {
+        background: rgba(239, 68, 68, 0.08);
+        border: 1px solid rgba(239, 68, 68, 0.2);
+        color: #f87171;
+    }
+
+    .status-dot-pulse {
         width: 6px;
         height: 6px;
-        background-color: #00ff87;
         border-radius: 50%;
-        box-shadow: 0 0 10px #00ff87;
         animation: statusPulse 1.8s infinite ease-in-out;
     }
+    .status-connected .status-dot-pulse { background: #10b981; box-shadow: 0 0 10px #10b981; }
+    .status-delayed .status-dot-pulse { background: #fbbf24; box-shadow: 0 0 10px #fbbf24; }
+    .status-offline .status-dot-pulse { background: #ef4444; box-shadow: 0 0 10px #ef4444; }
 
     @keyframes statusPulse {
         0%, 100% { transform: scale(0.95); opacity: 0.6; }
-        50% { transform: scale(1.25); opacity: 1; }
+        50% { transform: scale(1.3); opacity: 1; }
     }
 
     .header-title {
-        font-size: 15px;
+        font-size: 16px;
         font-weight: 800;
         color: #ffffff;
-        letter-spacing: -0.2px;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        max-width: 150px;
+        letter-spacing: -0.3px;
+    }
+
+    .header-actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
     }
 
     .grid-btn {
-        width: 38px;
-        height: 38px;
-        border-radius: 10px;
-        background: rgba(255, 255, 255, 0.04);
+        width: 40px;
+        height: 40px;
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.03);
         border: 1px solid rgba(255, 255, 255, 0.08);
         color: #ffffff;
         display: flex;
@@ -346,343 +357,395 @@ require_once __DIR__ . '/../includes/header.php';
     }
 
     .grid-btn:hover {
-        background: rgba(16, 185, 129, 0.15);
-        border-color: rgba(16, 185, 129, 0.3);
+        background: rgba(16, 185, 129, 0.12);
+        border-color: rgba(16, 185, 129, 0.25);
         color: #34d399;
     }
 
-    /* SLIDE CARD CONTAINER & STYLING */
-    .slide-card-container {
+    /* CONSOLE GRID SYSTEM */
+    .console-grid {
+        display: grid;
+        grid-template-columns: 1.4fr 1fr;
+        gap: 24px;
         flex: 1;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 100%;
-        box-sizing: border-box;
-        padding: 10px 0;
+        min-height: 0;
+        margin-bottom: 20px;
     }
 
-    .slide-card {
-        width: 100%;
-        background: #111614;
-        border: 2px solid rgba(16, 185, 129, 0.2);
-        border-radius: 28px;
-        padding: 26px 22px;
-        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
-        text-align: center;
-        position: relative;
-        box-sizing: border-box;
-        transition: all 0.3s ease;
-        cursor: pointer;
+    @media (max-width: 820px) {
+        .console-grid {
+            grid-template-columns: 1fr;
+            overflow-y: auto;
+        }
+    }
+
+    /* ACTIVE CONSOLE COLUMN */
+    .active-console-panel {
         display: flex;
         flex-direction: column;
-        align-items: center;
-        justify-content: space-between;
+        gap: 20px;
     }
 
-    .slide-card.is-live-box {
-        border-color: #10b981 !important;
-        box-shadow: 0 0 30px rgba(16, 185, 129, 0.25), inset 0 0 15px rgba(16, 185, 129, 0.08) !important;
-    }
-
-    .card-subtitle {
-        font-size: 11px;
-        font-weight: 800;
-        color: #b5b5b5;
-        letter-spacing: 0.15em;
-        text-transform: uppercase;
-        margin-bottom: 20px;
-    }
-
-    .card-icon-wrap {
-        margin-bottom: 20px;
-    }
-
-    .card-icon-circle {
-        width: 68px;
-        height: 68px;
-        border-radius: 50%;
-        background: rgba(16, 185, 129, 0.08);
-        border: 1px solid rgba(16, 185, 129, 0.2);
+    /* BROADCAST STYLES (PREVIEW vs LIVE) */
+    .broadcast-container {
+        width: 100%;
+        border-radius: 24px;
+        padding: 24px;
+        box-sizing: border-box;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
         display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 22px;
-        color: #10b981;
+        flex-direction: column;
+        justify-content: space-between;
+        min-height: 280px;
     }
 
-    .card-main-title {
-        font-size: 28px;
+    .broadcast-container.state-preview {
+        background: #111513;
+        border: 2px solid rgba(148, 163, 184, 0.15);
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+    }
+
+    .broadcast-container.state-live {
+        background: radial-gradient(circle at 50% 0%, rgba(239, 68, 68, 0.08) 0%, #161011 100%);
+        border: 2px solid #ef4444;
+        box-shadow: 0 0 35px rgba(239, 68, 68, 0.15), inset 0 0 20px rgba(239, 68, 68, 0.05);
+    }
+
+    .state-banner {
+        font-size: 10px;
         font-weight: 900;
-        color: #00ff87;
-        letter-spacing: -0.5px;
-        line-height: 1.25;
-        margin: 0 0 12px 0;
-        text-shadow: 0 0 20px rgba(0, 255, 135, 0.25);
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        padding: 4px 12px;
+        border-radius: 6px;
+        align-self: center;
+        margin-bottom: 16px;
     }
 
-    .card-slot-time {
-        font-size: 15px;
+    .state-preview .state-banner {
+        background: rgba(148, 163, 184, 0.1);
+        color: #94a3b8;
+        border: 1px solid rgba(148, 163, 184, 0.2);
+    }
+
+    .state-live .state-banner {
+        background: rgba(239, 68, 68, 0.15);
+        color: #f87171;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        animation: livePulse 1.5s ease-in-out infinite;
+    }
+
+    @keyframes livePulse {
+        0%, 100% { opacity: 0.8; }
+        50% { opacity: 1; }
+    }
+
+    .program-title {
+        font-size: 26px;
+        font-weight: 900;
+        color: #ffffff;
+        letter-spacing: -0.5px;
+        margin: 0 0 10px 0;
+        line-height: 1.25;
+    }
+    .state-live .program-title {
+        color: #fca5a5;
+        text-shadow: 0 0 20px rgba(239, 68, 68, 0.15);
+    }
+
+    .program-subtitle {
+        font-size: 13px;
         font-weight: 700;
         color: #10b981;
-        margin-bottom: 12px;
-        letter-spacing: -0.2px;
+        margin-bottom: 14px;
+    }
+    .state-preview .program-subtitle {
+        color: #94a3b8;
     }
 
-    .card-description {
-        width: 100%;
-        box-sizing: border-box;
-    }
-
-    .neon-chest {
-        font-size: 34px;
+    .chest-display {
+        font-size: 40px;
         font-weight: 900;
         color: #ffffff;
         font-family: monospace;
         letter-spacing: 1px;
-        display: block;
         margin-bottom: 4px;
-        text-shadow: 0 0 15px rgba(255,255,255,0.2);
+        display: block;
+    }
+    .state-live .chest-display {
+        color: #ef4444;
+        text-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
     }
 
-    .participant-name {
-        font-size: 18px;
+    .performer-name {
+        font-size: 20px;
         font-weight: 800;
         color: #ffffff;
-        margin: 4px 0 8px 0;
+        margin: 4px 0 10px 0;
     }
 
-    .team-badge {
+    .team-badge-pill {
         display: inline-block;
         padding: 4px 14px;
         border-radius: 99px;
-        background: rgba(255,255,255,0.05);
-        border: 1px solid rgba(255,255,255,0.1);
-        color: #ccc;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        color: #cbd5e1;
         font-size: 12px;
         font-weight: 600;
     }
 
-    .badge {
-        display: inline-block;
-        font-size: 10px;
-        font-weight: 800;
-        padding: 4px 10px;
-        border-radius: 6px;
-        text-transform: uppercase;
-    }
-    
-    .badge-success {
-        background: rgba(16, 185, 129, 0.2);
-        color: #34d399;
-        border: 1px solid rgba(16, 185, 129, 0.4);
-    }
-
-    .badge-neutral {
-        background: rgba(255,255,255,0.05);
-        color: #aaa;
-        border: 1px solid rgba(255,255,255,0.1);
-    }
-
-    /* SLIDING TRANSITION ANIMATIONS */
-    .slide-enter-next {
-        animation: slideNext 0.3s cubic-bezier(0.25, 1, 0.5, 1) forwards;
-    }
-    .slide-enter-prev {
-        animation: slidePrev 0.3s cubic-bezier(0.25, 1, 0.5, 1) forwards;
-    }
-
-    @keyframes slideNext {
-        0% { opacity: 0.3; transform: translateX(30px) scale(0.97); }
-        100% { opacity: 1; transform: translateX(0) scale(1); }
-    }
-
-    @keyframes slidePrev {
-        0% { opacity: 0.3; transform: translateX(-30px) scale(0.97); }
-        100% { opacity: 1; transform: translateX(0) scale(1); }
-    }
-
-    /* CONTROLS ROW */
-    .app-controls {
-        width: 100% !important;
-        display: flex !important;
-        justify-content: space-between !important;
-        align-items: center !important;
-        margin-bottom: 16px !important;
-        box-sizing: border-box !important;
-        flex-shrink: 0 !important;
-    }
-
-    .nav-circle-btn {
-        width: 48px;
-        height: 48px;
-        border-radius: 50%;
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        color: #10b981;
+    /* CONTROL PANEL STYLES */
+    .controls-panel {
+        background: #111513;
+        border: 1px solid rgba(16, 185, 129, 0.1);
+        border-radius: 20px;
+        padding: 20px;
         display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 16px;
-        cursor: pointer;
-        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-        outline: none;
+        flex-direction: column;
+        gap: 16px;
     }
 
-    .nav-circle-btn:hover:not(.disabled) {
-        background: rgba(16, 185, 129, 0.15);
-        border-color: rgba(16, 185, 129, 0.3);
-        color: #ffffff;
-        transform: scale(1.05);
-    }
-
-    .nav-circle-btn:active:not(.disabled) {
-        transform: scale(0.95);
-    }
-
-    .nav-circle-btn.disabled {
-        opacity: 0.15;
-        cursor: not-allowed;
-        color: #6b7280;
-    }
-
-    .slide-badge-pill {
-        background: rgba(255, 255, 255, 0.04);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 999px;
-        padding: 8px 18px;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        font-size: 13px;
-        font-weight: 700;
-        color: #ffffff;
-    }
-
-    .slide-badge-pill i {
-        color: #10b981;
-        font-size: 11px;
-    }
-
-    /* FOOTER ACTION BUTTON */
-    .app-footer-action {
-        width: 100% !important;
-        box-sizing: border-box !important;
-        flex-shrink: 0 !important;
-    }
-
-    .footer-action-btn {
-        width: 100%;
-        background: #00ff87;
-        border: none;
+    /* INDEPENDENT PERFORMANCE TIMER */
+    .timer-console {
+        background: rgba(0, 0, 0, 0.4);
+        border: 1px solid rgba(255, 255, 255, 0.04);
         border-radius: 16px;
         padding: 16px;
-        color: #050d08;
-        font-size: 14px;
-        font-weight: 800;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-        cursor: pointer;
-        box-shadow: 0 0 25px rgba(0, 255, 135, 0.35);
-        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-        outline: none;
-    }
-
-    .footer-action-btn:hover {
-        background: #00e575;
-        box-shadow: 0 0 35px rgba(0, 255, 135, 0.55);
-        transform: translateY(-2px);
-    }
-
-    .footer-action-btn:active {
-        transform: scale(0.98);
-    }
-
-    .footer-action-btn.btn-live-active {
-        background: linear-gradient(135deg, #10b981, #059669);
-        color: #ffffff;
-        border: 1px solid #34d399;
-        box-shadow: 0 0 25px rgba(16, 185, 129, 0.4);
-    }
-
-    .footer-action-btn.btn-live-active:hover {
-        background: linear-gradient(135deg, #34d399, #10b981);
-        box-shadow: 0 0 35px rgba(16, 185, 129, 0.6);
-    }
-
-    /* STOPWATCH TIMER STYLING */
-    .card-timer-section {
-        width: 100%;
-        margin-top: 18px;
-        padding-top: 16px;
-        border-top: 1px dashed rgba(255, 255, 255, 0.08);
         display: flex;
         flex-direction: column;
         align-items: center;
+        gap: 12px;
     }
 
-    .timer-badge {
-        font-size: 9px;
+    .timer-header {
+        font-size: 10px;
         font-weight: 800;
-        color: #9ca3af;
-        background: rgba(255, 255, 255, 0.05);
-        padding: 3px 8px;
-        border-radius: 4px;
-        letter-spacing: 0.05em;
-        margin-bottom: 6px;
+        color: #94a3b8;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        display: flex;
+        align-items: center;
+        gap: 6px;
     }
 
-    .timer-clock {
-        font-size: 28px;
-        font-weight: 800;
+    .timer-clock-large {
+        font-size: 38px;
+        font-weight: 900;
         font-family: monospace;
         color: #34d399;
-        text-shadow: 0 0 10px rgba(52, 211, 153, 0.3);
-        margin-bottom: 10px;
+        text-shadow: 0 0 15px rgba(52, 211, 153, 0.25);
     }
-
-    .timer-clock.is-running {
+    .timer-clock-large.recording {
         color: #ef4444;
-        text-shadow: 0 0 15px rgba(239, 68, 68, 0.5);
+        text-shadow: 0 0 20px rgba(239, 68, 68, 0.4);
     }
 
-    .timer-actions {
+    .timer-control-buttons {
         display: flex;
-        gap: 8px;
+        gap: 10px;
+        width: 100%;
     }
 
-    .timer-btn {
-        padding: 6px 12px;
-        border-radius: 6px;
-        border: none;
-        font-size: 11px;
-        font-weight: 700;
+    .console-btn {
+        flex: 1;
+        padding: 12px;
+        border-radius: 12px;
+        font-size: 13px;
+        font-weight: 800;
         cursor: pointer;
-        display: inline-flex;
+        display: flex;
         align-items: center;
-        gap: 4px;
+        justify-content: center;
+        gap: 6px;
         transition: all 0.2s ease;
+        border: none;
     }
 
-    .timer-btn.btn-start {
-        background: rgba(16, 185, 129, 0.15);
+    .console-btn.btn-primary-live {
+        background: #ef4444;
+        color: #ffffff;
+        box-shadow: 0 4px 15px rgba(239, 68, 68, 0.25);
+    }
+    .console-btn.btn-primary-live:hover {
+        background: #f87171;
+    }
+
+    .console-btn.btn-timer-start {
+        background: rgba(16, 185, 129, 0.12);
         border: 1px solid rgba(16, 185, 129, 0.3);
         color: #34d399;
     }
+    .console-btn.btn-timer-start:hover {
+        background: rgba(16, 185, 129, 0.2);
+    }
 
-    .timer-btn.btn-stop {
-        background: rgba(239, 68, 68, 0.15);
+    .console-btn.btn-timer-stop {
+        background: rgba(239, 68, 68, 0.12);
         border: 1px solid rgba(239, 68, 68, 0.3);
         color: #f87171;
     }
-
-    .timer-btn.btn-reset {
-        background: rgba(255, 255, 255, 0.08);
-        color: #ccc;
+    .console-btn.btn-timer-stop:hover {
+        background: rgba(239, 68, 68, 0.2);
     }
 
+    .console-btn.btn-timer-reset {
+        background: rgba(255, 255, 255, 0.05);
+        color: #94a3b8;
+    }
+    .console-btn.btn-timer-reset:hover {
+        background: rgba(255, 255, 255, 0.08);
+    }
+
+    /* RIGHT DETAIL PANEL COLUMN */
+    .status-side-panel {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .detail-card {
+        background: #111513;
+        border: 1px solid rgba(255, 255, 255, 0.04);
+        border-radius: 20px;
+        padding: 20px;
+    }
+
+    .section-label {
+        font-size: 11px;
+        font-weight: 900;
+        color: #10b981;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        margin-bottom: 12px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    /* PROGRESS TRACKERS */
+    .progress-bar-wrap {
+        background: rgba(255, 255, 255, 0.04);
+        border-radius: 99px;
+        height: 6px;
+        overflow: hidden;
+        margin-top: 6px;
+    }
+
+    .progress-bar-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #10b981, #34d399);
+        border-radius: 99px;
+        transition: width 0.3s ease;
+    }
+
+    /* NEXT UP COMPONENT */
+    .next-up-preview {
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px dashed rgba(255, 255, 255, 0.08);
+        border-radius: 14px;
+        padding: 14px;
+        margin-top: 10px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    .next-up-preview:hover {
+        background: rgba(16, 185, 129, 0.03);
+        border-color: rgba(16, 185, 129, 0.2);
+    }
+
+    /* TOGGLE SWITCHES (LIVE LOCK) */
+    .switch-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 14px;
+        background: rgba(255, 255, 255, 0.02);
+        border-radius: 12px;
+        margin-top: 8px;
+    }
+
+    .switch {
+        position: relative;
+        display: inline-block;
+        width: 44px;
+        height: 24px;
+    }
+
+    .switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+
+    .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background-color: rgba(255,255,255,0.1);
+        transition: .3s;
+        border-radius: 24px;
+    }
+
+    .slider:before {
+        position: absolute;
+        content: "";
+        height: 16px;
+        width: 16px;
+        left: 4px;
+        bottom: 4px;
+        background-color: #94a3b8;
+        transition: .3s;
+        border-radius: 50%;
+    }
+
+    input:checked + .slider {
+        background-color: #ef4444;
+    }
+
+    input:checked + .slider:before {
+        transform: translateX(20px);
+        background-color: #ffffff;
+    }
+
+    /* PAGINATION AND JUMP ROW */
+    .pagination-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: #111513;
+        border: 1px solid rgba(255, 255, 255, 0.04);
+        border-radius: 16px;
+        padding: 8px 16px;
+        margin-top: auto;
+    }
+
+    .pagination-btn {
+        width: 42px;
+        height: 42px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        color: #10b981;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    .pagination-btn:hover:not(.disabled) {
+        background: rgba(16, 185, 129, 0.1);
+        border-color: rgba(16, 185, 129, 0.2);
+        color: #fff;
+    }
+    .pagination-btn.disabled {
+        opacity: 0.15;
+        cursor: not-allowed;
+    }
+
+    /* TOAST NOTIFIER */
     .toast-notify {
         position: fixed;
         bottom: 24px;
@@ -704,429 +767,42 @@ require_once __DIR__ . '/../includes/header.php';
         max-width: 90vw;
     }
 
-    /* ============================================================
-       MOBILE RESPONSIVE — PORTRAIT MODE
-       ============================================================ */
+    /* CARD GRID FILTER TABS */
+    .grid-filter-bar {
+        display: flex;
+        gap: 8px;
+        margin: 10px 0;
+        flex-wrap: wrap;
+    }
 
-    /* Small phones (iPhone SE, Galaxy S, 320–374px) */
-    @media screen and (max-width: 374px) and (orientation: portrait) {
+    .filter-tab-btn {
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 8px;
+        padding: 6px 14px;
+        font-size: 12px;
+        font-weight: 700;
+        color: #cbd5e1;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .filter-tab-btn.active {
+        background: rgba(16, 185, 129, 0.15);
+        border-color: rgba(16, 185, 129, 0.4);
+        color: #34d399;
+    }
+
+    @media (max-width: 480px) {
         .main-content {
-            padding: 10px !important;
-            max-width: 100vw !important;
-        }
-        .app-header {
-            padding: 2px 2px 8px 2px !important;
-            margin-bottom: 10px !important;
-        }
-        .header-title {
-            font-size: 12px !important;
-            max-width: 100px !important;
-        }
-        .header-status {
-            padding: 4px 8px !important;
-        }
-        .status-label {
-            font-size: 9px !important;
-        }
-        .grid-btn {
-            width: 32px !important;
-            height: 32px !important;
-            font-size: 13px !important;
-            border-radius: 8px !important;
-        }
-        .slide-card {
-            padding: 18px 14px !important;
-            border-radius: 20px !important;
-        }
-        .card-subtitle {
-            font-size: 9px !important;
-            margin-bottom: 12px !important;
-        }
-        .card-icon-circle {
-            width: 48px !important;
-            height: 48px !important;
-            font-size: 18px !important;
-        }
-        .card-icon-wrap {
-            margin-bottom: 12px !important;
-        }
-        .card-main-title {
-            font-size: 20px !important;
-            margin-bottom: 8px !important;
-        }
-        .card-slot-time {
-            font-size: 12px !important;
-            margin-bottom: 8px !important;
-        }
-        .neon-chest {
-            font-size: 26px !important;
-        }
-        .participant-name {
-            font-size: 14px !important;
-        }
-        .team-badge {
-            font-size: 10px !important;
-            padding: 3px 10px !important;
-        }
-        .nav-circle-btn {
-            width: 40px !important;
-            height: 40px !important;
-            font-size: 14px !important;
-        }
-        .slide-badge-pill {
-            padding: 6px 12px !important;
-            font-size: 11px !important;
-        }
-        .footer-action-btn {
             padding: 12px !important;
-            font-size: 12px !important;
-            border-radius: 12px !important;
         }
-        .timer-clock {
-            font-size: 22px !important;
+        .program-title {
+            font-size: 20px !important;
         }
-        .card-timer-section {
-            margin-top: 12px !important;
-            padding-top: 10px !important;
-        }
-    }
-
-    /* Standard phones (375–430px) — mostly covered by defaults */
-    @media screen and (min-width: 375px) and (max-width: 430px) and (orientation: portrait) {
-        .main-content {
-            padding: 14px !important;
-            max-width: 100vw !important;
-        }
-    }
-
-    /* Tall phones with short viewport height portrait (e.g. long scroll) */
-    @media screen and (max-height: 640px) and (orientation: portrait) {
-        .card-icon-circle {
-            width: 48px !important;
-            height: 48px !important;
-            font-size: 18px !important;
-        }
-        .card-icon-wrap {
-            margin-bottom: 10px !important;
-        }
-        .card-main-title {
-            font-size: 22px !important;
-            margin-bottom: 6px !important;
-        }
-        .card-subtitle {
-            margin-bottom: 10px !important;
-        }
-        .card-timer-section {
-            margin-top: 10px !important;
-            padding-top: 8px !important;
-        }
-        .timer-clock {
-            font-size: 22px !important;
-            margin-bottom: 6px !important;
-        }
-        .app-header {
-            padding: 2px 4px 8px 4px !important;
-            margin-bottom: 8px !important;
-        }
-        .app-controls {
-            margin-bottom: 10px !important;
-        }
-    }
-
-    /* ============================================================
-       LANDSCAPE MODE
-       Reset body/admin-layout flex so main-content fills full width
-       ============================================================ */
-
-    @media screen and (orientation: landscape) and (max-height: 500px) {
-
-        /* Step 1: Kill the body flex-center that causes the black gap */
-        html {
-            overflow: hidden !important;
-        }
-        body {
-            display: block !important;
-            width: 100vw !important;
-            height: 100svh !important;
-            overflow: hidden !important;
-        }
-        .admin-layout {
-            display: block !important;
-            width: 100vw !important;
-            height: 100svh !important;
-            overflow: hidden !important;
-        }
-
-        /*
-         * Step 2: main-content fills the full screen with CSS grid.
-         *
-         *   ┌───────────────────────────────────┬──────┐
-         *   │ header                            │header│  auto
-         *   ├───────────────────────────────────┼──────┤
-         *   │ card                              │  nav │  1fr
-         *   ├───────────────────────────────────┴──────┤
-         *   │ footer                                   │  auto
-         *   └──────────────────────────────────────────┘
-         */
-        .main-content {
-            position: relative !important;
-            width: 100vw !important;
-            max-width: 100vw !important;
-            height: 100svh !important;
-            margin: 0 !important;
-            padding: 8px 12px !important;
-            border: none !important;
-            box-shadow: none !important;
-            overflow: hidden !important;
-            box-sizing: border-box !important;
-
-            display: grid !important;
-            grid-template-rows: auto 1fr auto !important;
-            grid-template-columns: 1fr 50px !important;
-            grid-template-areas:
-                "header  header"
-                "card    nav"
-                "footer  footer" !important;
-            gap: 4px 8px !important;
-        }
-
-        /* ── Header ── */
-        .app-header {
-            grid-area: header !important;
-            padding: 0 0 4px 0 !important;
-            margin-bottom: 0 !important;
-            border-bottom: 1px solid rgba(255,255,255,0.06) !important;
-        }
-        .header-title {
-            font-size: 12px !important;
-            max-width: 240px !important;
-        }
-        .header-status { padding: 3px 8px !important; }
-        .status-label { font-size: 9px !important; }
-        .status-dot { width: 5px !important; height: 5px !important; }
-        .grid-btn {
-            width: 28px !important;
-            height: 28px !important;
-            font-size: 12px !important;
-            border-radius: 7px !important;
-        }
-
-        /* ── Slide Card ── */
-        .slide-card-container {
-            grid-area: card !important;
-            padding: 0 !important;
-            min-height: 0 !important;
-            display: flex !important;
-            align-items: stretch !important;
-        }
-        .slide-card {
-            width: 100% !important;
-            padding: 8px 16px !important;
-            border-radius: 12px !important;
-            flex-direction: column !important;
-            align-items: center !important;
-            justify-content: center !important;
-            gap: 0 !important;
-            text-align: center !important;
-            overflow: hidden !important;
-        }
-
-        /* Hide decorative / low-priority elements */
-        .card-subtitle        { display: none !important; }
-        .card-icon-wrap       { display: none !important; }
-        #textChestHeader      { display: none !important; }
-        #textParticipantProgress { display: none !important; }
-        #timerSubtext         { display: none !important; }
-
-        .card-main-title {
-            font-size: 16px !important;
-            margin: 0 0 2px 0 !important;
-            line-height: 1.1 !important;
-        }
-        .card-slot-time {
-            font-size: 10px !important;
-            margin-bottom: 3px !important;
-        }
-        .neon-chest {
-            font-size: 24px !important;
-            margin-bottom: 2px !important;
-        }
-        .participant-name {
-            font-size: 13px !important;
-            margin: 0 0 3px 0 !important;
-        }
-        .team-badge {
-            font-size: 10px !important;
-            padding: 2px 10px !important;
-        }
-        .badge {
-            font-size: 8px !important;
-            padding: 2px 6px !important;
-        }
-
-        /* Timer — horizontal inline row */
-        .card-timer-section {
-            margin-top: 6px !important;
-            padding-top: 6px !important;
-            flex-direction: row !important;
-            flex-wrap: nowrap !important;
-            align-items: center !important;
-            justify-content: center !important;
-            gap: 8px !important;
-            border-top: 1px dashed rgba(255,255,255,0.07) !important;
-        }
-        .timer-badge {
-            font-size: 7px !important;
-            margin-bottom: 0 !important;
-            padding: 2px 4px !important;
-            white-space: nowrap !important;
-        }
-        .timer-clock {
-            font-size: 18px !important;
-            margin-bottom: 0 !important;
-        }
-        .timer-actions { gap: 5px !important; }
-        .timer-btn {
-            padding: 3px 7px !important;
-            font-size: 10px !important;
-        }
-
-        /* ── Nav column (prev / counter / next) ── */
-        .app-controls {
-            grid-area: nav !important;
-            flex-direction: column !important;
-            align-items: center !important;
-            justify-content: center !important;
-            gap: 5px !important;
-            margin-bottom: 0 !important;
-            width: 50px !important;
-            padding: 0 !important;
-        }
-        .nav-circle-btn {
-            width: 36px !important;
-            height: 36px !important;
-            font-size: 13px !important;
-        }
-        .slide-badge-pill {
-            padding: 3px 5px !important;
-            font-size: 8px !important;
-            flex-direction: column !important;
-            gap: 0 !important;
-            text-align: center !important;
-            line-height: 1.25 !important;
-        }
-        .slide-badge-pill i { display: none !important; }
-
-        /* ── Footer broadcast button ── */
-        .app-footer-action {
-            grid-area: footer !important;
-            width: 100% !important;
-        }
-        .footer-action-btn {
-            padding: 8px !important;
-            font-size: 12px !important;
-            border-radius: 10px !important;
-        }
-
-        .toast-notify {
-            bottom: 10px !important;
-            padding: 8px 18px !important;
-            font-size: 11px !important;
-        }
-    }
-
-    /* Very short landscape — height ≤ 380px (iPhone SE, Galaxy S) */
-    @media screen and (orientation: landscape) and (max-height: 380px) {
-        .main-content {
-            padding: 5px 10px !important;
-            gap: 3px 6px !important;
-            grid-template-columns: 1fr 44px !important;
-        }
-        .slide-card { padding: 5px 10px !important; border-radius: 10px !important; }
-        .card-main-title { font-size: 14px !important; }
-        .neon-chest { font-size: 20px !important; }
-        .participant-name { font-size: 11px !important; }
-        .timer-clock { font-size: 15px !important; }
-        .timer-badge { display: none !important; }
-        .timer-btn { padding: 2px 5px !important; font-size: 8px !important; }
-        .nav-circle-btn { width: 30px !important; height: 30px !important; font-size: 11px !important; }
-        .app-controls { width: 44px !important; gap: 3px !important; }
-        .footer-action-btn { padding: 6px !important; font-size: 10px !important; }
-        .header-title { font-size: 11px !important; }
-        .slide-badge-pill { font-size: 7px !important; }
-    }
-
-    /* ============================================================
-       TABLET — PORTRAIT & LANDSCAPE
-       ============================================================ */
-
-
-    /* Tablet portrait (e.g. iPad 768–1024px) */
-    @media screen and (min-width: 441px) and (max-width: 1024px) and (orientation: portrait) {
-        .main-content {
-            max-width: 520px !important;
-        }
-        .slide-card {
-            padding: 32px 28px !important;
-        }
-        .card-main-title {
+        .chest-display {
             font-size: 32px !important;
         }
-        .neon-chest {
-            font-size: 42px !important;
-        }
-        .card-icon-circle {
-            width: 76px !important;
-            height: 76px !important;
-            font-size: 26px !important;
-        }
-        .nav-circle-btn {
-            width: 52px !important;
-            height: 52px !important;
-        }
-        .footer-action-btn {
-            padding: 18px !important;
-            font-size: 15px !important;
-        }
-    }
-
-    /* Tablet landscape */
-    @media screen and (min-width: 768px) and (orientation: landscape) and (min-height: 501px) {
-        .main-content {
-            max-width: 600px !important;
-        }
-        .slide-card {
-            padding: 28px 24px !important;
-        }
-    }
-
-    /* ============================================================
-       SAFE AREA INSETS (notched phones — iPhone X+, etc.)
-       ============================================================ */
-    @supports (padding: env(safe-area-inset-top)) {
-        .main-content {
-            padding-top: max(16px, env(safe-area-inset-top)) !important;
-            padding-bottom: max(16px, env(safe-area-inset-bottom)) !important;
-        }
-        .toast-notify {
-            bottom: max(24px, env(safe-area-inset-bottom)) !important;
-        }
-        .footer-action-btn {
-            margin-bottom: env(safe-area-inset-bottom) !important;
-        }
-    }
-
-    /* ============================================================
-       CARDS GRID MODAL — RESPONSIVE
-       ============================================================ */
-    @media screen and (max-width: 600px) {
-        #cardsGridContainer {
-            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)) !important;
-            gap: 10px !important;
-        }
-    }
-
-    @media screen and (orientation: landscape) and (max-height: 500px) {
         #cardsGridContainer {
             grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)) !important;
             gap: 10px !important;
@@ -1141,14 +817,18 @@ require_once __DIR__ . '/../includes/header.php';
 <div class="main-content">
     <!-- Top Header Bar -->
     <header class="app-header">
-        <div class="header-status">
-            <span class="status-dot"></span>
-            <span class="status-label">ON STAGE</span>
+        <div class="header-status-group">
+            <div id="connectionStatusBadge" class="status-badge status-connected">
+                <span class="status-dot-pulse"></span>
+                <span id="connectionStatusText">CONNECTED</span>
+            </div>
         </div>
         <div class="header-title">Emcee Master Stage Deck</div>
-        <button type="button" class="grid-btn" onclick="openCardsModal()" title="View Stage Cards Grid">
-            <i class="fa-solid fa-border-all"></i>
-        </button>
+        <div class="header-actions">
+            <button type="button" class="grid-btn" onclick="openCardsModal()" title="View Stage Cards Grid">
+                <i class="fa-solid fa-border-all"></i>
+            </button>
+        </div>
     </header>
 
     <!-- Live Toast Notification -->
@@ -1156,85 +836,136 @@ require_once __DIR__ . '/../includes/header.php';
         <i class="fa-solid fa-circle-check"></i> <span id="toastText">Live Stage Updated!</span>
     </div>
 
-    <!-- Active Performer Card -->
-    <div class="slide-card-container">
-        <div id="chestBox" class="slide-card" onclick="handleSlideClick()" title="Click to Broadcast Live to Stage">
-            <!-- Mode badge (e.g. PROGRAM START SLIDE) -->
-            <div class="card-subtitle" id="textSlideMode">PROGRAM START SLIDE</div>
+    <!-- MAIN TWO-COLUMN CONSOLE GRID -->
+    <div class="console-grid">
+        
+        <!-- LEFT COLUMN: ACTIVE CONTROL DECK -->
+        <div class="active-console-panel">
             
-            <!-- Circle Icon -->
-            <div class="card-icon-wrap">
-                <div class="card-icon-circle">
-                    <i class="fa-solid fa-podium" id="cardIcon"></i>
+            <!-- Active Performer Card Container (Preview vs Live states) -->
+            <div id="chestBox" class="broadcast-container state-preview" onclick="handleSlideClick()">
+                <div class="state-banner" id="textSlideMode">PREVIEWING</div>
+                
+                <div style="text-align: center; width: 100%;">
+                    <h1 class="program-title" id="textProgramTitle">--</h1>
+                    <div class="program-subtitle">
+                        <span id="badgeClassType">--</span>
+                        <span id="badgeSection" style="display: none;"> - <span id="textSection">--</span></span>
+                    </div>
+                    
+                    <div id="participantDetailsArea" style="margin-top: 15px;">
+                        <span id="textChestHeader" style="font-size: 11px; text-transform: uppercase; opacity: 0.6; display: block; margin-bottom: 4px;">CHEST NUMBER</span>
+                        <span id="textChestNumber" class="chest-display">--</span>
+                        <h3 id="textParticipantName" class="performer-name">--</h3>
+                        <span id="pillTeam" class="team-badge-pill">--</span>
+                    </div>
+                </div>
+
+                <div style="text-align: center; margin-top: 15px; width: 100%;">
+                    <span id="badgeStatus" class="badge">Previewing Slide</span>
                 </div>
             </div>
 
-            <!-- Program Title -->
-            <h1 class="card-main-title" id="textProgramTitle">--</h1>
-            
-            <!-- Time / Category Slot -->
-            <div class="card-slot-time">
-                <span id="badgeClassType">--</span>
-                <span id="badgeSection" style="display: none;"> - <span id="textSection">--</span></span>
-            </div>
-            
-            <!-- Participant & Progress Details -->
-            <div class="card-description">
-                <div id="participantDetailsArea" style="margin-top: 8px;">
-                    <span id="textChestHeader" style="font-size: 11px; text-transform: uppercase; opacity: 0.6; display: block; margin-bottom: 2px;">CHEST NUMBER</span>
-                    <span id="textChestNumber" class="neon-chest">--</span>
-                    <h3 id="textParticipantName" class="participant-name">--</h3>
-                    <span id="pillTeam" class="team-badge">--</span>
+            <!-- GO LIVE MAIN ACTION SWITCH -->
+            <button type="button" id="btnSelect" class="console-btn btn-primary-live" onclick="broadcastLiveStage()" style="padding: 16px; font-size: 15px;">
+                <i class="fa-solid fa-arrows-rotate"></i>
+                <span id="btnActionText">GO LIVE</span>
+            </button>
+
+            <!-- INDEPENDENT PERFORMANCE TIMER -->
+            <div class="timer-console" id="timerPanel">
+                <div class="timer-header">
+                    <i class="fa-solid fa-stopwatch"></i>
+                    <span id="timerStatusBadge">READY TO RECORD</span>
                 </div>
-                <div id="textParticipantProgress" style="font-size: 11px; opacity: 0.5; margin-top: 10px;">--</div>
-            </div>
-            
-            <!-- Broadcast Status Indicator -->
-            <div style="margin-top: 10px;">
-                <span id="badgeStatus" class="badge">--</span>
+                <div class="timer-clock-large" id="timerClock" onclick="toggleTimerFromMobile()">00:00.0</div>
+                <div class="timer-control-buttons">
+                    <button type="button" id="btnStartTimer" class="console-btn btn-timer-start" onclick="event.stopPropagation(); startTimer();">
+                        <i class="fa-solid fa-play"></i> START TIMER
+                    </button>
+                    <button type="button" id="btnStopTimer" class="console-btn btn-timer-stop" onclick="event.stopPropagation(); stopTimer();" style="display:none;">
+                        <i class="fa-solid fa-stop"></i> STOP TIMER
+                    </button>
+                    <button type="button" id="btnResetTimer" class="console-btn btn-timer-reset" onclick="event.stopPropagation(); resetTimer();" style="display:none;">
+                        <i class="fa-solid fa-rotate-left"></i> RESET
+                    </button>
+                </div>
+                <div id="timerSubtext" style="font-size: 11px; opacity: 0.5; text-align: center;">Click START TIMER when participant begins performance.</div>
             </div>
 
-            <!-- Stopwatch Timer inside the card -->
-            <div class="card-timer-section" id="timerPanel">
-                <span class="timer-badge" id="timerStatusBadge">READY TO RECORD</span>
-                <div class="timer-clock" id="timerClock" onclick="toggleTimerFromMobile()" title="Click to Start/Stop timer">00:00</div>
-                <div class="timer-actions">
-                    <button type="button" id="btnStartTimer" class="timer-btn btn-start" onclick="event.stopPropagation(); startTimer();">
-                        <i class="fa-solid fa-play"></i> Start
-                    </button>
-                    <button type="button" id="btnStopTimer" class="timer-btn btn-stop" onclick="event.stopPropagation(); stopTimer();" style="display:none;">
-                        <i class="fa-solid fa-stop"></i> Stop
-                    </button>
-                    <button type="button" id="btnResetTimer" class="timer-btn btn-reset" onclick="event.stopPropagation(); resetTimer();" style="display:none;">
-                        <i class="fa-solid fa-rotate-left"></i> Reset
-                    </button>
-                </div>
-                <div id="timerSubtext" style="font-size: 9px; opacity: 0.4; margin-top: 6px;">Stopwatch for performance duration.</div>
-            </div>
         </div>
+
+        <!-- RIGHT COLUMN: STATUS & EVENT PROGRESS -->
+        <div class="status-side-panel">
+            
+            <!-- PROGRESS TRACKER -->
+            <div class="detail-card">
+                <div class="section-label">
+                    <span>PARTICIPANT PROGRESS</span>
+                    <span id="textParticipantProgress">--</span>
+                </div>
+                <div class="progress-bar-wrap">
+                    <div id="progressBarFill" class="progress-bar-fill" style="width: 0%;"></div>
+                </div>
+
+                <div class="section-label" style="margin-top: 20px; margin-bottom: 0;">
+                    <span>EVENT QUEUE POSITION</span>
+                    <span id="textEventQueue">--</span>
+                </div>
+            </div>
+
+            <!-- NEXT UP PARTICIPANT PREVIEW -->
+            <div class="detail-card">
+                <div class="section-label">NEXT UP</div>
+                <div id="nextUpCard" class="next-up-preview" onclick="previewNextItem()">
+                    <div style="font-size: 12px; color: #10b981; font-weight: 700; margin-bottom: 4px;" id="textNextHeader">CHEST #--</div>
+                    <div style="font-size: 16px; font-weight: 800; color: #fff; margin-bottom: 2px;" id="textNextName">--</div>
+                    <div style="font-size: 13px; color: #cbd5e1; font-weight: 600;" id="textNextTitle">--</div>
+                    <div style="font-size: 11px; color: #94a3b8; margin-top: 6px;" id="textNextProgress">--</div>
+                </div>
+                <button type="button" class="console-btn btn-timer-reset" onclick="previewNextItem()" style="width: 100%; margin-top: 12px; font-size: 12px;">
+                    <i class="fa-solid fa-eye"></i> PREVIEW NEXT
+                </button>
+            </div>
+
+            <!-- GUARD CONTROLS -->
+            <div class="detail-card" style="display: flex; flex-direction: column; gap: 12px;">
+                <div class="section-label">GUARD CONTROLS</div>
+                
+                <div class="switch-container">
+                    <span style="font-size: 12px; font-weight: 700; color: #cbd5e1; display: flex; align-items: center; gap: 6px;">
+                        <i class="fa-solid fa-lock" id="lockStatusIcon"></i> <span id="lockStatusText">LOCK GO LIVE</span>
+                    </span>
+                    <label class="switch">
+                        <input type="checkbox" id="toggleLiveLock" onchange="handleLiveLockToggle(this.checked)">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <button type="button" id="btnUndoBroadcast" class="console-btn btn-timer-reset" onclick="undoLastBroadcast()" style="font-size: 12px; width: 100%;" disabled>
+                    <i class="fa-solid fa-arrow-rotate-left"></i> UNDO LAST LIVE CHANGE
+                </button>
+            </div>
+
+        </div>
+
     </div>
 
-    <!-- Controls Pagination -->
-    <div class="app-controls">
-        <button type="button" id="btnPrev" class="nav-circle-btn" onclick="navigateStage(-1)" title="Previous Slide">
-            <i class="fa-solid fa-arrow-left"></i>
+    <!-- Bottom Queue Pagination Bar -->
+    <div class="pagination-bar">
+        <button type="button" id="btnPrev" class="pagination-btn" onclick="navigateStage(-1)" title="Previous Slide">
+            <i class="fa-solid fa-chevron-left"></i>
         </button>
         
-        <div class="slide-badge-pill">
-            <i class="fa-solid fa-play"></i>
-            <span id="textSlideBadge">Slide 3 of 12</span>
+        <div style="text-align: center;">
+            <div class="slide-badge-pill" style="padding: 6px 16px;">
+                <i class="fa-solid fa-play"></i>
+                <span id="textSlideBadge">Slide -- of --</span>
+            </div>
         </div>
 
-        <button type="button" id="btnNext" class="nav-circle-btn" onclick="navigateStage(1)" title="Next Slide">
-            <i class="fa-solid fa-arrow-right"></i>
-        </button>
-    </div>
-
-    <!-- Footer Action Broadcast -->
-    <div class="app-footer-action">
-        <button type="button" id="btnSelect" class="footer-action-btn" onclick="broadcastLiveStage()">
-            <i class="fa-solid fa-arrows-rotate"></i>
-            <span id="btnActionText">Update Program & Participants</span>
+        <button type="button" id="btnNext" class="pagination-btn" onclick="navigateStage(1)" title="Next Slide">
+            <i class="fa-solid fa-chevron-right"></i>
         </button>
     </div>
 </div>
@@ -1249,7 +980,15 @@ require_once __DIR__ . '/../includes/header.php';
                 <h2 style="margin: 0; font-size: 20px; color: #fff; display: flex; align-items: center; gap: 10px;">
                     <i class="fa-solid fa-border-all" style="color: #34d399;"></i> Stage Cards Grid
                 </h2>
-                <div style="font-size: 12px; color: rgba(255,255,255,0.6); margin-top: 2px;">Click any card to preview &amp; broadcast live on stage</div>
+                <div style="font-size: 12px; color: rgba(255,255,255,0.6); margin-top: 2px;">Click any card to preview &amp; manage participant</div>
+                
+                <!-- Filter Tabs -->
+                <div class="grid-filter-bar" id="modalFilterTabs">
+                    <button class="filter-tab-btn active" data-filter="all" onclick="changeGridFilter('all')">ALL</button>
+                    <button class="filter-tab-btn" data-filter="upcoming" onclick="changeGridFilter('upcoming')">UPCOMING</button>
+                    <button class="filter-tab-btn" data-filter="live" onclick="changeGridFilter('live')">LIVE</button>
+                    <button class="filter-tab-btn" data-filter="recorded" onclick="changeGridFilter('recorded')">RECORDED</button>
+                </div>
             </div>
 
             <div style="display: flex; align-items: center; gap: 12px; width: 100%; max-width: 460px;">
@@ -1267,7 +1006,6 @@ require_once __DIR__ . '/../includes/header.php';
     </div>
 </div>
 
-<script>
 const stageQueue = <?= json_encode($stageQueue, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
 const csrfToken = <?= json_encode(generate_csrf_token()) ?>;
 
@@ -1275,11 +1013,20 @@ let currentIndex = <?= (int)$selectedIndex ?>;
 let liveProgramId = <?= (int)$liveProgramId ?>;
 let liveEntryId = <?= (int)$liveEntryId ?>;
 
+// GUARD & HISTORY STATES
+let isLiveLocked = false;
+let previousLiveState = { programId: null, entryId: null };
+let activeFilter = 'all';
+
 // TIMER STATE VARIABLES
 let timerInterval = null;
 let timerStartTime = 0;
 let timerElapsedTime = 0;
 let isTimerRunning = false;
+
+// CONNECTION WATCHDOG
+let lastSuccessPoll = Date.now();
+let pollIntervalId = null;
 
 function renderStageDeck(index, direction = 'next') {
     if (!stageQueue || stageQueue.length === 0) return;
@@ -1295,8 +1042,8 @@ function renderStageDeck(index, direction = 'next') {
         chestBox.classList.add(direction === 'prev' ? 'slide-enter-prev' : 'slide-enter-next');
     }
 
-    // Slide Counter
-    document.getElementById('textSlideBadge').innerText = `SLIDE ${currentIndex + 1} / ${stageQueue.length}`;
+    // Slide Counter / Pagination
+    document.getElementById('textSlideBadge').innerText = `Slide ${currentIndex + 1} of ${stageQueue.length}`;
 
     // Program Info
     document.getElementById('textProgramTitle').innerText = item.program_title;
@@ -1315,17 +1062,12 @@ function renderStageDeck(index, direction = 'next') {
     const textPartName = document.getElementById('textParticipantName');
     const pillTeam = document.getElementById('pillTeam');
     const textSlideMode = document.getElementById('textSlideMode');
-    const cardIcon = document.getElementById('cardIcon');
 
     if (item.is_intro) {
-        document.getElementById('textParticipantProgress').innerHTML = 
-            `Program Intro Slide · <strong>${item.total_participants} ${item.is_group ? 'Teams' : 'Participants'} Registered</strong>`;
         textChestHeader.innerText = 'STAGE DISPLAY SLIDE';
         textChestNum.innerText = item.is_group ? '👥 GROUP INTRO' : '📋 PROGRAM INTRO';
         textChestNum.style.fontSize = window.innerWidth <= 480 ? '24px' : '32px';
         textPartName.innerText = item.entry_name;
-        textSlideMode.innerText = 'PROGRAM START SLIDE';
-        if (cardIcon) cardIcon.className = 'fa-solid fa-podium';
         
         pillTeam.innerText = item.is_group ? 'Group Team Program' : 'Program Overview Mode';
         pillTeam.style.background = 'rgba(16, 185, 129, 0.2)';
@@ -1333,15 +1075,10 @@ function renderStageDeck(index, direction = 'next') {
         pillTeam.style.color = '#34d399';
         pillTeam.style.display = 'inline-block';
     } else if (item.is_group) {
-        // Group Program
-        document.getElementById('textParticipantProgress').innerHTML = 
-            `Team <strong>${item.participant_order}</strong> of <strong>${item.total_participants}</strong>`;
         textChestHeader.innerText = 'STAGE GROUP TEAM';
         textChestNum.innerText = item.team_name;
         textChestNum.style.fontSize = window.innerWidth <= 480 ? '26px' : '38px';
         textPartName.innerText = 'Team Performance';
-        textSlideMode.innerText = 'GROUP PERFORMANCE';
-        if (cardIcon) cardIcon.className = 'fa-solid fa-users';
         
         pillTeam.innerText = item.team_name;
         pillTeam.style.background = item.team_color + '22';
@@ -1349,15 +1086,10 @@ function renderStageDeck(index, direction = 'next') {
         pillTeam.style.color = '#fff';
         pillTeam.style.display = 'inline-block';
     } else if (item.has_entries) {
-        // Individual Program
-        document.getElementById('textParticipantProgress').innerHTML = 
-            `Participant <strong>${item.participant_order}</strong> of <strong>${item.total_participants}</strong>`;
         textChestHeader.innerText = 'CHEST NUMBER';
         textChestNum.innerText = item.chest_number;
         textChestNum.style.fontSize = window.innerWidth <= 480 ? '32px' : '52px';
         textPartName.innerText = item.entry_name;
-        textSlideMode.innerText = 'PARTICIPANT SLIDE';
-        if (cardIcon) cardIcon.className = 'fa-solid fa-microphone-lines';
         
         pillTeam.innerText = item.team_name;
         pillTeam.style.background = item.team_color + '22';
@@ -1365,13 +1097,10 @@ function renderStageDeck(index, direction = 'next') {
         pillTeam.style.color = '#fff';
         pillTeam.style.display = 'inline-block';
     } else {
-        document.getElementById('textParticipantProgress').innerText = 'No entries registered for this program';
         textChestHeader.innerText = 'CHEST NUMBER';
         textChestNum.innerText = '-';
         textChestNum.style.fontSize = '52px';
         textPartName.innerText = 'No Participants Registered';
-        textSlideMode.innerText = 'EMPTY INTRO';
-        if (cardIcon) cardIcon.className = 'fa-solid fa-circle-info';
         pillTeam.style.display = 'none';
     }
 
@@ -1380,35 +1109,71 @@ function renderStageDeck(index, direction = 'next') {
 
     const badgeStatus = document.getElementById('badgeStatus');
     const btnSelect = document.getElementById('btnSelect');
-    const btnMobileActivate = document.getElementById('btnMobileActivate');
+    const btnActionText = document.getElementById('btnActionText');
 
     if (isLiveItem) {
+        // STATE: LIVE
+        chestBox.className = 'broadcast-container state-live';
+        textSlideMode.innerText = '● LIVE ON STAGE';
         badgeStatus.className = 'badge badge-success';
         badgeStatus.innerText = '🔴 Live On Stage';
-        chestBox.classList.add('is-live-box');
-
-        btnSelect.className = 'footer-action-btn btn-live-active';
-        btnSelect.innerHTML = '<i class="fa-solid fa-circle-check"></i> LIVE ON STAGE';
-            
-        if (btnMobileActivate) {
-            btnMobileActivate.className = 'btn btn-success';
-            btnMobileActivate.innerHTML = '<i class="fa-solid fa-circle-check mr-1"></i> LIVE ON STAGE';
-        }
+        
+        btnSelect.className = 'console-btn btn-timer-reset';
+        btnSelect.style.background = 'rgba(16, 185, 129, 0.1)';
+        btnSelect.style.color = '#34d399';
+        btnActionText.innerText = 'LIVE NOW';
     } else {
+        // STATE: PREVIEWING
+        chestBox.className = 'broadcast-container state-preview';
+        textSlideMode.innerText = 'PREVIEWING';
         badgeStatus.className = 'badge badge-neutral';
         badgeStatus.innerText = 'Previewing Slide';
-        badgeStatus.style.background = 'rgba(255,255,255,0.05)';
-        badgeStatus.style.border = '1px solid rgba(255,255,255,0.1)';
-        badgeStatus.style.color = '#aaa';
-        chestBox.classList.remove('is-live-box');
+        
+        btnSelect.className = 'console-btn btn-primary-live';
+        btnSelect.style.background = '';
+        btnSelect.style.color = '';
+        btnActionText.innerText = 'GO LIVE';
+    }
 
-        btnSelect.className = 'footer-action-btn';
-        btnSelect.innerHTML = '<i class="fa-solid fa-arrows-rotate"></i> Update Program & Participants';
+    // Progress Trackers
+    const textParticipantProgress = document.getElementById('textParticipantProgress');
+    const progressBarFill = document.getElementById('progressBarFill');
+    if (item.is_intro) {
+        textParticipantProgress.innerText = '0 / ' + item.total_participants;
+        progressBarFill.style.width = '0%';
+    } else {
+        textParticipantProgress.innerText = item.participant_order + ' / ' + item.total_participants;
+        progressBarFill.style.width = ((item.participant_order / item.total_participants) * 100) + '%';
+    }
 
-        if (btnMobileActivate) {
-            btnMobileActivate.className = 'btn btn-success';
-            btnMobileActivate.innerHTML = '⚡ ACTIVATE ON STAGE';
+    document.getElementById('textEventQueue').innerText = (currentIndex + 1) + ' / ' + stageQueue.length;
+
+    // NEXT UP Section Builder
+    const nextUpCard = document.getElementById('nextUpCard');
+    const nextItem = stageQueue[currentIndex + 1];
+    if (nextItem) {
+        nextUpCard.style.display = 'block';
+        const nextHeader = document.getElementById('textNextHeader');
+        const nextName = document.getElementById('textNextName');
+        const nextTitle = document.getElementById('textNextTitle');
+        const nextProgress = document.getElementById('textNextProgress');
+
+        if (nextItem.is_intro) {
+            nextHeader.innerText = '📋 PROGRAM INTRO';
+            nextName.innerText = nextItem.entry_name;
+        } else if (nextItem.is_group) {
+            nextHeader.innerText = '👥 GROUP TEAM';
+            nextName.innerText = nextItem.team_name;
+        } else {
+            nextHeader.innerText = 'CHEST #' + nextItem.chest_number;
+            nextName.innerText = nextItem.entry_name;
         }
+        nextTitle.innerText = nextItem.program_title;
+        nextProgress.innerText = nextItem.is_intro ? 'Intro Slide' : ('Slot ' + nextItem.participant_order + ' of ' + nextItem.total_participants);
+    } else {
+        nextUpCard.style.display = 'none';
+        const nextName = document.getElementById('textNextName');
+        nextName.innerText = 'End of stage queue';
     }
 
     // Update Stage Timer State
@@ -1430,16 +1195,18 @@ function renderStageDeck(index, direction = 'next') {
         btnNext.classList.remove('disabled');
     }
 
-    // Sync Dropdown
+    // Sync Jump Dropdown if any
     const selectDropdown = document.getElementById('selectStageJump');
     if (selectDropdown) {
         selectDropdown.value = currentIndex;
     }
-
-    renderUpcomingRibbon();
 }
 
 function handleSlideClick() {
+    if (isLiveLocked) {
+        showToast('Console is Live Locked. Unlock to broadcast.');
+        return;
+    }
     broadcastLiveStage();
 }
 
@@ -1452,74 +1219,35 @@ function syncTimerUI(item, isLiveItem) {
     const btnStart = document.getElementById('btnStartTimer');
     const btnStop = document.getElementById('btnStopTimer');
     const btnReset = document.getElementById('btnResetTimer');
-    const textMobileTimer = document.getElementById('textMobileTimer');
-
-    if (isLiveItem) {
-        timerPanel.classList.add('is-active-stage');
-    } else {
-        timerPanel.classList.remove('is-active-stage');
-    }
 
     if (isTimerRunning) {
-        // Active Running Timer
-        timerStatusBadge.style.background = 'rgba(239, 68, 68, 0.25)';
-        timerStatusBadge.style.color = '#f87171';
-        timerStatusBadge.style.border = '1px solid rgba(239, 68, 68, 0.5)';
-        timerStatusBadge.innerHTML = '<i class="fa-solid fa-circle-dot mr-1"></i> RECORDING TIME';
-        
-        timerClock.classList.add('is-running');
-        timerSubtext.innerText = 'Stopwatch actively recording performance time...';
-
+        timerStatusBadge.innerHTML = '<span style="color:#ef4444; font-weight:900;">● RECORDING</span>';
+        timerClock.className = 'timer-clock-large recording';
+        timerSubtext.innerText = 'Stopwatch actively timing performance...';
         btnStart.style.display = 'none';
         btnStop.style.display = 'inline-flex';
         btnReset.style.display = 'none';
-
-        if (textMobileTimer) textMobileTimer.innerText = 'STOP TIMER';
         return;
     }
 
-    timerClock.classList.remove('is-running');
+    timerClock.className = 'timer-clock-large';
 
     if (item.recorded_time) {
-        // Has Saved Recorded Time
-        timerStatusBadge.style.background = 'rgba(16, 185, 129, 0.25)';
-        timerStatusBadge.style.color = '#34d399';
-        timerStatusBadge.style.border = '1px solid rgba(16, 185, 129, 0.5)';
-        timerStatusBadge.innerHTML = '<i class="fa-solid fa-check mr-1"></i> TIME RECORDED';
-
-        timerClock.innerText = item.recorded_time;
-        timerSubtext.innerHTML = `Saved Duration: <strong>${item.recorded_time}</strong> (${item.duration_seconds}s)`;
-
+        timerStatusBadge.innerHTML = '<span style="color:#10b981; font-weight:900;">⏱ PERFORMANCE COMPLETE</span>';
+        timerClock.innerText = item.recorded_time.includes('.') ? item.recorded_time : item.recorded_time + '.0';
+        timerSubtext.innerHTML = `Recorded Duration: <strong>${item.recorded_time}</strong>`;
         btnStart.style.display = 'inline-flex';
-        btnStart.innerHTML = '<i class="fa-solid fa-play"></i> RE-RECORD TIME';
+        btnStart.innerHTML = '<i class="fa-solid fa-rotate mr-1"></i> RE-RECORD';
         btnStop.style.display = 'none';
-        btnReset.style.display = 'inline-block';
-
-        if (textMobileTimer) textMobileTimer.innerText = 'RECORDED';
+        btnReset.style.display = 'inline-flex';
     } else {
-        // No Time Recorded Yet
-        timerStatusBadge.style.background = 'rgba(255, 255, 255, 0.1)';
-        timerStatusBadge.style.color = '#ccc';
-        timerStatusBadge.style.border = '1px solid rgba(255, 255, 255, 0.15)';
-        timerStatusBadge.innerText = isLiveItem ? 'READY TO RECORD' : 'PREVIEW MODE';
-
+        timerStatusBadge.innerText = 'PERFORMANCE TIMER';
         timerClock.innerText = formatTimeMs(timerElapsedTime);
-        
-        if (isLiveItem) {
-            timerSubtext.innerText = 'Participant active on stage. Click Start Timer when performance begins.';
-            btnStart.style.display = 'inline-flex';
-            btnStart.innerHTML = '<i class="fa-solid fa-play"></i> START TIMER';
-            btnStop.style.display = 'none';
-            btnReset.style.display = (timerElapsedTime > 0) ? 'inline-block' : 'none';
-            if (textMobileTimer) textMobileTimer.innerText = 'START TIMER';
-        } else {
-            timerSubtext.innerText = 'Activate participant on stage to start recording time.';
-            btnStart.style.display = 'inline-flex';
-            btnStart.innerHTML = '<i class="fa-solid fa-bolt"></i> ACTIVATE TO RECORD';
-            btnStop.style.display = 'none';
-            btnReset.style.display = 'none';
-            if (textMobileTimer) textMobileTimer.innerText = 'TIMER';
-        }
+        timerSubtext.innerText = isLiveItem ? 'Participant is active. Click START TIMER.' : 'Participant is not LIVE. Go Live first.';
+        btnStart.style.display = 'inline-flex';
+        btnStart.innerHTML = '<i class="fa-solid fa-play mr-1"></i> START TIMER';
+        btnStop.style.display = 'none';
+        btnReset.style.display = (timerElapsedTime > 0) ? 'inline-flex' : 'none';
     }
 }
 
@@ -1529,7 +1257,8 @@ function startTimer() {
     const isLiveItem = (item.program_id === liveProgramId && item.entry_id === liveEntryId);
 
     if (!isLiveItem) {
-        broadcastLiveStage();
+        showToast('Participant is not LIVE. Go Live first.');
+        return;
     }
 
     if (isTimerRunning) return;
@@ -1567,17 +1296,19 @@ function stopTimer() {
 }
 
 function resetTimer() {
-    if (isTimerRunning) {
-        clearInterval(timerInterval);
-        timerInterval = null;
-        isTimerRunning = false;
-    }
-    timerElapsedTime = 0;
-    const item = stageQueue[currentIndex];
-    item.recorded_time = null;
-    item.duration_seconds = 0;
+    if (confirm("Are you sure you want to reset the stopwatch for this performer?")) {
+        if (isTimerRunning) {
+            clearInterval(timerInterval);
+            timerInterval = null;
+            isTimerRunning = false;
+        }
+        timerElapsedTime = 0;
+        const item = stageQueue[currentIndex];
+        item.recorded_time = null;
+        item.duration_seconds = 0;
 
-    syncTimerUI(item, (item.program_id === liveProgramId && item.entry_id === liveEntryId));
+        syncTimerUI(item, (item.program_id === liveProgramId && item.entry_id === liveEntryId));
+    }
 }
 
 function toggleTimerFromMobile() {
@@ -1623,38 +1354,6 @@ function formatTimeMs(ms, includeTenths = true) {
     return includeTenths ? `${mm}:${ss}.${tenths}` : `${mm}:${ss}`;
 }
 
-function renderUpcomingRibbon() {
-    const upcomingContainer = document.getElementById('upcomingRibbon');
-    if (!upcomingContainer || !stageQueue) return;
-
-    upcomingContainer.innerHTML = '';
-    const nextItems = stageQueue.slice(currentIndex + 1, currentIndex + 4);
-
-    if (nextItems.length === 0) {
-        upcomingContainer.innerHTML = '<div style="font-size: 11.5px; color: rgba(255,255,255,0.4); padding: 6px;">End of Stage Queue</div>';
-        return;
-    }
-
-    nextItems.forEach((item) => {
-        const card = document.createElement('div');
-        card.className = 'next-ribbon-card';
-        card.onclick = () => selectCardIndex(item.queue_index, true);
-
-        let titleText = item.is_intro ? ('📋 INTRO: ' + item.program_title) : (item.is_group ? item.team_name : ('Chest #' + item.chest_number + ' (' + item.entry_name + ')'));
-        
-        let timerBadge = item.recorded_time ? `<span style="font-size: 9px; color: #34d399; border: 1px solid rgba(16,185,129,0.4); padding: 1px 4px; border-radius: 4px; margin-left: 4px;">⏱ ${item.recorded_time}</span>` : '';
-
-        card.innerHTML = `
-            <div style="font-size: 9.5px; font-weight: 800; color: #34d399; text-transform: uppercase; margin-bottom: 2px;">
-                Slide #${item.queue_index + 1} ${timerBadge}
-            </div>
-            <div style="font-size: 11.5px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px;">${escapeHtml(titleText)}</div>
-            <div style="font-size: 9px; font-weight: 700; color: rgba(52,211,153,0.8); margin-top: 3px; text-transform: uppercase;">Click to Activate</div>
-        `;
-        upcomingContainer.appendChild(card);
-    });
-}
-
 function populateJumpDropdown() {
     const selectDropdown = document.getElementById('selectStageJump');
     if (!selectDropdown || !stageQueue) return;
@@ -1687,11 +1386,27 @@ function populateJumpDropdown() {
 function openCardsModal() {
     document.getElementById('cardsModal').style.display = 'flex';
     document.getElementById('cardsSearchInput').value = '';
-    renderCardsGrid();
+    changeGridFilter('all');
 }
 
 function closeCardsModal() {
     document.getElementById('cardsModal').style.display = 'none';
+}
+
+function changeGridFilter(filter) {
+    activeFilter = filter;
+    
+    // Update active class on filter tab buttons
+    const buttons = document.querySelectorAll('#modalFilterTabs .filter-tab-btn');
+    buttons.forEach(btn => {
+        if (btn.getAttribute('data-filter') === filter) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
+
+    renderCardsGrid(document.getElementById('cardsSearchInput').value);
 }
 
 function renderCardsGrid(filterText = '') {
@@ -1702,21 +1417,30 @@ function renderCardsGrid(filterText = '') {
     const search = filterText.toLowerCase().trim();
 
     stageQueue.forEach(item => {
+        // 1. Search text filter
         if (search) {
             const matchText = (item.program_title + ' ' + item.chest_number + ' ' + item.entry_name + ' ' + item.team_name + ' ' + item.class_type_name).toLowerCase();
             if (!matchText.includes(search)) return;
         }
 
+        // 2. Segment status filter (All, Upcoming, Live, Recorded)
         const isLive = (item.program_id === liveProgramId && item.entry_id === liveEntryId);
+        if (activeFilter === 'live' && !isLive) return;
+        if (activeFilter === 'recorded' && !item.recorded_time) return;
+        if (activeFilter === 'upcoming') {
+            // upcoming means slot is greater than current index and not live
+            if (item.queue_index <= currentIndex || isLive) return;
+        }
+
         const card = document.createElement('div');
         card.style.cssText = `
-            background: ${isLive ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.35) 0%, rgba(0, 0, 0, 0.95) 100%)' : 'linear-gradient(135deg, rgba(6, 40, 22, 0.6) 0%, rgba(0, 0, 0, 0.88) 100%)'};
-            border: ${isLive ? '2px solid #34d399' : '1px solid rgba(16, 185, 129, 0.25)'};
+            background: ${isLive ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.2) 0%, rgba(0, 0, 0, 0.95) 100%)' : 'linear-gradient(135deg, rgba(16, 185, 129, 0.03) 0%, rgba(0, 0, 0, 0.88) 100%)'};
+            border: ${isLive ? '2px solid #ef4444' : '1px solid rgba(16, 185, 129, 0.2)'};
             border-radius: 16px;
             padding: 14px;
             text-align: center;
             position: relative;
-            box-shadow: ${isLive ? '0 10px 30px rgba(16, 185, 129, 0.35)' : '0 8px 24px rgba(0,0,0,0.6)'};
+            box-shadow: ${isLive ? '0 10px 30px rgba(239, 68, 68, 0.15)' : '0 8px 24px rgba(0,0,0,0.6)'};
             transition: all 0.25s ease;
             cursor: pointer;
             display: flex;
@@ -1728,31 +1452,31 @@ function renderCardsGrid(filterText = '') {
         card.onmouseover = () => {
             card.style.transform = 'translateY(-4px)';
             if (!isLive) {
-                card.style.borderColor = '#34d399';
-                card.style.boxShadow = '0 12px 30px rgba(16, 185, 129, 0.3)';
+                card.style.borderColor = '#10b981';
+                card.style.boxShadow = '0 12px 30px rgba(16, 185, 129, 0.2)';
             }
         };
         card.onmouseout = () => {
             card.style.transform = 'translateY(0)';
             if (!isLive) {
-                card.style.borderColor = 'rgba(16, 185, 129, 0.25)';
+                card.style.borderColor = 'rgba(16, 185, 129, 0.2)';
                 card.style.boxShadow = '0 8px 24px rgba(0,0,0,0.6)';
             }
         };
 
         let badgeHtml = '';
         if (isLive) {
-            badgeHtml = '<span class="badge badge-success" style="font-size: 9px; margin-bottom: 4px;">🔴 ON STAGE LIVE</span>';
+            badgeHtml = '<span class="badge" style="font-size: 9px; margin-bottom: 4px; background:rgba(239,68,68,0.2); border:1px solid rgba(239,68,68,0.4); color:#f87171;">🔴 LIVE ON STAGE</span>';
         } else if (item.is_intro) {
-            badgeHtml = '<span class="badge badge-info" style="font-size: 9px; margin-bottom: 4px; background: rgba(16,185,129,0.15); color: #34d399; border: 1px solid rgba(16,185,129,0.3);">📋 INTRO</span>';
+            badgeHtml = '<span class="badge" style="font-size: 9px; margin-bottom: 4px; background: rgba(16,185,129,0.1); color: #34d399; border: 1px solid rgba(16,185,129,0.2);">📋 INTRO</span>';
         } else if (item.is_group) {
-            badgeHtml = '<span class="badge badge-warning" style="font-size: 9px; margin-bottom: 4px; background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3);">👥 TEAM</span>';
+            badgeHtml = '<span class="badge" style="font-size: 9px; margin-bottom: 4px; background: rgba(245, 158, 11, 0.1); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.25);">👥 TEAM</span>';
         } else {
-            badgeHtml = '<span class="badge badge-neutral" style="font-size: 9px; margin-bottom: 4px; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.15); color: #aaa;">#' + escapeHtml(item.chest_number) + '</span>';
+            badgeHtml = '<span class="badge" style="font-size: 9px; margin-bottom: 4px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); color: #aaa;">#' + escapeHtml(item.chest_number) + '</span>';
         }
 
         if (item.recorded_time) {
-            badgeHtml += ` <span style="font-size: 9px; background: rgba(16,185,129,0.25); color: #34d399; border: 1px solid rgba(16,185,129,0.4); padding: 1px 5px; border-radius: 4px;">⏱ ${escapeHtml(item.recorded_time)}</span>`;
+            badgeHtml += ` <span style="font-size: 9px; background: rgba(16,185,129,0.15); color: #34d399; border: 1px solid rgba(16,185,129,0.3); padding: 1px 5px; border-radius: 4px;">⏱ ${escapeHtml(item.recorded_time)}</span>`;
         }
 
         let mainDisplay = '';
@@ -1761,7 +1485,7 @@ function renderCardsGrid(filterText = '') {
         } else if (item.is_group) {
             mainDisplay = `<div style="font-size: 20px; font-weight: 900; color: #fbbf24; margin: 4px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(item.team_name)}</div>`;
         } else {
-            mainDisplay = `<div style="font-size: 26px; font-weight: 900; color: #34d399; margin: 2px 0;">#${escapeHtml(item.chest_number)}</div>`;
+            mainDisplay = `<div style="font-size: 26px; font-weight: 900; color: #10b981; margin: 2px 0;">#${escapeHtml(item.chest_number)}</div>`;
         }
 
         let subDisplay = item.is_group ? 'Team Performance' : escapeHtml(item.entry_name);
@@ -1778,19 +1502,19 @@ function renderCardsGrid(filterText = '') {
                 </div>
             </div>
             <div style="font-size: 10px; font-weight: 700; color: #34d399; margin-top: 8px; opacity: 0.8; text-transform: uppercase;">
-                Click to Activate
+                Select Performer
             </div>
         `;
 
         card.onclick = () => {
-            selectCardIndex(item.queue_index, true);
+            selectCardIndex(item.queue_index, false); // selectCardIndex now defaults to preview only
         };
 
         container.appendChild(card);
     });
 }
 
-function selectCardIndex(idx, broadcastNow = true) {
+function selectCardIndex(idx, broadcastNow = false) {
     if (isTimerRunning) {
         stopTimer();
     }
@@ -1819,22 +1543,69 @@ function navigateStage(delta) {
     }
 }
 
-function jumpToQueueIndex(idx) {
-    selectCardIndex(idx, true);
+function previewNextItem() {
+    navigateStage(1);
 }
 
-function showToast(message) {
-    const toast = document.getElementById('toastNotification');
-    document.getElementById('toastText').innerText = message;
-    toast.style.display = 'flex';
-    setTimeout(() => {
-        toast.style.display = 'none';
-    }, 2500);
+function jumpToQueueIndex(idx) {
+    selectCardIndex(idx, false);
+}
+
+function handleLiveLockToggle(checked) {
+    isLiveLocked = checked;
+    const lockStatusIcon = document.getElementById('lockStatusIcon');
+    const lockStatusText = document.getElementById('lockStatusText');
+    if (isLiveLocked) {
+        lockStatusIcon.className = 'fa-solid fa-lock';
+        lockStatusText.innerText = 'LOCK ACTIVE';
+        lockStatusText.style.color = '#ef4444';
+    } else {
+        lockStatusIcon.className = 'fa-solid fa-lock-open';
+        lockStatusText.innerText = 'LOCK GO LIVE';
+        lockStatusText.style.color = '';
+    }
+}
+
+function undoLastBroadcast() {
+    if (!previousLiveState.programId) {
+        showToast('No previous broadcast to revert to.');
+        return;
+    }
+    const targetProgId = previousLiveState.programId;
+    const targetEntryId = previousLiveState.entryId;
+
+    // Search for match in queue to navigate back to
+    let foundIdx = -1;
+    for (let i = 0; i < stageQueue.length; i++) {
+        if (stageQueue[i].program_id === targetProgId && stageQueue[i].entry_id === targetEntryId) {
+            foundIdx = i;
+            break;
+        }
+    }
+
+    if (foundIdx >= 0) {
+        selectCardIndex(foundIdx, false);
+        // Temporarily unlock to allow revert broadcast
+        const wasLocked = isLiveLocked;
+        isLiveLocked = false;
+        broadcastLiveStage();
+        isLiveLocked = wasLocked;
+        showToast('Broadcast reverted!');
+    }
 }
 
 function broadcastLiveStage() {
+    if (isLiveLocked) {
+        showToast('Accidental broadcast locked! Unlock first.');
+        return;
+    }
     if (!stageQueue || !stageQueue[currentIndex]) return;
     const item = stageQueue[currentIndex];
+
+    // Store previous live state before changing
+    previousLiveState.programId = liveProgramId;
+    previousLiveState.entryId = liveEntryId;
+    document.getElementById('btnUndoBroadcast').disabled = false;
 
     const formData = new FormData();
     formData.append('action', 'broadcast_stage');
@@ -1874,14 +1645,13 @@ function broadcastLiveStage() {
     });
 }
 
-// Touch Swipe Gesture Handling for Mobile
+// TOUCH SWIPE
 let touchStartX = 0;
 let touchStartY = 0;
 let touchEndX = 0;
 let touchEndY = 0;
 
-const deckElement = document.querySelector('.slide-card-container');
-
+const deckElement = document.getElementById('chestBox');
 if (deckElement) {
     deckElement.addEventListener('touchstart', (e) => {
         if (e.touches && e.touches[0]) {
@@ -1903,14 +1673,11 @@ function handleSwipeGesture() {
     const deltaX = touchEndX - touchStartX;
     const deltaY = touchEndY - touchStartY;
     
-    // Horizontal swipe threshold > 40px and dominant over vertical scroll
     if (Math.abs(deltaX) > 40 && Math.abs(deltaX) > Math.abs(deltaY) * 1.2) {
         if (deltaX < 0) {
-            // Swiped Left -> Advance to Next Slide
-            navigateStage(1);
+            navigateStage(1); // Swipe left -> next slide (preview only)
         } else {
-            // Swiped Right -> Back to Previous Slide
-            navigateStage(-1);
+            navigateStage(-1); // Swipe right -> prev slide (preview only)
         }
     }
 }
@@ -1943,9 +1710,75 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
+function goToCurrentLive() {
+    const startPoll = Date.now();
+    fetch(window.location.href + (window.location.href.includes('?') ? '&' : '?') + 'ajax_status=1')
+    .then(r => {
+        if (!r.ok) throw new Error();
+        return r.json();
+    })
+    .then(data => {
+        lastSuccessPoll = Date.now();
+        const latency = lastSuccessPoll - startPoll;
+        const badge = document.getElementById('connectionStatusBadge');
+        const text = document.getElementById('connectionStatusText');
+
+        if (latency > 1500) {
+            badge.className = 'status-badge status-delayed';
+            text.innerText = 'DELAYED';
+        } else {
+            badge.className = 'status-badge status-connected';
+            text.innerText = 'CONNECTED';
+        }
+
+        const lc = data.live_control;
+        if (lc) {
+            liveProgramId = parseInt(lc.program_id) || 0;
+            liveEntryId = parseInt(lc.entry_id) || 0;
+            // Update UI live checks
+            const item = stageQueue[currentIndex];
+            const isLiveItem = (item.program_id === liveProgramId && item.entry_id === liveEntryId);
+            const chestBox = document.getElementById('chestBox');
+            const textSlideMode = document.getElementById('textSlideMode');
+            const badgeStatus = document.getElementById('badgeStatus');
+            const btnSelect = document.getElementById('btnSelect');
+            const btnActionText = document.getElementById('btnActionText');
+
+            if (isLiveItem) {
+                chestBox.className = 'broadcast-container state-live';
+                textSlideMode.innerText = '● LIVE ON STAGE';
+                badgeStatus.className = 'badge badge-success';
+                badgeStatus.innerText = '🔴 Live On Stage';
+                btnSelect.className = 'console-btn btn-timer-reset';
+                btnSelect.style.background = 'rgba(16, 185, 129, 0.1)';
+                btnSelect.style.color = '#34d399';
+                btnActionText.innerText = 'LIVE NOW';
+            } else {
+                chestBox.className = 'broadcast-container state-preview';
+                textSlideMode.innerText = 'PREVIEWING';
+                badgeStatus.className = 'badge badge-neutral';
+                badgeStatus.innerText = 'Previewing Slide';
+                btnSelect.className = 'console-btn btn-primary-live';
+                btnSelect.style.background = '';
+                btnSelect.style.color = '';
+                btnActionText.innerText = 'GO LIVE';
+            }
+        }
+    })
+    .catch(() => {
+        const badge = document.getElementById('connectionStatusBadge');
+        const text = document.getElementById('connectionStatusText');
+        badge.className = 'status-badge status-offline';
+        text.innerText = 'OFFLINE';
+    });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     populateJumpDropdown();
     renderStageDeck(currentIndex, 'next');
+    
+    // Poll status every 3 seconds
+    pollIntervalId = setInterval(goToCurrentLive, 3000);
 });
 </script>
 

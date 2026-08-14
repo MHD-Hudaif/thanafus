@@ -318,21 +318,12 @@ function validate_session(): void
     // Keep session alive indefinitely
     $_SESSION['last_activity'] = time();
 
-    // Reload user if missing or verify active status
-    if (empty($_SESSION['user'])) {
-        $_SESSION['user'] = load_user((int)$_SESSION['user_id']);
-    }
-
-    if (
-        empty($_SESSION['user'])
-        || (($_SESSION['user']['status'] ?? '') !== 'active')
-    ) {
-        $fresh = load_user((int)$_SESSION['user_id']);
-        if (!$fresh || ($fresh['status'] ?? '') !== 'active') {
-            logout_user();
-        } else {
-            $_SESSION['user'] = $fresh;
-        }
+    // Always reload user to ensure roles and status are fresh on every page load
+    $fresh = load_user((int)$_SESSION['user_id']);
+    if (!$fresh || ($fresh['status'] ?? '') !== 'active') {
+        logout_user();
+    } else {
+        $_SESSION['user'] = $fresh;
     }
 }
 

@@ -1,3 +1,90 @@
+<?php
+declare(strict_types=1);
+
+$teams = [];
+$schedule = [];
+$participants = [];
+$committee = [];
+
+// Establish database context or fall back gracefully
+try {
+    require_once __DIR__ . '/../includes/public-data.php';
+
+    // Retrieve and format teams
+    $rawTeams = teams();
+    foreach ($rawTeams as $t) {
+        $teams[] = [
+            'name' => $t['name'],
+            'score' => (int)$t['score'],
+            'color' => $t['color']
+        ];
+    }
+
+    // Retrieve and format schedule
+    $rawSchedule = schedule_items();
+    foreach ($rawSchedule as $s) {
+        $title = $s['title'];
+        $category = $s['category'];
+        if (!empty($s['is_stacked']) && !empty($s['stacked_programs'])) {
+            $titles = [];
+            foreach ($s['stacked_programs'] as $sp) {
+                $titles[] = $sp['title'];
+            }
+            $title = implode(', ', $titles);
+        }
+        
+        $session = $s['session'];
+        if (str_starts_with($session, 'section_')) {
+            $hour = (int)date('H', strtotime($s['start_time']));
+            if ($hour < 9) {
+                $session = 'subahi';
+            } elseif ($hour >= 9 && $hour < 12) {
+                $session = 'morning';
+            } elseif ($hour >= 12 && $hour < 16) {
+                $session = 'afternoon';
+            } elseif ($hour >= 16 && $hour < 20) {
+                $session = 'evening';
+            } else {
+                $session = 'night';
+            }
+        }
+
+        $schedule[] = [
+            $session,
+            $s['start_time'],
+            $title,
+            $s['venue'] . ' · ' . $category,
+            $s['status'],
+            (int)$s['duration_minutes']
+        ];
+    }
+
+    // Retrieve and format participants
+    $rawParticipants = participants();
+    foreach ($rawParticipants as $p) {
+        $participants[] = [
+            $p['name'],
+            $p['code'],
+            $p['program'],
+            $p['category'],
+            $p['reporting_time'],
+            $p['team_name']
+        ];
+    }
+
+    // Retrieve and format committee
+    $rawCommittee = working_committee();
+    foreach ($rawCommittee as $c) {
+        $committee[] = [
+            'name' => $c['name'],
+            'role' => $c['role'],
+            'image' => $c['image']
+        ];
+    }
+} catch (\Throwable $e) {
+    // Graceful fallback if database configuration is missing
+}
+?>
 <!doctype html>
 <html lang="en">
 <head>
@@ -35,6 +122,14 @@
     <p class="home-footer-copyright">© 2026 Al Jamiathul Kauzariyya · All rights reserved</p>
   </footer>
 
+  <script>
+    window.INITIAL_DATA = <?= json_encode([
+        'teams' => $teams,
+        'schedule' => $schedule,
+        'participants' => $participants,
+        'committee' => $committee
+    ]) ?>;
+  </script>
   <script src="assets/js/site.js" defer></script>
   <script src="main.js"></script>
 </body>

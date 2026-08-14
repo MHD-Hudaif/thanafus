@@ -1,27 +1,9 @@
 /* Plain JavaScript front-end: no React, build step, API, or dependencies. */
-const data = {
-  teams: [
-    { name: 'أنصار', score: 98, color: '#078521' }, { name: 'أعوان', score: 92, color: '#f4f7f3' },
-    { name: 'أخيار', score: 86, color: '#1725a9' }, { name: 'أبطال', score: 77, color: '#bced16' },
-  ],
-  schedule: [
-    ['subahi', '05:15', 'Qirath (Thartheel, Thadveer)', 'On Stage · Junior Category', 'completed', 40],
-    ['subahi', '06:00', 'Calligraphy', 'Off Stage · Open Category', 'completed', 45],
-    ['morning', '09:00', 'Malayalam Speech', 'On Stage · Senior Category', 'completed', 30],
-    ['morning', '09:35', 'English Speech', 'On Stage · Senior Category', 'live', 30],
-    ['morning', '10:00', 'News Writing', 'Off Stage · Senior Category', 'upcoming', 40],
-    ['morning', '10:10', 'Arabic Speech', 'On Stage · Junior Category', 'upcoming', 30],
-    ['afternoon', '14:30', 'Arabic Leganam', 'Off Stage · Open Category', 'upcoming', 45],
-    ['afternoon', '15:10', 'Ebaarath Vazhana', 'On Stage · Senior Category', 'upcoming', 35],
-    ['evening', '19:30', 'Muhadasa (Arabic, English)', 'On Stage · Open Category', 'upcoming', 40],
-    ['night', '21:30', 'Musagala', 'On Stage · Open Category', 'upcoming', 60],
-  ],
-  participants: [
-    ['Mohammed Hafiz', 'KZ-001', 'English Speech', 'Senior', '09:40', 'أنصار'],
-    ['Sinan Ahmed', 'KZ-002', 'English Speech', 'Senior', '09:40', 'أعوان'],
-    ['Rishan Ali', 'KZ-003', 'English Speech', 'Senior', '09:40', 'أخيار'],
-    ['Nihal Basheer', 'KZ-004', 'English Speech', 'Senior', '09:40', 'أبطال'],
-  ],
+const data = window.INITIAL_DATA || {
+  teams: [],
+  schedule: [],
+  participants: [],
+  committee: []
 };
 
 const root = document.getElementById('react-root');
@@ -69,7 +51,7 @@ const views = {
 
   students: () => `<section class="all-students-page section-wrap"><header class="students-page-hero reveal visible"><div class="students-hero-text"><p class="overline"><i class="overline-dot"></i> COLLEGE DIRECTORY</p><h1>All<br><em>students.</em></h1><p>Browse the complete student directory by name, chess number, class or group.</p><div class="students-page-stats"><span><strong>04</strong><small>Total students</small></span><span><strong>04</strong><small>Active</small></span><span><strong>04</strong><small>Teams</small></span></div></div></header><section class="public-student-directory"><header class="student-directory-head"><div><p class="overline">Directory</p><h2>Student records</h2><p>Static front-end demonstration.</p></div></header><div class="public-student-filters"><label><span>Search students</span><input type="search" placeholder="Name, chess number or place" data-student-search></label></div><div class="public-student-grid" data-student-list>${data.participants.map((person, index) => `<article><b>${person[1]}</b><div><h3>${person[0]}</h3><p>Senior student</p></div><footer><span>Class ${index + 1}</span><span class="student-group-tag" lang="ar">${person[5]}</span><i>active</i></footer></article>`).join('')}</div></section></section>`,
 
-  plan: () => `<section class="musabaqa-plan section-wrap"><header class="musabaqa-plan-hero reveal visible"><div><p class="overline"><i class="overline-dot"></i> OFFICIAL PROGRAMME · 2026–27</p><h1>Musabaqa<br><em>programme plan.</em></h1><p>Programme responsibilities and the working committee for the 2026–27 Kauzariyya Musabaqa.</p></div><div class="musabaqa-plan-stats"><span><strong>15</strong><small>Programmes</small></span><span><strong>08</strong><small>Committee roles</small></span></div></header><div class="musabaqa-program-grid">${programmeGroup('Off stage',['Calligraphy','News Writing','Malayalam Leganam','Arabic Leganam','Poem Writing'],1)}${programmeGroup('On stage',['Malayalam Speech','English Speech','Arabic Speech','Urdu Speech','Qirath','Urdu Song','Ebaarath Vazhana','Muhadasa','Padapayat','Musagala'],6)}</div><section class="musabaqa-committee reveal visible"><header><div><p class="overline">Festival leadership</p><h2>Working committee</h2></div><p>The team coordinating programmes, stage operations, documentation, evaluation and awards.</p></header><div>${['Ameer','Program Committee','Stage & Mic','Paper Work','Mark','Monitoring','Prize','MC'].map((role, index) => `<article><span>${String(index + 1).padStart(2,'0')}</span><h3>${role}</h3><p>Al Jamiathul Kauzariyya committee members</p></article>`).join('')}</div></section></section>`,
+  plan: () => `<section class="musabaqa-plan section-wrap"><header class="musabaqa-plan-hero reveal visible"><div><p class="overline"><i class="overline-dot"></i> OFFICIAL PROGRAMME · 2026–27</p><h1>Musabaqa<br><em>programme plan.</em></h1><p>Programme responsibilities and the working committee for the 2026–27 Kauzariyya Musabaqa.</p></div><div class="musabaqa-plan-stats"><span><strong>15</strong><small>Programmes</small></span><span><strong>${data.committee.length}</strong><small>Committee roles</small></span></div></header><div class="musabaqa-program-grid">${programmeGroup('Off stage',['Calligraphy','News Writing','Malayalam Leganam','Arabic Leganam','Poem Writing'],1)}${programmeGroup('On stage',['Malayalam Speech','English Speech','Arabic Speech','Urdu Speech','Qirath','Urdu Song','Ebaarath Vazhana','Muhadasa','Padapayat','Musagala'],6)}</div><section class="musabaqa-committee reveal visible"><header><div><p class="overline">Festival leadership</p><h2>Working committee</h2></div><p>The team coordinating programmes, stage operations, documentation, evaluation and awards.</p></header><div>${data.committee.map((member, index) => `<article><span>${String(index + 1).padStart(2,'0')}</span><h3>${member.name}</h3><p>${member.role}</p></article>`).join('')}</div></section></section>`,
 
   review: () => `<section class="review-shell section-wrap"><div class="review-copy reveal visible"><p class="overline">Your voice matters</p><h1>How was your<br><em>experience?</em></h1><p>Share what you enjoyed and what we can do better. Your opinion helps shape the next Kauzariyya Arts Festival.</p></div><form class="review-card reveal visible" data-review-form><div><span class="field-label">Overall rating</span><div class="rating-buttons" role="group">${[1,2,3,4,5].map(value => `<button type="button" data-rating="${value}" aria-label="${value} stars">★</button>`).join('')}</div></div><label><span class="field-label">What did you think?</span><textarea required rows="5" placeholder="Tell us about your festival experience…"></textarea></label><label><span class="field-label">Your name</span><input required type="text" placeholder="Name"></label><button class="button button-review-submit" type="submit"><span>Submit my review</span><b>↗</b></button></form></section>`,
 };
@@ -106,7 +88,53 @@ function bindPage(page) {
   });
   let rating = 0;
   document.querySelectorAll('[data-rating]').forEach(button => button.addEventListener('click', () => { rating = Number(button.dataset.rating); document.querySelectorAll('[data-rating]').forEach(star => star.classList.toggle('active', Number(star.dataset.rating) <= rating)); }));
-  document.querySelector('[data-review-form]')?.addEventListener('submit', event => { event.preventDefault(); if (!rating) return; event.currentTarget.innerHTML = '<div class="review-thanks"><span>✓</span><h2>Review saved.</h2><p>Thank you for your feedback.</p></div>'; });
+  document.querySelector('[data-review-form]')?.addEventListener('submit', event => {
+    event.preventDefault();
+    if (!rating) return;
+    const form = event.currentTarget;
+    const comment = form.querySelector('textarea').value;
+    const name = form.querySelector('input[type="text"]').value;
+    
+    fetch('api.php?action=submit_review', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        rating: rating,
+        comment: comment,
+        name: name
+      })
+    })
+    .then(res => res.json())
+    .then(res => {
+      form.innerHTML = `<div class="review-thanks"><span>✓</span><h2>${res.success ? 'Review saved.' : 'Error'}</h2><p>${res.message || 'Thank you for your feedback.'}</p></div>`;
+    })
+    .catch(err => {
+      form.innerHTML = '<div class="review-thanks"><span style="background:#ea4335">✗</span><h2>Error</h2><p>Something went wrong. Please try again.</p></div>';
+    });
+  });
 }
 
-setPage('home');
+// Render immediately with initial server data
+const initialPage = window.location.hash.replace('#', '') || 'home';
+setPage(initialPage);
+
+// Fetch live data from database asynchronously to catch any changes
+fetch('api.php?action=get_data')
+  .then(res => res.json())
+  .then(res => {
+    if (res.success) {
+      data.teams = res.teams;
+      data.schedule = res.schedule;
+      data.participants = res.participants;
+      data.committee = res.committee;
+      
+      // Re-render the current active page with updated data
+      const currentPage = window.location.hash.replace('#', '') || 'home';
+      setPage(currentPage);
+    }
+  })
+  .catch(err => {
+    console.error('Failed to load database data:', err);
+  });

@@ -76,7 +76,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($uid === $myId) {
                     $dashPdo->prepare("UPDATE users SET full_name=?, email=?, phone=? WHERE id=?")
                             ->execute([$uFull, $uEmail, $uPhone, $uid]);
-                    $_SESSION['user'] = load_user($uid);
                 } else {
                     $dashPdo->prepare("UPDATE users SET full_name=?, email=?, phone=?, status=? WHERE id=?")
                             ->execute([$uFull, $uEmail, $uPhone, $uStat, $uid]);
@@ -89,6 +88,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     foreach ($uRoles as $rid) {
                         if ($rid > 0) $ins->execute([$uid, $rid]);
                     }
+                }
+
+                // Refresh session user data if editing self
+                if ($uid === $myId) {
+                    $_SESSION['user'] = load_user($uid);
                 }
                 admin_flash('success', 'User updated successfully.');
             } catch (Throwable $e) {
