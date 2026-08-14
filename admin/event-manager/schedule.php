@@ -387,7 +387,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $flash = admin_take_flash();
 [$startExpr, $endExpr] = schedule_program_datetime_columns($pdo);
 
-$stageTypes = $pdo->query('SELECT id, name FROM musabaqa_stage_types ORDER BY name ASC')->fetchAll(PDO::FETCH_ASSOC);
+$stageTypes = $pdo->query('SELECT id, name, category FROM musabaqa_stage_types ORDER BY name ASC')->fetchAll(PDO::FETCH_ASSOC);
 $activeStageId = (int)($_GET['stage_id'] ?? ($stageTypes[0]['id'] ?? 0));
 $classFilter = trim((string)($_GET['class'] ?? 'all'));
 $search = trim((string)($_GET['search'] ?? ''));
@@ -418,8 +418,10 @@ array_push($programParams, ...$classParams);
 $stmt = $pdo->prepare("
     SELECT mp.id, mp.title, mp.location, mp.class_type_id, ct.name AS class_type_name,
            t.full_name AS responsible_teacher_name, mp.allowed_sections, mp.stage_type_id,
+           mst.category AS stage_category,
            mp.{$startExpr} AS start_at, mp.{$endExpr} AS end_at
     FROM musabaqa_programs mp
+    LEFT JOIN musabaqa_stage_types mst ON mst.id = mp.stage_type_id
     LEFT JOIN " . DB_MAIN_NAME . ".class_types ct ON ct.id = mp.class_type_id
     LEFT JOIN " . DB_MAIN_NAME . ".teachers t ON t.id = mp.responsible_teacher_id
     {$programWhere}
@@ -458,8 +460,10 @@ foreach ($allBreaks as $break) {
 $stmt = $pdo->prepare("
     SELECT mp.id, mp.title, mp.program_type, mp.class_type_id, ct.name AS class_type_name,
            t.full_name AS responsible_teacher_name, mp.allowed_sections, mp.location,
-           COALESCE(mp.stage_type_id, 1) AS stage_type_id
+           COALESCE(mp.stage_type_id, 1) AS stage_type_id,
+           mst.category AS stage_category
     FROM musabaqa_programs mp
+    LEFT JOIN musabaqa_stage_types mst ON mst.id = mp.stage_type_id
     LEFT JOIN " . DB_MAIN_NAME . ".class_types ct ON ct.id = mp.class_type_id
     LEFT JOIN " . DB_MAIN_NAME . ".teachers t ON t.id = mp.responsible_teacher_id
     WHERE mp.event_id = ?
@@ -1133,12 +1137,23 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                     <input type="text" name="name" id="breakNameInput" required class="form-input" placeholder="e.g. Intermission / Tea Break / Announcements" style="height: 40px; border-radius: 8px;">
                 </div>
                 <div class="input-group full-width" id="breakStageSelectGroup">
-                    <label style="font-size: 12.5px; font-weight: 700;">Stage / Venue <span class="required">*</span></label>
-                    <select name="stage_type_id" id="breakStageTypeId" class="form-input" required style="height: 40px; border-radius: 8px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color: #fff;">
-                        <?php foreach ($stageTypes as $stage): ?>
-                            <option value="<?= (int)$stage['id'] ?>"><?= e($stage['name']) ?></option>
-                        <?php endforeach; ?>
-                    </select>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+                        <div>
+                            <label style="font-size: 12.5px; font-weight: 700;">Stage Type <span class="required">*</span></label>
+                            <select id="breakStageTypeFilter" class="form-input" required style="height: 40px; border-radius: 8px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color: #fff;">
+                                <option value="on_stage">On Stage (Normal Stage)</option>
+                                <option value="off_stage">Off Stage</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-size: 12.5px; font-weight: 700;">Specific Venue / Stage <span class="required">*</span></label>
+                            <select name="stage_type_id" id="breakStageTypeId" class="form-input" required style="height: 40px; border-radius: 8px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color: #fff;">
+                                <?php foreach ($stageTypes as $stage): ?>
+                                    <option value="<?= (int)$stage['id'] ?>" data-category="<?= e($stage['category'] ?? 'on_stage') ?>" data-name="<?= e($stage['name']) ?>"><?= e($stage['name']) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                    </div>
                 </div>
                 <div class="input-group full-width" id="breakTimeFieldsGroup">
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
@@ -1224,12 +1239,23 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                 </div>
 
                 <div class="input-group full-width" id="modalStageGroup">
-                    <label style="font-size: 12.5px; font-weight: 700;">Stage / Venue <span class="required">*</span></label>
-                    <select name="stage_type_id" id="scheduleStageTypeId" class="form-input" required style="height: 42px; border-radius: 8px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color: #fff;">
-                        <?php foreach ($stageTypes as $stage): ?>
-                            <option value="<?= (int)$stage['id'] ?>"><?= e($stage['name']) ?></option>
-                        <?php endforeach; ?>
-                    </select>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+                        <div>
+                            <label style="font-size: 12.5px; font-weight: 700;">Stage Type <span class="required">*</span></label>
+                            <select id="scheduleStageTypeFilter" class="form-input" required style="height: 42px; border-radius: 8px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color: #fff;">
+                                <option value="on_stage">On Stage (Normal Stage)</option>
+                                <option value="off_stage">Off Stage</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-size: 12.5px; font-weight: 700;">Specific Venue / Stage <span class="required">*</span></label>
+                            <select name="stage_type_id" id="scheduleStageTypeId" class="form-input" required style="height: 42px; border-radius: 8px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color: #fff;">
+                                <?php foreach ($stageTypes as $stage): ?>
+                                    <option value="<?= (int)$stage['id'] ?>" data-category="<?= e($stage['category'] ?? 'on_stage') ?>" data-name="<?= e($stage['name']) ?>"><?= e($stage['name']) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                    </div>
                 </div>
                 <div class="input-group full-width">
                     <label style="font-size: 12.5px; font-weight: 700;">Location / Room</label>
@@ -1320,10 +1346,120 @@ require_once __DIR__ . '/../../includes/sidebar.php';
 <script>
 const offStageMap = {
     <?php foreach ($stageTypes as $st): ?>
-        '<?= (int)$st['id'] ?>': <?= (stripos($st['name'], 'off') !== false) ? 'true' : 'false' ?>,
+        '<?= (int)$st['id'] ?>': <?= (($st['category'] ?? '') === 'off_stage') ? 'true' : 'false' ?>,
     <?php endforeach; ?>
 };
 let currentActiveStageId = '<?= (int)($activeStageId ?: ($stageTypes[0]['id'] ?? 0)) ?>';
+
+// Sync Specific Venue dropdown for Schedule Modal based on Category
+function syncScheduleVenues(category, selectedVal = '') {
+    const stageSelect = document.getElementById('scheduleStageTypeId');
+    if (!stageSelect) return;
+    
+    if (!window.ALL_SCHEDULE_STAGE_OPTIONS) {
+        window.ALL_SCHEDULE_STAGE_OPTIONS = Array.from(stageSelect.options).map(opt => ({
+            value: opt.value,
+            text: opt.text,
+            category: opt.getAttribute('data-category'),
+            name: opt.getAttribute('data-name')
+        }));
+    }
+    
+    stageSelect.innerHTML = '<option value="">-- Select Venue --</option>';
+    
+    const filtered = window.ALL_SCHEDULE_STAGE_OPTIONS.filter(opt => opt.value === '' || opt.category === category);
+    filtered.forEach(opt => {
+        if (opt.value === '') return;
+        const o = document.createElement('option');
+        o.value = opt.value;
+        o.text = opt.text;
+        o.setAttribute('data-category', opt.category);
+        o.setAttribute('data-name', opt.name);
+        if (String(opt.value) === String(selectedVal)) {
+            o.selected = true;
+        }
+        stageSelect.appendChild(o);
+    });
+}
+
+// Sync Specific Venue dropdown for Break Modal based on Category
+function syncBreakVenues(category, selectedVal = '') {
+    const stageSelect = document.getElementById('breakStageTypeId');
+    if (!stageSelect) return;
+    
+    if (!window.ALL_BREAK_STAGE_OPTIONS) {
+        window.ALL_BREAK_STAGE_OPTIONS = Array.from(stageSelect.options).map(opt => ({
+            value: opt.value,
+            text: opt.text,
+            category: opt.getAttribute('data-category'),
+            name: opt.getAttribute('data-name')
+        }));
+    }
+    
+    stageSelect.innerHTML = '<option value="">-- Select Venue --</option>';
+    
+    const filtered = window.ALL_BREAK_STAGE_OPTIONS.filter(opt => opt.value === '' || opt.category === category);
+    filtered.forEach(opt => {
+        if (opt.value === '') return;
+        const o = document.createElement('option');
+        o.value = opt.value;
+        o.text = opt.text;
+        o.setAttribute('data-category', opt.category);
+        o.setAttribute('data-name', opt.name);
+        if (String(opt.value) === String(selectedVal)) {
+            o.selected = true;
+        }
+        stageSelect.appendChild(o);
+    });
+}
+
+// Set stage helper for Schedule Modal (updates Stage Type and syncs venue)
+function setScheduleStage(stageId) {
+    const filterSelect = document.getElementById('scheduleStageTypeFilter');
+    const stageSelect = document.getElementById('scheduleStageTypeId');
+    if (!stageSelect) return;
+
+    if (!window.ALL_SCHEDULE_STAGE_OPTIONS) {
+        window.ALL_SCHEDULE_STAGE_OPTIONS = Array.from(stageSelect.options).map(opt => ({
+            value: opt.value,
+            text: opt.text,
+            category: opt.getAttribute('data-category'),
+            name: opt.getAttribute('data-name')
+        }));
+    }
+
+    const found = window.ALL_SCHEDULE_STAGE_OPTIONS.find(opt => String(opt.value) === String(stageId));
+    const category = found ? (found.category || 'on_stage') : 'on_stage';
+
+    if (filterSelect) {
+        filterSelect.value = category;
+    }
+    syncScheduleVenues(category, stageId);
+}
+
+// Set stage helper for Break Modal
+function setBreakStage(stageId) {
+    const filterSelect = document.getElementById('breakStageTypeFilter');
+    const stageSelect = document.getElementById('breakStageTypeId');
+    if (!stageSelect) return;
+
+    if (!window.ALL_BREAK_STAGE_OPTIONS) {
+        window.ALL_BREAK_STAGE_OPTIONS = Array.from(stageSelect.options).map(opt => ({
+            value: opt.value,
+            text: opt.text,
+            category: opt.getAttribute('data-category'),
+            name: opt.getAttribute('data-name')
+        }));
+    }
+
+    const found = window.ALL_BREAK_STAGE_OPTIONS.find(opt => String(opt.value) === String(stageId));
+    const category = found ? (found.category || 'on_stage') : 'on_stage';
+
+    if (filterSelect) {
+        filterSelect.value = category;
+    }
+    syncBreakVenues(category, stageId);
+}
 
 function updateActiveStage(stageId) {
     currentActiveStageId = String(stageId);
@@ -1428,11 +1564,54 @@ function filterModalProgramOptions() {
     }
 }
 
-// Stage Select dropdown change listener in scheduleModal
-document.getElementById('scheduleStageTypeId')?.addEventListener('change', () => {
-    filterModalProgramOptions();
-    applyNextAvailableSlotForStage();
+// Initialize stage caching and register event listeners on DOMContentLoaded
+document.addEventListener('DOMContentLoaded', () => {
+    const scheduleSelect = document.getElementById('scheduleStageTypeId');
+    if (scheduleSelect) {
+        window.ALL_SCHEDULE_STAGE_OPTIONS = Array.from(scheduleSelect.options).map(opt => ({
+            value: opt.value,
+            text: opt.text,
+            category: opt.getAttribute('data-category'),
+            name: opt.getAttribute('data-name')
+        }));
+    }
+
+    const breakSelect = document.getElementById('breakStageTypeId');
+    if (breakSelect) {
+        window.ALL_BREAK_STAGE_OPTIONS = Array.from(breakSelect.options).map(opt => ({
+            value: opt.value,
+            text: opt.text,
+            category: opt.getAttribute('data-category'),
+            name: opt.getAttribute('data-name')
+        }));
+    }
+
+    // Stage Type change listener in scheduleModal
+    document.getElementById('scheduleStageTypeFilter')?.addEventListener('change', (e) => {
+        syncScheduleVenues(e.target.value);
+        const stageSelect = document.getElementById('scheduleStageTypeId');
+        if (stageSelect) {
+            const locName = stageSelect.options[stageSelect.selectedIndex]?.getAttribute('data-name') || '';
+            document.getElementById('scheduleLocation').value = locName;
+        }
+        filterModalProgramOptions();
+        applyNextAvailableSlotForStage();
+    });
+
+    // Stage Select dropdown change listener in scheduleModal
+    document.getElementById('scheduleStageTypeId')?.addEventListener('change', (e) => {
+        const locName = e.target.options[e.target.selectedIndex]?.getAttribute('data-name') || '';
+        document.getElementById('scheduleLocation').value = locName;
+        filterModalProgramOptions();
+        applyNextAvailableSlotForStage();
+    });
+
+    // Stage Type change listener in breakModal
+    document.getElementById('breakStageTypeFilter')?.addEventListener('change', (e) => {
+        syncBreakVenues(e.target.value);
+    });
 });
+
 
 function applyNextAvailableSlotForStage() {
     const stageId = document.getElementById('scheduleStageTypeId').value;
@@ -1597,10 +1776,10 @@ document.querySelectorAll('.stage-panel-item').forEach(stagePanel => {
 
         // Set the stage from the drop target panel (stageId == stage_type_id)
         const stageId = stagePanel.dataset.stageId;
-        if (stageId && stageSelectEl.querySelector(`option[value="${stageId}"]`)) {
-            stageSelectEl.value = stageId;
-        } else if (p.stage_type_id && stageSelectEl.querySelector(`option[value="${p.stage_type_id}"]`)) {
-            stageSelectEl.value = String(p.stage_type_id);
+        if (stageId) {
+            setScheduleStage(stageId);
+        } else if (p.stage_type_id) {
+            setScheduleStage(p.stage_type_id);
         }
 
         // Set location from program data
@@ -1757,7 +1936,7 @@ document.getElementById('addNewExtraBtn')?.addEventListener('click', () => {
     
     document.getElementById('breakStageSelectGroup').style.display = '';
     document.getElementById('breakTimeFieldsGroup').style.display = '';
-    document.getElementById('breakStageTypeId').value = currentActiveStageId || '1';
+    setBreakStage(currentActiveStageId || '1');
     
     const targetPanel = document.querySelector(`.stage-panel-item[data-stage-id="${currentActiveStageId}"]`);
     if (targetPanel && targetPanel.dataset.lastEndAt) {
@@ -1778,7 +1957,7 @@ document.querySelectorAll('[data-open-extra], [data-open-break]').forEach(button
         submitBtn.disabled = false;
         submitBtn.innerHTML = 'Save Extra Item';
     }
-    document.getElementById('breakStageTypeId').value = button.dataset.stageId || '';
+    setBreakStage(button.dataset.stageId || '');
     document.getElementById('previousProgramId').value = button.dataset.previousProgram || '';
     document.getElementById('nextProgramId').value = button.dataset.nextProgram || '';
     document.getElementById('breakGapLabel').textContent = button.dataset.gapLabel ? ('Timeline Gap: ' + button.dataset.gapLabel) : '';
@@ -1803,11 +1982,8 @@ document.getElementById('scheduleProgramSelect')?.addEventListener('change', (e)
             document.getElementById('scheduleLocation').value = opt.dataset.location;
         }
         if (opt.dataset.stageTypeId && Number(opt.dataset.stageTypeId) > 0) {
-            const stageSelect = document.getElementById('scheduleStageTypeId');
-            if (stageSelect && stageSelect.querySelector(`option[value="${opt.dataset.stageTypeId}"]`)) {
-                stageSelect.value = opt.dataset.stageTypeId;
-                applyNextAvailableSlotForStage();
-            }
+            setScheduleStage(opt.dataset.stageTypeId);
+            applyNextAvailableSlotForStage();
         }
     }
 });
@@ -1827,10 +2003,7 @@ function applyNextAvailableSlotForStage() {
 }
 
 document.getElementById('scheduleUseNextSlotBtn')?.addEventListener('click', applyNextAvailableSlotForStage);
-document.getElementById('scheduleStageTypeId')?.addEventListener('change', () => {
-    filterModalProgramOptions();
-    applyNextAvailableSlotForStage();
-});
+
 
 function filterModalProgramOptions() {
     const selectEl = document.getElementById('scheduleProgramSelect');
@@ -1870,7 +2043,7 @@ function setModalCreateMode() {
     hiddenEl.disabled = true;
     hiddenEl.name = 'program_id_hidden';
     
-    document.getElementById('scheduleStageTypeId').value = currentActiveStageId || '<?= $stageTypes ? (int)$stageTypes[0]['id'] : '' ?>';
+    setScheduleStage(currentActiveStageId || '<?= $stageTypes ? (int)$stageTypes[0]['id'] : '' ?>');
     document.getElementById('scheduleLocation').value = '';
     filterModalProgramOptions();
 }
@@ -1903,7 +2076,7 @@ function setModalEditMode(p) {
     if (stageGroupEl) stageGroupEl.style.display = '';
     document.getElementById('scheduleStageTypeId').disabled = false;
     document.getElementById('scheduleStageTypeId').required = true;
-    document.getElementById('scheduleStageTypeId').value = p.stage_type_id || '';
+    setScheduleStage(p.stage_type_id || '');
     document.getElementById('scheduleLocation').value = p.location || '';
     document.getElementById('scheduleStartTime').value = toLocalDatetime(p.start_at);
     document.getElementById('scheduleEndTime').value = toLocalDatetime(p.end_at);
@@ -1939,7 +2112,7 @@ document.querySelectorAll('[data-schedule-btn]').forEach(btn => btn.addEventList
     setModalCreateMode();
     
     if (p.stage_type_id) {
-        document.getElementById('scheduleStageTypeId').value = p.stage_type_id;
+        setScheduleStage(p.stage_type_id);
     }
     filterModalProgramOptions();
     
