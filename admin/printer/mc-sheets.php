@@ -321,6 +321,7 @@ if ($action === 'print' && $activeEvent) {
             } else {
                 $programHeading = $rawTitle;
             }
+            $isGroup = (strtolower((string)($program['program_type'] ?? '')) === 'group');
         ?>
             <div class="portrait-mc-page <?= $pageIdx > 0 ? 'page-break' : '' ?>">
                 <div class="sheet-header">
@@ -330,14 +331,20 @@ if ($action === 'print' && $activeEvent) {
                 <table class="emcee-table">
                     <thead>
                         <tr>
-                            <th class="order-col" style="font-size: <?= $thFontSize ?>;">ORDER</th>
-                            <th class="chest-col" style="font-size: <?= $thFontSize ?>;">CHEST NUMBER</th>
+                            <?php if ($isGroup): ?>
+                                <th class="order-col" style="font-size: <?= $thFontSize ?>; width: 15%;">ORDER</th>
+                                <th class="chest-col" style="font-size: <?= $thFontSize ?>; width: 25%;">CHEST NUMBER</th>
+                                <th style="font-size: <?= $thFontSize ?>; text-align: left; padding-left: 16px; width: 60%;">GROUP / TEAM NAME</th>
+                            <?php else: ?>
+                                <th class="order-col" style="font-size: <?= $thFontSize ?>; width: 30%;">ORDER</th>
+                                <th class="chest-col" style="font-size: <?= $thFontSize ?>; width: 70%;">CHEST NUMBER</th>
+                            <?php endif; ?>
                         </tr>
                     </thead>
                     <tbody>
                         <?php if (empty($entriesForPrint)): ?>
                             <tr>
-                                <td colspan="2" style="text-align: center; padding: 40px; color: #64748b; font-size: 16px;">No entries registered for this program.</td>
+                                <td colspan="<?= $isGroup ? 3 : 2 ?>" style="text-align: center; padding: 40px; color: #64748b; font-size: 16px;">No entries registered for this program.</td>
                             </tr>
                         <?php else: ?>
                             <?php $orderIdx = 1; ?>
@@ -347,8 +354,17 @@ if ($action === 'print' && $activeEvent) {
                                     $formattedChest = is_numeric($chestNo) ? str_pad((string)$chestNo, 3, '0', STR_PAD_LEFT) : (string)$chestNo;
                                 ?>
                                 <tr>
-                                    <td class="order-col" style="height: <?= $rowHeight ?>px; font-size: <?= $orderFontSize ?>; font-weight: 900;"><?= $orderIdx++ ?></td>
-                                    <td class="chest-col" style="height: <?= $rowHeight ?>px; font-size: <?= $chestFontSize ?>; font-weight: 900; letter-spacing: 0.04em;">#<?= e($formattedChest) ?></td>
+                                    <?php if ($isGroup): ?>
+                                        <td class="order-col" style="height: <?= $rowHeight ?>px; font-size: <?= $orderFontSize ?>; font-weight: 900; width: 15%;"><?= $orderIdx++ ?></td>
+                                        <td class="chest-col" style="height: <?= $rowHeight ?>px; font-size: <?= $chestFontSize ?>; font-weight: 900; letter-spacing: 0.04em; width: 25%;">#<?= e($formattedChest) ?></td>
+                                        <td style="height: <?= $rowHeight ?>px; font-size: 18px; font-weight: 900; text-align: left; padding: 8px 16px; width: 60%; text-transform: uppercase;">
+                                            <?= e($entry['entry_name']) ?>
+                                            <span style="font-size: 13px; font-weight: 700; color: #64748b; margin-left: 8px; text-transform: uppercase;">(<?= e($entry['team_name']) ?>)</span>
+                                        </td>
+                                    <?php else: ?>
+                                        <td class="order-col" style="height: <?= $rowHeight ?>px; font-size: <?= $orderFontSize ?>; font-weight: 900; width: 30%;"><?= $orderIdx++ ?></td>
+                                        <td class="chest-col" style="height: <?= $rowHeight ?>px; font-size: <?= $chestFontSize ?>; font-weight: 900; letter-spacing: 0.04em; width: 70%;">#<?= e($formattedChest) ?></td>
+                                    <?php endif; ?>
                                 </tr>
                             <?php endforeach; ?>
                         <?php endif; ?>
