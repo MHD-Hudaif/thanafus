@@ -241,8 +241,7 @@ if (!empty($_SESSION['oauth_error'])) {
                         <div id="g_id_onload"
                              data-client_id="<?= GOOGLE_CLIENT_ID ?>"
                              data-context="signin"
-                             data-ux_mode="redirect"
-                             data-login_uri="<?= app_absolute_url('/auth/google-oauth.php') ?>"
+                             data-callback="handleGoogleCredentialResponse"
                              data-auto_prompt="false">
                         </div>
                         <div class="g_id_signin"
@@ -270,6 +269,22 @@ if (!empty($_SESSION['oauth_error'])) {
 </div>
 
 <script>
+function handleGoogleCredentialResponse(response) {
+    if (!response || !response.credential) return;
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '<?= app_url('/auth/google-oauth.php') ?>';
+    
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'credential';
+    input.value = response.credential;
+    form.appendChild(input);
+    
+    document.body.appendChild(form);
+    form.submit();
+}
+
 function togglePassword(){
     const input = document.getElementById('passwordInput');
     const icon = document.getElementById('toggleIcon');
