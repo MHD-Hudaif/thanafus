@@ -271,11 +271,20 @@ $rowHeight = ($participantsCount <= 6) ? 40 : (($participantsCount <= 12) ? 32 :
             border: 1.5px solid #000;
             text-align: center;
             vertical-align: middle;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            word-break: break-all;
+            hyphens: auto;
         }
         .judge-table th {
             background: #f1f5f9;
             font-weight: 800;
             text-transform: uppercase;
+            padding: 10px 4px;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            word-break: break-all;
+            hyphens: auto;
         }
         .chest-col {
             width: 95px;

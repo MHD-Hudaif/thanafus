@@ -263,8 +263,12 @@ if ($action === 'print' && $activeEvent) {
                 border: 1.5px solid #000;
                 text-align: center;
                 vertical-align: middle;
-                padding: 6px 8px;
+                padding: 6px 4px;
                 font-size: 13px;
+                word-wrap: break-word;
+                overflow-wrap: break-word;
+                word-break: break-all;
+                hyphens: auto;
             }
             .sheet-table th {
                 background: #f1f5f9;
@@ -272,7 +276,11 @@ if ($action === 'print' && $activeEvent) {
                 text-transform: uppercase;
                 font-size: 12px;
                 letter-spacing: 0.03em;
-                padding: 10px 8px;
+                padding: 10px 4px;
+                word-wrap: break-word;
+                overflow-wrap: break-word;
+                word-break: break-all;
+                hyphens: auto;
             }
             .chest-col {
                 width: 120px;
@@ -463,25 +471,27 @@ if ($action === 'print' && $activeEvent) {
                 $totalMaxMarks += (float)($cat['max_marks'] ?? 0);
             }
 
-            if ($entryCount <= 8) {
-                $cellPadding = '12px 10px';
-                $chestFontSize = '22px';
-                $thCatFontSize = '17px';
-                $thMaxFontSize = '13px';
-                $thChestFontSize = '16px';
-            } elseif ($entryCount <= 14) {
-                $cellPadding = '8px 8px';
-                $chestFontSize = '19px';
-                $thCatFontSize = '15px';
-                $thMaxFontSize = '12px';
-                $thChestFontSize = '15px';
-            } else {
-                $cellPadding = '5px 6px';
-                $chestFontSize = '16px';
-                $thCatFontSize = '13px';
-                $thMaxFontSize = '11px';
-                $thChestFontSize = '13px';
+            $catCount = count($categories);
+            $thCatSizeInt = ($entryCount <= 8) ? 17 : (($entryCount <= 14) ? 15 : 13);
+            $thMaxSizeInt = ($entryCount <= 8) ? 13 : (($entryCount <= 14) ? 12 : 11);
+            $thChestSizeInt = ($entryCount <= 8) ? 16 : (($entryCount <= 14) ? 15 : 13);
+            $cellPadding = ($entryCount <= 8) ? '12px 10px' : (($entryCount <= 14) ? '8px 8px' : '5px 6px');
+            $chestFontSize = ($entryCount <= 8) ? '22px' : (($entryCount <= 14) ? '19px' : '16px');
+            
+            if ($catCount >= 6) {
+                $thCatSizeInt = min($thCatSizeInt, 9);
+                $thMaxSizeInt = min($thMaxSizeInt, 8);
+            } elseif ($catCount >= 5) {
+                $thCatSizeInt = min($thCatSizeInt, 10);
+                $thMaxSizeInt = min($thMaxSizeInt, 9);
+            } elseif ($catCount >= 4) {
+                $thCatSizeInt = min($thCatSizeInt, 12);
+                $thMaxSizeInt = min($thMaxSizeInt, 10);
             }
+            
+            $thCatFontSize = $thCatSizeInt . 'px';
+            $thMaxFontSize = $thMaxSizeInt . 'px';
+            $thChestFontSize = $thChestSizeInt . 'px';
 
             $tier = admin_class_type_tier_from_name($program['class_type_name'] ?? '');
             $sectionLabel = $tier ? admin_class_type_tier_label($tier) : '';
