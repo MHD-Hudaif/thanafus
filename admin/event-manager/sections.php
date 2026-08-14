@@ -27,9 +27,11 @@ if (isset($_POST['ajax'])) {
                 
                 // Fetch program details for return payload
                 $progStmt = $pdo->prepare("
-                    SELECT mp.id, mp.title, mp.start_time, mp.end_time, mst.name AS stage_type_name
+                    SELECT mp.id, mp.title, mp.start_time, mp.end_time, mst.name AS stage_type_name,
+                           ct.name AS class_type_name
                     FROM musabaqa_programs mp
                     LEFT JOIN musabaqa_stage_types mst ON mst.id = mp.stage_type_id
+                    LEFT JOIN " . DB_MAIN_NAME . ".class_types ct ON ct.id = mp.class_type_id
                     WHERE mp.id = ?
                 ");
                 $progStmt->execute([$programId]);
@@ -50,7 +52,8 @@ if (isset($_POST['ajax'])) {
                         'title' => $prog['title'],
                         'duration' => $duration,
                         'stage' => $prog['stage_type_name'] ?: 'TBD',
-                        'time' => $prog['start_time'] ? date('h:i A', strtotime($prog['start_time'])) : null
+                        'time' => $prog['start_time'] ? date('h:i A', strtotime($prog['start_time'])) : null,
+                        'class_tier' => admin_class_type_tier_from_name($prog['class_type_name'] ?? '')
                     ]
                 ]);
             } else {
@@ -61,9 +64,11 @@ if (isset($_POST['ajax'])) {
             if ($programId > 0) {
                 // Fetch program details for return payload
                 $progStmt = $pdo->prepare("
-                    SELECT mp.id, mp.title, mp.start_time, mp.end_time, mst.name AS stage_type_name
+                    SELECT mp.id, mp.title, mp.start_time, mp.end_time, mst.name AS stage_type_name,
+                           ct.name AS class_type_name
                     FROM musabaqa_programs mp
                     LEFT JOIN musabaqa_stage_types mst ON mst.id = mp.stage_type_id
+                    LEFT JOIN " . DB_MAIN_NAME . ".class_types ct ON ct.id = mp.class_type_id
                     WHERE mp.id = ?
                 ");
                 $progStmt->execute([$programId]);
@@ -87,7 +92,8 @@ if (isset($_POST['ajax'])) {
                         'title' => $prog['title'],
                         'duration' => $duration,
                         'stage' => $prog['stage_type_name'] ?: 'TBD',
-                        'time' => $prog['start_time'] ? date('h:i A', strtotime($prog['start_time'])) : null
+                        'time' => $prog['start_time'] ? date('h:i A', strtotime($prog['start_time'])) : null,
+                        'class_tier' => admin_class_type_tier_from_name($prog['class_type_name'] ?? '')
                     ]
                 ]);
             } else {
@@ -346,9 +352,11 @@ $sections = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Fetch all programs for assignment view
 $stmt = $pdo->prepare("
-    SELECT mp.id, mp.title, mp.section_id, mp.start_time, mp.end_time, mst.name AS stage_type_name
+    SELECT mp.id, mp.title, mp.section_id, mp.start_time, mp.end_time, mst.name AS stage_type_name,
+           ct.name AS class_type_name
     FROM musabaqa_programs mp
     LEFT JOIN musabaqa_stage_types mst ON mst.id = mp.stage_type_id
+    LEFT JOIN " . DB_MAIN_NAME . ".class_types ct ON ct.id = mp.class_type_id
     WHERE mp.event_id = ?
     ORDER BY mp.title ASC
 ");
@@ -545,6 +553,35 @@ window.ALL_PROGRAMS = <?= json_encode($allProgramsPayload, JSON_HEX_APOS | JSON_
     padding: 14px 22px !important;
     color: #fff !important;
     font-weight: 600 !important;
+}
+
+/* Division-specific card indicators */
+.program-drag-card[data-tier="senior"] { border-left-color: #a78bfa !important; }
+.program-drag-card[data-tier="junior"] { border-left-color: #38bdf8 !important; }
+.program-drag-card[data-tier="subjunior"] { border-left-color: #34d399 !important; }
+.program-drag-card[data-tier="general"] { border-left-color: #facc15 !important; }
+
+/* Custom design polish for drag elements */
+.unassign-btn {
+    border-radius: 6px !important;
+    width: 22px !important;
+    height: 22px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: rgba(239, 68, 68, 0.08) !important;
+    border: 1px solid rgba(239, 68, 68, 0.15) !important;
+    transition: all 0.2s ease !important;
+    color: #f87171 !important;
+}
+.unassign-btn:hover {
+    background: #ef4444 !important;
+    color: #fff !important;
+    border-color: #ef4444 !important;
+    transform: scale(1.1);
+}
+.unassign-btn i {
+    font-size: 11px !important;
 }
 
 /* ===== Premium Modal Redesign ===== */
@@ -912,22 +949,29 @@ window.ALL_PROGRAMS = <?= json_encode($allProgramsPayload, JSON_HEX_APOS | JSON_
                                                 $pEnd = new DateTime($prog['end_time']);
                                                 $progDuration = (int)(($pEnd->getTimestamp() - $pStart->getTimestamp()) / 60);
                                             }
+                                            $classTier = admin_class_type_tier_from_name($prog['class_type_name'] ?? '');
+                                            $tierClass = admin_class_type_badge_class($classTier);
+                                            $tierName = $classTier ? admin_class_type_tier_label($classTier) : 'General';
                                             ?>
                                             <div class="program-drag-card" 
                                                  draggable="true"
                                                  data-program-id="<?= (int)$prog['id'] ?>"
                                                  data-duration="<?= $progDuration ?>"
+                                                 data-tier="<?= $classTier ?: 'general' ?>"
                                                  style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.04); border-radius: 8px; padding: 8px 12px; gap: 8px;">
                                                 <div style="min-width: 0;">
-                                                    <strong class="prog-title" style="display: block; font-size: 13px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"><?= e($prog['title']) ?></strong>
-                                                    <span style="font-size: 11px; color: var(--muted);">
+                                                    <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                                                        <strong class="prog-title" style="font-size: 13.0px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 170px;"><?= e($prog['title']) ?></strong>
+                                                        <span class="badge badge-neutral <?= $tierClass ?>" style="font-size: 9.0px; padding: 1px 5px; border-radius: 4px; font-weight: 800; transform: translateY(-0.5px);"><?= e($tierName) ?></span>
+                                                    </div>
+                                                    <span style="font-size: 11px; color: var(--muted); display: block; margin-top: 4px;">
                                                         <i class="fa-solid fa-location-dot mr-1"></i> <?= e($prog['stage_type_name'] ?: 'TBD') ?>
                                                         <?php if ($prog['start_time']): ?>
                                                              • <?= e(date('h:i A', strtotime($prog['start_time']))) ?> (<?= $progDuration ?>m)
-                                                        <?php endif; ?>
+                                                         <?php endif; ?>
                                                     </span>
                                                 </div>
-                                                <div style="display:flex; align-items:center; gap:4px;">
+                                                <div style="display:flex; align-items:center; gap:8px;">
                                                     <i class="fa-solid fa-grip-vertical mr-1" style="color:rgba(255,255,255,0.2); font-size:12px; cursor:grab;"></i>
                                                     <button type="button" class="btn btn-link btn-sm unassign-btn" data-unassign-id="<?= (int)$prog['id'] ?>" style="color: var(--danger, #ef4444); padding:4px;" title="Unassign">
                                                         <i class="fa-solid fa-xmark" style="font-size: 14px;"></i>
@@ -972,19 +1016,26 @@ window.ALL_PROGRAMS = <?= json_encode($allProgramsPayload, JSON_HEX_APOS | JSON_
                                 $pEnd = new DateTime($uProg['end_time']);
                                 $progDuration = (int)(($pEnd->getTimestamp() - $pStart->getTimestamp()) / 60);
                             }
+                            $classTier = admin_class_type_tier_from_name($uProg['class_type_name'] ?? '');
+                            $tierClass = admin_class_type_badge_class($classTier);
+                            $tierName = $classTier ? admin_class_type_tier_label($classTier) : 'General';
                             ?>
                             <div class="program-drag-card" 
                                  draggable="true"
                                  data-program-id="<?= (int)$uProg['id'] ?>"
                                  data-duration="<?= $progDuration ?>"
+                                 data-tier="<?= $classTier ?: 'general' ?>"
                                  style="background: rgba(255,255,255,0.025); border: 1px solid rgba(255,255,255,0.04); border-radius: 8px; padding: 10px 12px; display:flex; justify-content:space-between; align-items:center; gap:8px;">
                                 <div style="min-width: 0;">
-                                    <strong class="prog-title" style="display: block; font-size: 13px; color: #fff; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"><?= e($uProg['title']) ?></strong>
-                                    <span style="font-size: 11px; color: var(--muted); display: block;">
+                                    <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                                        <strong class="prog-title" style="font-size: 13.0px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 170px;"><?= e($uProg['title']) ?></strong>
+                                        <span class="badge badge-neutral <?= $tierClass ?>" style="font-size: 9.0px; padding: 1px 5px; border-radius: 4px; font-weight: 800; transform: translateY(-0.5px);"><?= e($tierName) ?></span>
+                                    </div>
+                                    <span style="font-size: 11px; color: var(--muted); display: block; margin-top: 4px;">
                                         <i class="fa-solid fa-location-dot mr-1"></i> <?= e($uProg['stage_type_name'] ?: 'TBD') ?>
                                         <?php if ($uProg['start_time']): ?>
                                              • <?= e(date('h:i A', strtotime($uProg['start_time']))) ?> (<?= $progDuration ?>m)
-                                        <?php endif; ?>
+                                         <?php endif; ?>
                                     </span>
                                 </div>
                                 <div style="display:flex; align-items:center;">
@@ -1477,6 +1528,13 @@ window.ALL_PROGRAMS = <?= json_encode($allProgramsPayload, JSON_HEX_APOS | JSON_
         if (targetAllAssignedMsg) targetAllAssignedMsg.remove();
 
         const targetList = targetZone.querySelector('.assigned-list') || targetZone;
+        const tier = programData.class_tier || 'general';
+        
+        let badgeClass = 'badge-neutral';
+        let tierLabel = 'General';
+        if (tier === 'senior') { badgeClass = 'badge-primary'; tierLabel = 'Senior'; }
+        else if (tier === 'junior') { badgeClass = 'badge-info'; tierLabel = 'Junior'; }
+        else if (tier === 'subjunior') { badgeClass = 'badge-success'; tierLabel = 'Sub Junior'; }
 
         if (toUnassigned) {
             const newCard = document.createElement('div');
@@ -1484,9 +1542,7 @@ window.ALL_PROGRAMS = <?= json_encode($allProgramsPayload, JSON_HEX_APOS | JSON_
             newCard.setAttribute('draggable', 'true');
             newCard.setAttribute('data-program-id', programId);
             newCard.setAttribute('data-duration', programData.duration);
-            newCard.style.background = 'rgba(255,255,255,0.025)';
-            newCard.style.border = '1px solid rgba(255,255,255,0.04)';
-            newCard.style.borderRadius = '8px';
+            newCard.setAttribute('data-tier', tier);
             newCard.style.padding = '10px 12px';
             newCard.style.display = 'flex';
             newCard.style.justifyContent = 'space-between';
@@ -1495,8 +1551,11 @@ window.ALL_PROGRAMS = <?= json_encode($allProgramsPayload, JSON_HEX_APOS | JSON_
 
             newCard.innerHTML = `
                 <div style="min-width: 0;">
-                    <strong class="prog-title" style="display: block; font-size: 13px; color: #fff; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(programData.title)}</strong>
-                    <span style="font-size: 11px; color: var(--muted); display: block;">
+                    <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                        <strong class="prog-title" style="font-size: 13.0px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 170px;">${escapeHtml(programData.title)}</strong>
+                        <span class="badge badge-neutral ${badgeClass}" style="font-size: 9.0px; padding: 1px 5px; border-radius: 4px; font-weight: 800; transform: translateY(-0.5px);">${escapeHtml(tierLabel)}</span>
+                    </div>
+                    <span style="font-size: 11px; color: var(--muted); display: block; margin-top: 4px;">
                         <i class="fa-solid fa-location-dot mr-1"></i> ${escapeHtml(programData.stage)}
                         ${programData.time ? `• ${programData.time} (${programData.duration}m)` : ''}
                     </span>
@@ -1513,24 +1572,25 @@ window.ALL_PROGRAMS = <?= json_encode($allProgramsPayload, JSON_HEX_APOS | JSON_
             newCard.setAttribute('draggable', 'true');
             newCard.setAttribute('data-program-id', programId);
             newCard.setAttribute('data-duration', programData.duration);
+            newCard.setAttribute('data-tier', tier);
             newCard.style.display = 'flex';
             newCard.style.justifyContent = 'space-between';
             newCard.style.alignItems = 'center';
-            newCard.style.background = 'rgba(255,255,255,0.02)';
-            newCard.style.border = '1px solid rgba(255,255,255,0.04)';
-            newCard.style.borderRadius = '8px';
             newCard.style.padding = '8px 12px';
             newCard.style.gap = '8px';
 
             newCard.innerHTML = `
                 <div style="min-width: 0;">
-                    <strong class="prog-title" style="display: block; font-size: 13px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(programData.title)}</strong>
-                    <span style="font-size: 11px; color: var(--muted);">
+                    <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                        <strong class="prog-title" style="font-size: 13.0px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 170px;">${escapeHtml(programData.title)}</strong>
+                        <span class="badge badge-neutral ${badgeClass}" style="font-size: 9.0px; padding: 1px 5px; border-radius: 4px; font-weight: 800; transform: translateY(-0.5px);">${escapeHtml(tierLabel)}</span>
+                    </div>
+                    <span style="font-size: 11px; color: var(--muted); display: block; margin-top: 4px;">
                         <i class="fa-solid fa-location-dot mr-1"></i> ${escapeHtml(programData.stage)}
                         ${programData.time ? `• ${programData.time} (${programData.duration}m)` : ''}
                     </span>
                 </div>
-                <div style="display:flex; align-items:center; gap:4px;">
+                <div style="display:flex; align-items:center; gap:8px;">
                     <i class="fa-solid fa-grip-vertical mr-1" style="color:rgba(255,255,255,0.2); font-size:12px; cursor:grab;"></i>
                     <button type="button" class="btn btn-link btn-sm unassign-btn" data-unassign-id="${programId}" style="color: var(--danger, #ef4444); padding:4px;" title="Unassign">
                         <i class="fa-solid fa-xmark" style="font-size: 14px;"></i>
