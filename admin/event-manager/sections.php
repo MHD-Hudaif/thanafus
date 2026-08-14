@@ -53,6 +53,7 @@ if (isset($_POST['ajax'])) {
                         'duration' => $duration,
                         'stage' => $prog['stage_type_name'] ?: 'TBD',
                         'time' => $prog['start_time'] ? date('h:i A', strtotime($prog['start_time'])) : null,
+                        'start_time' => $prog['start_time'],
                         'class_tier' => admin_class_type_tier_from_name($prog['class_type_name'] ?? '')
                     ]
                 ]);
@@ -93,6 +94,7 @@ if (isset($_POST['ajax'])) {
                         'duration' => $duration,
                         'stage' => $prog['stage_type_name'] ?: 'TBD',
                         'time' => $prog['start_time'] ? date('h:i A', strtotime($prog['start_time'])) : null,
+                        'start_time' => $prog['start_time'],
                         'class_tier' => admin_class_type_tier_from_name($prog['class_type_name'] ?? '')
                     ]
                 ]);
@@ -389,7 +391,7 @@ $stmt = $pdo->prepare("
     LEFT JOIN musabaqa_stage_types mst ON mst.id = mp.stage_type_id
     LEFT JOIN " . DB_MAIN_NAME . ".class_types ct ON ct.id = mp.class_type_id
     WHERE mp.event_id = ?
-    ORDER BY mp.title ASC
+    ORDER BY (mp.start_time IS NULL) ASC, mp.start_time ASC, mp.title ASC
 ");
 $stmt->execute([$activeEventId]);
 $allPrograms = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -989,6 +991,7 @@ window.ALL_PROGRAMS = <?= json_encode($allProgramsPayload, JSON_HEX_APOS | JSON_
                                                  data-program-id="<?= (int)$prog['id'] ?>"
                                                  data-duration="<?= $progDuration ?>"
                                                  data-tier="<?= $classTier ?: 'general' ?>"
+                                                 data-time="<?= $prog['start_time'] ? e($prog['start_time']) : '' ?>"
                                                  style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.04); border-radius: 8px; padding: 8px 12px; gap: 8px;">
                                                 <div style="min-width: 0;">
                                                     <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
@@ -1056,6 +1059,7 @@ window.ALL_PROGRAMS = <?= json_encode($allProgramsPayload, JSON_HEX_APOS | JSON_
                                  data-program-id="<?= (int)$uProg['id'] ?>"
                                  data-duration="<?= $progDuration ?>"
                                  data-tier="<?= $classTier ?: 'general' ?>"
+                                 data-time="<?= $uProg['start_time'] ? e($uProg['start_time']) : '' ?>"
                                  style="background: rgba(255,255,255,0.025); border: 1px solid rgba(255,255,255,0.04); border-radius: 8px; padding: 10px 12px; display:flex; justify-content:space-between; align-items:center; gap:8px;">
                                 <div style="min-width: 0;">
                                     <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
@@ -1550,6 +1554,28 @@ window.ALL_PROGRAMS = <?= json_encode($allProgramsPayload, JSON_HEX_APOS | JSON_
         });
     }
 
+    function sortProgramList(container) {
+        const cards = Array.from(container.querySelectorAll('.program-drag-card'));
+        if (cards.length <= 1) return;
+
+        cards.sort((a, b) => {
+            const timeA = a.getAttribute('data-time') || '';
+            const timeB = b.getAttribute('data-time') || '';
+            
+            if (timeA && timeB) {
+                return timeA.localeCompare(timeB);
+            }
+            if (timeA) return -1;
+            if (timeB) return 1;
+            
+            const titleA = a.querySelector('.prog-title').textContent.trim().toLowerCase();
+            const titleB = b.querySelector('.prog-title').textContent.trim().toLowerCase();
+            return titleA.localeCompare(titleB);
+        });
+
+        cards.forEach(card => container.appendChild(card));
+    }
+
     function moveProgramDOM(programId, targetZone, sourceZone, programData, toUnassigned = false) {
         let card = document.querySelector(`.program-drag-card[data-program-id="${programId}"]`);
         
@@ -1574,6 +1600,7 @@ window.ALL_PROGRAMS = <?= json_encode($allProgramsPayload, JSON_HEX_APOS | JSON_
             newCard.setAttribute('data-program-id', programId);
             newCard.setAttribute('data-duration', programData.duration);
             newCard.setAttribute('data-tier', tier);
+            newCard.setAttribute('data-time', programData.start_time || '');
             newCard.style.padding = '10px 12px';
             newCard.style.display = 'flex';
             newCard.style.justifyContent = 'space-between';
@@ -1604,6 +1631,7 @@ window.ALL_PROGRAMS = <?= json_encode($allProgramsPayload, JSON_HEX_APOS | JSON_
             newCard.setAttribute('data-program-id', programId);
             newCard.setAttribute('data-duration', programData.duration);
             newCard.setAttribute('data-tier', tier);
+            newCard.setAttribute('data-time', programData.start_time || '');
             newCard.style.display = 'flex';
             newCard.style.justifyContent = 'space-between';
             newCard.style.alignItems = 'center';
@@ -1631,6 +1659,9 @@ window.ALL_PROGRAMS = <?= json_encode($allProgramsPayload, JSON_HEX_APOS | JSON_
             targetList.appendChild(newCard);
             if (card) card.remove();
         }
+
+        // Auto-sort list chronologically
+        sortProgramList(targetList);
 
         if (sourceZone) {
             const sourceList = sourceZone.querySelector('.assigned-list') || sourceZone;
