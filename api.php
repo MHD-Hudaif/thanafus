@@ -14,7 +14,7 @@ $jsonBody = !empty($rawInput) ? json_decode($rawInput, true) : [];
 $action = $_GET['action'] ?? $_POST['action'] ?? $_REQUEST['action'] ?? $jsonBody['action'] ?? '';
 
 try {
-    require_once __DIR__ . '/../includes/public-data.php';
+    require_once __DIR__ . '/includes/public-data.php';
 
     if ($action === 'get_data') {
         // Retrieve and format teams

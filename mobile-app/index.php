@@ -365,8 +365,8 @@ $eventDateFormatted = !empty($event['start_date'])
         <div class="logo-wrap">
             <span class="logo-text">THANAFUS<span class="logo-dot">.</span></span>
         </div>
-        <button class="key-btn" id="openAuthBtn" aria-label="Unlock Emcee Controls">
-            <i class="fa-solid fa-key"></i>
+        <button class="key-btn" id="openAuthBtn" aria-label="Settings & Navigation">
+            <i class="fa-solid fa-gear"></i>
         </button>
     </header>
 
@@ -403,20 +403,30 @@ $eventDateFormatted = !empty($event['start_date'])
         &copy; 2026 Al Jamiathul Kauzariyya
     </footer>
 
-    <!-- Passkey Authentication Modal -->
+    <!-- Settings & Quick Navigation Modal -->
     <div class="modal-overlay" id="authModal">
         <div class="modal-card">
             <div class="modal-icon">
-                <i class="fa-solid fa-lock"></i>
+                <i class="fa-solid fa-gear"></i>
             </div>
-            <h3 class="modal-title">Emcee Controls</h3>
-            <p class="modal-desc">Please enter the security passkey to unlock the Stage Control Deck.</p>
+            <h3 class="modal-title">Settings & Options</h3>
+            <p class="modal-desc">Select a page destination below.</p>
             
-            <input type="password" id="pinInput" class="pin-input" placeholder="••••" maxlength="8" autocomplete="off" inputmode="numeric">
-            
-            <div class="error-msg" id="errorMsg">Invalid Passkey PIN!</div>
-            
-            <button class="modal-btn btn-submit" id="submitPinBtn">Unlock Deck</button>
+            <div class="dest-group" style="margin: 16px 0; text-align: left;">
+                <label for="targetDestination" style="display: block; font-size: 11px; font-weight: 800; color: #a8b2a9; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 8px;">Select Destination</label>
+                <select id="targetDestination" class="destination-select" style="width: 100%; padding: 12px 14px; background: rgba(0, 0, 0, 0.65); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 12px; color: #ffffff; font-size: 14px; font-weight: 700; outline: none; cursor: pointer;">
+                    <option value="dashboard">🏠 Dashboard (Home Page)</option>
+                    <option value="emcee">🎤 Emcee Controls (Stage Deck)</option>
+                </select>
+            </div>
+
+            <div id="passkeySection" style="display: none; margin-bottom: 12px;">
+                <p class="modal-desc" style="margin-bottom: 8px; font-size: 12px; color: #e6f5eb;">Security Passkey required for Emcee Deck:</p>
+                <input type="password" id="pinInput" class="pin-input" placeholder="••••" maxlength="8" autocomplete="off" inputmode="numeric">
+                <div class="error-msg" id="errorMsg">Invalid Passkey PIN!</div>
+            </div>
+
+            <button class="modal-btn btn-submit" id="submitPinBtn">Open Dashboard</button>
             <button class="modal-btn btn-cancel" id="closeAuthBtn">Cancel</button>
         </div>
     </div>
@@ -440,10 +450,8 @@ $eventDateFormatted = !empty($event['start_date'])
                     const distance = targetDate - now;
                     
                     if (distance < 0) {
-                        if (daysVal) daysVal.innerText = '00';
-                        if (hoursVal) hoursVal.innerText = '00';
-                        if (minutesVal) minutesVal.innerText = '00';
-                        if (secondsVal) secondsVal.innerText = '00';
+                        countdownEl.className = 'countdown-container-live';
+                        countdownEl.innerHTML = `<div class="event-live-banner"><span class="live-dot-pulse"></span><span class="live-text-glow">Event Live!</span></div>`;
                         return;
                     }
                     
@@ -469,12 +477,29 @@ $eventDateFormatted = !empty($event['start_date'])
             const submitPinBtn = document.getElementById('submitPinBtn');
             const pinInput = document.getElementById('pinInput');
             const errorMsg = document.getElementById('errorMsg');
+            const targetDestination = document.getElementById('targetDestination');
+            const passkeySection = document.getElementById('passkeySection');
+
+            function updateDestinationView() {
+                const val = targetDestination.value;
+                if (val === 'emcee') {
+                    passkeySection.style.display = 'block';
+                    submitPinBtn.textContent = 'Unlock Stage Deck';
+                    setTimeout(() => pinInput.focus(), 150);
+                } else {
+                    passkeySection.style.display = 'none';
+                    errorMsg.style.display = 'none';
+                    submitPinBtn.textContent = 'Open Dashboard';
+                }
+            }
+
+            targetDestination.addEventListener('change', updateDestinationView);
 
             function openModal() {
                 authModal.classList.add('active');
                 pinInput.value = '';
                 errorMsg.style.display = 'none';
-                setTimeout(() => pinInput.focus(), 150);
+                updateDestinationView();
             }
 
             function closeModal() {
@@ -485,7 +510,13 @@ $eventDateFormatted = !empty($event['start_date'])
             closeAuthBtn.addEventListener('click', closeModal);
 
             // Handle submission
-            function submitPin() {
+            function handleSubmit() {
+                const dest = targetDestination.value;
+                if (dest === 'dashboard') {
+                    window.location.href = '../home.php';
+                    return;
+                }
+
                 const pin = pinInput.value.trim();
                 if (pin === '') {
                     errorMsg.textContent = 'Please enter a PIN!';
@@ -508,7 +539,7 @@ $eventDateFormatted = !empty($event['start_date'])
                 .then(res => res.json())
                 .then(data => {
                     submitPinBtn.disabled = false;
-                    submitPinBtn.textContent = 'Unlock Deck';
+                    submitPinBtn.textContent = 'Unlock Stage Deck';
                     if (data.success && data.redirect) {
                         window.location.href = data.redirect;
                     } else {
@@ -519,16 +550,16 @@ $eventDateFormatted = !empty($event['start_date'])
                 })
                 .catch(err => {
                     submitPinBtn.disabled = false;
-                    submitPinBtn.textContent = 'Unlock Deck';
+                    submitPinBtn.textContent = 'Unlock Stage Deck';
                     errorMsg.textContent = 'Network error, please try again.';
                     errorMsg.style.display = 'block';
                 });
             }
 
-            submitPinBtn.addEventListener('click', submitPin);
+            submitPinBtn.addEventListener('click', handleSubmit);
             pinInput.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') {
-                    submitPin();
+                    handleSubmit();
                 }
             });
 

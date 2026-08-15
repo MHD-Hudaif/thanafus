@@ -14,9 +14,42 @@
   --shadow:0 24px 80px rgba(0,0,0,.42);
   --radius:18px;
   color:var(--text);
-  font-family:"Plus Jakarta Sans","Inter",sans-serif;
+  font-family: 'Ubuntu', sans-serif !important;
   font-synthesis:none;
   background:var(--deep);
+}
+
+*, *::before, *::after {
+  font-family: 'Ubuntu', sans-serif;
+}
+
+body, p, span, a, li, b, strong, button, input, select, textarea, label, td, th, div, article, section, header, footer,
+h1, h2, h3, h4, h5, h6,
+h1 *, h2 *, h3 *, h4 *, h5 *, h6 *,
+.hero-content h1,
+.page-hero h1,
+.schedule-head h1,
+.section-heading h2,
+.leaderboard-header h1,
+.leader-identity-copy h2,
+.signup-card h1,
+.home-footer-utility>h2,
+.footer-pulse-copy>h2,
+.schedule-banner-title,
+.schedule-banner-title *,
+.home-redesign-copy h1,
+.home-redesign-copy h1 *,
+.home-access header h2,
+.musabaqa-title,
+.musabaqa-hero h1,
+.students-hero h1,
+.students-page-hero h1,
+.participant-title h1,
+.review-hero h1,
+.scoreboard-title,
+.admin-title,
+.home-event-highlights h3 {
+  font-family: 'Ubuntu', sans-serif !important;
 }
 
 /* 2026 homepage redesign --------------------------------------------------- */
@@ -1162,7 +1195,7 @@ body.page-home .feature-card{animation:cardBreathe 5s ease-in-out infinite}.feat
 .score-row p{margin:0;color:#fff;font-weight:900}
 .score-row strong{color:#fff;font: 900 28px "Ubuntu", sans-serif}
 
-.schedule-tabs{display:flex;width:100%;max-width:660px;margin:0 auto 20px;padding:5px;overflow:auto;border:1px solid var(--line);border-radius:12px;background:rgba(0,0,0,.3);backdrop-filter:blur(8px)}
+.schedule-tabs{display:flex;width:100%;max-width:660px;margin:0 auto 20px;padding:5px;overflow:auto;border:1px solid var(--line);border-radius:12px;background:rgba(0,0,0,.3);backdrop-filter:blur(8px);box-sizing:border-box}
 .schedule-tabs button{flex:1;min-width:92px;padding:10px 14px;border:0;border-radius:8px;background:none;color:var(--muted);font-size:12px;font-weight:900;cursor:pointer}
 .schedule-tabs button.active{background:var(--green);color:#071008}
 .schedule-grid{display:grid;gap:14px}
@@ -1194,7 +1227,7 @@ body.page-home .feature-card{animation:cardBreathe 5s ease-in-out infinite}.feat
 .venue-card{margin:12px;padding:16px;border-radius:12px;background:var(--green);color:#071008}
 .venue-card p{margin:5px 0 0;color:rgba(7,16,8,.72)}
 
-.participant-shell{padding:90px 0 0}
+.participant-shell,.schedule-shell{padding:90px 0 0}
 .participant-title{display:grid;grid-template-columns:1fr auto;align-items:end;gap:24px;margin-bottom:34px}
 .participant-title h1{margin:0;color:#fff;font: 900 clamp(46px,10vw,78px)/1 "Ubuntu", sans-serif;letter-spacing:-.03em;max-width:12ch}
 .participant-title h1 em{color:#75ed94;font-style:normal}
@@ -1621,6 +1654,31 @@ body.page-home .feature-card{animation:cardBreathe 5s ease-in-out infinite}.feat
   .scoreboard-dashboard {
     margin-top: 76px;
     margin-bottom: 78px;
+  }
+
+  .schedule-head {
+    display: grid;
+    gap: 14px;
+    margin-top: 54px;
+    margin-bottom: 12px;
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+
+  .schedule-head>p {
+    margin: 0;
+  }
+
+  .schedule-head+.schedule-tabs {
+    margin-top: 0;
+  }
+
+  .schedule-tabs {
+    width: 100%;
+    max-width: 100%;
+    margin-top: 6px;
+    margin-bottom: 16px;
+    box-sizing: border-box;
   }
 
   .score-note {

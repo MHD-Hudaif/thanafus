@@ -1,0 +1,187 @@
+/* =====================================================
+   CARDS.CSS - Student Cards, Stat Cards & Selection Systems
+   ===================================================== */
+
+/* Member Stats Grid */
+.member-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.member-stat {
+    padding: 16px 20px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    background: rgba(15, 23, 42, 0.65);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.member-stat-icon {
+    width: 44px;
+    height: 44px;
+    display: grid;
+    place-items: center;
+    flex: 0 0 auto;
+    border-radius: 12px;
+    background: rgba(99, 102, 241, 0.15);
+    color: #818cf8;
+    border: 1px solid rgba(99, 102, 241, 0.25);
+    font-size: 20px;
+}
+
+.member-stat strong {
+    display: block;
+    font-size: 24px;
+    font-weight: 800;
+    line-height: 1.1;
+    color: #ffffff;
+}
+
+.member-stat span {
+    display: block;
+    margin-top: 4px;
+    color: #94a3b8;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+/* Sticky Selection Command Bar */
+.selection-sticky-bar {
+    position: sticky;
+    top: 70px;
+    z-index: 100;
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 14px;
+    padding: 14px 22px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+    margin-bottom: 24px;
+}
+
+/* Filter Panel */
+.entries-filter-panel {
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    padding: 16px 20px;
+}
+
+/* Student Selection Card (Entire Card Clickable, No Checkbox Tickbox) */
+.student-card-selection {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.65), rgba(15, 23, 42, 0.75));
+    border: 1.5px solid rgba(255, 255, 255, 0.08);
+    cursor: pointer;
+    transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+    user-select: none;
+    overflow: hidden;
+}
+
+.student-card-selection:hover {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.18), rgba(30, 41, 59, 0.85));
+    border-color: rgba(99, 102, 241, 0.45);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px -4px rgba(99, 102, 241, 0.25);
+}
+
+.student-card-selection.assigned {
+    background: rgba(16, 185, 129, 0.06) !important;
+    border-color: rgba(16, 185, 129, 0.25) !important;
+    cursor: default;
+}
+
+.student-card-selection.selected {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.28), rgba(139, 92, 246, 0.22)) !important;
+    border-color: #818cf8 !important;
+    box-shadow: 0 0 22px rgba(99, 102, 241, 0.4), inset 0 0 14px rgba(99, 102, 241, 0.2) !important;
+}
+
+/* Hide checkbox input inside card completely */
+.student-card-selection .member-checkbox {
+    display: none !important;
+}
+
+/* Avatar Badges & Icons */
+.student-avatar-badge {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(139, 92, 246, 0.15));
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    color: #a5b4fc;
+    display: grid;
+    place-items: center;
+    font-size: 13px;
+    font-weight: 800;
+    transition: all 0.22s ease;
+    flex-shrink: 0;
+}
+
+.student-card-selection .badge-icon-check {
+    display: none;
+}
+
+.student-card-selection.selected .badge-icon-check {
+    display: inline-block;
+}
+
+.student-card-selection.selected .badge-text-chest {
+    display: none;
+}
+
+.student-card-selection.selected .student-avatar-badge {
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: #ffffff;
+    border-color: #a5b4fc;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.45);
+    transform: scale(1.06);
+}
+
+.student-card-selection.assigned .student-avatar-badge {
+    background: rgba(16, 185, 129, 0.18);
+    color: #34d399;
+    border-color: rgba(16, 185, 129, 0.35);
+}
+
+.student-meta-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    background: rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.team-color-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 99px;
+    display: inline-block;
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.1);
+}

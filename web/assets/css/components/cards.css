@@ -1,0 +1,642 @@
+/* =====================================================
+   CARDS.CSS - Student Cards, Stat Cards & Selection Systems
+   ===================================================== */
+
+/* Member Stats Grid */
+.member-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.member-stat {
+    padding: 16px 20px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    background: rgba(15, 23, 42, 0.65);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.member-stat-icon {
+    width: 44px;
+    height: 44px;
+    display: grid;
+    place-items: center;
+    flex: 0 0 auto;
+    border-radius: 12px;
+    background: rgba(99, 102, 241, 0.15);
+    color: #818cf8;
+    border: 1px solid rgba(99, 102, 241, 0.25);
+    font-size: 20px;
+}
+
+.member-stat strong {
+    display: block;
+    font-size: 24px;
+    font-weight: 800;
+    line-height: 1.1;
+    color: #ffffff;
+}
+
+.member-stat span {
+    display: block;
+    margin-top: 4px;
+    color: #94a3b8;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+/* Sticky Selection Command Bar */
+.selection-sticky-bar {
+    position: sticky;
+    top: 70px;
+    z-index: 100;
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 14px;
+    padding: 14px 22px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+    margin-bottom: 24px;
+}
+
+/* Filter Panel */
+.entries-filter-panel {
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    padding: 16px 20px;
+}
+
+/* Student Selection Card (Entire Card Clickable, No Checkbox Tickbox) */
+.student-card-selection {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.65), rgba(15, 23, 42, 0.75));
+    border: 1.5px solid rgba(255, 255, 255, 0.08);
+    cursor: pointer;
+    transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+    user-select: none;
+    overflow: hidden;
+}
+
+.student-card-selection:hover {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.18), rgba(30, 41, 59, 0.85));
+    border-color: rgba(99, 102, 241, 0.45);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px -4px rgba(99, 102, 241, 0.25);
+}
+
+.student-card-selection.assigned {
+    background: rgba(16, 185, 129, 0.06) !important;
+    border-color: rgba(16, 185, 129, 0.25) !important;
+    cursor: default;
+}
+
+.student-card-selection.selected {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.28), rgba(139, 92, 246, 0.22)) !important;
+    border-color: #818cf8 !important;
+    box-shadow: 0 0 22px rgba(99, 102, 241, 0.4), inset 0 0 14px rgba(99, 102, 241, 0.2) !important;
+}
+
+/* Hide checkbox input inside card completely */
+.student-card-selection .member-checkbox {
+    display: none !important;
+}
+
+/* Avatar Badges & Icons */
+.student-avatar-badge {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(139, 92, 246, 0.15));
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    color: #a5b4fc;
+    display: grid;
+    place-items: center;
+    font-size: 13px;
+    font-weight: 800;
+    transition: all 0.22s ease;
+    flex-shrink: 0;
+}
+
+.student-card-selection .badge-icon-check {
+    display: none;
+}
+
+.student-card-selection.selected .badge-icon-check {
+    display: inline-block;
+}
+
+.student-card-selection.selected .badge-text-chest {
+    display: none;
+}
+
+.student-card-selection.selected .student-avatar-badge {
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: #ffffff;
+    border-color: #a5b4fc;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.45);
+    transform: scale(1.06);
+}
+
+.student-card-selection.assigned .student-avatar-badge {
+    background: rgba(16, 185, 129, 0.18);
+    color: #34d399;
+    border-color: rgba(16, 185, 129, 0.35);
+}
+
+.student-meta-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    background: rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.team-color-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 99px;
+    display: inline-block;
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.1);
+}
+
+/* =====================================================
+   CONSOLIDATED PAGE STYLES (Added dynamically)
+   ===================================================== */
+
+.search-panel { display: grid; gap: 14px; }
+
+.search-panel-heading {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+.panel-kicker {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--muted);
+            font-size: 12px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: .06em;
+        }
+
+.panel-kicker i { color: var(--primary-2); }
+
+.member-stat {
+            padding: 14px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            background: var(--surface-2);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+.member-stat-icon {
+            width: 38px;
+            height: 38px;
+            display: grid;
+            place-items: center;
+            flex: 0 0 auto;
+            border-radius: 11px;
+            background: rgba(76,175,80,.12);
+            color: var(--primary-2);
+            border: 1px solid rgba(76,175,80,.18);
+        }
+
+.member-stat strong { display: block; font-size: 26px; line-height: 1; }
+
+.member-stat span { display: block; margin-top: 6px; color: var(--muted); font-size: 12px; font-weight: 800; }
+
+.student-card-content.add-member-card {
+            min-height: 82px;
+            align-items: flex-start;
+            border-color: rgba(255,255,255,.09);
+            transition: border-color .16s ease, background .16s ease, transform .16s ease;
+        }
+
+.student-card:not(.assigned):hover .add-member-card {
+            border-color: rgba(76,175,80,.34);
+            background: rgba(76,175,80,.08);
+            transform: translateY(-1px);
+        }
+
+.student-card input:checked + .add-member-card {
+            border-color: rgba(76,175,80,.78);
+            background: rgba(76,175,80,.16);
+        }
+
+.student-card input:checked + .add-member-card .student-check {
+            color: #042f2e;
+            background: var(--primary-2);
+            border-color: var(--primary-2);
+        }
+
+.student-card.assigned .add-member-card {
+            background: rgba(148,163,184,.08);
+            border-style: dashed;
+        }
+
+.student-card.assigned .student-avatar {
+            background: rgba(148,163,184,.18);
+            color: #e2e8f0;
+        }
+
+.hide-assigned-members .student-card.assigned {
+            display: none !important;
+        }
+
+.chart-card-panel {
+    background: var(--surface-card-strong);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 22px;
+    padding: 24px;
+    box-shadow: 0 18px 44px rgba(0, 0, 0, 0.34);
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.chart-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.chart-card-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.chart-card-title i {
+    color: var(--accent-light, #34d399);
+}
+
+.chart-container-box {
+    position: relative;
+    width: 100%;
+    flex: 1;
+    min-height: 280px;
+}
+
+.analytics-stat-card {
+    background: linear-gradient(135deg, rgba(19, 23, 30, 0.82), rgba(9, 12, 18, 0.72));
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    box-shadow: 0 16px 34px rgba(0, 0, 0, 0.26);
+    transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.analytics-stat-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(var(--accent-light-rgb), 0.26);
+}
+
+.analytics-stat-icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    flex-shrink: 0;
+}
+
+.analytics-stat-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.analytics-stat-value {
+    font-size: 24px;
+    font-weight: 800;
+    color: #ffffff;
+    line-height: 1.1;
+}
+
+.analytics-stat-label {
+    font-size: 12.5px;
+    color: var(--muted, #94a3b8);
+    font-weight: 500;
+    margin-top: 4px;
+}
+
+.draggable-program-card:hover {
+    border-color: rgba(99,102,241,0.5) !important;
+    background: rgba(99,102,241,0.08) !important;
+}
+
+@media (max-width: 900px) {
+    .schedule-main-container {
+        flex-direction: column !important;
+    }
+    .unscheduled-sidebar-panel {
+        width: 100% !important;
+        flex: auto !important;
+        position: static !important;
+        max-height: none !important;
+    }
+}
+
+/* Draggable states */
+.program-drag-card {
+    cursor: grab;
+    user-select: none;
+    transition: transform 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease;
+}
+
+.program-drag-card:active {
+    cursor: grabbing;
+}
+
+.program-drag-card.dragging {
+    opacity: 0.4;
+    transform: scale(0.96);
+    box-shadow: 0 0 12px rgba(99, 102, 241, 0.4);
+}
+
+/* Color Accent Bars for Day Slots */
+.card-day-accent-1 { background: linear-gradient(90deg, #6366f1, #a855f7) !important; }
+
+.card-day-accent-2 { background: linear-gradient(90deg, #10b981, #14b8a6) !important; }
+
+.card-day-accent-3 { background: linear-gradient(90deg, #f59e0b, #eab308) !important; }
+
+.card-day-accent-gen { background: linear-gradient(90deg, #06b6d4, #3b82f6) !important; }
+
+.setting-card-v2 {
+    background: rgba(30, 41, 59, 0.45);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 14px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 16px;
+    transition: border-color 0.2s ease;
+}
+
+.setting-card-v2:hover {
+    border-color: rgba(20, 184, 166, 0.3);
+}
+
+.setting-card-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: rgba(20, 184, 166, 0.12);
+    border: 1px solid rgba(20, 184, 166, 0.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #14b8a6;
+    font-size: 18px;
+    margin-bottom: 12px;
+}
+
+.section-limit-card-v2 {
+    background: rgba(30, 41, 59, 0.45);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 14px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.stat-card-v2 {
+    background: linear-gradient(135deg, rgba(20, 184, 166, 0.12) 0%, rgba(20, 184, 166, 0.03) 100%);
+    border: 1px solid rgba(20, 184, 166, 0.28);
+    border-radius: 14px;
+    padding: 18px 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    box-shadow: 0 4px 14px rgba(20, 184, 166, 0.08);
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.stat-card-v2:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 22px rgba(20, 184, 166, 0.2);
+    border-color: rgba(20, 184, 166, 0.5);
+}
+
+.stat-card-v2 .stat-icon-wrapper {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    background: rgba(20, 184, 166, 0.2);
+    color: #10b981;
+    box-shadow: 0 0 12px rgba(20, 184, 166, 0.25);
+    flex-shrink: 0;
+}
+
+.stat-card-v2.blue {
+    background: linear-gradient(135deg, rgba(37, 99, 235, 0.12) 0%, rgba(37, 99, 235, 0.03) 100%);
+    border-color: rgba(37, 99, 235, 0.28);
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.08);
+}
+
+.stat-card-v2.blue:hover {
+    box-shadow: 0 8px 22px rgba(37, 99, 235, 0.2);
+    border-color: rgba(37, 99, 235, 0.5);
+}
+
+.stat-card-v2.blue .stat-icon-wrapper {
+    background: rgba(37, 99, 235, 0.2);
+    color: #2563eb;
+    box-shadow: 0 0 12px rgba(37, 99, 235, 0.25);
+}
+
+.stat-card-v2.purple {
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.12) 0%, rgba(139, 92, 246, 0.03) 100%);
+    border-color: rgba(139, 92, 246, 0.28);
+    box-shadow: 0 4px 14px rgba(139, 92, 246, 0.08);
+}
+
+.stat-card-v2.purple:hover {
+    box-shadow: 0 8px 22px rgba(139, 92, 246, 0.2);
+    border-color: rgba(139, 92, 246, 0.5);
+}
+
+.stat-card-v2.purple .stat-icon-wrapper {
+    background: rgba(139, 92, 246, 0.2);
+    color: #8b5cf6;
+    box-shadow: 0 0 12px rgba(139, 92, 246, 0.25);
+}
+
+.stat-card-v2.gold {
+    background: linear-gradient(135deg, rgba(234, 179, 8, 0.15) 0%, rgba(234, 179, 8, 0.04) 100%);
+    border-color: rgba(234, 179, 8, 0.32);
+    box-shadow: 0 4px 14px rgba(234, 179, 8, 0.1);
+}
+
+.stat-card-v2.gold:hover {
+    box-shadow: 0 8px 22px rgba(234, 179, 8, 0.25);
+    border-color: rgba(234, 179, 8, 0.55);
+}
+
+.stat-card-v2.gold .stat-icon-wrapper {
+    background: rgba(234, 179, 8, 0.25);
+    color: #d97706;
+    box-shadow: 0 0 12px rgba(234, 179, 8, 0.3);
+}
+
+.teams-search-panel {
+    background: linear-gradient(135deg, rgba(20, 184, 166, 0.06) 0%, rgba(20, 184, 166, 0.02) 100%);
+    border: 1px solid rgba(20, 184, 166, 0.2);
+    border-radius: 14px;
+    padding: 20px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.03);
+}
+
+.stat-card-v2 .stat-info {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.stat-card-v2 .stat-val {
+    font-size: 22px;
+    font-weight: 800;
+    line-height: 1.2;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+}
+
+.stat-card-v2 .stat-label {
+    font-size: 13px;
+    color: var(--muted, #bfbfbf);
+    font-weight: 500;
+    margin-top: 2px;
+}
+
+.team-card-v2 {
+    position: relative;
+    background: linear-gradient(145deg, color-mix(in srgb, var(--team-accent, #10b981) 15%, transparent) 0%, rgba(15, 15, 15, 0.7) 100%);
+    border: 1px solid color-mix(in srgb, var(--team-accent, #10b981) 30%, transparent);
+    border-top: 5px solid var(--team-accent, #10b981);
+    border-radius: 14px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 16px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
+
+.team-card-v2:hover {
+    transform: translateY(-4px);
+    background: linear-gradient(145deg, color-mix(in srgb, var(--team-accent, #10b981) 25%, transparent) 0%, rgba(15, 15, 15, 0.75) 100%);
+    border-color: var(--team-accent, #10b981);
+    box-shadow: 0 12px 28px -6px rgba(0, 0, 0, 0.65), 0 0 22px -2px var(--team-accent, #10b981);
+}
+
+.team-card-banner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.team-card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding-top: 14px;
+    border-top: 1px dashed rgba(255, 255, 255, 0.1);
+}
+
+.quick-control-card {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+}
+
+.ws-stat-card {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.06);
+    padding: 16px;
+    border-radius: 14px;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.ws-stat-val {
+    font-size: 24px;
+    font-weight: 900;
+    color: #fff;
+    line-height: 1;
+    margin-bottom: 4px;
+}
+
+.ws-stat-lbl {
+    font-size: 12px;
+    color: var(--muted-2);
+    font-weight: 600;
+}
+
+.ws-stat-icon {
+    position: absolute;
+    right: 16px;
+    bottom: 16px;
+    font-size: 24px;
+    color: rgba(52, 211, 153, 0.15);
+}
+

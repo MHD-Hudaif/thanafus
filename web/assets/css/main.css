@@ -1,0 +1,12 @@
+/* =====================================================
+   MAIN.CSS - Admin Panel Component Architecture Entrypoint
+   ===================================================== */
+
+@import url('components/variables.css');
+@import url('components/buttons.css');
+@import url('components/forms.css');
+@import url('components/cards.css');
+@import url('components/tables.css');
+@import url('components/modals.css');
+@import url('components/badges.css');
+@import url('components/navigation.css');

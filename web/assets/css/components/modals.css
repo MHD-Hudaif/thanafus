@@ -1,0 +1,147 @@
+/* =====================================================
+   MODALS.CSS - Glassmorphism Modals & Overlay Dialogs
+   ===================================================== */
+
+.modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0;
+    width: 100vw; height: 100vh;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 9999;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content-glass {
+    background: #0f172a;
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    border-radius: 16px;
+    width: 92%;
+    max-width: 680px;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+    animation: modalPopIn 0.25s cubic-bezier(0.2, 0.9, 0.2, 1);
+}
+
+@keyframes modalPopIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95) translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.modal-header-glass {
+    padding: 18px 22px;
+    background: rgba(255, 255, 255, 0.03);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-body-glass {
+    padding: 20px 22px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.modal-footer-glass {
+    padding: 16px 22px;
+    background: rgba(255, 255, 255, 0.03);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.modal-close-btn {
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    font-size: 18px;
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+.modal-close-btn:hover {
+    color: #ffffff;
+}
+
+/* =====================================================
+   CONSOLIDATED PAGE STYLES (Added dynamically)
+   ===================================================== */
+
+/* -----------------------------------------------------
+   Styles from chest-numbers.php
+   ----------------------------------------------------- */
+.modal-overlay {
+    z-index: 10000 !important;
+    align-items: flex-start !important;
+    overflow-y: auto !important;
+    padding-top: 5vh !important;
+    padding-bottom: 5vh !important;
+}
+
+.modal-box {
+    margin: 0 auto !important;
+}
+
+/* -----------------------------------------------------
+   Styles from programs.php
+   ----------------------------------------------------- */
+/* The create/edit form is intentionally long. Keep it inside the viewport and
+   scroll the form itself instead of allowing the dialog to extend off-screen. */
+#programModal {
+    padding: 16px !important;
+    overflow: hidden !important;
+}
+
+#programModal > .modal-box {
+    width: min(920px, 100%) !important;
+    height: min(850px, calc(100vh - 32px));
+    height: min(850px, calc(100dvh - 32px));
+    max-height: calc(100vh - 32px) !important;
+    max-height: calc(100dvh - 32px) !important;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden !important;
+}
+
+#programModal > .modal-box > .modal-header {
+    flex: 0 0 auto;
+}
+
+@media (max-width: 640px) {
+    #programModal {
+        padding: 10px !important;
+    }
+
+    #programModal > .modal-box {
+        height: calc(100dvh - 20px);
+        max-height: calc(100dvh - 20px) !important;
+        padding: 16px;
+    }
+}
+
+.team-modal-grid {
+    display: grid;
+    grid-template-columns: 1fr 280px;
+    gap: 24px;
+}
+
+@media (max-width: 840px) {
+    .team-modal-grid {
+        grid-template-columns: 1fr;
+    }
+}
+

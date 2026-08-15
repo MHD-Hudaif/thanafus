@@ -1,0 +1,172 @@
+/* =====================================================
+   NAVIGATION.CSS - Command Bars, Header & Layout Navigation
+   ===================================================== */
+
+.selection-sticky-bar,
+.selection-bar {
+    position: sticky;
+    top: 14px;
+    z-index: 30;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 20px;
+    border: 1px solid rgba(99, 102, 241, 0.4);
+    border-radius: 14px;
+    background: rgba(15, 23, 42, 0.92);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    margin-bottom: 20px;
+}
+
+.selection-count {
+    font-size: 14px;
+    color: var(--muted);
+    font-weight: 800;
+}
+.selection-count strong {
+    color: #ffffff;
+    font-size: 20px;
+}
+
+.panel {
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    padding: 22px;
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+}
+
+/* =====================================================
+   CONSOLIDATED PAGE STYLES (Added dynamically)
+   ===================================================== */
+
+.add-members-topbar { align-items: center; margin-bottom: 22px; }
+
+.class-header.add-member-class-header {
+            padding: 18px;
+            border-bottom: 1px solid transparent;
+            gap: 16px;
+            cursor: default;
+        }
+
+.class-header.add-member-class-header.active { border-bottom-color: var(--border); }
+
+.add-member-class-header.active i { transform: none; }
+
+@media (max-width: 640px) {
+            .member-stats { grid-template-columns: 1fr; }
+            .class-head-main { align-items: flex-start; }
+            .class-actions { width: 100%; justify-content: space-between; }
+            .class-header.add-member-class-header { align-items: flex-start; flex-direction: column; }
+            .class-title { font-size: 16px; }
+        }
+
+.analytics-header-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 6px;
+}
+
+.analytics-header-icon,
+.analytics-kpi-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 14px;
+}
+
+.analytics-header-icon {
+    width: 42px;
+    height: 42px;
+    background: rgba(var(--accent-rgb), 0.14);
+    color: var(--accent-light);
+    border: 1px solid rgba(var(--accent-light-rgb), 0.2);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+}
+
+/* -----------------------------------------------------
+   Styles from schedule.php
+   ----------------------------------------------------- */
+/* Unscheduled Sidebar Accordion Styles */
+.accordion-item {
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.015);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.accordion-header:hover {
+    background: rgba(255, 255, 255, 0.04) !important;
+}
+
+.accordion-item.is-open .accordion-header {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    background: rgba(255, 255, 255, 0.03) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.settings-nav-tabs {
+    display: flex;
+    gap: 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    margin-bottom: 24px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+}
+
+.footer-right-btns {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.poster-nav-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border-color, rgba(255,255,255,0.12));
+}
+
+/* Wooden Sign Header */
+.poster-header-sign-wrap {
+    position: relative;
+    z-index: 5;
+    display: flex;
+    justify-content: center;
+    margin-bottom: 14px;
+}
+
+/* -----------------------------------------------------
+   Styles from sidebar.php
+   ----------------------------------------------------- */
+/* CSS transition for Members link to slide in */
+.sidebar-vertical-link.members-link, .nav-item-link.members-link {
+    transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease, width 0.4s cubic-bezier(0.4, 0, 0.2, 1), margin 0.4s ease, padding 0.4s ease !important;
+    overflow: hidden;
+}
+
+.sidebar-vertical-link.members-link.hidden-link, .nav-item-link.members-link.hidden-link {
+    max-height: 0 !important;
+    width: 0 !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    margin: 0 !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    border: none !important;
+}
+
+.sidebar-vertical-link.members-link.slide-in-link, .nav-item-link.members-link.slide-in-link {
+    max-height: 0;
+    width: 0;
+    opacity: 0;
+}
+

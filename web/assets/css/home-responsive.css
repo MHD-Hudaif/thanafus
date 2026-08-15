@@ -1,0 +1,122 @@
+/* Dedicated responsive layout layer for the public home page. */
+html body.page-home { min-width: 0; overflow-x: clip; background: #07100c; }
+html body.page-home main { width: 100% !important; max-width: none !important; min-width: 0; margin: 0 !important; padding: 0 !important; }
+html body.page-home .home-redesign { position: relative; z-index: 1; width: 100%; min-width: 0; padding: 0 0 clamp(56px, 8vw, 112px); }
+html body.page-home .section-wrap, html body.page-home .home-redesign-hero > * { width: min(1184px, calc(100% - clamp(32px, 6vw, 72px))); min-width: 0; margin-inline: auto; }
+
+/* Hero */
+html body.page-home .home-redesign-hero { display: grid; min-height: min(860px, 100svh); padding: clamp(112px, 13vw, 168px) 0 clamp(72px, 12vw, 148px); place-items: center; text-align: center; }
+html body.page-home .home-redesign-copy { display: grid; justify-items: center; max-width: 760px; margin: 0 auto; }
+html body.page-home .home-redesign-copy h1 { max-width: 12ch; margin: 0; font-size: clamp(3.5rem, 8.25vw, 6.25rem) !important; line-height: .9 !important; overflow-wrap: anywhere; }
+html body.page-home .home-hero-eyebrow { margin: 0 0 16px; font-size: clamp(.62rem, .8vw, .72rem); }
+html body.page-home .home-hero-intro { max-width: 58ch; margin: clamp(18px, 3vw, 28px) 0 0; font-size: clamp(.88rem, 1.4vw, 1rem); line-height: 1.7; }
+
+/* Shared chapters */
+html body.page-home .home-platform-statement { display: grid; gap: 18px; margin-block: 0 clamp(42px, 7vw, 84px); padding-block: clamp(24px, 4vw, 38px); border-block: 1px solid rgba(255,255,255,.14); }
+html body.page-home .home-platform-statement > p { max-width: 31ch; margin: 0; font-size: clamp(1.3rem, 2.65vw, 2rem); line-height: 1.3; }
+html body.page-home .home-platform-statement > strong { display: flex; flex-wrap: wrap; gap: 10px 16px; color: var(--home-muted); font-size: .68rem; line-height: 1.5; }
+html body.page-home .home-platform-statement i { width: 4px; height: 4px; align-self: center; border-radius: 50%; background: var(--home-accent); }
+html body.page-home .overline { color: #8feea5; font-size: .66rem; letter-spacing: .15em; }
+html body.page-home .home-about-copy h2, html body.page-home .home-story-content h2, html body.page-home .home-access h2, html body.page-home .schedule-3d-copy h2, html body.page-home .home-event-highlights h2 { margin: 0; color: #fff; font-size: clamp(2.25rem, 4.6vw, 4rem); line-height: .96; letter-spacing: -.045em; }
+
+/* About and campus story */
+html body.page-home .home-musabaqa-about, html body.page-home .home-story { display: grid; grid-template-columns: minmax(0,1.28fr) minmax(280px,.72fr); gap: clamp(18px,3vw,32px); margin-block: clamp(42px,7vw,84px); }
+html body.page-home .home-musabaqa-about > * { min-width: 0; padding: clamp(26px,4.5vw,52px); border: 1px solid var(--modern-line,rgba(255,255,255,.14)); border-radius: clamp(20px,3vw,30px); background: rgba(7,22,12,.84); box-shadow: 0 24px 66px rgba(0,0,0,.22); }
+html body.page-home .home-about-copy > p:not(.overline), html body.page-home .home-musabaqa-prayer > p, html body.page-home .home-story-copy { max-width: 65ch; color: rgba(239,246,240,.68); font-size: clamp(.78rem,1.15vw,.92rem); line-height: 1.8; }
+html body.page-home .home-about-copy > p:not(.overline) { margin: 18px 0 0; }
+html body.page-home .home-musabaqa-prayer { display: grid; align-content: center; }
+html body.page-home .home-musabaqa-prayer > span { max-width: 100%; overflow-wrap: anywhere; color: var(--home-accent); font-size: clamp(1.7rem,3vw,2.45rem) !important; line-height: 1.6 !important; }
+html body.page-home .home-musabaqa-prayer > p { margin: 16px 0 0; }
+html body.page-home .home-story { grid-template-columns: minmax(0,.94fr) minmax(0,1.06fr); gap: 0; overflow: hidden; border: 1px solid var(--modern-line,rgba(255,255,255,.14)); border-radius: clamp(20px,3vw,30px); background: rgba(7,22,12,.88); box-shadow: 0 24px 66px rgba(0,0,0,.22); }
+html body.page-home .home-story-visual { position: relative; min-height: 460px; margin: 0; overflow: hidden; }
+html body.page-home .home-story-visual img { width: 100%; height: 100%; max-width: none; object-fit: cover; }
+html body.page-home .home-story-visual figcaption { position: absolute; right: 22px; bottom: 20px; left: 22px; color: #f5f8f3; font-size: .65rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+html body.page-home .home-story-content { min-width: 0; padding: clamp(28px,5vw,60px); }
+html body.page-home .home-story-kicker { margin: 0 0 10px; color: var(--home-accent); font-size: .66rem; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; }
+html body.page-home .home-story-copy { margin: 20px 0 0; }
+html body.page-home .home-story-verse { min-width: 0; margin: clamp(22px,3vw,34px) 0 0; padding-top: 22px; border-top: 1px solid rgba(255,255,255,.13); }
+html body.page-home .home-story-verse-head, html body.page-home .home-story-verse footer { display: flex; flex-wrap: wrap; gap: 8px 14px; justify-content: space-between; color: var(--home-muted); font-size: .67rem; }
+html body.page-home .home-story-verse p { min-width: 0; margin: 12px 0; padding: 0 !important; overflow: visible !important; color: var(--home-accent) !important; font-size: clamp(1.4rem,3.1vw,2.25rem) !important; line-height: 1.7 !important; white-space: normal !important; }
+html body.page-home .home-story-verse p span { display: inline !important; white-space: normal !important; }
+html body.page-home .home-story-verse cite { color: rgba(239,246,240,.45); font-style: normal; }
+
+/* Access, schedule and highlights */
+html body.page-home .home-access, html body.page-home .home-schedule-3d-deck, html body.page-home .home-event-highlights { min-width: 0; margin-block: clamp(42px,7vw,84px); padding: clamp(24px,4.5vw,52px) !important; border: 1px solid var(--modern-line,rgba(255,255,255,.14)); border-radius: clamp(20px,3vw,30px); background: rgba(7,22,12,.88); box-shadow: 0 24px 66px rgba(0,0,0,.22); }
+html body.page-home .home-access > header, html body.page-home .schedule-3d-head, html body.page-home .home-event-highlights > header { display: flex; flex-wrap: wrap; gap: 18px 36px; align-items: end; justify-content: space-between; min-width: 0; margin-bottom: clamp(24px,4vw,38px); }
+html body.page-home .home-access > header > span { max-width: 42ch; margin: 0; padding-left: 16px; border-left: 2px solid rgba(143,238,165,.5); color: var(--home-muted); font-size: .8rem; line-height: 1.65; }
+html body.page-home .home-access-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }
+html body.page-home .home-access-grid .feature-card { display: grid; grid-template-columns: 48px minmax(0,1fr); grid-template-rows: auto auto auto; column-gap: 16px; align-items: center; min-width: 0; min-height: 158px; padding: 22px !important; border: 1px solid rgba(255,255,255,.12) !important; border-radius: 18px !important; background: rgba(255,255,255,.035) !important; box-shadow: none !important; }
+html body.page-home .home-access-grid .feature-card:hover { border-color: rgba(143,238,165,.48) !important; background: rgba(83,197,107,.1) !important; }
+html body.page-home .feature-card-icon { grid-row: span 2; display: grid; width: 48px; height: 48px; place-items: center; border: 1px solid rgba(143,238,165,.35); border-radius: 14px; color: var(--home-accent); background: rgba(143,238,165,.1); }
+html body.page-home .home-access-grid .feature-card h3 { min-width: 0; margin: 0 0 5px; color: #fff; font-size: clamp(1.15rem,1.8vw,1.4rem); line-height: 1.1; }
+html body.page-home .home-access-grid .feature-card p { min-width: 0; margin: 0; color: var(--home-muted); font-size: .76rem; line-height: 1.55; }
+html body.page-home .feature-card-link { grid-column: 2; margin-top: 10px; color: var(--home-accent); font-size: .68rem; font-weight: 800; }
+html body.page-home .schedule-3d-head { align-items: center; }
+html body.page-home .schedule-3d-action-btn { flex: 0 0 auto; min-height: 46px; padding: 0 16px; border-radius: 12px; font-size: .74rem; white-space: nowrap; }
+html body.page-home .schedule-3d-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: clamp(14px,2.5vw,24px); }
+html body.page-home .schedule-3d-card { min-width: 0; min-height: 250px; }
+html body.page-home .card-3d-inner { min-width: 0; min-height: inherit; padding: clamp(20px,3vw,28px); }
+html body.page-home .card-3d-head, html body.page-home .card-3d-body, html body.page-home .card-3d-foot, html body.page-home .card-3d-date-meta { min-width: 0; }
+html body.page-home .card-3d-body { gap: clamp(14px,2vw,22px); }
+html body.page-home .card-3d-number { flex: 0 0 auto; font-size: clamp(3.3rem,6vw,5.25rem); }
+html body.page-home .card-3d-date-meta strong, html body.page-home .card-3d-date-meta small, html body.page-home .card-3d-foot > span { overflow-wrap: anywhere; }
+html body.page-home .home-event-highlights > header h2 { max-width: 18ch; }
+html body.page-home .home-event-highlights > div { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 12px; }
+html body.page-home .home-event-highlights article { display: flex; flex-direction: column; min-width: 0; min-height: 220px; padding: 22px; border: 1px solid rgba(255,255,255,.12); border-radius: 18px; background: rgba(255,255,255,.035); }
+html body.page-home .highlight-card-head { display: grid; width: 44px; height: 44px; place-items: center; margin-bottom: auto; border: 1px solid rgba(143,238,165,.28); border-radius: 13px; color: var(--home-accent); background: rgba(143,238,165,.1); }
+html body.page-home .home-event-highlights article h3 { margin: 24px 0 10px; color: #fff; font-size: clamp(1.25rem,2vw,1.55rem); line-height: 1.05; }
+html body.page-home .home-event-highlights article p { margin: 0; color: var(--home-muted); font-size: .78rem; line-height: 1.65; }
+
+/* Header and footer */
+html body.page-home .site-header { position: fixed; top: 16px; left: 50%; display: grid; grid-template-columns: minmax(0,1fr) auto minmax(0,1fr); gap: 16px; align-items: center; width: min(1184px,calc(100% - 40px)); min-height: 64px; margin: 0; padding: 8px 10px; transform: translateX(-50%); }
+html body.page-home .site-nav { position: static !important; display: flex !important; flex-wrap: nowrap; min-width: 0; }
+html body.page-home .home-mobile-actions { display: none; }
+html body.page-home .header-actions { display: flex; justify-self: end; min-width: 0; gap: 8px; }
+html body.page-home .menu-toggle { display: none; justify-self: end; }
+html body.page-home .site-footer.home-institution-footer { display: grid; grid-template-columns: minmax(0,1fr) minmax(300px,.9fr); gap: clamp(26px,6vw,80px); width: min(1184px,calc(100% - clamp(32px,6vw,72px))); min-height: 0; margin: 0 auto clamp(36px,6vw,72px) !important; padding: clamp(28px,4vw,48px); border: 1px solid var(--modern-line,rgba(255,255,255,.14)) !important; border-radius: clamp(20px,3vw,30px); background: rgba(7,22,12,.88) !important; }
+html body.page-home .home-footer-location { grid-column: 2; grid-row: 1 / span 3; min-width: 0; margin: 0; }
+html body.page-home .home-footer-identity, html body.page-home .home-institution-footer > .simple-social-icons, html body.page-home .home-institution-footer > .home-footer-copyright { grid-column: 1; }
+
+@media (max-width:1100px) {
+  html body.page-home .site-header { grid-template-columns: minmax(0,1fr) auto; }
+  html body.page-home .header-actions { display: none; }
+  html body.page-home .menu-toggle { display: grid !important; }
+  html body.page-home .site-nav { position: absolute !important; top: calc(100% + 8px) !important; right: 0 !important; left: 0 !important; display: none !important; grid-template-columns: repeat(5,minmax(0,1fr)); padding: 8px !important; border: 1px solid rgba(255,255,255,.14) !important; border-radius: 15px !important; background: rgba(5,15,9,.98) !important; }
+  html body.page-home .site-nav.open { display: grid !important; }
+  html body.page-home .site-nav a { min-width: 0; padding-inline: 8px; text-align: center; }
+  html body.page-home .home-mobile-actions { display: contents; }
+  html body.page-home .home-mobile-actions a { display: inline-flex; align-items: center; justify-content: center; gap: 7px; }
+  html body.page-home .home-event-highlights > div { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
+@media (max-width:760px) {
+  html body.page-home .section-wrap, html body.page-home .home-redesign-hero > *, html body.page-home .site-footer.home-institution-footer { width: min(680px,calc(100% - 28px)); }
+  html body.page-home .home-redesign-hero { min-height: min(720px,100svh); padding-top: 108px; }
+  html body.page-home .home-musabaqa-about, html body.page-home .home-story { grid-template-columns: 1fr; }
+  html body.page-home .home-story-visual { min-height: 0; aspect-ratio: 16 / 11; }
+  html body.page-home .home-access-grid, html body.page-home .schedule-3d-grid { grid-template-columns: 1fr; }
+  html body.page-home .schedule-3d-card { min-height: 220px; }
+  html body.page-home .site-footer.home-institution-footer { grid-template-columns: 1fr; }
+  html body.page-home .home-footer-location, html body.page-home .home-footer-identity, html body.page-home .home-institution-footer > .simple-social-icons, html body.page-home .home-institution-footer > .home-footer-copyright { grid-column: 1; grid-row: auto; }
+}
+@media (max-width:560px) {
+  html body.page-home .site-header { top: 8px; width: calc(100% - 16px); min-height: 54px; padding: 6px 7px; border-radius: 14px; }
+  html body.page-home .site-logo { min-width: 0; }
+  html body.page-home .site-logo img { width: 34px; height: 34px; }
+  html body.page-home .site-logo span { min-width: 0; overflow: hidden; }
+  html body.page-home .site-logo b, html body.page-home .site-logo small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  html body.page-home .site-logo small { display: none; }
+  html body.page-home .site-nav { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  html body.page-home .home-redesign-copy h1 { font-size: clamp(3rem,14vw,4.5rem) !important; }
+  html body.page-home .home-platform-statement > strong { display: grid; grid-template-columns: 1fr; gap: 8px; }
+  html body.page-home .home-platform-statement i { display: none; }
+  html body.page-home .home-access, html body.page-home .home-schedule-3d-deck, html body.page-home .home-event-highlights, html body.page-home .home-musabaqa-about > * { padding: 22px !important; border-radius: 20px; }
+  html body.page-home .home-access > header, html body.page-home .schedule-3d-head, html body.page-home .home-event-highlights > header { align-items: start; }
+  html body.page-home .home-access > header > span { padding-left: 12px; }
+  html body.page-home .home-access-grid .feature-card { grid-template-columns: 42px minmax(0,1fr); column-gap: 12px; min-height: 138px; padding: 17px !important; }
+  html body.page-home .feature-card-icon { width: 42px; height: 42px; border-radius: 12px; }
+  html body.page-home .home-event-highlights > div { grid-template-columns: 1fr; }
+  html body.page-home .home-event-highlights article { min-height: 185px; }
+  html body.page-home .card-3d-inner { padding: 20px; }
+  html body.page-home .schedule-3d-action-btn { width: 100%; justify-content: center; }
+}
+@media (max-width:360px) { html body.page-home .site-nav { grid-template-columns: 1fr; } html body.page-home .home-redesign-copy h1 { font-size: 2.8rem !important; } }

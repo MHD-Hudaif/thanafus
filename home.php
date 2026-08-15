@@ -16,7 +16,7 @@ $eventInfo = [
 
 // Establish database context or fall back gracefully
 try {
-    require_once __DIR__ . '/../includes/public-data.php';
+    require_once __DIR__ . '/includes/public-data.php';
 
     // Retrieve and format active event
     $event = tv_active_event();

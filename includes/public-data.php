@@ -200,10 +200,13 @@ function participants(string $query = ''): array
                 tm.chest_number AS participant_code,
                 t.team_name,
                 t.short_name AS team_slug,
+                t.team_color,
+                p.id AS program_id,
                 p.start_time AS program_start_time,
                 p.title AS program_title,
                 ct.name AS category_name,
-                COALESCE(pe.final_score, 0) AS final_score
+                COALESCE(pe.final_score, 0) AS final_score,
+                COALESCE(pe.performance_order, 1) AS performance_order
             FROM musabaqa_entry_members em
             JOIN musabaqa_team_members tm ON tm.id = em.team_member_id
             JOIN " . DB_MAIN_NAME . ".students s ON s.id = tm.student_id
@@ -216,11 +219,40 @@ function participants(string $query = ''): array
     $params = ['event_id' => $eventId];
     
     if ($query !== '') {
-        $sql .= " AND (s.full_name LIKE :query OR tm.chest_number LIKE :query)";
+        $sql .= " AND (s.full_name LIKE :query OR tm.chest_number LIKE :query OR p.title LIKE :query OR t.team_name LIKE :query)";
         $params['query'] = '%' . $query . '%';
     }
+
+    $sql .= " UNION ALL
+
+            SELECT 
+                pe.id AS participant_id,
+                COALESCE(NULLIF(pe.entry_name, ''), t.team_name) AS participant_name,
+                '' AS participant_code,
+                t.team_name,
+                t.short_name AS team_slug,
+                t.team_color,
+                p.id AS program_id,
+                p.start_time AS program_start_time,
+                p.title AS program_title,
+                ct.name AS category_name,
+                COALESCE(pe.final_score, 0) AS final_score,
+                COALESCE(pe.performance_order, 1) AS performance_order
+            FROM musabaqa_program_entries pe
+            JOIN musabaqa_programs p ON p.id = pe.program_id
+            JOIN musabaqa_teams t ON t.id = pe.team_id
+            LEFT JOIN " . DB_MAIN_NAME . ".class_types ct ON ct.id = p.class_type_id
+            LEFT JOIN musabaqa_entry_members em ON em.entry_id = pe.id
+            WHERE pe.event_id = :event_id_2 AND em.id IS NULL";
+
+    $params['event_id_2'] = $eventId;
     
-    $sql .= " ORDER BY p.start_time ASC, s.full_name ASC";
+    if ($query !== '') {
+        $sql .= " AND (pe.entry_name LIKE :query_2 OR p.title LIKE :query_2 OR t.team_name LIKE :query_2)";
+        $params['query_2'] = '%' . $query . '%';
+    }
+    
+    $sql .= " ORDER BY program_start_time ASC, performance_order ASC, participant_name ASC";
     
     try {
         $stmt = $pdo->prepare($sql);
@@ -235,9 +267,12 @@ function participants(string $query = ''): array
                 'code' => $row['participant_code'] ?: '',
                 'team_name' => $row['team_name'],
                 'team_slug' => $row['team_slug'] ?: 'default',
+                'team_color' => $row['team_color'] ?: '#4ee883',
                 'reporting_time' => $row['program_start_time'] ? date('H:i', strtotime($row['program_start_time'])) : '09:00',
                 'program' => $row['program_title'],
+                'program_id' => (int)($row['program_id'] ?? 0),
                 'category' => $row['category_name'] ?: 'Open Category',
+                'order' => (int)($row['performance_order'] ?? 1),
                 'score' => (float)$row['final_score'],
             ];
         }
