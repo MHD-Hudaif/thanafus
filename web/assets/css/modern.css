@@ -11831,6 +11831,30 @@ html#kauzariyya-theme body .schedule-3d-card.card-3d-amber .card-3d-badge {
   border: 1px solid rgba(245, 158, 11, 0.55) !important;
 }
 
+/* Card 3 - Vibrant Blue */
+.schedule-3d-card.card-3d-blue,
+html#kauzariyya-theme body .schedule-3d-card.card-3d-blue {
+  border: 1.5px solid rgba(59, 130, 246, 0.65) !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(59, 130, 246, 0.3), transparent 65%),
+    linear-gradient(145deg, rgba(5, 15, 38, 0.96), rgba(2, 6, 18, 0.98)) !important;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), 0 0 32px rgba(59, 130, 246, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+}
+
+.schedule-3d-card.card-3d-blue:hover,
+html#kauzariyya-theme body .schedule-3d-card.card-3d-blue:hover {
+  transform: translateY(-8px) scale(1.02) !important;
+  border-color: #3b82f6 !important;
+  box-shadow: 0 30px 70px rgba(0, 0, 0, 0.6), 0 0 50px rgba(59, 130, 246, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
+}
+
+.schedule-3d-card.card-3d-blue .card-3d-badge,
+html#kauzariyya-theme body .schedule-3d-card.card-3d-blue .card-3d-badge {
+  background: rgba(59, 130, 246, 0.25) !important;
+  color: #60a5fa !important;
+  border: 1px solid rgba(59, 130, 246, 0.55) !important;
+}
+
 .card-3d-pill {
   display: inline-flex !important;
   align-items: center !important;
@@ -24730,59 +24754,13 @@ body.page-home .home-footer-location .footer-location-map::after {
     box-shadow: none !important;
   }
 
-  html body.page-schedule .schedule-grid,
-  html#kauzariyya-theme body.page-schedule .schedule-grid {
-    display: grid !important;
-    gap: 14px !important;
+  html body.page-schedule .schedule-day-container,
+  html#kauzariyya-theme body.page-schedule .schedule-day-container {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
     margin: 0 !important;
     padding: 0 !important;
-  }
-
-  html body.page-schedule .schedule-column,
-  html#kauzariyya-theme body.page-schedule .schedule-column {
-    display: block !important;
-    border: 1px solid rgba(255,255,255,.11) !important;
-    border-radius: 15px !important;
-    background: rgba(8,20,13,.88) !important;
-    box-shadow: 0 22px 60px rgba(0,0,0,.28) !important;
-  }
-
-  html body.page-schedule .schedule-column:not(.mobile-active),
-  html#kauzariyya-theme body.page-schedule .schedule-column:not(.mobile-active) {
-    display: none !important;
-  }
-
-  html body.page-schedule .schedule-column > header,
-  html#kauzariyya-theme body.page-schedule .schedule-column > header {
-    min-height: 66px !important;
-    display: grid !important;
-    grid-template-columns: auto 1fr !important;
-    gap: 10px !important;
-    align-items: center !important;
-    padding: 13px !important;
-    background: rgba(0,0,0,.34) !important;
-  }
-
-  html body.page-schedule .schedule-column > header h2,
-  html#kauzariyya-theme body.page-schedule .schedule-column > header h2 {
-    font-size: 20px !important;
-  }
-
-  html body.page-schedule .schedule-column > header small,
-  html#kauzariyya-theme body.page-schedule .schedule-column > header small {
-    grid-column: 2 !important;
-    font-size: 8px !important;
-  }
-
-  html body.page-schedule .schedule-row,
-  html#kauzariyya-theme body.page-schedule .schedule-row {
-    min-height: 76px !important;
-    grid-template-columns: 52px minmax(0,1fr) auto !important;
-    gap: 12px !important;
-    padding: 14px !important;
-    background: transparent !important;
-    border-top: 1px solid rgba(255,255,255,.11) !important;
-    box-shadow: none !important;
   }
 }
 
@@ -25888,3 +25866,280 @@ html#kauzariyya-theme body.page-review .button-review-submit b {
     width: min(100%, 300px) !important;
   }
 }
+
+/* ==========================================================================
+   Bigger & Better Single-Day Schedule Panels & Rich Cards
+   ========================================================================== */
+html body.page-schedule .schedule-day-panel,
+html#kauzariyya-theme body.page-schedule .schedule-day-panel {
+  display: none !important;
+  width: 100% !important;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+html body.page-schedule .schedule-day-panel.active,
+html body.page-schedule .schedule-day-panel.mobile-active,
+html#kauzariyya-theme body.page-schedule .schedule-day-panel.active,
+html#kauzariyya-theme body.page-schedule .schedule-day-panel.mobile-active {
+  display: block !important;
+}
+
+.schedule-day-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 20px !important;
+  margin-bottom: 24px !important;
+  padding: 24px 28px !important;
+  border-radius: 20px !important;
+  background: linear-gradient(135deg, rgba(78, 232, 131, 0.12), rgba(6, 24, 14, 0.88)) !important;
+  border: 1px solid rgba(78, 232, 131, 0.28) !important;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35) !important;
+}
+
+.day-header-info {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 6px !important;
+}
+
+.day-header-badge {
+  display: inline-block !important;
+  align-self: flex-start !important;
+  padding: 4px 10px !important;
+  border-radius: 6px !important;
+  background: #4ee883 !important;
+  color: #06180d !important;
+  font-size: 11px !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.08em !important;
+}
+
+.day-header-info h2 {
+  margin: 4px 0 0 !important;
+  color: #fff !important;
+  font-size: clamp(24px, 4vw, 34px) !important;
+  font-weight: 900 !important;
+}
+
+.day-header-date {
+  margin: 0 !important;
+  color: rgba(200, 255, 215, 0.75) !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+}
+
+.day-header-count {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: 90px !important;
+  padding: 12px 18px !important;
+  border-radius: 14px !important;
+  background: rgba(0, 0, 0, 0.4) !important;
+  border: 1px solid rgba(78, 232, 131, 0.2) !important;
+}
+
+.day-header-count strong {
+  color: #4ee883 !important;
+  font-size: 28px !important;
+  font-weight: 900 !important;
+  line-height: 1 !important;
+}
+
+.day-header-count small {
+  color: rgba(255, 255, 255, 0.6) !important;
+  font-size: 10px !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.08em !important;
+  margin-top: 4px !important;
+}
+
+.schedule-cards-grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)) !important;
+  gap: 18px !important;
+  width: 100% !important;
+}
+
+@media (max-width: 768px) {
+  .schedule-cards-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .schedule-day-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    padding: 18px 20px !important;
+  }
+  .day-header-count {
+    align-self: flex-start !important;
+    flex-direction: row !important;
+    gap: 8px !important;
+    padding: 6px 12px !important;
+  }
+  .day-header-count strong {
+    font-size: 18px !important;
+  }
+}
+
+.schedule-card-rich {
+  display: flex !important;
+  gap: 16px !important;
+  padding: 20px 22px !important;
+  border-radius: 18px !important;
+  background: linear-gradient(145deg, rgba(12, 28, 18, 0.88), rgba(6, 16, 10, 0.94)) !important;
+  border: 1px solid rgba(78, 232, 131, 0.18) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25) !important;
+  transition: all 0.25s ease !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+.schedule-card-rich:hover {
+  transform: translateY(-4px) !important;
+  border-color: rgba(78, 232, 131, 0.5) !important;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4), 0 0 20px rgba(78, 232, 131, 0.15) !important;
+}
+
+.schedule-card-rich.live {
+  border-color: #4ee883 !important;
+  background: linear-gradient(145deg, rgba(18, 48, 28, 0.95), rgba(8, 24, 14, 0.98)) !important;
+  box-shadow: 0 12px 35px rgba(78, 232, 131, 0.22) !important;
+}
+
+.schedule-card-rich.live::before {
+  content: '' !important;
+  position: absolute !important;
+  left: 0 !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  width: 5px !important;
+  background: #4ee883 !important;
+  box-shadow: 0 0 12px #4ee883 !important;
+}
+
+.card-rich-side {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: 78px !important;
+  padding: 10px 8px !important;
+  border-radius: 12px !important;
+  background: rgba(0, 0, 0, 0.35) !important;
+  border: 1px solid rgba(78, 232, 131, 0.15) !important;
+  align-self: flex-start !important;
+}
+
+.card-rich-time {
+  color: #4ee883 !important;
+  font-size: 17px !important;
+  font-weight: 900 !important;
+  line-height: 1.1 !important;
+  letter-spacing: -0.02em !important;
+}
+
+.card-rich-duration {
+  color: rgba(255, 255, 255, 0.55) !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  margin-top: 4px !important;
+  text-transform: uppercase !important;
+}
+
+.card-rich-main {
+  flex: 1 !important;
+  min-width: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+}
+
+.card-rich-top {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  margin-bottom: 6px !important;
+}
+
+.card-rich-order {
+  color: rgba(255, 255, 255, 0.35) !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+}
+
+.live-pill {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  padding: 2px 8px !important;
+  border-radius: 99px !important;
+  background: rgba(78, 232, 131, 0.2) !important;
+  border: 1px solid #4ee883 !important;
+  color: #4ee883 !important;
+  font-size: 9px !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.05em !important;
+}
+
+.live-pulse {
+  width: 6px !important;
+  height: 6px !important;
+  border-radius: 50% !important;
+  background: #4ee883 !important;
+  box-shadow: 0 0 6px #4ee883 !important;
+  animation: pulseLive 1.5s infinite !important;
+}
+
+.card-rich-title {
+  margin: 0 0 8px !important;
+  color: #fff !important;
+  font-size: 18px !important;
+  font-weight: 800 !important;
+  line-height: 1.25 !important;
+}
+
+.card-rich-meta {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+.card-rich-venue,
+.card-rich-category {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  padding: 4px 10px !important;
+  border-radius: 8px !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+}
+
+.card-rich-venue {
+  background: rgba(255, 255, 255, 0.06) !important;
+  color: rgba(230, 245, 235, 0.9) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+.card-rich-category {
+  background: rgba(78, 232, 131, 0.09) !important;
+  color: #9fe8b4 !important;
+  border: 1px solid rgba(78, 232, 131, 0.18) !important;
+}
+
+.schedule-empty-rich {
+  grid-column: 1 / -1 !important;
+  padding: 48px 24px !important;
+  text-align: center !important;
+  border-radius: 18px !important;
+  background: rgba(10, 22, 15, 0.5) !important;
+  border: 1px dashed rgba(78, 232, 131, 0.25) !important;
+  color: rgba(255, 255, 255, 0.6) !important;
+  font-size: 15px !important;
+}
+

@@ -5,10 +5,31 @@ $teams = [];
 $schedule = [];
 $participants = [];
 $committee = [];
+$programs = [];
+$students = [];
+$sections = [];
+$eventInfo = [
+    'title' => 'Al-Jamiathul Kauzariyya · Arts Festival',
+    'date' => '18 August 2026',
+    'start_date' => '2026-08-18'
+];
 
 // Establish database context or fall back gracefully
 try {
     require_once __DIR__ . '/../includes/public-data.php';
+
+    // Retrieve and format active event
+    $event = tv_active_event();
+    $eventTitle = trim((string)($event['title'] ?? 'Al-Jamiathul Kauzariyya · Arts Festival'));
+    $eventTitle = $eventTitle !== '' ? $eventTitle : 'Al-Jamiathul Kauzariyya · Arts Festival';
+    $eventDate = !empty($event['start_date']) 
+        ? date('d F Y', strtotime((string)$event['start_date'])) 
+        : '18 August 2026';
+    $eventInfo = [
+        'title' => $eventTitle,
+        'date' => $eventDate,
+        'start_date' => $event['start_date'] ?? '2026-08-18'
+    ];
 
     // Retrieve and format teams
     $rawTeams = teams();
@@ -34,20 +55,6 @@ try {
         }
         
         $session = $s['session'];
-        if (str_starts_with($session, 'section_')) {
-            $hour = (int)date('H', strtotime($s['start_time']));
-            if ($hour < 9) {
-                $session = 'subahi';
-            } elseif ($hour >= 9 && $hour < 12) {
-                $session = 'morning';
-            } elseif ($hour >= 12 && $hour < 16) {
-                $session = 'afternoon';
-            } elseif ($hour >= 16 && $hour < 20) {
-                $session = 'evening';
-            } else {
-                $session = 'night';
-            }
-        }
 
         $schedule[] = [
             $session,
@@ -55,7 +62,8 @@ try {
             $title,
             $s['venue'] . ' · ' . $category,
             $s['status'],
-            (int)$s['duration_minutes']
+            (int)$s['duration_minutes'],
+            $s['date']
         ];
     }
 
@@ -81,6 +89,15 @@ try {
             'image' => $c['image']
         ];
     }
+
+    // Retrieve and format programs
+    $programs = plan_programs();
+
+    // Retrieve and format students
+    $students = all_students();
+
+    // Retrieve active schedule sections
+    $sections = get_schedule_sections();
 } catch (\Throwable $e) {
     // Graceful fallback if database configuration is missing
 }
@@ -124,10 +141,14 @@ try {
 
   <script>
     window.INITIAL_DATA = <?= json_encode([
+        'event' => $eventInfo,
         'teams' => $teams,
         'schedule' => $schedule,
         'participants' => $participants,
-        'committee' => $committee
+        'committee' => $committee,
+        'programs' => $programs,
+        'students' => $students,
+        'sections' => $sections
     ]) ?>;
   </script>
   <script src="assets/js/site.js" defer></script>

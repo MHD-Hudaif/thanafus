@@ -461,4 +461,102 @@ function venues_data(): array
     }
 }
 
+function plan_programs(): array
+{
+    $eventId = tv_active_event_id();
+    if ($eventId <= 0) {
+        return [];
+    }
+
+    $pdo = $GLOBALS['musabaqa_pdo'];
+    try {
+        $stmt = $pdo->prepare("
+            SELECT p.title, st.category
+            FROM musabaqa_programs p
+            JOIN musabaqa_stage_types st ON st.id = p.stage_type_id
+            WHERE p.event_id = ?
+            ORDER BY st.category DESC, p.id ASC
+        ");
+        $stmt->execute([$eventId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    } catch (Throwable $e) {
+        error_log('plan_programs query failed: ' . $e->getMessage());
+        return [];
+    }
+}
+
+function all_students(): array
+{
+    $eventId = tv_active_event_id();
+    if ($eventId <= 0) {
+        return [];
+    }
+
+    $pdo = $GLOBALS['musabaqa_pdo'];
+    try {
+        $stmt = $pdo->prepare("
+            SELECT 
+                COALESCE(NULLIF(s.display_name, ''), s.full_name) AS name,
+                tm.chest_number AS code,
+                t.team_name,
+                c.name AS class_name,
+                ct.name AS category_name
+            FROM musabaqa_team_members tm
+            JOIN musabaqa_teams t ON t.id = tm.team_id
+            JOIN " . DB_MAIN_NAME . ".students s ON s.id = tm.student_id
+            LEFT JOIN " . DB_MAIN_NAME . ".classes c ON c.id = s.class_id
+            LEFT JOIN " . DB_MAIN_NAME . ".class_types ct ON ct.id = c.class_type_id
+            WHERE tm.event_id = ?
+            ORDER BY s.full_name ASC
+        ");
+        $stmt->execute([$eventId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    } catch (Throwable $e) {
+        error_log('all_students query failed: ' . $e->getMessage());
+        return [];
+    }
+}
+
+function get_schedule_sections(): array
+{
+    $eventId = tv_active_event_id();
+    if ($eventId <= 0) {
+        return [];
+    }
+
+    $pdo = $GLOBALS['musabaqa_pdo'];
+    try {
+        $stmt = $pdo->prepare("
+            SELECT id, name, start_time, end_time
+            FROM musabaqa_schedule_sections
+            WHERE event_id = ?
+            ORDER BY sort_order ASC, section_date ASC, start_time ASC, id ASC
+        ");
+        $stmt->execute([$eventId]);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        
+        $sections = [];
+        foreach ($rows as $row) {
+            $startTime = $row['start_time'] ? date('g:i A', strtotime($row['start_time'])) : '';
+            $endTime = $row['end_time'] ? date('g:i A', strtotime($row['end_time'])) : '';
+            $timeRange = '';
+            if ($startTime && $endTime) {
+                $timeRange = $startTime . ' - ' . $endTime;
+            } elseif ($startTime) {
+                $timeRange = $startTime;
+            }
+            
+            $sections[] = [
+                'id' => 'section_' . $row['id'],
+                'name' => $row['name'],
+                'time' => $timeRange
+            ];
+        }
+        return $sections;
+    } catch (Throwable $e) {
+        error_log('get_schedule_sections failed: ' . $e->getMessage());
+        return [];
+    }
+}
+
 

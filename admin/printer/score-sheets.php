@@ -704,6 +704,9 @@ if ($activeEvent) {
     $stmt->execute([$activeEventId]);
     $programs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+    $onStageProgramsCount = 0;
+    $offStageProgramsCount = 0;
+
     foreach ($programs as &$prog) {
         $pId = (int)$prog['id'];
         $pType = strtolower((string)($prog['program_type'] ?? 'individual'));
@@ -728,6 +731,19 @@ if ($activeEvent) {
         $prog['expected_total_entries'] = $expectedTotal;
         if ($isFull) {
             $fullQuotaProgramsCount++;
+        }
+
+        // Determine On-Stage vs Off-Stage
+        $stageCat = strtolower(trim((string)($prog['stage_category'] ?? '')));
+        $stageName = strtolower(trim((string)($prog['stage_type_name'] ?? '')));
+        $location = strtolower(trim((string)($prog['location'] ?? '')));
+        $isOffstage = ($stageCat === 'off_stage') || (strpos($stageName, 'off') !== false) || (strpos($location, 'off') !== false);
+        $prog['is_off_stage'] = $isOffstage;
+
+        if ($isOffstage) {
+            $offStageProgramsCount++;
+        } else {
+            $onStageProgramsCount++;
         }
     }
     unset($prog);
@@ -763,8 +779,8 @@ if ($activeEvent) {
                             <button type="button" class="btn btn-xs btn-primary filter-tab active" data-type="all">All Programs</button>
                             <button type="button" class="btn btn-xs btn-secondary filter-tab" data-type="individual"><i class="fa-solid fa-user mr-1"></i> Individual</button>
                             <button type="button" class="btn btn-xs btn-secondary filter-tab" data-type="group"><i class="fa-solid fa-users mr-1"></i> Group</button>
-                            <button type="button" class="btn btn-xs btn-secondary filter-tab" data-type="on_stage"><i class="fa-solid fa-microphone mr-1"></i> On-Stage</button>
-                            <button type="button" class="btn btn-xs btn-secondary filter-tab" data-type="off_stage"><i class="fa-solid fa-building-circle-xmark mr-1"></i> Off-Stage</button>
+                            <button type="button" class="btn btn-xs btn-secondary filter-tab" data-type="on_stage"><i class="fa-solid fa-microphone mr-1" style="color: #60a5fa;"></i> On-Stage (<?= $onStageProgramsCount ?>)</button>
+                            <button type="button" class="btn btn-xs btn-secondary filter-tab" data-type="off_stage"><i class="fa-solid fa-building-circle-xmark mr-1" style="color: #f87171;"></i> Off-Stage (<?= $offStageProgramsCount ?>)</button>
                             <button type="button" class="btn btn-xs btn-secondary filter-tab" data-type="full" title="Filter to programs where all teams reached entry limit"><i class="fa-solid fa-circle-check mr-1" style="color: #34d399;"></i> Full Quota (<?= $fullQuotaProgramsCount ?>)</button>
                         </div>
 
@@ -872,7 +888,7 @@ if ($activeEvent) {
                                     $pId = (int)$p['id'];
                                     $pType = strtolower((string)($p['program_type'] ?? 'individual'));
                                     ?>
-                                    <tr data-title="<?= e(strtolower($p['title'])) ?>" data-class="<?= e(strtolower($p['class_type_name'] ?? '')) ?>" data-type="<?= e($pType) ?>" data-full="<?= !empty($p['is_full_quota']) ? '1' : '0' ?>" data-stage="<?= e($p['stage_category'] ?? 'on_stage') ?>">
+                                    <tr data-title="<?= e(strtolower($p['title'])) ?>" data-class="<?= e(strtolower($p['class_type_name'] ?? '')) ?>" data-type="<?= e($pType) ?>" data-full="<?= !empty($p['is_full_quota']) ? '1' : '0' ?>" data-stage="<?= !empty($p['is_off_stage']) ? 'off_stage' : 'on_stage' ?>">
                                         <td style="text-align: center;">
                                             <label class="pro-checkbox-wrap">
                                                 <input type="checkbox" name="program_ids[]" value="<?= $pId ?>" class="program-checkbox pro-checkbox" checked>

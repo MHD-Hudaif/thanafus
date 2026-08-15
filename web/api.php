@@ -34,21 +34,6 @@ try {
             }
             
             $session = $s['session'];
-            if (str_starts_with($session, 'section_')) {
-                // map specific sections or use time of day
-                $hour = (int)date('H', strtotime($s['start_time']));
-                if ($hour < 9) {
-                    $session = 'subahi';
-                } elseif ($hour >= 9 && $hour < 12) {
-                    $session = 'morning';
-                } elseif ($hour >= 12 && $hour < 16) {
-                    $session = 'afternoon';
-                } elseif ($hour >= 16 && $hour < 20) {
-                    $session = 'evening';
-                } else {
-                    $session = 'night';
-                }
-            }
 
             $formattedSchedule[] = [
                 $session,
@@ -56,7 +41,8 @@ try {
                 $title,
                 $s['venue'] . ' · ' . $category,
                 $s['status'],
-                (int)$s['duration_minutes']
+                (int)$s['duration_minutes'],
+                $s['date']
             ];
         }
 
@@ -85,12 +71,34 @@ try {
             ];
         }
 
+        // Retrieve active event
+        $event = tv_active_event();
+        $eventTitle = trim((string)($event['title'] ?? 'Al-Jamiathul Kauzariyya · Arts Festival'));
+        $eventTitle = $eventTitle !== '' ? $eventTitle : 'Al-Jamiathul Kauzariyya · Arts Festival';
+        $eventDate = !empty($event['start_date']) 
+            ? date('d F Y', strtotime((string)$event['start_date'])) 
+            : '18 August 2026';
+        $eventInfo = [
+            'title' => $eventTitle,
+            'date' => $eventDate,
+            'start_date' => $event['start_date'] ?? '2026-08-18'
+        ];
+
+        // Retrieve programs, students, and sections
+        $programs = plan_programs();
+        $students = all_students();
+        $sections = get_schedule_sections();
+
         echo json_encode([
             'success' => true,
+            'event' => $eventInfo,
             'teams' => $formattedTeams,
             'schedule' => $formattedSchedule,
             'participants' => $formattedParticipants,
-            'committee' => $formattedCommittee
+            'committee' => $formattedCommittee,
+            'programs' => $programs,
+            'students' => $students,
+            'sections' => $sections
         ]);
         exit;
 
