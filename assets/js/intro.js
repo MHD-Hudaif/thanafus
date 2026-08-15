@@ -62,7 +62,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if (distance < 0) {
                 countdownEl.className = 'countdown-container-live';
-                countdownEl.innerHTML = `<div class="event-live-banner"><span class="live-dot-pulse"></span><span class="live-text-glow">Event Live!</span></div>`;
+                countdownEl.innerHTML = `<a href="home.php" class="event-live-banner event-enter-btn" style="text-decoration: none;"><span class="live-dot-pulse"></span><span class="live-text-glow">Enter the Event <i class="fa-solid fa-arrow-right" style="font-size: 0.8em; margin-left: 6px;"></i></span></a>`;
                 return;
             }
             
@@ -79,6 +79,15 @@ document.addEventListener('DOMContentLoaded', () => {
         
         updateCountdown();
         setInterval(updateCountdown, 1000);
+    }
+
+    const btnTestLive = document.getElementById('btnTestLive');
+    if (btnTestLive && countdownEl) {
+        btnTestLive.addEventListener('click', () => {
+            countdownEl.className = 'countdown-container-live';
+            countdownEl.innerHTML = `<a href="home.php" class="event-live-banner event-enter-btn" style="text-decoration: none;"><span class="live-dot-pulse"></span><span class="live-text-glow">Enter the Event <i class="fa-solid fa-arrow-right" style="font-size: 0.8em; margin-left: 6px;"></i></span></a>`;
+            btnTestLive.style.display = 'none';
+        });
     }
 
     // 2.5. Typewriter & Backspace Catchphrase Rotator

@@ -50,310 +50,605 @@ $eventDateFormatted = !empty($event['start_date'])
     <title><?= htmlspecialchars($eventTitle) ?> | Live Timer</title>
     
     <!-- CSS Dependencies -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="<?= asset_url('css/intro.css') ?>?v=<?= time() ?>">
+    <link rel="stylesheet" href="assets/mobile-app.css?v=<?= time() ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
+        :root {
+          --brand-green: #6f9e7a;
+          --brand-green-dark: #3a5e44;
+          --brand-gold: #c9a86c;
+          --brand-gold-glow: rgba(201, 168, 108, 0.30);
+          --bg-dark: #faf7f0;           /* warm cream base */
+          --card-glass: rgba(255, 250, 240, 0.70);
+          --border-glass: rgba(200, 180, 150, 0.25);
+          --text-main: #2e2b27;
+          --text-muted: #6b6258;
+        }
+
+        * {
+          box-sizing: border-box;
+        }
+
         body {
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            min-height: 100vh;
-            margin: 0;
-            background: linear-gradient(135deg, #092e1e 0%, #05160e 100%);
-            color: #ffffff;
-            font-family: 'Inter', sans-serif;
-            position: relative;
-            overflow: hidden;
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+          min-height: 100vh;
+          margin: 0;
+          background: #faf7f0;
+          background-image: 
+            radial-gradient(at 0% 0%, rgba(180, 200, 160, 0.20) 0px, transparent 50%),
+            radial-gradient(at 100% 100%, rgba(210, 185, 140, 0.20) 0px, transparent 50%),
+            radial-gradient(at 50% 50%, rgba(235, 225, 210, 0.60) 0px, transparent 100%);
+          color: var(--text-main);
+          font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+          position: relative;
+          overflow-x: hidden;
         }
 
-        /* Ambient glow background elements */
+        /* Ambient glowing blobs — softer, warmer */
         .ambient-glow {
-            position: absolute;
-            width: 300px;
-            height: 300px;
-            border-radius: 50%;
-            background: radial-gradient(circle, rgba(168, 136, 58, 0.15) 0%, rgba(0, 0, 0, 0) 70%);
-            filter: blur(50px);
-            z-index: 0;
-            pointer-events: none;
+          position: absolute;
+          width: 360px;
+          height: 360px;
+          border-radius: 50%;
+          filter: blur(75px);
+          z-index: 0;
+          pointer-events: none;
+          opacity: 0.45;
+          animation: blobPulse 8s infinite alternate ease-in-out;
         }
-        .glow-top { top: -50px; right: -50px; }
-        .glow-bottom { bottom: -50px; left: -50px; }
 
+        .glow-top { 
+          top: -100px; 
+          right: -80px; 
+          background: radial-gradient(circle, rgba(180, 200, 160, 0.35) 0%, rgba(0, 0, 0, 0) 70%);
+        }
+
+        .glow-bottom { 
+          bottom: -100px; 
+          left: -80px; 
+          background: radial-gradient(circle, rgba(210, 185, 140, 0.30) 0%, rgba(0, 0, 0, 0) 70%);
+          animation-delay: -4s;
+        }
+
+        @keyframes blobPulse {
+          0% { transform: scale(1) translate(0, 0); }
+          100% { transform: scale(1.15) translate(20px, 20px); }
+        }
+
+        /* Header — lighter glass */
         header {
-            width: 100%;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 20px 24px;
-            background: transparent;
-            border-bottom: none;
-            position: relative;
-            z-index: 10;
+          width: 100%;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 20px 24px;
+          background: rgba(255, 250, 240, 0.55);
+          backdrop-filter: blur(14px);
+          -webkit-backdrop-filter: blur(14px);
+          border-bottom: 1px solid rgba(180, 160, 140, 0.20);
+          position: relative;
+          z-index: 10;
         }
 
         .logo-wrap {
-            display: flex;
-            align-items: center;
-            gap: 10px;
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+
+        .logo-badge {
+          width: 40px;
+          height: 40px;
+          border-radius: 12px;
+          background: linear-gradient(135deg, rgba(150, 180, 140, 0.25), rgba(200, 175, 130, 0.20));
+          border: 1px solid rgba(160, 180, 140, 0.35);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #5d7e5a;
+          font-size: 18px;
+          box-shadow: 0 4px 14px rgba(150, 170, 130, 0.15);
+        }
+
+        .logo-text-group {
+          display: flex;
+          flex-direction: column;
         }
 
         .logo-text {
-            font-family: 'Outfit', sans-serif;
-            font-weight: 900;
-            font-size: 1.4rem;
-            letter-spacing: -1px;
-            color: #ffffff;
+          font-family: 'Outfit', sans-serif;
+          font-weight: 900;
+          font-size: 1.35rem;
+          letter-spacing: -0.5px;
+          color: #2e2b27;
+          line-height: 1;
         }
+
         .logo-dot {
-            color: var(--brand-gold, #a8883a);
+          color: #b8955e;
+        }
+
+        .logo-subtext {
+          font-size: 10px;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 1.5px;
+          color: #7b7266;
+          margin-top: 3px;
         }
 
         .key-btn {
-            background: rgba(255, 255, 255, 0.08);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            color: #ffd700; /* Gold */
-            width: 46px;
-            height: 46px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 18px;
-            cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+          background: rgba(160, 180, 145, 0.18);
+          border: 1px solid rgba(150, 170, 135, 0.40);
+          color: #4b6b47;
+          width: 44px;
+          height: 44px;
+          border-radius: 14px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 18px;
+          cursor: pointer;
+          transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+          box-shadow: 0 4px 16px rgba(150, 170, 130, 0.15);
+        }
+
+        .key-btn:hover {
+          background: rgba(160, 180, 140, 0.30);
+          border-color: rgba(130, 160, 115, 0.6);
+          color: #1f2e1c;
+          transform: rotate(30deg) scale(1.06);
+          box-shadow: 0 6px 20px rgba(150, 170, 130, 0.25);
         }
 
         .key-btn:active {
-            transform: scale(0.92);
-            background: rgba(255, 255, 255, 0.15);
+          transform: scale(0.92);
         }
 
+        /* Main */
         main {
-            flex-grow: 1;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-            position: relative;
-            z-index: 10;
-            text-align: center;
+          flex-grow: 1;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          align-items: center;
+          padding: 32px 20px;
+          position: relative;
+          z-index: 10;
+          text-align: center;
         }
 
         .fest-badge {
-            background: rgba(168, 136, 58, 0.15);
-            border: 1px solid rgba(168, 136, 58, 0.3);
-            color: #ffd700;
-            padding: 6px 14px;
-            border-radius: 50px;
-            font-size: 12px;
-            font-weight: 700;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            margin-bottom: 16px;
-            display: inline-block;
+          background: linear-gradient(135deg, rgba(200, 175, 130, 0.20) 0%, rgba(160, 185, 145, 0.15) 100%);
+          border: 1px solid rgba(190, 165, 120, 0.50);
+          color: #6d5f47;
+          padding: 8px 20px;
+          border-radius: 9999px;
+          font-size: 11.5px;
+          font-weight: 800;
+          letter-spacing: 2px;
+          text-transform: uppercase;
+          margin-bottom: 20px;
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          box-shadow: 0 4px 18px rgba(200, 175, 135, 0.15);
+        }
+
+        .badge-pulse {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          background: #b8955e;
+          box-shadow: 0 0 0 0 rgba(200, 170, 120, 0.7);
+          animation: badgePulseDot 1.8s infinite ease-in-out;
+        }
+
+        @keyframes badgePulseDot {
+          0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(200, 170, 120, 0.7); }
+          70% { transform: scale(1.2); box-shadow: 0 0 0 8px rgba(200, 170, 120, 0); }
+          100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(200, 170, 120, 0); }
         }
 
         .fest-title {
-            font-family: 'Outfit', sans-serif;
-            font-size: 2.2rem;
-            font-weight: 900;
-            line-height: 1.2;
-            margin: 0 0 8px 0;
-            color: #ffffff;
-            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+          font-family: 'Outfit', sans-serif;
+          font-size: clamp(2rem, 6vw, 2.75rem);
+          font-weight: 900;
+          line-height: 1.15;
+          margin: 0 0 12px 0;
+          background: linear-gradient(135deg, #3f3a32 0%, #6f6a5f 40%, #4f604a 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          text-shadow: 0 2px 12px rgba(0,0,0,0.05);
+          letter-spacing: -0.5px;
         }
 
         .fest-date {
-            font-size: 0.95rem;
-            color: #a8b2a9;
-            margin-bottom: 32px;
-            font-weight: 500;
+          font-size: 0.95rem;
+          color: #6b6258;
+          margin-bottom: 36px;
+          font-weight: 600;
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          background: rgba(255, 250, 240, 0.6);
+          padding: 8px 18px;
+          border-radius: 14px;
+          border: 1px solid rgba(180, 160, 140, 0.25);
+          backdrop-filter: blur(10px);
         }
 
-        /* Centered and scaled countdown layout */
+        /* Countdown grid — warm glass */
         .countdown-container {
-            display: flex;
-            gap: 12px;
-            justify-content: center;
-            width: 100%;
-            max-width: 360px;
-            margin: 0 auto;
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 12px;
+          width: 100%;
+          max-width: 380px;
+          margin: 0 auto;
         }
 
         .countdown-box {
-            background: rgba(255, 255, 255, 0.05);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 16px;
-            padding: 14px 10px;
-            flex: 1;
-            min-width: 0;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+          background: linear-gradient(145deg, rgba(235, 225, 210, 0.55) 0%, rgba(245, 240, 230, 0.75) 100%);
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+          border: 1px solid rgba(190, 175, 155, 0.30);
+          border-radius: 20px;
+          padding: 16px 8px;
+          box-shadow: 0 10px 30px rgba(140, 120, 100, 0.12), inset 0 1px 0 rgba(255, 255, 240, 0.6);
+          transition: all 0.3s ease;
+          position: relative;
+          overflow: hidden;
+        }
+
+        .countdown-box::before {
+          content: '';
+          position: absolute;
+          top: 0; left: 0; right: 0;
+          height: 1px;
+          background: linear-gradient(90deg, transparent, rgba(180, 165, 140, 0.30), transparent);
+        }
+
+        .countdown-box:hover {
+          transform: translateY(-3px);
+          border-color: rgba(170, 150, 120, 0.45);
+          box-shadow: 0 14px 36px rgba(160, 150, 130, 0.15);
         }
 
         .countdown-value {
-            font-family: 'Outfit', sans-serif;
-            font-size: 2rem;
-            font-weight: 800;
-            color: #ffd700;
-            line-height: 1.1;
+          font-family: 'Outfit', sans-serif;
+          font-size: 2.2rem;
+          font-weight: 900;
+          background: linear-gradient(135deg, #b8955e 0%, #9f7a47 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          line-height: 1.05;
         }
 
         .countdown-label {
-            font-size: 0.7rem;
-            color: #a8b2a9;
-            text-transform: uppercase;
-            font-weight: 700;
-            letter-spacing: 1px;
-            margin-top: 4px;
+          font-size: 0.72rem;
+          color: #7b7266;
+          text-transform: uppercase;
+          font-weight: 800;
+          letter-spacing: 1.2px;
+          margin-top: 6px;
         }
 
+        /* Event Live! banner — cream + gold */
+        .countdown-container-live {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          margin: 1.2rem 0;
+          width: auto;
+        }
+
+        .event-live-banner {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 16px;
+          padding: 16px 42px;
+          border-radius: 9999px;
+          background: radial-gradient(circle at 20% 20%, rgba(200, 180, 150, 0.35) 0%, rgba(235, 225, 210, 0.90) 80%),
+                      linear-gradient(135deg, rgba(210, 195, 170, 0.25) 0%, rgba(245, 240, 230, 0.95) 100%);
+          border: 1.5px solid rgba(180, 165, 130, 0.60);
+          box-shadow: 0 0 35px rgba(180, 165, 130, 0.25), inset 0 1px 0 rgba(255, 255, 240, 0.7);
+          backdrop-filter: blur(14px);
+          -webkit-backdrop-filter: blur(14px);
+          animation: eventLiveGlow 2.5s infinite ease-in-out;
+        }
+
+        .live-dot-pulse {
+          width: 15px;
+          height: 15px;
+          border-radius: 50%;
+          background: #7f9f7a;
+          box-shadow: 0 0 0 0 rgba(130, 170, 120, 0.8);
+          animation: livePulseDot 1.6s infinite cubic-bezier(0.66, 0, 0, 1);
+          display: inline-block;
+          flex-shrink: 0;
+        }
+
+        .live-text-glow {
+          font-family: 'Plus Jakarta Sans', 'Ubuntu', sans-serif;
+          font-size: clamp(24px, 4.5vw, 38px);
+          font-weight: 900;
+          letter-spacing: 0.05em;
+          background: linear-gradient(135deg, #3f3a32 0%, #5a5a4a 45%, #4d6b47 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          text-transform: uppercase;
+          text-shadow: 0 2px 12px rgba(160, 180, 130, 0.20);
+        }
+
+        @keyframes livePulseDot {
+          0% { transform: scale(0.92); box-shadow: 0 0 0 0 rgba(130, 170, 120, 0.8); }
+          70% { transform: scale(1.18); box-shadow: 0 0 0 18px rgba(130, 170, 120, 0); }
+          100% { transform: scale(0.92); box-shadow: 0 0 0 0 rgba(130, 170, 120, 0); }
+        }
+
+        @keyframes eventLiveGlow {
+          0%, 100% {
+            border-color: rgba(180, 165, 130, 0.60);
+            box-shadow: 0 0 30px rgba(180, 165, 130, 0.20), inset 0 1px 0 rgba(255, 255, 240, 0.7);
+          }
+          50% {
+            border-color: rgba(160, 185, 140, 0.80);
+            box-shadow: 0 0 55px rgba(160, 185, 140, 0.35), inset 0 1px 0 rgba(255, 255, 240, 0.9);
+          }
+        }
+
+        /* Footer — light */
         footer {
-            padding: 24px;
-            text-align: center;
-            font-size: 0.8rem;
-            color: #7b887d;
-            position: relative;
-            z-index: 10;
+          padding: 24px;
+          text-align: center;
+          position: relative;
+          z-index: 10;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 8px;
+          border-top: 1px solid rgba(180, 160, 140, 0.15);
+          background: rgba(250, 245, 235, 0.50);
+          backdrop-filter: blur(10px);
         }
 
-        /* Modal Overlay Styles */
+        .footer-status-pill {
+          font-size: 11px;
+          font-weight: 700;
+          color: #4d6b47;
+          background: rgba(150, 180, 140, 0.15);
+          border: 1px solid rgba(160, 185, 145, 0.30);
+          padding: 5px 14px;
+          border-radius: 9999px;
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+        }
+
+        .status-dot {
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background: #7f9f7a;
+          box-shadow: 0 0 6px #7f9f7a;
+        }
+
+        .footer-copy {
+          font-size: 0.78rem;
+          color: #7b7266;
+          margin: 0;
+        }
+
+        /* Modal — cream / light */
         .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.75);
-            backdrop-filter: blur(15px);
-            -webkit-backdrop-filter: blur(15px);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.3s ease;
-            padding: 20px;
+          position: fixed;
+          top: 0; left: 0; right: 0; bottom: 0;
+          background: rgba(235, 225, 210, 0.75);
+          backdrop-filter: blur(14px);
+          -webkit-backdrop-filter: blur(14px);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 1000;
+          opacity: 0;
+          pointer-events: none;
+          transition: opacity 0.3s ease;
+          padding: 20px;
         }
 
         .modal-overlay.active {
-            opacity: 1;
-            pointer-events: auto;
+          opacity: 1;
+          pointer-events: auto;
         }
 
         .modal-card {
-            background: rgba(20, 35, 28, 0.95);
-            border: 1px solid rgba(168, 136, 58, 0.25);
-            border-radius: 24px;
-            width: 100%;
-            max-width: 320px;
-            padding: 28px;
-            box-shadow: 0 24px 48px rgba(0, 0, 0, 0.5);
-            transform: scale(0.9);
-            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-            text-align: center;
+          background: linear-gradient(145deg, rgba(255, 250, 240, 0.96) 0%, rgba(245, 240, 230, 0.98) 100%);
+          border: 1px solid rgba(190, 175, 155, 0.30);
+          border-radius: 28px;
+          width: 100%;
+          max-width: 360px;
+          padding: 30px 26px;
+          box-shadow: 0 30px 60px rgba(140, 120, 100, 0.15), inset 0 1px 0 rgba(255, 255, 240, 0.7);
+          transform: scale(0.92) translateY(10px);
+          transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+          text-align: center;
         }
 
         .modal-overlay.active .modal-card {
-            transform: scale(1);
+          transform: scale(1) translateY(0);
         }
 
         .modal-icon {
-            width: 60px;
-            height: 60px;
-            background: rgba(168, 136, 58, 0.15);
-            border: 1px solid rgba(168, 136, 58, 0.3);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 24px;
-            color: #ffd700;
-            margin: 0 auto 16px auto;
+          width: 64px;
+          height: 64px;
+          background: linear-gradient(135deg, rgba(180, 200, 160, 0.25), rgba(210, 185, 140, 0.20));
+          border: 1px solid rgba(180, 165, 135, 0.40);
+          border-radius: 20px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 26px;
+          color: #5d7e5a;
+          margin: 0 auto 16px auto;
+          box-shadow: 0 8px 24px rgba(160, 175, 140, 0.15);
         }
 
         .modal-title {
-            font-family: 'Outfit', sans-serif;
-            font-size: 1.3rem;
-            font-weight: 800;
-            margin-bottom: 6px;
-            color: #ffffff;
+          font-family: 'Outfit', sans-serif;
+          font-size: 1.45rem;
+          font-weight: 900;
+          margin: 0 0 6px 0;
+          color: #2e2b27;
+          letter-spacing: -0.3px;
         }
 
         .modal-desc {
-            font-size: 0.85rem;
-            color: #a8b2a9;
-            margin-bottom: 20px;
+          font-size: 0.88rem;
+          color: #6b6258;
+          margin: 0 0 20px 0;
+          line-height: 1.4;
+        }
+
+        .dest-group {
+          margin: 20px 0;
+          text-align: left;
+        }
+
+        .dest-label {
+          display: block;
+          font-size: 11px;
+          font-weight: 800;
+          color: #7b7266;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+          margin-bottom: 8px;
+        }
+
+        .select-wrapper {
+          position: relative;
+        }
+
+        .destination-select {
+          width: 100%;
+          padding: 14px 16px;
+          background: rgba(250, 245, 235, 0.8);
+          border: 1.5px solid rgba(180, 165, 140, 0.30);
+          border-radius: 16px;
+          color: #2e2b27;
+          font-size: 14.5px;
+          font-weight: 700;
+          outline: none;
+          cursor: pointer;
+          appearance: none;
+          -webkit-appearance: none;
+          transition: all 0.3s ease;
+          box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+        }
+
+        .destination-select:focus {
+          border-color: #7f9f7a;
+          box-shadow: 0 0 0 3px rgba(150, 180, 140, 0.20);
+        }
+
+        .select-chevron {
+          position: absolute;
+          right: 16px;
+          top: 50%;
+          transform: translateY(-50%);
+          color: #5d7e5a;
+          font-size: 13px;
+          pointer-events: none;
+        }
+
+        .passkey-note {
+          font-size: 12px;
+          font-weight: 700;
+          color: #5d7e5a;
+          margin: 16px 0 8px 0;
+          text-align: left;
         }
 
         .pin-input {
-            width: 100%;
-            background: rgba(0, 0, 0, 0.3);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            border-radius: 12px;
-            padding: 12px;
-            color: #38bdf8;
-            font-size: 1.5rem;
-            font-weight: 800;
-            letter-spacing: 6px;
-            text-align: center;
-            margin-bottom: 12px;
-            outline: none;
-            transition: all 0.3s ease;
+          width: 100%;
+          background: rgba(250, 245, 235, 0.6);
+          border: 1.5px solid rgba(180, 165, 140, 0.25);
+          border-radius: 14px;
+          padding: 12px;
+          color: #3f5a3a;
+          font-size: 1.6rem;
+          font-weight: 900;
+          letter-spacing: 8px;
+          text-align: center;
+          margin-bottom: 12px;
+          outline: none;
+          transition: all 0.3s ease;
         }
 
         .pin-input:focus {
-            border-color: #38bdf8;
-            background: rgba(0, 0, 0, 0.5);
-            box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
+          border-color: #8aaa85;
+          background: rgba(250, 245, 235, 0.8);
+          box-shadow: 0 0 0 4px rgba(150, 180, 140, 0.20);
         }
 
         .error-msg {
-            color: #ef4444;
-            font-size: 0.8rem;
-            font-weight: 600;
-            margin-bottom: 16px;
-            display: none;
-            text-align: center;
+          color: #b17a6a;
+          background: rgba(200, 140, 120, 0.12);
+          border: 1px solid rgba(200, 140, 120, 0.25);
+          padding: 8px 12px;
+          border-radius: 10px;
+          font-size: 0.82rem;
+          font-weight: 700;
+          margin-bottom: 16px;
+          display: none;
+          text-align: center;
         }
 
         .modal-btn {
-            width: 100%;
-            padding: 12px;
-            border-radius: 12px;
-            font-weight: 700;
-            font-size: 0.95rem;
-            cursor: pointer;
-            border: none;
-            transition: all 0.2s ease;
+          width: 100%;
+          padding: 14px;
+          border-radius: 16px;
+          font-weight: 800;
+          font-size: 0.95rem;
+          cursor: pointer;
+          border: none;
+          transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
         .btn-submit {
-            background: linear-gradient(135deg, #1b4332 0%, #2d6a4f 100%);
-            color: #ffffff;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            margin-bottom: 10px;
-            box-shadow: 0 4px 12px rgba(27, 67, 50, 0.3);
+          background: linear-gradient(135deg, #7f9f7a 0%, #5a7a55 100%);
+          color: #ffffff;
+          border: 1px solid rgba(255, 255, 240, 0.3);
+          margin-bottom: 10px;
+          box-shadow: 0 8px 24px rgba(150, 180, 140, 0.25);
+        }
+
+        .btn-submit:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 12px 30px rgba(150, 180, 140, 0.30);
         }
 
         .btn-submit:active {
-            transform: scale(0.98);
+          transform: scale(0.98);
         }
 
         .btn-cancel {
-            background: transparent;
-            color: #a8b2a9;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+          background: transparent;
+          color: #6b6258;
+          border: 1px solid rgba(180, 160, 140, 0.20);
         }
 
-        .btn-cancel:active {
-            background: rgba(255, 255, 255, 0.05);
+        .btn-cancel:hover {
+          color: #2e2b27;
+          background: rgba(180, 160, 140, 0.08);
         }
     </style>
 </head>
@@ -363,7 +658,11 @@ $eventDateFormatted = !empty($event['start_date'])
 
     <header>
         <div class="logo-wrap">
-            <span class="logo-text">THANAFUS<span class="logo-dot">.</span></span>
+            <div class="logo-badge"><i class="fa-solid fa-trophy"></i></div>
+            <div class="logo-text-group">
+                <span class="logo-text">THANAFUS<span class="logo-dot">.</span></span>
+                <span class="logo-subtext">Musabaqa 2026</span>
+            </div>
         </div>
         <button class="key-btn" id="openAuthBtn" aria-label="Settings & Navigation">
             <i class="fa-solid fa-gear"></i>
@@ -371,10 +670,13 @@ $eventDateFormatted = !empty($event['start_date'])
     </header>
 
     <main>
-        <div class="fest-badge">Annual Arts Fest</div>
+        <div class="fest-badge">
+            <span class="badge-pulse"></span>
+            Annual Arts Festival
+        </div>
         <h1 class="fest-title"><?= htmlspecialchars($eventTitle) ?></h1>
         <p class="fest-date">
-            <i class="fa-solid fa-calendar-days" style="margin-right: 6px; color: var(--brand-gold);"></i> 
+            <i class="fa-solid fa-calendar-days" style="color: var(--brand-gold);"></i> 
             <?= htmlspecialchars($eventDateFormatted) ?>
         </p>
 
@@ -397,10 +699,18 @@ $eventDateFormatted = !empty($event['start_date'])
                 <div class="countdown-label">Secs</div>
             </div>
         </div>
+
+        <!-- Test Button to Trigger Event Live! State -->
+        <button type="button" id="btnTestLive" class="test-live-btn" style="margin-top: 24px; background: rgba(150, 180, 140, 0.18); border: 1.5px dashed rgba(130, 160, 115, 0.45); color: #4d6b47; padding: 10px 22px; border-radius: 9999px; font-weight: 800; font-size: 12.5px; cursor: pointer; transition: all 0.25s ease; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 14px rgba(150, 170, 130, 0.15);">
+            <i class="fa-solid fa-bolt" style="color: #b8955e;"></i> Test Timer End (Simulate Live)
+        </button>
     </main>
 
     <footer>
-        &copy; 2026 Al Jamiathul Kauzariyya
+        <div class="footer-status-pill">
+            <span class="status-dot"></span> Official Mobile Portal
+        </div>
+        <p class="footer-copy">&copy; 2026 Al Jamiathul Kauzariyya · All rights reserved</p>
     </footer>
 
     <!-- Settings & Quick Navigation Modal -->
@@ -409,19 +719,22 @@ $eventDateFormatted = !empty($event['start_date'])
             <div class="modal-icon">
                 <i class="fa-solid fa-gear"></i>
             </div>
-            <h3 class="modal-title">Settings & Options</h3>
-            <p class="modal-desc">Select a page destination below.</p>
+            <h3 class="modal-title">Settings & Navigation</h3>
+            <p class="modal-desc">Select your target destination below.</p>
             
-            <div class="dest-group" style="margin: 16px 0; text-align: left;">
-                <label for="targetDestination" style="display: block; font-size: 11px; font-weight: 800; color: #a8b2a9; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 8px;">Select Destination</label>
-                <select id="targetDestination" class="destination-select" style="width: 100%; padding: 12px 14px; background: rgba(0, 0, 0, 0.65); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 12px; color: #ffffff; font-size: 14px; font-weight: 700; outline: none; cursor: pointer;">
-                    <option value="dashboard">🏠 Dashboard (Home Page)</option>
-                    <option value="emcee">🎤 Emcee Controls (Stage Deck)</option>
-                </select>
+            <div class="dest-group">
+                <label for="targetDestination" class="dest-label">Select Destination</label>
+                <div class="select-wrapper">
+                    <select id="targetDestination" class="destination-select">
+                        <option value="dashboard">🏠 Dashboard (Home Page)</option>
+                        <option value="emcee">🎤 Emcee Controls (Stage Deck)</option>
+                    </select>
+                    <i class="fa-solid fa-chevron-down select-chevron"></i>
+                </div>
             </div>
 
-            <div id="passkeySection" style="display: none; margin-bottom: 12px;">
-                <p class="modal-desc" style="margin-bottom: 8px; font-size: 12px; color: #e6f5eb;">Security Passkey required for Emcee Deck:</p>
+            <div id="passkeySection" style="display: none;">
+                <p class="passkey-note">Security Passkey required for Emcee Deck:</p>
                 <input type="password" id="pinInput" class="pin-input" placeholder="••••" maxlength="8" autocomplete="off" inputmode="numeric">
                 <div class="error-msg" id="errorMsg">Invalid Passkey PIN!</div>
             </div>
@@ -451,7 +764,7 @@ $eventDateFormatted = !empty($event['start_date'])
                     
                     if (distance < 0) {
                         countdownEl.className = 'countdown-container-live';
-                        countdownEl.innerHTML = `<div class="event-live-banner"><span class="live-dot-pulse"></span><span class="live-text-glow">Event Live!</span></div>`;
+                        countdownEl.innerHTML = `<a href="../home.php" class="event-live-banner event-enter-btn" style="text-decoration: none;"><span class="live-dot-pulse"></span><span class="live-text-glow">Enter the Event <i class="fa-solid fa-arrow-right" style="font-size: 0.8em; margin-left: 6px;"></i></span></a>`;
                         return;
                     }
                     
@@ -468,6 +781,15 @@ $eventDateFormatted = !empty($event['start_date'])
                 
                 updateCountdown();
                 setInterval(updateCountdown, 1000);
+            }
+
+            const btnTestLive = document.getElementById('btnTestLive');
+            if (btnTestLive && countdownEl) {
+                btnTestLive.addEventListener('click', () => {
+                    countdownEl.className = 'countdown-container-live';
+                    countdownEl.innerHTML = `<a href="../home.php" class="event-live-banner event-enter-btn" style="text-decoration: none;"><span class="live-dot-pulse"></span><span class="live-text-glow">Enter the Event <i class="fa-solid fa-arrow-right" style="font-size: 0.8em; margin-left: 6px;"></i></span></a>`;
+                    btnTestLive.style.display = 'none';
+                });
             }
 
             // Modal Controls

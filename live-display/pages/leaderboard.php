@@ -65,27 +65,12 @@ body:has(#slide-leaderboard.tv-slide--active) .tv-topbar {
     position: relative;
 }
 
-/* Background Effects (3D Cuts, Chevrons, Clean Background) */
-.ambient-mesh-bg {
+/* Background Effects (Pure Video Background) */
+.ambient-mesh-bg,
+.bg-3d-cuts-svg,
+.side-chevrons-svg,
+.orbital-aura-bg {
     display: none !important;
-}
-
-.bg-3d-cuts-svg {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
-    z-index: 0;
-}
-
-.side-chevrons-svg.full-screen {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
-    z-index: 1;
 }
 
 @keyframes bg-chevron-pulse-float {

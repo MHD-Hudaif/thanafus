@@ -138,6 +138,13 @@ try {
                 </div>
             </div>
 
+            <!-- Test Button to Trigger Event Live! State -->
+            <div style="text-align: center; margin-top: 18px;">
+                <button type="button" id="btnTestLive" class="test-live-btn" style="background: rgba(16, 185, 129, 0.14); border: 1.5px dashed rgba(52, 211, 153, 0.45); color: #34d399; padding: 10px 22px; border-radius: 9999px; font-weight: 800; font-size: 12.5px; cursor: pointer; transition: all 0.25s ease; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.15);">
+                    ⚡ Test Timer End (Simulate Live)
+                </button>
+            </div>
+
             <!-- CTA Actions -->
             <div class="hero-actions">
                 <a href="live-display-mobile.php" class="btn-primary">Live Dashboard</a>

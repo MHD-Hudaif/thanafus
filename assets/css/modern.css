@@ -26191,3 +26191,175 @@ html#kauzariyya-theme body.page-schedule .schedule-day-panel.mobile-active {
     text-shadow: 0 4px 25px rgba(16, 185, 129, 0.5) !important;
 }
 
+/* ==========================================================================
+   STUNNING GLASSMORPHISM DASHBOARD HEADER STYLES
+   ========================================================================== */
+.site-header,
+body.page-home .site-header {
+  position: sticky !important;
+  top: 16px !important;
+  z-index: 100 !important;
+  width: min(1240px, calc(100% - 32px)) !important;
+  margin: 16px auto 24px auto !important;
+  padding: 10px 24px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  background: rgba(6, 18, 12, 0.72) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  border: 1px solid rgba(52, 211, 153, 0.28) !important;
+  border-radius: 24px !important;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+/* Site Logo */
+.site-logo {
+  display: flex !important;
+  align-items: center !important;
+  gap: 14px !important;
+  text-decoration: none !important;
+  transition: transform 0.25s ease !important;
+}
+
+.site-logo:hover {
+  transform: translateY(-1px) scale(1.01) !important;
+}
+
+.site-logo img {
+  width: 44px !important;
+  height: 44px !important;
+  object-fit: contain !important;
+  border-radius: 12px !important;
+  padding: 4px !important;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(245, 158, 11, 0.18)) !important;
+  border: 1px solid rgba(52, 211, 153, 0.4) !important;
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.25) !important;
+}
+
+.site-logo span {
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.site-logo span b {
+  font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif !important;
+  font-size: 1.25rem !important;
+  font-weight: 900 !important;
+  color: #ffffff !important;
+  letter-spacing: -0.4px !important;
+  line-height: 1.1 !important;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5) !important;
+}
+
+.site-logo span small {
+  font-size: 10px !important;
+  font-weight: 800 !important;
+  color: #34d399 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 1.5px !important;
+  margin-top: 2px !important;
+}
+
+/* Navigation Links Bar */
+.site-nav {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  background: rgba(3, 10, 6, 0.55) !important;
+  padding: 5px 8px !important;
+  border-radius: 9999px !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  backdrop-filter: blur(10px) !important;
+}
+
+.site-nav a {
+  padding: 9px 20px !important;
+  border-radius: 9999px !important;
+  font-size: 13.5px !important;
+  font-weight: 700 !important;
+  color: #94a3b8 !important;
+  text-decoration: none !important;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  position: relative !important;
+  letter-spacing: 0.2px !important;
+}
+
+.site-nav a:hover {
+  color: #ffffff !important;
+  background: rgba(16, 185, 129, 0.12) !important;
+}
+
+.site-nav a.active {
+  color: #ffffff !important;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.35) 0%, rgba(6, 40, 24, 0.85) 100%) !important;
+  border: 1px solid rgba(52, 211, 153, 0.5) !important;
+  box-shadow: 0 4px 18px rgba(16, 185, 129, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Account Actions & Festival Date Pill */
+.header-account-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+}
+
+.header-account-actions .festival-date {
+  display: inline-flex !important;
+  flex-direction: column !important;
+  align-items: flex-end !important;
+  padding: 6px 14px !important;
+  background: rgba(16, 185, 129, 0.1) !important;
+  border: 1px solid rgba(52, 211, 153, 0.25) !important;
+  border-radius: 14px !important;
+}
+
+.header-account-actions .festival-date span {
+  font-size: 9.5px !important;
+  font-weight: 800 !important;
+  color: #94a3b8 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 1px !important;
+}
+
+.header-account-actions .festival-date b {
+  font-size: 12px !important;
+  font-weight: 800 !important;
+  color: #fbbf24 !important;
+}
+
+.header-account-actions .visitor-logout-floating {
+  background: rgba(239, 68, 68, 0.14) !important;
+  border: 1px solid rgba(239, 68, 68, 0.35) !important;
+  color: #fca5a5 !important;
+  padding: 9px 18px !important;
+  border-radius: 9999px !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+  cursor: pointer !important;
+  transition: all 0.25s ease !important;
+}
+
+.header-account-actions .visitor-logout-floating:hover {
+  background: rgba(239, 68, 68, 0.28) !important;
+  border-color: rgba(239, 68, 68, 0.6) !important;
+  color: #ffffff !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 4px 16px rgba(239, 68, 68, 0.3) !important;
+}
+
+@media (max-width: 860px) {
+  .site-header,
+  body.page-home .site-header {
+    width: calc(100% - 20px) !important;
+    padding: 8px 14px !important;
+  }
+  .site-logo span small {
+    display: none !important;
+  }
+  .header-account-actions .festival-date {
+    display: none !important;
+  }
+}
+

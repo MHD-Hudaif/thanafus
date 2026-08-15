@@ -400,6 +400,33 @@
             { pos: 4, rankStr: '04', defaultColor: '#3b82f6', isLeading: false }
         ];
 
+        function getTeamVideoSrc(colorStr) {
+            const assets = window.TV_VIDEO_ASSETS || {};
+            const c = String(colorStr || '').toLowerCase().trim();
+            if (c.includes('blue') || c.includes('cyan') || c.includes('3b82f6') || c.includes('2563eb') || c.includes('0284c7') || c.includes('60a5fa') || c.includes('#3b82f6')) {
+                return assets.blue || '/assets/videos/bg-blue.mp4';
+            }
+            if (c.includes('green') || c.includes('emerald') || c.includes('10b981') || c.includes('22c55e') || c.includes('059669') || c.includes('34d399') || c.includes('#10b981')) {
+                return assets.green || '/assets/videos/bg-green.mp4';
+            }
+            if (c.includes('purple') || c.includes('violet') || c.includes('pink') || c.includes('red') || c.includes('f43f5e') || c.includes('8b5cf6') || c.includes('a855f7') || c.includes('ec4899') || c.includes('6400a6') || c.includes('#f43f5e') || c.includes('#8b5cf6')) {
+                return assets.purple || '/assets/videos/bg-purple.mp4';
+            }
+            return assets.yellow || '/assets/videos/bg-yellow.mp4';
+        }
+
+        function syncBackdropVideo(teamColor) {
+            const bgVideo = document.getElementById('tvBgVideo');
+            if (!bgVideo) return;
+            const targetSrc = getTeamVideoSrc(teamColor);
+            if (bgVideo.getAttribute('data-current-src') !== targetSrc) {
+                bgVideo.setAttribute('data-current-src', targetSrc);
+                bgVideo.src = targetSrc;
+                bgVideo.load();
+                bgVideo.play().catch(() => {});
+            }
+        }
+
         const cardsHtml = posConfigs.map((cfg, idx) => {
             const team = teams[idx] || null;
             const color = team && team.team_color ? team.team_color : cfg.defaultColor;
@@ -408,18 +435,12 @@
             const leadingBadge = cfg.isLeading ? `<span class="orbital-badge-leading">👑 CHAMPION LEADER</span>` : '';
             const gapText = cfg.isLeading ? `+${leadGap} PTS LEAD` : `-${Math.max(0, score1 - score)} PTS`;
             const gapClass = cfg.isLeading ? 'leader-gap' : 'chaser-gap';
+            const teamVideoSrc = getTeamVideoSrc(color);
 
             return `
                 <div class="orbital-card" data-pos="${cfg.pos}" style="--accent-color: ${escapeHtml(color)};">
-                    <!-- Animated Team-Colored Chevron Vectors inside Card -->
-                    <svg class="card-chevrons-svg" viewBox="0 0 320 255" preserveAspectRatio="none" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <g class="animated-card-group">
-                            <path class="animated-dash-line" d="M-30 255 L160 100 L-30 -55" stroke="${escapeHtml(color)}" stroke-width="2.5" opacity="0.65" stroke-linecap="round"/>
-                            <path class="animated-dash-line" d="M350 255 L160 100 L350 -55" stroke="${escapeHtml(color)}" stroke-width="2.5" opacity="0.65" stroke-linecap="round"/>
-                            <line class="animated-cross-line" x1="20" y1="210" x2="140" y2="120" stroke="${escapeHtml(color)}" stroke-width="1.5" opacity="0.5"/>
-                            <line class="animated-cross-line" x1="300" y1="210" x2="180" y2="120" stroke="${escapeHtml(color)}" stroke-width="1.5" opacity="0.5"/>
-                        </g>
-                    </svg>
+                    <!-- Embedded Team Lead Background Video -->
+                    <video autoplay loop muted playsinline src="${escapeHtml(teamVideoSrc)}" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0.25; pointer-events: none; border-radius: inherit; z-index: 0;"></video>
                     <div class="orbital-card-dark-wave"></div>
                     <div class="orbital-card-header">
                         ${leadingBadge}
@@ -453,8 +474,8 @@
             </div>
         ` : '';
 
-        // Top team color for ambient background lines & aura
-        const rawTopColor = teams[0]?.team_color || '#6400a6';
+        // Top team color for ambient background video & lines
+        const rawTopColor = teams[0]?.team_color || '#eab308';
         const firstTeamColor = rawTopColor.startsWith('#') ? rawTopColor : (colorMap[rawTopColor.toLowerCase()] || rawTopColor);
         document.documentElement.style.setProperty('--first-team-color', firstTeamColor);
         document.documentElement.style.setProperty('--top-team-color', firstTeamColor);
@@ -462,6 +483,9 @@
             container.style.setProperty('--first-team-color', firstTeamColor);
             container.style.setProperty('--top-team-color', firstTeamColor);
         }
+
+        // Sync main background video to #1 leading team's color
+        syncBackdropVideo(firstTeamColor);
 
         container.className = 'tv-leaderboard-stage-root';
         container.innerHTML = `

@@ -35,10 +35,18 @@ $assetBase = live_display_asset_url();
         }
     </style>
 </head>
+    <script>
+        window.TV_VIDEO_ASSETS = {
+            yellow: "<?= e(asset_url('videos/bg-yellow.mp4')) ?>",
+            blue: "<?= e(asset_url('videos/bg-blue.mp4')) ?>",
+            green: "<?= e(asset_url('videos/bg-green.mp4')) ?>",
+            purple: "<?= e(asset_url('videos/bg-purple.mp4')) ?>"
+        };
+    </script>
 <body class="tv-body theme-<?= e($settings['theme']) ?> <?= e($tvBodyClass ?? '') ?>">
 <div class="tv-app" id="tvApp">
     <div class="tv-backdrop" aria-hidden="true">
-        <video autoplay loop muted playsinline src="<?= e(asset_url('videos/schedule-background.mp4')) ?>" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1;"></video>
+        <video id="tvBgVideo" autoplay loop muted playsinline src="<?= e(asset_url('videos/bg-yellow.mp4')) ?>" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; transition: opacity 0.6s ease;"></video>
     </div>
 
     <div class="tv-orientation-hint" id="tvOrientationHint">

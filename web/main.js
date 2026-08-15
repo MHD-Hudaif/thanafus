@@ -44,7 +44,7 @@ function header(page) {
   return `<header class="site-header">
     <a class="site-logo" href="#home" data-page="home"><img src="assets/kauzariyya-brand-icon.png" alt="Kauzariyya"><span><b>Al-Jamiathul Kauzariyya</b><small>Internal Management System</small></span></a>
     <nav class="site-nav" aria-label="Main navigation">${Object.keys(pageNames).map(key => navLink(key, page)).join('')}</nav>
-    <div class="header-account-actions"><div class="festival-date"><span>Festival day</span><b>${data.event?.date || '18 August 2026'}</b></div><button class="visitor-logout visitor-logout-floating" type="button" aria-label="Sign out" data-signout>Sign out</button></div>
+    <div class="header-account-actions"><div class="festival-date"><span>Festival day</span><b>${data.event?.date || '18 August 2026'}</b></div><a class="visitor-logout visitor-logout-floating" href="mobile-app/index.php" aria-label="Sign out" style="text-decoration: none;">Sign out</a></div>
   </header>`;
 }
 
