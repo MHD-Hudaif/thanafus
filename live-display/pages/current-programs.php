@@ -575,34 +575,6 @@ $nextProgTime = !empty($initNextProg['start_label']) ? $initNextProg['start_labe
 <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js" defer></script>
 
 <div class="current-programs-stage-root" data-current-theme-root style="--first-team-color: <?= e($firstTeamColor) ?>; --top-team-color: <?= e($firstTeamColor) ?>;">
-    <!-- 3D Relief Geometric Layer Cuts Background -->
-    <svg class="bg-3d-cuts-svg" viewBox="0 0 1920 1080" preserveAspectRatio="none" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <filter id="cutShadowCurrent" x="-20%" y="-20%" width="140%" height="140%">
-            <feDropShadow dx="-8" dy="12" stdDeviation="15" flood-color="rgba(0,0,0,0.06)" />
-        </filter>
-        <polygon points="-100,1200 650,540 -100,-100" fill="#ffffff" filter="url(#cutShadowCurrent)" />
-        <polygon points="-100,1050 480,540 -100,30" fill="rgba(250,250,252,0.92)" filter="url(#cutShadowCurrent)" />
-        <polygon points="2020,1200 1270,540 2020,-100" fill="#ffffff" filter="url(#cutShadowCurrent)" />
-        <polygon points="2020,1050 1440,540 2020,30" fill="rgba(250,250,252,0.92)" filter="url(#cutShadowCurrent)" />
-    </svg>
-
-    <!-- Dynamic 1st Rank Team Geometric Chevron Vectors -->
-    <svg class="side-chevrons-svg full-screen" viewBox="0 0 1920 1080" preserveAspectRatio="none" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <g class="animated-chevron-group">
-            <path class="animated-dash-line" d="M-100 1200 L650 540 L-100 -100" stroke="var(--first-team-color)" stroke-width="3" stroke-linecap="round" />
-            <path class="animated-dash-line" d="M-150 1050 L480 540 L-150 30" stroke="var(--first-team-color)" stroke-width="2" opacity="0.8" stroke-linecap="round" />
-            <line class="animated-cross-line" x1="200" y1="900" x2="420" y2="680" stroke="var(--first-team-color)" stroke-width="2" opacity="0.75" />
-            <line class="animated-cross-line" x1="320" y1="780" x2="540" y2="560" stroke="var(--first-team-color)" stroke-width="2" opacity="0.75" />
-
-            <path class="animated-dash-line" d="M2020 1200 L1270 540 L2020 -100" stroke="var(--first-team-color)" stroke-width="3" stroke-linecap="round" />
-            <path class="animated-dash-line" d="M2070 1050 L1440 540 L2070 30" stroke="var(--first-team-color)" stroke-width="2" opacity="0.8" stroke-linecap="round" />
-            <line class="animated-cross-line" x1="1720" y1="900" x2="1500" y2="680" stroke="var(--first-team-color)" stroke-width="2" opacity="0.75" />
-        </g>
-    </svg>
-
-    <div class="ambient-mesh-bg"></div>
-    <div id="particles-js" class="tv-particles"></div>
-
     <div class="programs-wrapper">
         <!-- Main Workspace Grid (Enlarged Left Card + 2 Right Boxes) -->
         <div class="dashboard-grid">
@@ -631,13 +603,6 @@ $nextProgTime = !empty($initNextProg['start_label']) ? $initNextProg['start_labe
             <aside class="sidebar-column">
                 <!-- Box 1 (Top Right): NEXT PARTICIPANT / CONTESTANT -->
                 <div class="glass-panel side-card-top">
-                    <svg class="card-chevrons-svg" viewBox="0 0 500 260" preserveAspectRatio="none" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <g class="animated-card-group">
-                            <path class="animated-dash-line" d="M-30 260 L280 80 L-30 -100" stroke="var(--first-team-color)" stroke-width="2" opacity="0.55" stroke-linecap="round"/>
-                            <path class="animated-dash-line" d="M530 260 L220 80 L530 -100" stroke="var(--first-team-color)" stroke-width="2" opacity="0.55" stroke-linecap="round"/>
-                        </g>
-                    </svg>
-
                     <div class="side-box-label" data-next-label>
                         <?= $initIsIntro ? '1ST CONTESTANT STAGE ENTRY' : 'NEXT CONTESTANT' ?>
                     </div>
@@ -648,13 +613,6 @@ $nextProgTime = !empty($initNextProg['start_label']) ? $initNextProg['start_labe
 
                 <!-- Box 2 (Bottom Right): NEXT PROGRAM / BREAK -->
                 <div class="glass-panel side-card-bottom">
-                    <svg class="card-chevrons-svg" viewBox="0 0 500 260" preserveAspectRatio="none" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <g class="animated-card-group">
-                            <path class="animated-dash-line" d="M-30 260 L280 80 L-30 -100" stroke="var(--first-team-color)" stroke-width="2" opacity="0.55" stroke-linecap="round"/>
-                            <path class="animated-dash-line" d="M530 260 L220 80 L530 -100" stroke="var(--first-team-color)" stroke-width="2" opacity="0.55" stroke-linecap="round"/>
-                        </g>
-                    </svg>
-
                     <div class="side-box-label" data-next-prog-label>
                         <?= $isBreak ? 'INTERMISSION / EXTRA' : 'NEXT PROGRAM' ?>
                     </div>

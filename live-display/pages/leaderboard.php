@@ -217,29 +217,29 @@ body:has(#slide-leaderboard.tv-slide--active) .tv-topbar {
     100% { stroke-dashoffset: 0; }
 }
 
-/* Card Point Gap Pills */
+/* Card Point Gap Pills with Smooth Diagonal Gradient */
 .orbital-gap-pill {
     font-size: 11px;
     font-weight: 900;
     letter-spacing: 0.08em;
-    padding: 3px 12px;
+    padding: 4px 14px;
     border-radius: 16px;
     font-family: 'Plus Jakarta Sans', monospace;
 }
 
 .orbital-gap-pill.leader-gap {
-    background: color-mix(in srgb, var(--accent-color, #10b981) 16%, rgba(255,255,255,0.9));
-    border: 1px solid color-mix(in srgb, var(--accent-color, #10b981) 40%, white);
+    background: linear-gradient(135deg, color-mix(in srgb, var(--accent-color, #10b981) 22%, rgba(255,255,255,0.95)) 0%, color-mix(in srgb, var(--accent-color, #10b981) 10%, rgba(255,255,255,0.9)) 100%);
+    border: 1px solid color-mix(in srgb, var(--accent-color, #10b981) 45%, white);
     color: var(--accent-color, #10b981);
 }
 
 .orbital-gap-pill.chaser-gap {
-    background: rgba(15, 23, 42, 0.06);
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.07) 0%, rgba(15, 23, 42, 0.02) 100%);
     border: 1px solid rgba(15, 23, 42, 0.12);
     color: #64748b;
 }
 
-/* 4 Quadrant Cards */
+/* 4 Quadrant Cards with Smooth Diagonal Gradient Accent */
 .orbital-card {
     position: absolute;
     width: 320px;
@@ -249,7 +249,13 @@ body:has(#slide-leaderboard.tv-slide--active) .tv-topbar {
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    background: rgba(255, 255, 255, 0.88);
+    background: 
+        linear-gradient(
+            135deg, 
+            rgba(255, 255, 255, 0.96) 0%, 
+            rgba(255, 255, 255, 0.88) 55%, 
+            color-mix(in srgb, var(--accent-color, #10b981) 18%, rgba(255, 255, 255, 0.94)) 100%
+        );
     backdrop-filter: blur(40px);
     -webkit-backdrop-filter: blur(40px);
     border: 2px solid color-mix(in srgb, var(--accent-color, #10b981) 40%, rgba(255, 255, 255, 0.95));
@@ -259,6 +265,22 @@ body:has(#slide-leaderboard.tv-slide--active) .tv-topbar {
     overflow: hidden;
     z-index: 5;
     transition: transform 0.4s ease, box-shadow 0.4s ease;
+}
+
+/* Top Diagonal Gradient Accent Bar */
+.orbital-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 6px;
+    background: linear-gradient(
+        135deg, 
+        var(--accent-color, #10b981) 0%, 
+        color-mix(in srgb, var(--accent-color, #10b981) 70%, white) 50%, 
+        transparent 100%
+    );
 }
 
 /* Card hover animation disabled */
@@ -356,27 +378,31 @@ body:has(#slide-leaderboard.tv-slide--active) .tv-topbar {
     z-index: 1;
 }
 
-/* Positional Alignments */
+/* Positional Alignments - Professional Tight Cluster Layout */
 .orbital-card[data-pos="1"] {
-    top: 0;
+    top: 45px;
     left: 50%;
     transform: translateX(-50%);
+    border: 2.5px solid color-mix(in srgb, var(--accent-color, #10b981) 70%, white);
+    box-shadow: 
+        0 24px 60px -10px rgba(0, 0, 0, 0.08),
+        0 0 40px color-mix(in srgb, var(--accent-color, #10b981) 38%, transparent);
 }
 
 .orbital-card[data-pos="2"] {
     top: 50%;
-    right: 0;
+    right: 70px;
     transform: translateY(-50%);
 }
 
 .orbital-card[data-pos="3"] {
     top: 50%;
-    left: 0;
+    left: 70px;
     transform: translateY(-50%);
 }
 
 .orbital-card[data-pos="4"] {
-    bottom: 0;
+    bottom: 45px;
     left: 50%;
     transform: translateX(-50%);
 }

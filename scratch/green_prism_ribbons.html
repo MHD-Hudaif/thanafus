@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emerald Kinetic Prisms & Silk Ribbons Flow</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Outfit:wght@600;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Space Grotesk', 'Outfit', sans-serif;
+            background: #010f0b;
+            color: #ffffff;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Architectural Dark Stage */
+        .stage-backdrop {
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at 70% 30%, #064e3b 0%, #03251c 40%, #01140f 75%, #000a07 100%);
+            z-index: 1;
+        }
+
+        /* Ambient Glow Beams */
+        .prism-beam {
+            position: absolute;
+            width: 700px;
+            height: 700px;
+            border-radius: 50%;
+            filter: blur(130px);
+            opacity: 0.4;
+            mix-blend-mode: screen;
+            animation: beamMove 18s ease-in-out infinite alternate;
+        }
+
+        .beam-left {
+            top: -15%;
+            left: -5%;
+            background: radial-gradient(circle, #10b981 0%, rgba(52, 211, 153, 0.15) 60%, transparent 80%);
+        }
+
+        .beam-right {
+            bottom: -20%;
+            right: 10%;
+            background: radial-gradient(circle, #a3e635 0%, rgba(16, 185, 129, 0.2) 60%, transparent 80%);
+            animation-delay: -9s;
+        }
+
+        @keyframes beamMove {
+            0% { transform: translate(0, 0) scale(1); opacity: 0.35; }
+            50% { transform: translate(-50px, 60px) scale(1.2); opacity: 0.55; }
+            100% { transform: translate(70px, -40px) scale(0.9); opacity: 0.3; }
+        }
+
+        /* Canvas Stage */
+        #prismCanvas {
+            position: absolute;
+            inset: 0;
+            z-index: 2;
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        /* Glassmorphic Control HUD */
+        .hud-panel {
+            position: absolute;
+            top: 24px;
+            left: 24px;
+            z-index: 10;
+            background: rgba(4, 30, 23, 0.45);
+            backdrop-filter: blur(24px) saturate(180%);
+            border: 1px solid rgba(163, 230, 53, 0.25);
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6), inset 0 0 25px rgba(52, 211, 153, 0.12);
+            border-radius: 28px;
+            padding: 24px 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            min-width: 340px;
+        }
+
+        .hud-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-bottom: 14px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+        }
+
+        .hud-title {
+            font-size: 16px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: #a3e635;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .hud-title i {
+            font-size: 18px;
+            color: #34d399;
+            filter: drop-shadow(0 0 8px #34d399);
+        }
+
+        .hud-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .hud-label {
+            font-size: 11px;
+            font-weight: 700;
+            color: rgba(255, 255, 255, 0.75);
+            display: flex;
+            justify-content: space-between;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .hud-label span {
+            color: #a3e635;
+            font-weight: 700;
+        }
+
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.08);
+            height: 6px;
+            border-radius: 4px;
+            outline: none;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #a3e635, #10b981);
+            box-shadow: 0 0 14px rgba(163, 230, 53, 0.7);
+            cursor: pointer;
+            transition: transform 0.15s ease;
+        }
+
+        input[type=range]::-webkit-slider-thumb:hover {
+            transform: scale(1.25);
+        }
+
+        .style-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+
+        .btn-style {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            color: rgba(255, 255, 255, 0.85);
+            padding: 9px 10px;
+            border-radius: 14px;
+            font-size: 11px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            text-align: center;
+        }
+
+        .btn-style:hover, .btn-style.active {
+            background: linear-gradient(135deg, rgba(163, 230, 53, 0.3), rgba(16, 185, 129, 0.45));
+            border-color: #a3e635;
+            color: #ffffff;
+            box-shadow: 0 6px 20px rgba(163, 230, 53, 0.3);
+        }
+
+        /* Footer Watermark */
+        .watermark {
+            position: absolute;
+            bottom: 24px;
+            right: 24px;
+            z-index: 10;
+            font-size: 11px;
+            font-weight: 700;
+            color: rgba(163, 230, 53, 0.85);
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            background: rgba(1, 15, 11, 0.65);
+            backdrop-filter: blur(12px);
+            padding: 9px 20px;
+            border-radius: 99px;
+            border: 1px solid rgba(163, 230, 53, 0.25);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .watermark-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #a3e635;
+            box-shadow: 0 0 10px #a3e635;
+            animation: dotGlow 1.5s infinite alternate;
+        }
+
+        @keyframes dotGlow {
+            0% { opacity: 0.4; transform: scale(0.8); }
+            100% { opacity: 1; transform: scale(1.3); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="stage-backdrop">
+        <div class="prism-beam beam-left"></div>
+        <div class="prism-beam beam-right"></div>
+    </div>
+
+    <canvas id="prismCanvas"></canvas>
+
+    <div class="hud-panel">
+        <div class="hud-header">
+            <div class="hud-title">
+                <i class="fa-solid fa-gem"></i> Kinetic Emerald Prisms
+            </div>
+        </div>
+
+        <div class="hud-group">
+            <div class="hud-label">Drift Speed <span id="speedVal">1.2x</span></div>
+            <input type="range" id="speedInput" min="0.2" max="3.5" step="0.1" value="1.2">
+        </div>
+
+        <div class="hud-group">
+            <div class="hud-label">Prism Scale <span id="scaleVal">1.0x</span></div>
+            <input type="range" id="scaleInput" min="0.4" max="2.5" step="0.1" value="1.0">
+        </div>
+
+        <div class="hud-group">
+            <div class="hud-label">Render Mode</div>
+            <div class="style-grid">
+                <button type="button" class="btn-style active" data-mode="prisms">Prisms</button>
+                <button type="button" class="btn-style" data-mode="ribbons">Ribbons</button>
+                <button type="button" class="btn-style" data-mode="lattice">Lattice</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="watermark">
+        <span class="watermark-dot"></span>
+        Architectural Kinetic Engine
+    </div>
+
+    <script>
+        const canvas = document.getElementById('prismCanvas');
+        const ctx = canvas.getContext('2d');
+
+        let width = canvas.width = window.innerWidth;
+        let height = canvas.height = window.innerHeight;
+
+        window.addEventListener('resize', () => {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        });
+
+        // Config Options
+        let driftSpeed = 1.2;
+        let scaleFactor = 1.0;
+        let renderMode = 'prisms'; // 'prisms', 'ribbons', 'lattice'
+
+        document.getElementById('speedInput').addEventListener('input', (e) => {
+            driftSpeed = parseFloat(e.target.value);
+            document.getElementById('speedVal').textContent = driftSpeed.toFixed(1) + 'x';
+        });
+
+        document.getElementById('scaleInput').addEventListener('input', (e) => {
+            scaleFactor = parseFloat(e.target.value);
+            document.getElementById('scaleVal').textContent = scaleFactor.toFixed(1) + 'x';
+        });
+
+        document.querySelectorAll('.btn-style').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.btn-style').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                renderMode = btn.getAttribute('data-mode');
+            });
+        });
+
+        // Color Palettes
+        const prismPalettes = [
+            { main: '#10b981', line: '#a3e635', fill: 'rgba(16, 185, 129, 0.25)', glow: '#34d399' },
+            { main: '#34d399', line: '#6ee7b7', fill: 'rgba(52, 211, 153, 0.2)', glow: '#6ee7b7' },
+            { main: '#059669', line: '#10b981', fill: 'rgba(5, 150, 105, 0.3)', glow: '#10b981' },
+            { main: '#a3e635', line: '#84cc16', fill: 'rgba(163, 230, 53, 0.25)', glow: '#a3e635' }
+        ];
+
+        // 3D Rotated Kinetic Prism Object
+        class KineticPrism {
+            constructor(index) {
+                this.index = index;
+                this.reset(true);
+            }
+
+            reset(initial = false) {
+                this.x = initial ? Math.random() * width : -300 - Math.random() * 200;
+                this.y = Math.random() * height;
+                this.baseSize = Math.random() * 80 + 70; // 70px to 150px
+                this.vx = (Math.random() * 1.4 + 0.8);
+                this.vy = (Math.random() - 0.5) * 0.4;
+                this.rotX = Math.random() * Math.PI * 2;
+                this.rotY = Math.random() * Math.PI * 2;
+                this.rotZ = Math.random() * Math.PI * 2;
+                this.vRotX = (Math.random() - 0.5) * 0.015;
+                this.vRotY = (Math.random() - 0.5) * 0.02;
+                this.vRotZ = (Math.random() - 0.5) * 0.01;
+
+                this.type = Math.floor(Math.random() * 3); // 0: Cube/Prism, 1: Octahedron, 2: Hexagonal Prism
+                this.palette = prismPalettes[this.index % prismPalettes.length];
+            }
+
+            update() {
+                this.x += this.vx * driftSpeed;
+                this.y += this.vy * driftSpeed;
+                this.rotX += this.vRotX;
+                this.rotY += this.vRotY;
+                this.rotZ += this.vRotZ;
+
+                if (this.x - this.baseSize * 3 > width) {
+                    this.reset(false);
+                }
+            }
+
+            // Project 3D Point (x, y, z) to 2D Screen
+            project(pt, size) {
+                // Rotate around X, Y, Z
+                let { x, y, z } = pt;
+
+                // Rot X
+                let cosX = Math.cos(this.rotX), sinX = Math.sin(this.rotX);
+                let y1 = y * cosX - z * sinX;
+                let z1 = y * sinX + z * cosX;
+
+                // Rot Y
+                let cosY = Math.cos(this.rotY), sinY = Math.sin(this.rotY);
+                let x2 = x * cosY + z1 * sinY;
+                let z2 = -x * sinY + z1 * cosY;
+
+                // Rot Z
+                let cosZ = Math.cos(this.rotZ), sinZ = Math.sin(this.rotZ);
+                let x3 = x2 * cosZ - y1 * sinZ;
+                let y3 = x2 * sinZ + y1 * cosZ;
+
+                const scale = size;
+                return {
+                    px: this.x + x3 * scale,
+                    py: this.y + y3 * scale,
+                    pz: z2
+                };
+            }
+
+            draw() {
+                ctx.save();
+
+                const size = this.baseSize * scaleFactor;
+                ctx.shadowColor = this.palette.glow;
+                ctx.shadowBlur = 25;
+
+                // Define 3D Mesh Vertices & Faces based on shape type
+                let vertices = [];
+                let faces = [];
+
+                if (this.type === 0) {
+                    // 3D Cube / Rectangular Prism
+                    vertices = [
+                        {x:-1, y:-1, z:-1}, {x:1, y:-1, z:-1}, {x:1, y:1, z:-1}, {x:-1, y:1, z:-1},
+                        {x:-1, y:-1, z:1},  {x:1, y:-1, z:1},  {x:1, y:1, z:1},  {x:-1, y:1, z:1}
+                    ];
+                    faces = [
+                        [0,1,2,3], [4,5,6,7], [0,1,5,4],
+                        [2,3,7,6], [0,3,7,4], [1,2,6,5]
+                    ];
+                } else if (this.type === 1) {
+                    // Octahedron (Double Pyramid)
+                    vertices = [
+                        {x:0, y:-1.4, z:0}, {x:1, y:0, z:0}, {x:0, y:0, z:1},
+                        {x:-1, y:0, z:0}, {x:0, y:0, z:-1}, {x:0, y:1.4, z:0}
+                    ];
+                    faces = [
+                        [0,1,2], [0,2,3], [0,3,4], [0,4,1],
+                        [5,1,2], [5,2,3], [5,3,4], [5,4,1]
+                    ];
+                } else {
+                    // Hexagonal Crystal Prism
+                    const h = 1.2;
+                    vertices = [];
+                    for(let i=0; i<6; i++) {
+                        const a = (i/6)*Math.PI*2;
+                        vertices.push({x:Math.cos(a), y:-h, z:Math.sin(a)});
+                    }
+                    for(let i=0; i<6; i++) {
+                        const a = (i/6)*Math.PI*2;
+                        vertices.push({x:Math.cos(a), y:h, z:Math.sin(a)});
+                    }
+                    faces = [
+                        [0,1,2,3,4,5], [6,7,8,9,10,11],
+                        [0,1,7,6], [1,2,8,7], [2,3,9,8], [3,4,10,9], [4,5,11,10], [5,0,6,11]
+                    ];
+                }
+
+                // Project vertices
+                const projVerts = vertices.map(v => this.project(v, size));
+
+                // Sort faces by Z depth for realistic transparency layering
+                const projectedFaces = faces.map(face => {
+                    const avgZ = face.reduce((sum, idx) => sum + projVerts[idx].pz, 0) / face.length;
+                    return { face, avgZ };
+                }).sort((a, b) => a.avgZ - b.avgZ);
+
+                // Render Faces
+                projectedFaces.forEach(({ face }) => {
+                    ctx.beginPath();
+                    face.forEach((vIdx, i) => {
+                        const p = projVerts[vIdx];
+                        if (i === 0) ctx.moveTo(p.px, p.py);
+                        else ctx.lineTo(p.px, p.py);
+                    });
+                    ctx.closePath();
+
+                    // Glass Fill
+                    ctx.fillStyle = this.palette.fill;
+                    ctx.fill();
+
+                    // Neon Prism Edges
+                    ctx.strokeStyle = this.palette.line;
+                    ctx.lineWidth = 1.8;
+                    ctx.stroke();
+                });
+
+                ctx.restore();
+            }
+        }
+
+        // Initialize 14 Prisms
+        const prisms = Array.from({ length: 14 }, (_, i) => new KineticPrism(i));
+
+        // Draw Flowing Satin Ribbon Waves
+        function drawSilkRibbons() {
+            const time = Date.now() * 0.001 * driftSpeed;
+            const ribbonCount = 6;
+
+            for (let r = 0; r < ribbonCount; r++) {
+                ctx.save();
+                const yBase = (height / (ribbonCount + 1)) * (r + 1);
+
+                const grad = ctx.createLinearGradient(0, yBase - 120, width, yBase + 120);
+                grad.addColorStop(0, '#052e16');
+                grad.addColorStop(0.3, '#10b981');
+                grad.addColorStop(0.7, '#a3e635');
+                grad.addColorStop(1, '#064e3b');
+
+                ctx.fillStyle = grad;
+                ctx.globalAlpha = 0.28 + r * 0.04;
+                ctx.shadowColor = '#a3e635';
+                ctx.shadowBlur = 30;
+
+                ctx.beginPath();
+                ctx.moveTo(0, height);
+
+                const step = 20;
+                for (let x = 0; x <= width + step; x += step) {
+                    const wave1 = Math.sin(x * 0.003 + time * 1.5 + r) * 80 * scaleFactor;
+                    const wave2 = Math.cos(x * 0.007 - time * 0.9 + r * 2) * 50 * scaleFactor;
+                    const y = yBase + wave1 + wave2;
+
+                    if (x === 0) ctx.lineTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+
+                ctx.lineTo(width, height);
+                ctx.closePath();
+                ctx.fill();
+
+                // Specular Edge
+                ctx.strokeStyle = 'rgba(163, 230, 53, 0.6)';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                ctx.restore();
+            }
+        }
+
+        // Draw Constellation Mesh Lattice
+        function drawLatticeMesh() {
+            ctx.save();
+            ctx.strokeStyle = 'rgba(52, 211, 153, 0.15)';
+            ctx.lineWidth = 1;
+
+            // Connect nearby prisms with glowing laser lines
+            for (let i = 0; i < prisms.length; i++) {
+                for (let j = i + 1; j < prisms.length; j++) {
+                    const dx = prisms[i].x - prisms[j].x;
+                    const dy = prisms[i].y - prisms[j].y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+
+                    if (dist < 320) {
+                        const alpha = (1 - dist / 320) * 0.4;
+                        ctx.strokeStyle = `rgba(163, 230, 53, ${alpha})`;
+                        ctx.beginPath();
+                        ctx.moveTo(prisms[i].x, prisms[i].y);
+                        ctx.lineTo(prisms[j].x, prisms[j].y);
+                        ctx.stroke();
+                    }
+                }
+            }
+            ctx.restore();
+        }
+
+        // Animation Loop
+        function animate() {
+            ctx.clearRect(0, 0, width, height);
+
+            if (renderMode === 'prisms') {
+                drawLatticeMesh();
+                prisms.forEach(p => { p.update(); p.draw(); });
+            } else if (renderMode === 'ribbons') {
+                drawSilkRibbons();
+                prisms.forEach(p => { p.update(); p.draw(); });
+            } else if (renderMode === 'lattice') {
+                drawSilkRibbons();
+                drawLatticeMesh();
+                prisms.forEach(p => { p.update(); p.draw(); });
+            }
+
+            requestAnimationFrame(animate);
+        }
+
+        animate();
+    </script>
+</body>
+</html>

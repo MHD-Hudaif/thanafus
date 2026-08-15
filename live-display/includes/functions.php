@@ -943,7 +943,7 @@ function live_display_schedule(?int $eventId = null, int $limit = 9): array
             SELECT *
             FROM musabaqa_schedule_sections
             WHERE event_id = ?
-            ORDER BY sort_order ASC, start_time ASC, id ASC
+            ORDER BY CASE WHEN section_date IS NULL THEN 1 ELSE 0 END ASC, section_date ASC, start_time ASC, sort_order ASC, id ASC
         ");
         $stmt->execute([$eventId]);
         $sections = $stmt->fetchAll(PDO::FETCH_ASSOC);

@@ -1576,6 +1576,50 @@ foreach ($rawEntries as $entry) {
     $entries[] = $entry;
 }
 
+// Sort entries: 1st, 2nd, 3rd Place first, then Grade A, Grade B, Grade C, Grade D (by Score DESC)
+usort($entries, static function ($a, $b) use ($judgesCount) {
+    $rankA = isset($a['final_rank']) && $a['final_rank'] !== null && (int)$a['final_rank'] > 0 ? (int)$a['final_rank'] : 999;
+    $rankB = isset($b['final_rank']) && $b['final_rank'] !== null && (int)$b['final_rank'] > 0 ? (int)$b['final_rank'] : 999;
+
+    if ($rankA !== $rankB) {
+        return $rankA - $rankB;
+    }
+
+    $scoreA = (float)($a['final_total'] ?? $a['final_score'] ?? 0);
+    $scoreB = (float)($b['final_total'] ?? $b['final_score'] ?? 0);
+
+    $hasSheetA = !empty($a['score_sheet_id']) || $scoreA > 0;
+    $hasSheetB = !empty($b['score_sheet_id']) || $scoreB > 0;
+
+    $gradeAStr = $a['grade'] ?? '';
+    if (empty($gradeAStr) && $hasSheetA && $judgesCount > 0) {
+        $gInfoA = admin_calculate_grade_info($scoreA, $judgesCount);
+        $gradeAStr = $gInfoA['grade'];
+    }
+
+    $gradeBStr = $b['grade'] ?? '';
+    if (empty($gradeBStr) && $hasSheetB && $judgesCount > 0) {
+        $gInfoB = admin_calculate_grade_info($scoreB, $judgesCount);
+        $gradeBStr = $gInfoB['grade'];
+    }
+
+    $gradeOrder = ['A' => 1, 'B' => 2, 'C' => 3, 'D' => 4];
+    $gOrderA = isset($gradeOrder[strtoupper((string)$gradeAStr)]) ? $gradeOrder[strtoupper((string)$gradeAStr)] : 99;
+    $gOrderB = isset($gradeOrder[strtoupper((string)$gradeBStr)]) ? $gradeOrder[strtoupper((string)$gradeBStr)] : 99;
+
+    if ($gOrderA !== $gOrderB) {
+        return $gOrderA - $gOrderB;
+    }
+
+    if (abs($scoreA - $scoreB) > 0.001) {
+        return ($scoreB > $scoreA) ? 1 : -1;
+    }
+
+    $perfA = (int)($a['performance_order'] ?? $a['id'] ?? 0);
+    $perfB = (int)($b['performance_order'] ?? $b['id'] ?? 0);
+    return $perfA - $perfB;
+});
+
 $totalEntries = count($entries);
 
 $scoresMap = [];

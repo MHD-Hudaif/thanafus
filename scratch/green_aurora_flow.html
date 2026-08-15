@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Green Aurora & Fluid Metaballs Flow</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800;900&family=Plus+Jakarta+Sans:wght@500;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
+            background: #020c09;
+            color: #ffffff;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Deep Multi-Layer Ambient Stage */
+        .stage-backdrop {
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(ellipse at 10% 20%, #064e3b 0%, #022c22 35%, #011812 70%, #000806 100%);
+            z-index: 1;
+        }
+
+        /* Volumetric Radial Light Beams */
+        .light-beam {
+            position: absolute;
+            width: 800px;
+            height: 800px;
+            border-radius: 50%;
+            filter: blur(140px);
+            opacity: 0.45;
+            mix-blend-mode: screen;
+            animation: beamPulse 16s ease-in-out infinite alternate;
+        }
+
+        .beam-1 {
+            top: -20%;
+            left: -10%;
+            background: radial-gradient(circle, #10b981 0%, rgba(52, 211, 153, 0.2) 50%, transparent 70%);
+        }
+
+        .beam-2 {
+            bottom: -25%;
+            right: 5%;
+            background: radial-gradient(circle, #059669 0%, rgba(16, 185, 129, 0.15) 50%, transparent 70%);
+            animation-delay: -8s;
+        }
+
+        .beam-3 {
+            top: 40%;
+            left: 55%;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, #4ee883 0%, transparent 65%);
+            opacity: 0.25;
+            animation-duration: 22s;
+        }
+
+        @keyframes beamPulse {
+            0% { transform: translate(0, 0) scale(1); opacity: 0.35; }
+            50% { transform: translate(80px, -50px) scale(1.25); opacity: 0.55; }
+            100% { transform: translate(-60px, 80px) scale(0.85); opacity: 0.3; }
+        }
+
+        /* Flow Canvas Overlay */
+        #flowCanvas {
+            position: absolute;
+            inset: 0;
+            z-index: 2;
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        /* Glassmorphic Control HUD */
+        .hud-panel {
+            position: absolute;
+            top: 24px;
+            left: 24px;
+            z-index: 10;
+            background: rgba(3, 24, 18, 0.45);
+            backdrop-filter: blur(24px) saturate(180%);
+            border: 1px solid rgba(78, 232, 131, 0.25);
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.55), inset 0 0 25px rgba(16, 185, 129, 0.12);
+            border-radius: 28px;
+            padding: 24px 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            min-width: 340px;
+        }
+
+        .hud-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-bottom: 14px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+        }
+
+        .hud-title {
+            font-size: 17px;
+            font-weight: 900;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: #8ce094;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .hud-title i {
+            font-size: 20px;
+            color: #4ee883;
+            filter: drop-shadow(0 0 10px #4ee883);
+            animation: pulseIcon 2.5s ease-in-out infinite alternate;
+        }
+
+        @keyframes pulseIcon {
+            0% { transform: scale(1); filter: drop-shadow(0 0 4px #4ee883); }
+            100% { transform: scale(1.15); filter: drop-shadow(0 0 16px #4ee883); }
+        }
+
+        .hud-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .hud-label {
+            font-size: 11px;
+            font-weight: 800;
+            color: rgba(255, 255, 255, 0.75);
+            display: flex;
+            justify-content: space-between;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .hud-label span {
+            color: #4ee883;
+            font-weight: 900;
+        }
+
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.08);
+            height: 6px;
+            border-radius: 4px;
+            outline: none;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #4ee883, #10b981);
+            box-shadow: 0 0 14px rgba(78, 232, 131, 0.7);
+            cursor: pointer;
+            transition: transform 0.15s ease;
+        }
+
+        input[type=range]::-webkit-slider-thumb:hover {
+            transform: scale(1.25);
+        }
+
+        .mode-selector {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+
+        .btn-theme {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            color: rgba(255, 255, 255, 0.85);
+            padding: 9px 10px;
+            border-radius: 14px;
+            font-size: 11px;
+            font-weight: 800;
+            cursor: pointer;
+            transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+            text-align: center;
+        }
+
+        .btn-theme:hover, .btn-theme.active {
+            background: linear-gradient(135deg, rgba(78, 232, 131, 0.35), rgba(16, 185, 129, 0.45));
+            border-color: #4ee883;
+            color: #ffffff;
+            box-shadow: 0 6px 20px rgba(78, 232, 131, 0.35);
+        }
+
+        .toggle-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-top: 6px;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 44px;
+            height: 24px;
+            appearance: none;
+            background: rgba(255, 255, 255, 0.12);
+            border-radius: 99px;
+            outline: none;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .toggle-switch:checked {
+            background: #10b981;
+        }
+
+        .toggle-switch::before {
+            content: '';
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #ffffff;
+            transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+
+        .toggle-switch:checked::before {
+            transform: translateX(20px);
+        }
+
+        /* Audio Pulse Meter */
+        .audio-pulse-bar {
+            height: 4px;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 99px;
+            overflow: hidden;
+            margin-top: 4px;
+        }
+
+        .audio-pulse-fill {
+            height: 100%;
+            width: 30%;
+            background: linear-gradient(90deg, #4ee883, #10b981);
+            border-radius: inherit;
+            box-shadow: 0 0 10px #4ee883;
+            transition: width 0.1s linear;
+        }
+
+        /* Footer Watermark */
+        .watermark {
+            position: absolute;
+            bottom: 24px;
+            right: 24px;
+            z-index: 10;
+            font-size: 11px;
+            font-weight: 800;
+            color: rgba(140, 242, 170, 0.85);
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            background: rgba(2, 12, 9, 0.65);
+            backdrop-filter: blur(12px);
+            padding: 9px 20px;
+            border-radius: 99px;
+            border: 1px solid rgba(78, 232, 131, 0.25);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .watermark-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #4ee883;
+            box-shadow: 0 0 10px #4ee883;
+            animation: dotGlow 1.5s infinite alternate;
+        }
+
+        @keyframes dotGlow {
+            0% { opacity: 0.4; transform: scale(0.8); }
+            100% { opacity: 1; transform: scale(1.3); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="stage-backdrop">
+        <div class="light-beam beam-1"></div>
+        <div class="light-beam beam-2"></div>
+        <div class="light-beam beam-3"></div>
+    </div>
+
+    <canvas id="flowCanvas"></canvas>
+
+    <div class="hud-panel">
+        <div class="hud-header">
+            <div class="hud-title">
+                <i class="fa-solid fa-wand-magic-sparkles"></i> Aurora Wave Flow
+            </div>
+        </div>
+
+        <div class="hud-group">
+            <div class="hud-label">Drift Speed <span id="speedVal">1.2x</span></div>
+            <input type="range" id="speedInput" min="0.2" max="3.5" step="0.1" value="1.2">
+        </div>
+
+        <div class="hud-group">
+            <div class="hud-label">Wave Amplitude <span id="ampVal">1.0x</span></div>
+            <input type="range" id="ampInput" min="0.3" max="2.5" step="0.1" value="1.0">
+        </div>
+
+        <div class="hud-group">
+            <div class="hud-label">Flow Theme</div>
+            <div class="mode-selector">
+                <button type="button" class="btn-theme active" data-theme="aurora">Aurora</button>
+                <button type="button" class="btn-theme" data-theme="metaballs">Blobs</button>
+                <button type="button" class="btn-theme" data-theme="cyber">Cyber</button>
+            </div>
+        </div>
+
+        <div class="toggle-row">
+            <div class="hud-label" style="margin: 0;">Audio Pulse Beat</div>
+            <input type="checkbox" id="pulseToggle" class="toggle-switch" checked>
+        </div>
+        <div class="audio-pulse-bar">
+            <div class="audio-pulse-fill" id="pulseMeter"></div>
+        </div>
+    </div>
+
+    <div class="watermark">
+        <span class="watermark-dot"></span>
+        Green Aurora & Liquid Morph Engine 2.0
+    </div>
+
+    <script>
+        const canvas = document.getElementById('flowCanvas');
+        const ctx = canvas.getContext('2d');
+
+        let width = canvas.width = window.innerWidth;
+        let height = canvas.height = window.innerHeight;
+
+        window.addEventListener('resize', () => {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        });
+
+        // Config Values
+        let driftSpeed = 1.2;
+        let waveAmp = 1.0;
+        let currentTheme = 'aurora'; // 'aurora', 'metaballs', 'cyber'
+        let isAudioPulsing = true;
+        let simulatedPulse = 1.0;
+
+        document.getElementById('speedInput').addEventListener('input', (e) => {
+            driftSpeed = parseFloat(e.target.value);
+            document.getElementById('speedVal').textContent = driftSpeed.toFixed(1) + 'x';
+        });
+
+        document.getElementById('ampInput').addEventListener('input', (e) => {
+            waveAmp = parseFloat(e.target.value);
+            document.getElementById('ampVal').textContent = waveAmp.toFixed(1) + 'x';
+        });
+
+        document.getElementById('pulseToggle').addEventListener('change', (e) => {
+            isAudioPulsing = e.target.checked;
+        });
+
+        document.querySelectorAll('.btn-theme').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.btn-theme').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentTheme = btn.getAttribute('data-theme');
+            });
+        });
+
+        // Simulating rhythmic bass pulse
+        function updateSimulatedPulse() {
+            if (!isAudioPulsing) {
+                simulatedPulse = 1.0;
+                document.getElementById('pulseMeter').style.width = '20%';
+                return;
+            }
+            const time = Date.now() * 0.005;
+            const beat = Math.pow(Math.sin(time) * 0.5 + 0.5, 4); // Sharp beat pulse
+            simulatedPulse = 1.0 + beat * 0.35;
+            document.getElementById('pulseMeter').style.width = Math.round(20 + beat * 80) + '%';
+        }
+
+        // Particle Stream Node
+        class EmeraldParticle {
+            constructor() {
+                this.reset(true);
+            }
+
+            reset(initial = false) {
+                this.x = initial ? Math.random() * width : -50;
+                this.y = Math.random() * height;
+                this.size = Math.random() * 4 + 1.5;
+                this.vx = (Math.random() * 2 + 1) * driftSpeed;
+                this.vy = (Math.random() - 0.5) * 0.5;
+                this.alpha = Math.random() * 0.7 + 0.2;
+                this.hueShift = Math.random() * 40 - 20;
+            }
+
+            update() {
+                this.x += this.vx * driftSpeed * simulatedPulse;
+                this.y += Math.sin(this.x * 0.008) * 0.6 + this.vy;
+
+                if (this.x > width + 50) {
+                    this.reset(false);
+                }
+            }
+
+            draw() {
+                ctx.save();
+                ctx.fillStyle = `rgba(78, 232, 131, ${this.alpha})`;
+                ctx.shadowColor = '#4ee883';
+                ctx.shadowBlur = 12;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size * simulatedPulse, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        // Floating Fluid Metaball/Blob Node
+        class FluidBlob {
+            constructor(index) {
+                this.index = index;
+                this.reset(true);
+            }
+
+            reset(initial = false) {
+                this.x = initial ? Math.random() * width : -350 - Math.random() * 250;
+                this.y = Math.random() * height;
+                this.baseR = Math.random() * 140 + 90;
+                this.vx = (Math.random() * 1.2 + 0.6);
+                this.vy = (Math.random() - 0.5) * 0.3;
+                this.rot = Math.random() * Math.PI * 2;
+                this.vRot = (Math.random() - 0.5) * 0.01;
+                this.seed = Math.random() * 1000;
+
+                // Color themes
+                const colors = [
+                    { main: '#10b981', glow: '#4ee883', sub: '#047857' },
+                    { main: '#34d399', glow: '#6ee7b7', sub: '#065f46' },
+                    { main: '#059669', glow: '#34d399', sub: '#022c22' },
+                    { main: '#06b6d4', glow: '#10b981', sub: '#0891b2' }, // Cyan Emerald
+                    { main: '#a3e635', glow: '#4ee883', sub: '#4d7c0f' }  // Lime Jade
+                ];
+                this.palette = colors[this.index % colors.length];
+            }
+
+            update() {
+                this.x += this.vx * driftSpeed;
+                this.y += this.vy * driftSpeed;
+                this.rot += this.vRot;
+
+                if (this.x - this.baseR * 2.5 > width) {
+                    this.reset(false);
+                }
+            }
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.rot);
+
+                const r = this.baseR * simulatedPulse;
+
+                // Multi-stop Radial Fluid Gradient
+                const grad = ctx.createRadialGradient(-r * 0.3, -r * 0.3, r * 0.1, 0, 0, r);
+                grad.addColorStop(0, this.palette.glow);
+                grad.addColorStop(0.5, this.palette.main);
+                grad.addColorStop(1, this.palette.sub);
+
+                ctx.fillStyle = grad;
+                ctx.globalAlpha = 0.42;
+
+                ctx.shadowColor = this.palette.glow;
+                ctx.shadowBlur = 45;
+
+                // Render Deformed Liquid Path
+                ctx.beginPath();
+                const points = 8;
+                const time = Date.now() * 0.002 + this.seed;
+
+                for (let i = 0; i < points; i++) {
+                    const angle = (i / points) * Math.PI * 2;
+                    const deform = Math.sin(time + i * 1.5) * 22 * waveAmp + Math.cos(time * 0.8 + i) * 14;
+                    const currentR = r + deform;
+                    const px = Math.cos(angle) * currentR;
+                    const py = Math.sin(angle) * currentR;
+
+                    if (i === 0) ctx.moveTo(px, py);
+                    else {
+                        const prevAngle = ((i - 1) / points) * Math.PI * 2;
+                        const prevR = r + (Math.sin(time + (i - 1) * 1.5) * 22 * waveAmp + Math.cos(time * 0.8 + (i - 1)) * 14);
+                        const cpx = Math.cos((angle + prevAngle) / 2) * (currentR + prevR) / 2 * 1.1;
+                        const cpy = Math.sin((angle + prevAngle) / 2) * (currentR + prevR) / 2 * 1.1;
+                        ctx.quadraticCurveTo(cpx, cpy, px, py);
+                    }
+                }
+                ctx.closePath();
+                ctx.fill();
+
+                // Highlight Specular Ring
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+
+                ctx.restore();
+            }
+        }
+
+        // Initialize Nodes
+        const particles = Array.from({ length: 45 }, () => new EmeraldParticle());
+        const blobs = Array.from({ length: 10 }, (_, i) => new FluidBlob(i));
+
+        // Draw Layered Aurora Wave Rivers
+        function drawAuroraWaves() {
+            const time = Date.now() * 0.001 * driftSpeed;
+            const waveLayers = 5;
+
+            for (let l = 0; l < waveLayers; l++) {
+                ctx.save();
+
+                const opacity = 0.18 + (l * 0.05);
+                const yOffset = (height / (waveLayers + 1)) * (l + 1);
+
+                // Multi-Stop Aurora Wave Gradient
+                const waveGrad = ctx.createLinearGradient(0, yOffset - 150, width, yOffset + 150);
+                waveGrad.addColorStop(0, '#064e3b');
+                waveGrad.addColorStop(0.3, '#10b981');
+                waveGrad.addColorStop(0.7, '#4ee883');
+                waveGrad.addColorStop(1, '#022c22');
+
+                ctx.fillStyle = waveGrad;
+                ctx.globalAlpha = opacity;
+
+                ctx.shadowColor = '#4ee883';
+                ctx.shadowBlur = 35;
+
+                ctx.beginPath();
+                ctx.moveTo(0, height);
+
+                const step = 25;
+                for (let x = 0; x <= width + step; x += step) {
+                    const wave1 = Math.sin(x * 0.003 + time * 1.2 + l) * 75 * waveAmp;
+                    const wave2 = Math.cos(x * 0.006 - time * 0.8 + l * 2) * 45 * waveAmp;
+                    const pulseWave = Math.sin(x * 0.01 + time * 2) * 15 * (simulatedPulse - 1.0);
+                    const y = yOffset + wave1 + wave2 + pulseWave;
+
+                    if (x === 0) ctx.lineTo(0, y);
+                    else ctx.lineTo(x, y);
+                }
+
+                ctx.lineTo(width, height);
+                ctx.closePath();
+                ctx.fill();
+
+                // Highlight Wave Edge Crest
+                ctx.strokeStyle = 'rgba(110, 231, 183, 0.45)';
+                ctx.lineWidth = 2.5;
+                ctx.stroke();
+
+                ctx.restore();
+            }
+        }
+
+        // Draw Cyber Mesh Wave Network
+        function drawCyberMesh() {
+            const time = Date.now() * 0.0012 * driftSpeed;
+            ctx.save();
+            ctx.strokeStyle = 'rgba(78, 232, 131, 0.15)';
+            ctx.lineWidth = 1.2;
+
+            const rows = 12;
+            const cols = 35;
+            const xStep = width / cols;
+            const yStep = height / rows;
+
+            for (let r = 0; r <= rows; r++) {
+                ctx.beginPath();
+                for (let c = 0; c <= cols; c++) {
+                    const x = c * xStep;
+                    const wave = Math.sin(c * 0.2 + time + r * 0.3) * 25 * waveAmp;
+                    const y = r * yStep + wave;
+
+                    if (c === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+                ctx.stroke();
+            }
+            ctx.restore();
+        }
+
+        // Main Animation Render Loop
+        function render() {
+            ctx.clearRect(0, 0, width, height);
+
+            updateSimulatedPulse();
+
+            if (currentTheme === 'aurora') {
+                drawAuroraWaves();
+                blobs.forEach(b => { b.update(); b.draw(); });
+                particles.forEach(p => { p.update(); p.draw(); });
+            } else if (currentTheme === 'metaballs') {
+                blobs.forEach(b => { b.update(); b.draw(); });
+                particles.forEach(p => { p.update(); p.draw(); });
+            } else if (currentTheme === 'cyber') {
+                drawCyberMesh();
+                drawAuroraWaves();
+                particles.forEach(p => { p.update(); p.draw(); });
+            }
+
+            requestAnimationFrame(render);
+        }
+
+        render();
+    </script>
+</body>
+</html>

@@ -9,7 +9,7 @@ if (!defined('LIVE_DISPLAY_STAGE')) {
     $settings['mode'] = 'manual';
     $settings['active_slide'] = 'schedule';
     $settings['slides']['schedule']['enabled'] = true;
-    $settings['slides']['schedule']['duration'] = 999999;
+    $settings['slides']['schedule']['duration'] = 7000;
     require dirname(__DIR__) . '/includes/header.php';
     echo '<section class="tv-slide tv-slide--active" id="slide-schedule" data-slide="schedule" style="opacity: 1; visibility: visible; transform: scale(1);">';
 }

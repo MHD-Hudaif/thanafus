@@ -699,11 +699,6 @@ $eventDateFormatted = !empty($event['start_date'])
                 <div class="countdown-label">Secs</div>
             </div>
         </div>
-
-        <!-- Test Button to Trigger Event Live! State -->
-        <button type="button" id="btnTestLive" class="test-live-btn" style="margin-top: 24px; background: rgba(150, 180, 140, 0.18); border: 1.5px dashed rgba(130, 160, 115, 0.45); color: #4d6b47; padding: 10px 22px; border-radius: 9999px; font-weight: 800; font-size: 12.5px; cursor: pointer; transition: all 0.25s ease; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 14px rgba(150, 170, 130, 0.15);">
-            <i class="fa-solid fa-bolt" style="color: #b8955e;"></i> Test Timer End (Simulate Live)
-        </button>
     </main>
 
     <footer>
@@ -764,7 +759,66 @@ $eventDateFormatted = !empty($event['start_date'])
                     
                     if (distance < 0) {
                         countdownEl.className = 'countdown-container-live';
-                        countdownEl.innerHTML = `<a href="../home.php" class="event-live-banner event-enter-btn" style="text-decoration: none;"><span class="live-dot-pulse"></span><span class="live-text-glow">Enter the Event <i class="fa-solid fa-arrow-right" style="font-size: 0.8em; margin-left: 6px;"></i></span></a>`;
+                        
+                        if (localStorage.getItem('program_ended') === 'true') {
+                            countdownEl.innerHTML = `
+                                <div class="program-ended-box" style="display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 22px 30px; background: rgba(15, 23, 42, 0.72); backdrop-filter: blur(16px); border-radius: 28px; border: 1.5px solid rgba(239, 68, 68, 0.4); box-shadow: 0 16px 40px rgba(0,0,0,0.35); width: 100%; max-width: 520px; margin: 0 auto; text-align: center;">
+                                    <div style="font-size: 14px; font-weight: 900; color: #ef4444; text-transform: uppercase; letter-spacing: 1.5px; display: flex; align-items: center; gap: 8px;">
+                                        <i class="fa-solid fa-flag-checkered"></i> PROGRAM ENDED
+                                    </div>
+                                    <div style="font-size: 13px; color: rgba(255,255,255,0.85); font-weight: 600;">
+                                        The festival program has officially concluded. Thank you!
+                                    </div>
+                                    <button type="button" id="btnRestartProgram" style="margin-top: 4px; background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.25); color: #ffffff; border-radius: 20px; padding: 8px 22px; font-size: 12px; font-weight: 800; cursor: pointer; transition: all 0.2s ease;">
+                                        <i class="fa-solid fa-rotate-left" style="margin-right: 6px;"></i> Restart Timer
+                                    </button>
+                                </div>
+                            `;
+                            document.getElementById('btnRestartProgram')?.addEventListener('click', () => {
+                                localStorage.removeItem('program_ended');
+                                updateCountdown();
+                            });
+                            return;
+                        }
+
+                        // Calculate Live Elapsed Program Time (counting UP)
+                        const elapsedSeconds = Math.floor((now - targetDate) / 1000);
+                        const hrs = Math.floor(elapsedSeconds / 3600);
+                        const mins = Math.floor((elapsedSeconds % 3600) / 60);
+                        const secs = elapsedSeconds % 60;
+
+                        countdownEl.innerHTML = `
+                            <div class="program-timer-box" style="display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 22px 28px; background: rgba(15, 23, 42, 0.72); backdrop-filter: blur(16px); border-radius: 28px; border: 1.5px solid rgba(16, 185, 129, 0.4); box-shadow: 0 16px 40px rgba(0,0,0,0.35), 0 0 30px rgba(16,185,129,0.15); width: 100%; max-width: 520px; margin: 0 auto; text-align: center;">
+                                <div style="font-size: 13px; font-weight: 900; color: #10b981; text-transform: uppercase; letter-spacing: 1.5px; display: flex; align-items: center; gap: 8px;">
+                                    <span class="live-dot-pulse" style="background: #10b981; box-shadow: 0 0 10px #10b981; display: inline-block; width: 8px; height: 8px; border-radius: 50%;"></span>
+                                    PROGRAM STARTED &bull; LIVE TIMER
+                                </div>
+                                <div style="display: flex; align-items: center; justify-content: center; gap: 12px; font-family: 'Outfit', 'Inter', sans-serif;">
+                                    <div style="display: flex; flex-direction: column; align-items: center; background: rgba(255,255,255,0.06); padding: 10px 18px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.1); min-width: 72px;">
+                                        <span style="font-size: 32px; font-weight: 900; color: #ffffff; line-height: 1;">${String(hrs).padStart(2, '0')}</span>
+                                        <span style="font-size: 10px; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-top: 4px;">Hours</span>
+                                    </div>
+                                    <span style="font-size: 28px; font-weight: 900; color: #10b981;">:</span>
+                                    <div style="display: flex; flex-direction: column; align-items: center; background: rgba(255,255,255,0.06); padding: 10px 18px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.1); min-width: 72px;">
+                                        <span style="font-size: 32px; font-weight: 900; color: #ffffff; line-height: 1;">${String(mins).padStart(2, '0')}</span>
+                                        <span style="font-size: 10px; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-top: 4px;">Mins</span>
+                                    </div>
+                                    <span style="font-size: 28px; font-weight: 900; color: #10b981;">:</span>
+                                    <div style="display: flex; flex-direction: column; align-items: center; background: rgba(255,255,255,0.06); padding: 10px 18px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.1); min-width: 72px;">
+                                        <span style="font-size: 32px; font-weight: 900; color: #10b981; line-height: 1;">${String(secs).padStart(2, '0')}</span>
+                                        <span style="font-size: 10px; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-top: 4px;">Secs</span>
+                                    </div>
+                                </div>
+                                <button type="button" id="btnEndProgram" style="margin-top: 6px; background: linear-gradient(135deg, #ef4444, #dc2626); color: #ffffff; border: none; padding: 10px 28px; border-radius: 999px; font-size: 13px; font-weight: 800; cursor: pointer; box-shadow: 0 6px 20px rgba(239, 68, 68, 0.35); transition: all 0.2s ease;">
+                                    <i class="fa-solid fa-power-off" style="margin-right: 6px;"></i> End Program
+                                </button>
+                            </div>
+                        `;
+
+                        document.getElementById('btnEndProgram')?.addEventListener('click', () => {
+                            localStorage.setItem('program_ended', 'true');
+                            updateCountdown();
+                        });
                         return;
                     }
                     
@@ -781,15 +835,6 @@ $eventDateFormatted = !empty($event['start_date'])
                 
                 updateCountdown();
                 setInterval(updateCountdown, 1000);
-            }
-
-            const btnTestLive = document.getElementById('btnTestLive');
-            if (btnTestLive && countdownEl) {
-                btnTestLive.addEventListener('click', () => {
-                    countdownEl.className = 'countdown-container-live';
-                    countdownEl.innerHTML = `<a href="../home.php" class="event-live-banner event-enter-btn" style="text-decoration: none;"><span class="live-dot-pulse"></span><span class="live-text-glow">Enter the Event <i class="fa-solid fa-arrow-right" style="font-size: 0.8em; margin-left: 6px;"></i></span></a>`;
-                    btnTestLive.style.display = 'none';
-                });
             }
 
             // Modal Controls

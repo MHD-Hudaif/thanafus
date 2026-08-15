@@ -352,6 +352,50 @@ if ($programId > 0) {
     $stmtEntries->execute([$activeEventId, $programId]);
     $entries = $stmtEntries->fetchAll(PDO::FETCH_ASSOC);
 
+    $judgesCount = (int)($program['judges_count'] ?? 2);
+    usort($entries, static function ($a, $b) use ($judgesCount) {
+        $rankA = isset($a['final_rank']) && $a['final_rank'] !== null && (int)$a['final_rank'] > 0 ? (int)$a['final_rank'] : 999;
+        $rankB = isset($b['final_rank']) && $b['final_rank'] !== null && (int)$b['final_rank'] > 0 ? (int)$b['final_rank'] : 999;
+
+        if ($rankA !== $rankB) {
+            return $rankA - $rankB;
+        }
+
+        $scoreA = (float)($a['final_total'] ?? $a['final_score'] ?? 0);
+        $scoreB = (float)($b['final_total'] ?? $b['final_score'] ?? 0);
+
+        $hasSheetA = !empty($a['score_sheet_id']) || $scoreA > 0;
+        $hasSheetB = !empty($b['score_sheet_id']) || $scoreB > 0;
+
+        $gradeAStr = $a['grade'] ?? '';
+        if (empty($gradeAStr) && $hasSheetA && $judgesCount > 0) {
+            $gInfoA = admin_calculate_grade_info($scoreA, $judgesCount);
+            $gradeAStr = $gInfoA['grade'];
+        }
+
+        $gradeBStr = $b['grade'] ?? '';
+        if (empty($gradeBStr) && $hasSheetB && $judgesCount > 0) {
+            $gInfoB = admin_calculate_grade_info($scoreB, $judgesCount);
+            $gradeBStr = $gInfoB['grade'];
+        }
+
+        $gradeOrder = ['A' => 1, 'B' => 2, 'C' => 3, 'D' => 4];
+        $gOrderA = isset($gradeOrder[strtoupper((string)$gradeAStr)]) ? $gradeOrder[strtoupper((string)$gradeAStr)] : 99;
+        $gOrderB = isset($gradeOrder[strtoupper((string)$gradeBStr)]) ? $gradeOrder[strtoupper((string)$gradeBStr)] : 99;
+
+        if ($gOrderA !== $gOrderB) {
+            return $gOrderA - $gOrderB;
+        }
+
+        if (abs($scoreA - $scoreB) > 0.001) {
+            return ($scoreB > $scoreA) ? 1 : -1;
+        }
+
+        $perfA = (int)($a['performance_order'] ?? $a['id'] ?? 0);
+        $perfB = (int)($b['performance_order'] ?? $b['id'] ?? 0);
+        return $perfA - $perfB;
+    });
+
     $scoresMap = [];
     $stmtCS = $pdo->prepare("
         SELECT ss.entry_id, cs.judge_no, cs.category_id, cs.score
@@ -395,6 +439,39 @@ if ($programId > 0) {
             </div>
         <?php endif; ?>
 
+        <?php
+        // Compute initial calculated ranks for entries
+        $entryRanksMap = [];
+        $rankCandidates = [];
+        foreach ($entries as $e) {
+            $eId = (int)$e['id'];
+            $hSheet = !empty($e['score_sheet_id']);
+            $fScore = (float)($e['final_total'] ?? 0);
+            $dbRank = $e['final_rank'] !== null ? (int)$e['final_rank'] : null;
+            if ($dbRank !== null && $dbRank > 0) {
+                $entryRanksMap[$eId] = $dbRank;
+            } elseif ($hSheet && $fScore > 0) {
+                $rankCandidates[] = ['id' => $eId, 'score' => $fScore];
+            }
+        }
+
+        usort($rankCandidates, function($a, $b) {
+            return $b['score'] <=> $a['score'];
+        });
+
+        $cRank = 1;
+        $prevScore = null;
+        foreach ($rankCandidates as $idx => $item) {
+            if (!isset($entryRanksMap[$item['id']])) {
+                if ($prevScore !== null && $item['score'] < $prevScore) {
+                    $cRank = $idx + 1;
+                }
+                $entryRanksMap[$item['id']] = $cRank;
+                $prevScore = $item['score'];
+            }
+        }
+        ?>
+
         <div class="table-wrapper">
             <table class="table table-glass">
                 <thead>
@@ -406,6 +483,7 @@ if ($programId > 0) {
                             <th>Team</th>
                             <th style="width: 160px; text-align: center;">Placement Rank</th>
                             <th style="width: 100px; text-align: center;">Final Score</th>
+                            <th style="width: 80px; text-align: center;">Rank</th>
                             <th style="width: 90px; text-align: center;">Grade</th>
                             <th style="width: 80px; text-align: center;">Status</th>
                         </tr>
@@ -416,17 +494,18 @@ if ($programId > 0) {
                             <th rowspan="2" style="vertical-align: middle;">Entry Name</th>
                             <th rowspan="2" style="vertical-align: middle;">Team</th>
                             <?php for ($j = 1; $j <= $judgesCount; $j++): ?>
-                                <th colspan="<?= count($categories) ?>" style="text-align: center; border-bottom: 1px solid rgba(255,255,255,0.08); font-weight: 700; <?= $j > 1 ? 'border-left: 2px solid rgba(99, 102, 241, 0.5);' : 'border-left: 1px solid rgba(255,255,255,0.1);' ?>">Judge <?= $j ?></th>
+                                <th colspan="<?= count($categories) ?>" style="text-align: center; border-bottom: 1px solid rgba(255,255,255,0.08); font-weight: 700; <?= $j > 1 ? 'border-left: 4px double #818cf8;' : 'border-left: 1px solid rgba(255,255,255,0.1);' ?>">Judge <?= $j ?></th>
                             <?php endfor; ?>
-                            <th rowspan="2" style="width: 100px; text-align: center; vertical-align: middle; border-left: 1px solid rgba(255,255,255,0.1);">Final Score</th>
+                            <th rowspan="2" style="width: 100px; text-align: center; vertical-align: middle; border-left: 4px double #818cf8;">Final Score</th>
                             <th rowspan="2" style="width: 90px; text-align: center; vertical-align: middle;">Percentage</th>
+                            <th rowspan="2" style="width: 80px; text-align: center; vertical-align: middle;">Rank</th>
                             <th rowspan="2" style="width: 90px; text-align: center; vertical-align: middle;">Grade</th>
                             <th rowspan="2" style="width: 80px; text-align: center; vertical-align: middle;">Status</th>
                         </tr>
                         <tr>
                             <?php for ($j = 1; $j <= $judgesCount; $j++): ?>
                                 <?php $cIdx = 0; foreach ($categories as $cat): $cIdx++; ?>
-                                    <th style="text-align: center; font-size: 10.5px; font-weight: 700; padding: 6px 4px; <?= ($j > 1 && $cIdx === 1) ? 'border-left: 2px solid rgba(99, 102, 241, 0.5);' : ($cIdx === 1 ? 'border-left: 1px solid rgba(255,255,255,0.1);' : '') ?>">
+                                    <th style="text-align: center; font-size: 10.5px; font-weight: 700; padding: 6px 4px; <?= ($j > 1 && $cIdx === 1) ? 'border-left: 4px double #818cf8;' : ($cIdx === 1 ? 'border-left: 1px solid rgba(255,255,255,0.1);' : '') ?>">
                                         <div><?= e($cat['name']) ?></div>
                                         <div style="font-size: 9.5px; opacity: 0.85; color: #a5b4fc; font-weight: 700; margin-top: 2px;">(Max <?= (float)$cat['max_marks'] ?>)</div>
                                     </th>
@@ -495,7 +574,7 @@ if ($programId > 0) {
                                         <?php
                                             $catId = (int)$cat['id'];
                                             $val = isset($scoresMap[$entryId][$j][$catId]) ? (float)$scoresMap[$entryId][$j][$catId] : '';
-                                            $borderLeft = ($j > 1 && $cIdx === 1) ? 'border-left: 2px solid rgba(99, 102, 241, 0.5) !important;' : ($cIdx === 1 ? 'border-left: 1px solid rgba(255,255,255,0.1) !important;' : '');
+                                            $borderLeft = ($j > 1 && $cIdx === 1) ? 'border-left: 4px double #818cf8 !important;' : ($cIdx === 1 ? 'border-left: 1px solid rgba(255,255,255,0.1) !important;' : '');
                                         ?>
                                         <td class="score-input-cell" style="text-align: center; <?= $borderLeft ?>">
                                             <input type="number" 
@@ -516,12 +595,28 @@ if ($programId > 0) {
                                 <?php endfor; ?>
                             <?php endif; ?>
 
-                            <td class="row-total-score" id="total-score-<?= $entryId ?>" style="font-weight: 700; color: #34d399; font-size: 14px; text-align: center; vertical-align: middle; border-left: 1px solid rgba(255,255,255,0.1);">
+                            <td class="row-total-score" id="total-score-<?= $entryId ?>" style="font-weight: 700; color: #34d399; font-size: 14px; text-align: center; vertical-align: middle; border-left: 4px double #818cf8;">
                                 <?= $hasSheet ? number_format($finalScoreVal, 0) : '0' ?>
                             </td>
 
                             <td class="row-percentage" id="percentage-<?= $entryId ?>" style="font-weight: 600; color: #60a5fa; font-size: 13px; text-align: center; vertical-align: middle;">
                                 <?= $pctVal !== null ? number_format($pctVal, 1) . '%' : '—' ?>
+                            </td>
+
+                            <td class="row-rank-badge" id="rank-badge-<?= $entryId ?>" style="text-align: center; vertical-align: middle;">
+                                <?php
+                                $calculatedRank = $entryRanksMap[$entryId] ?? null;
+                                if ($calculatedRank !== null):
+                                    $rankOrd = match($calculatedRank) { 1 => '1st', 2 => '2nd', 3 => '3rd', default => $calculatedRank . 'th' };
+                                    $rankBg = match($calculatedRank) { 1 => '#10b981', 2 => '#f59e0b', 3 => '#3b82f6', default => '#64748b' };
+                                    $rankFg = $calculatedRank === 2 ? '#000' : '#fff';
+                                ?>
+                                    <span class="badge badge-rank" style="background: <?= $rankBg ?>; color: <?= $rankFg ?>; font-size: 11px; padding: 3px 8px; font-weight: 800; border-radius: 6px;">
+                                        <?= $rankOrd ?>
+                                    </span>
+                                <?php else: ?>
+                                    <span class="text-muted">—</span>
+                                <?php endif; ?>
                             </td>
 
                             <td class="row-grade-badge" id="grade-badge-<?= $entryId ?>" style="text-align: center; vertical-align: middle;">
@@ -830,13 +925,73 @@ if ($programId > 0) {
                 gradeEl.innerHTML = `<span class="badge badge-${badgeClass}" style="font-size: 11px; padding: 3px 8px; font-weight: 800;">Grade ${grade}</span>`;
             }
         }
+
+        recalculateAllRanksLocally();
+    }
+
+    function recalculateAllRanksLocally() {
+        const rows = document.querySelectorAll('tr[data-entry-row]');
+        const scores = [];
+
+        rows.forEach(row => {
+            const entryId = row.getAttribute('data-entry-row');
+            const totalEl = document.getElementById(`total-score-${entryId}`);
+            let scoreVal = totalEl ? parseFloat(totalEl.textContent) : 0;
+            if (isNaN(scoreVal)) scoreVal = 0;
+
+            const rankSelect = row.querySelector('.score-grid-rank-select');
+            if (rankSelect) {
+                const rVal = parseInt(rankSelect.value, 10);
+                if (rVal > 0) scores.push({ entryId, explicitRank: rVal, scoreVal: 100 - rVal });
+            } else if (scoreVal > 0) {
+                scores.push({ entryId, explicitRank: null, scoreVal });
+            }
+        });
+
+        scores.sort((a, b) => {
+            if (a.explicitRank !== null && b.explicitRank !== null) {
+                return a.explicitRank - b.explicitRank;
+            }
+            return b.scoreVal - a.scoreVal;
+        });
+
+        const ranksMap = {};
+        let currentRank = 1;
+        let lastScore = null;
+        scores.forEach((item, idx) => {
+            if (item.explicitRank !== null) {
+                ranksMap[item.entryId] = item.explicitRank;
+            } else {
+                if (lastScore !== null && item.scoreVal < lastScore) {
+                    currentRank = idx + 1;
+                }
+                ranksMap[item.entryId] = currentRank;
+                lastScore = item.scoreVal;
+            }
+        });
+
+        rows.forEach(row => {
+            const entryId = row.getAttribute('data-entry-row');
+            const rankVal = ranksMap[entryId];
+            const rankEl = document.getElementById(`rank-badge-${entryId}`);
+            if (rankEl) {
+                if (rankVal) {
+                    const ord = rankVal === 1 ? '1st' : (rankVal === 2 ? '2nd' : (rankVal === 3 ? '3rd' : `${rankVal}th`));
+                    const bg = rankVal === 1 ? '#10b981' : (rankVal === 2 ? '#f59e0b' : (rankVal === 3 ? '#3b82f6' : '#64748b'));
+                    const fg = rankVal === 2 ? '#000' : '#fff';
+                    rankEl.innerHTML = `<span class="badge badge-rank" style="background: ${bg}; color: ${fg}; font-size: 11px; padding: 3px 8px; font-weight: 800; border-radius: 6px;">${ord}</span>`;
+                } else {
+                    rankEl.innerHTML = '<span class="text-muted">—</span>';
+                }
+            }
+        });
     }
 
     function escapeHtml(str) {
         return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
-    // Auto-save & draft cache on input change
+    // Auto-save & draft cache on input change with auto-advance on max digits
     document.querySelectorAll('.score-grid-input, .score-grid-rank-select').forEach(el => {
         el.addEventListener('input', (e) => {
             const input = e.target;
@@ -866,6 +1021,21 @@ if ($programId > 0) {
                 const fieldKey = input.dataset.judge ? `j${input.dataset.judge}_c${input.dataset.categoryId}` : 'rank';
                 saveDraftInputToCache(entryId, fieldKey, input.value);
                 updateSendApprovalButtonState();
+
+                // Auto-advance to next box if maximum digits reached
+                const valStr = String(input.value || '').trim();
+                const maxDigits = !isNaN(maxVal) ? String(Math.floor(maxVal)).length : 0;
+                if (valStr !== '' && maxDigits > 0 && valStr.length >= maxDigits) {
+                    saveRowScore(entryId);
+                    const ordered = getOrderedScoreInputs();
+                    const currIdx = ordered.indexOf(input);
+                    if (currIdx >= 0 && currIdx < ordered.length - 1) {
+                        setTimeout(() => {
+                            ordered[currIdx + 1].focus();
+                            ordered[currIdx + 1].select();
+                        }, 30);
+                    }
+                }
             }
         });
 
@@ -882,49 +1052,50 @@ if ($programId > 0) {
         });
     });
 
-    // Arrow key & Enter cell navigation (Excel-style)
+    // Sequenced Judge-by-Judge & Category-by-Category cell navigation
+    function getOrderedScoreInputs() {
+        const rows = Array.from(document.querySelectorAll('tbody tr[data-entry-row]'));
+        const ordered = [];
+        for (let j = 1; j <= JUDGES_COUNT; j++) {
+            rows.forEach(row => {
+                const inputs = Array.from(row.querySelectorAll(`.score-grid-input[data-judge="${j}"]:not([disabled])`));
+                inputs.forEach(inp => ordered.push(inp));
+            });
+        }
+        return ordered;
+    }
+
     document.addEventListener('keydown', (e) => {
         if (!e.target.classList.contains('score-grid-input')) return;
 
         const input = e.target;
-        const row = input.closest('tr');
+        const row = input.closest('tr[data-entry-row]');
         const tbody = row ? row.closest('tbody') : null;
         if (!row || !tbody) return;
 
-        const inputsInRow = Array.from(row.querySelectorAll('.score-grid-input'));
-        const inputColIndex = inputsInRow.indexOf(input);
-        const rows = Array.from(tbody.querySelectorAll('tr[data-entry-row]'));
-        const rowIndex = rows.indexOf(row);
+        const ordered = getOrderedScoreInputs();
+        const currIdx = ordered.indexOf(input);
 
-        if (e.key === 'ArrowRight') {
+        if (e.key === 'ArrowRight' || e.key === 'Enter' || (e.key === 'Tab' && !e.shiftKey)) {
             e.preventDefault();
-            if (inputColIndex < inputsInRow.length - 1) {
-                inputsInRow[inputColIndex + 1].focus();
-                inputsInRow[inputColIndex + 1].select();
-            } else if (rowIndex < rows.length - 1) {
-                const nextRowInputs = rows[rowIndex + 1].querySelectorAll('.score-grid-input');
-                if (nextRowInputs.length > 0) {
-                    nextRowInputs[0].focus();
-                    nextRowInputs[0].select();
-                }
+            if (currIdx >= 0 && currIdx < ordered.length - 1) {
+                ordered[currIdx + 1].focus();
+                ordered[currIdx + 1].select();
             }
-        } else if (e.key === 'ArrowLeft') {
+        } else if (e.key === 'ArrowLeft' || (e.key === 'Tab' && e.shiftKey)) {
             e.preventDefault();
-            if (inputColIndex > 0) {
-                inputsInRow[inputColIndex - 1].focus();
-                inputsInRow[inputColIndex - 1].select();
-            } else if (rowIndex > 0) {
-                const prevRowInputs = rows[rowIndex - 1].querySelectorAll('.score-grid-input');
-                if (prevRowInputs.length > 0) {
-                    prevRowInputs[prevRowInputs.length - 1].focus();
-                    prevRowInputs[prevRowInputs.length - 1].select();
-                }
+            if (currIdx > 0) {
+                ordered[currIdx - 1].focus();
+                ordered[currIdx - 1].select();
             }
-        } else if (e.key === 'ArrowDown' || e.key === 'Enter') {
+        } else if (e.key === 'ArrowDown') {
             e.preventDefault();
+            const judge = input.dataset.judge;
+            const catId = input.dataset.categoryId;
+            const rows = Array.from(tbody.querySelectorAll('tr[data-entry-row]'));
+            const rowIndex = rows.indexOf(row);
             if (rowIndex < rows.length - 1) {
-                const nextRowInputs = rows[rowIndex + 1].querySelectorAll('.score-grid-input');
-                const targetInput = nextRowInputs[inputColIndex] || nextRowInputs[0];
+                const targetInput = rows[rowIndex + 1].querySelector(`.score-grid-input[data-judge="${judge}"][data-category-id="${catId}"]`);
                 if (targetInput) {
                     targetInput.focus();
                     targetInput.select();
@@ -932,9 +1103,12 @@ if ($programId > 0) {
             }
         } else if (e.key === 'ArrowUp') {
             e.preventDefault();
+            const judge = input.dataset.judge;
+            const catId = input.dataset.categoryId;
+            const rows = Array.from(tbody.querySelectorAll('tr[data-entry-row]'));
+            const rowIndex = rows.indexOf(row);
             if (rowIndex > 0) {
-                const prevRowInputs = rows[rowIndex - 1].querySelectorAll('.score-grid-input');
-                const targetInput = prevRowInputs[inputColIndex] || prevRowInputs[0];
+                const targetInput = rows[rowIndex - 1].querySelector(`.score-grid-input[data-judge="${judge}"][data-category-id="${catId}"]`);
                 if (targetInput) {
                     targetInput.focus();
                     targetInput.select();

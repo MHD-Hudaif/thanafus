@@ -5,6 +5,27 @@ $event = $event ?? tv_active_event();
 $settings = $settings ?? tv_get_settings((int)($event['id'] ?? 0));
 $eventPayload = tv_event_payload($event);
 $assetBase = live_display_asset_url();
+
+$headerLeaderboard = tv_leaderboard((int)($event['id'] ?? 0));
+$headerFirstTeam = !empty($headerLeaderboard) ? $headerLeaderboard[0] : null;
+$headerFirstColor = !empty($headerFirstTeam['team_color']) ? live_display_color($headerFirstTeam['team_color']) : '#00aaff';
+
+if (!function_exists('tv_get_video_src')) {
+    function tv_get_video_src(string $color): string {
+        $c = strtolower(trim($color));
+        if (str_contains($c, 'blue') || str_contains($c, 'cyan') || in_array($c, ['#00aaff', '#00a8ff', '#0088ff', '#2563eb', '#3b82f6', '#0284c7', '#60a5fa'], true)) {
+            return asset_url('videos/bg-blue.mp4');
+        }
+        if (str_contains($c, 'green') || str_contains($c, 'emerald') || in_array($c, ['#00ff88', '#10b981', '#22c55e', '#059669', '#34d399'], true)) {
+            return asset_url('videos/bg-green.mp4');
+        }
+        if (str_contains($c, 'purple') || str_contains($c, 'violet') || str_contains($c, 'pink') || str_contains($c, 'red') || str_contains($c, 'magenta') || in_array($c, ['#d000ff', '#ff2255', '#f43f5e', '#8b5cf6', '#a855f7', '#6400a6'], true)) {
+            return asset_url('videos/bg-purple.mp4');
+        }
+        return asset_url('videos/bg-yellow.mp4');
+    }
+}
+$initialBgVideoSrc = tv_get_video_src($headerFirstColor);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -45,8 +66,13 @@ $assetBase = live_display_asset_url();
     </script>
 <body class="tv-body theme-<?= e($settings['theme']) ?> <?= e($tvBodyClass ?? '') ?>">
 <div class="tv-app" id="tvApp">
-    <div class="tv-backdrop" aria-hidden="true">
-        <video id="tvBgVideo" autoplay loop muted playsinline src="<?= e(asset_url('videos/bg-yellow.mp4')) ?>" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; transition: opacity 0.6s ease;"></video>
+    <div class="tv-backdrop" aria-hidden="true" style="--first-team-color: <?= e($headerFirstColor) ?>;">
+        <div class="stage-backdrop">
+            <div class="glow-orb glow-orb-1" id="glowOrb1"></div>
+            <div class="glow-orb glow-orb-2" id="glowOrb2"></div>
+        </div>
+        <canvas id="flowCanvas"></canvas>
+        <video id="tvBgVideo" autoplay loop muted playsinline src="<?= e($initialBgVideoSrc) ?>" data-current-src="<?= e($initialBgVideoSrc) ?>" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 3; opacity: 0.12; transition: opacity 0.6s ease; mix-blend-mode: overlay; pointer-events: none;"></video>
     </div>
 
     <div class="tv-orientation-hint" id="tvOrientationHint">

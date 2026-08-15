@@ -716,6 +716,76 @@ body:has(#slide-schedule.tv-slide--active) .tv-topbar {
     min-height: 0;
 }
 
+.tv-schedule-cinema.tv-app {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    overflow: visible;
+    background: transparent !important;
+}
+
+.tv-backdrop {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+    background: transparent !important;
+}
+
+/* DEEP AMBIENT CANVAS BACKDROP FROM GREEN SHAPES FLOW */
+.stage-backdrop {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 20% 30%, color-mix(in srgb, var(--first-team-color, #10b981) 35%, #022c22) 0%, color-mix(in srgb, var(--first-team-color, #10b981) 18%, #022c22) 45%, #021a14 80%, #010d0a 100%);
+    z-index: 1;
+    transition: background 1.2s ease;
+}
+
+/* AMBIENT GLOW SPHERES */
+.glow-orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(90px);
+    opacity: 0.55;
+    animation: orbFloat 14s ease-in-out infinite alternate;
+    transition: background 1.2s ease;
+}
+
+.glow-orb-1 {
+    top: -10%;
+    left: 10%;
+    width: 550px;
+    height: 550px;
+    background: radial-gradient(circle, var(--first-team-color, #10b981) 0%, transparent 70%);
+}
+
+.glow-orb-2 {
+    bottom: -15%;
+    right: 15%;
+    width: 650px;
+    height: 650px;
+    background: radial-gradient(circle, color-mix(in srgb, var(--first-team-color, #10b981) 70%, #000) 0%, transparent 70%);
+    animation-delay: -7s;
+}
+
+@keyframes orbFloat {
+    0% { transform: translate(0, 0) scale(1); }
+    50% { transform: translate(60px, 40px) scale(1.15); }
+    100% { transform: translate(-40px, 70px) scale(0.9); }
+}
+
+/* FLOW CANVAS OVERLAY */
+#flowCanvas {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    width: 100%;
+    height: 100%;
+    display: block;
+    pointer-events: none;
+}
+
 .tv-schedule-cinema {
     position: relative;
     width: 100%;
@@ -5463,6 +5533,46 @@ body.tv-idle-cursor * {
     font-weight: 900 !important;
     opacity: 1 !important;
     text-shadow: none !important;
+}
+
+/* ==========================================================================
+   PURE CLEAN STAGE OVERRIDES: REMOVE EXTRA BACKGROUND OVERLAY LINES & SVGS
+   ========================================================================== */
+.bg-3d-cuts-svg,
+.side-chevrons-svg,
+.card-chevrons-svg,
+.background-silk-svg,
+.ambient-mesh-bg,
+#particles-js,
+.tv-particles,
+.tv-geometric,
+.tv-spotlight,
+.tv-sweep,
+.animated-chevron-group,
+.animated-card-group,
+.animated-dash-line,
+.animated-cross-line {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+.glass-panel {
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+}
+
+/* ==========================================================================
+   DISPLAY ONLY: HIDE ALL BUTTONS & CLOSE CONTROLS ON SCORE REVEAL OVERLAY
+   ========================================================================== */
+.score-reveal-overlay button,
+.reveal-close-btn,
+#btnCloseReveal,
+#btnDoneReveal {
+  display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
 }
 
 

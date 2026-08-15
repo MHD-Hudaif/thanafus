@@ -101,6 +101,281 @@
         return Array.from(document.querySelectorAll('.tv-slide'));
     }
 
+    function getTeamVideoSrc(colorStr) {
+        const assets = window.TV_VIDEO_ASSETS || {};
+        const c = String(colorStr || '').toLowerCase().trim();
+
+        // 1. Direct name/keyword checks
+        if (c.includes('blue') || c.includes('cyan')) return assets.blue || 'assets/videos/bg-blue.mp4';
+        if (c.includes('green') || c.includes('emerald')) return assets.green || 'assets/videos/bg-green.mp4';
+        if (c.includes('purple') || c.includes('violet') || c.includes('pink') || c.includes('red') || c.includes('magenta')) return assets.purple || 'assets/videos/bg-purple.mp4';
+        if (c.includes('yellow') || c.includes('gold') || c.includes('amber')) return assets.yellow || 'assets/videos/bg-yellow.mp4';
+
+        // 2. Parse RGB values from Hex or RGB string
+        let r = 0, g = 0, b = 0, parsed = false;
+
+        const hexMatch = c.match(/^#?([0-9a-f]{6})$/i);
+        if (hexMatch) {
+            r = parseInt(hexMatch[1].substring(0, 2), 16);
+            g = parseInt(hexMatch[1].substring(2, 4), 16);
+            b = parseInt(hexMatch[1].substring(4, 6), 16);
+            parsed = true;
+        } else {
+            const rgbMatch = c.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+            if (rgbMatch) {
+                r = parseInt(rgbMatch[1], 10);
+                g = parseInt(rgbMatch[2], 10);
+                b = parseInt(rgbMatch[3], 10);
+                parsed = true;
+            }
+        }
+
+        if (parsed) {
+            // High Red & High Green with Low/Moderate Blue -> Yellow / Gold
+            if (r > 150 && g > 130 && b < 140) {
+                return assets.yellow || 'assets/videos/bg-yellow.mp4';
+            }
+            // Dominant Blue
+            if (b >= r && b >= g) {
+                return assets.blue || 'assets/videos/bg-blue.mp4';
+            }
+            // Dominant Green
+            if (g >= r && g >= b) {
+                return assets.green || 'assets/videos/bg-green.mp4';
+            }
+            // Dominant Red / Purple / Pink
+            if (r >= g || b > g) {
+                return assets.purple || 'assets/videos/bg-purple.mp4';
+            }
+        }
+
+        return assets.yellow || 'assets/videos/bg-yellow.mp4';
+    }
+
+    // Canvas Flow Engine from green_shapes_flow.html
+    let flowSpeed = 0.2;
+    let morphRate = 0.2;
+    let currentStyle = 'rings'; // 'blobs', 'polygons', 'rings'
+    let currentThemeGradients = [];
+    let currentStrokeColor = '#34d399';
+    let currentShadowColor = '#10b981';
+    let currentFlowLineColor = 'rgba(52, 211, 153, 0.08)';
+
+    function getThemeGradientSet(hexColor) {
+        const rgb = hexToRgb(hexColor || '#10b981');
+        const r = rgb.r, g = rgb.g, b = rgb.b;
+        const rDark = Math.max(0, r - 90), gDark = Math.max(0, g - 90), bDark = Math.max(0, b - 90);
+        const rLight = Math.min(255, r + 70), gLight = Math.min(255, g + 70), bLight = Math.min(255, b + 70);
+
+        return [
+            { start: `rgb(${r}, ${g}, ${b})`, end: `rgb(${rDark}, ${gDark}, ${bDark})`, alpha: 0.4 },
+            { start: `rgb(${rLight}, ${gLight}, ${bLight})`, end: `rgb(${r}, ${g}, ${b})`, alpha: 0.35 },
+            { start: `rgb(${Math.min(255, r + 110)}, ${Math.min(255, g + 110)}, ${Math.min(255, b + 110)})`, end: `rgb(${rDark}, ${gDark}, ${bDark})`, alpha: 0.28 },
+            { start: `rgb(${r}, ${g}, ${b})`, end: `rgb(2, 26, 20)`, alpha: 0.32 },
+            { start: `rgb(${rDark}, ${gDark}, ${bDark})`, end: `rgb(${rLight}, ${gLight}, ${bLight})`, alpha: 0.45 }
+        ];
+    }
+
+    function initFlowCanvas() {
+        const canvas = document.getElementById('flowCanvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+
+        let width = canvas.width = window.innerWidth;
+        let height = canvas.height = window.innerHeight;
+
+        window.addEventListener('resize', () => {
+            if (!canvas) return;
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        });
+
+        currentThemeGradients = getThemeGradientSet('#10b981');
+
+        class MorphShape {
+            constructor() {
+                this.reset(true);
+            }
+
+            reset(initial = false) {
+                this.x = initial ? Math.random() * width : -300 - Math.random() * 200;
+                this.y = Math.random() * height;
+                this.size = Math.random() * 160 + 100;
+                this.vx = Math.random() * 1.5 + 0.8;
+                this.vy = (Math.random() - 0.5) * 0.4;
+                this.rot = Math.random() * Math.PI * 2;
+                this.vRot = (Math.random() - 0.5) * 0.015;
+
+                this.pointsCount = Math.floor(Math.random() * 4) + 5;
+                this.points = [];
+                for (let i = 0; i < this.pointsCount; i++) {
+                    this.points.push({
+                        baseR: this.size * (0.7 + Math.random() * 0.6),
+                        phase: Math.random() * Math.PI * 2,
+                        freq: Math.random() * 0.02 + 0.01,
+                        amp: Math.random() * 30 + 15
+                    });
+                }
+
+                this.gradConfig = currentThemeGradients[Math.floor(Math.random() * currentThemeGradients.length)] || currentThemeGradients[0];
+                this.time = Math.random() * 1000;
+            }
+
+            update() {
+                this.x += this.vx * flowSpeed;
+                this.y += this.vy * flowSpeed;
+                this.rot += this.vRot * flowSpeed;
+                this.time += 0.02 * morphRate;
+
+                if (this.x - this.size * 2 > width) {
+                    this.reset(false);
+                }
+            }
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.rot);
+
+                const grad = ctx.createLinearGradient(-this.size, -this.size, this.size, this.size);
+                grad.addColorStop(0, this.gradConfig.start);
+                grad.addColorStop(1, this.gradConfig.end);
+
+                ctx.fillStyle = grad;
+                ctx.strokeStyle = currentStrokeColor;
+                ctx.lineWidth = 2;
+                ctx.globalAlpha = this.gradConfig.alpha;
+
+                ctx.shadowColor = currentShadowColor;
+                ctx.shadowBlur = 30;
+
+                ctx.beginPath();
+
+                if (currentStyle === 'blobs') {
+                    const polyPoints = [];
+                    for (let i = 0; i < this.pointsCount; i++) {
+                        const pt = this.points[i];
+                        const angle = (i / this.pointsCount) * Math.PI * 2;
+                        const r = pt.baseR + Math.sin(this.time * pt.freq * 100 + pt.phase) * pt.amp;
+                        polyPoints.push({
+                            x: Math.cos(angle) * r,
+                            y: Math.sin(angle) * r
+                        });
+                    }
+
+                    ctx.moveTo(polyPoints[0].x, polyPoints[0].y);
+                    for (let i = 0; i < polyPoints.length; i++) {
+                        const next = polyPoints[(i + 1) % polyPoints.length];
+                        const xc = (polyPoints[i].x + next.x) / 2;
+                        const yc = (polyPoints[i].y + next.y) / 2;
+                        ctx.quadraticCurveTo(polyPoints[i].x, polyPoints[i].y, xc, yc);
+                    }
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                } else if (currentStyle === 'polygons') {
+                    for (let i = 0; i < this.pointsCount; i++) {
+                        const pt = this.points[i];
+                        const angle = (i / this.pointsCount) * Math.PI * 2;
+                        const r = pt.baseR + Math.cos(this.time * pt.freq * 120 + pt.phase) * pt.amp;
+                        const px = Math.cos(angle) * r;
+                        const py = Math.sin(angle) * r;
+
+                        if (i === 0) ctx.moveTo(px, py);
+                        else ctx.lineTo(px, py);
+                    }
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                } else if (currentStyle === 'rings') {
+                    const r = this.size * (0.8 + Math.sin(this.time * 2) * 0.2);
+                    ctx.arc(0, 0, r, 0, Math.PI * 2);
+                    ctx.lineWidth = 14;
+                    ctx.stroke();
+
+                    ctx.beginPath();
+                    ctx.arc(0, 0, r * 0.55, 0, Math.PI * 2);
+                    ctx.lineWidth = 6;
+                    ctx.stroke();
+                }
+
+                ctx.restore();
+            }
+        }
+
+        const shapes = [];
+        for (let i = 0; i < 16; i++) {
+            shapes.push(new MorphShape());
+        }
+        window.flowShapes = shapes;
+
+        function drawFlowLines() {
+            const time = Date.now() * 0.0005 * flowSpeed;
+            ctx.save();
+            ctx.strokeStyle = currentFlowLineColor;
+            ctx.lineWidth = 1.5;
+
+            const lineCount = 6;
+            for (let i = 0; i < lineCount; i++) {
+                const yBase = (height / (lineCount + 1)) * (i + 1);
+                ctx.beginPath();
+                for (let x = 0; x <= width; x += 30) {
+                    const y = yBase + Math.sin(x * 0.005 + time + i) * 35 + Math.cos(x * 0.003 - time) * 20;
+                    if (x === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+                ctx.stroke();
+            }
+            ctx.restore();
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, width, height);
+            drawFlowLines();
+            shapes.forEach(shape => {
+                shape.update();
+                shape.draw();
+            });
+            requestAnimationFrame(animate);
+        }
+
+        animate();
+    }
+
+    if (document.readyState !== 'loading') {
+        initFlowCanvas();
+    } else {
+        document.addEventListener('DOMContentLoaded', initFlowCanvas);
+    }
+
+    function syncBackdropVideo(teamColor) {
+        if (teamColor) {
+            document.documentElement.style.setProperty('--first-team-color', teamColor);
+            const backdrop = document.querySelector('.tv-backdrop');
+            if (backdrop) backdrop.style.setProperty('--first-team-color', teamColor);
+
+            currentThemeGradients = getThemeGradientSet(teamColor);
+            const rgb = hexToRgb(teamColor);
+            currentStrokeColor = `rgba(${Math.min(255, rgb.r + 90)}, ${Math.min(255, rgb.g + 90)}, ${Math.min(255, rgb.b + 90)}, 0.85)`;
+            currentShadowColor = teamColor;
+            currentFlowLineColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.12)`;
+
+            if (window.flowShapes) {
+                window.flowShapes.forEach(shape => {
+                    shape.gradConfig = currentThemeGradients[Math.floor(Math.random() * currentThemeGradients.length)] || currentThemeGradients[0];
+                });
+            }
+        }
+        const bgVideo = document.getElementById('tvBgVideo');
+        if (!bgVideo) return;
+        const targetSrc = getTeamVideoSrc(teamColor);
+        if (bgVideo.getAttribute('data-current-src') !== targetSrc) {
+            bgVideo.setAttribute('data-current-src', targetSrc);
+            bgVideo.src = targetSrc;
+            bgVideo.play().catch(() => {});
+        }
+    }
+
     let introVideoIndex = 0;
     let introTimeline = null;
 
@@ -371,21 +646,25 @@
     }
 
 
-    function renderLeaderboard(rows, completionPercent = 20) {
-        state.leaderboardData = rows;
+    function renderLeaderboardStageInto(container, rows, completionPercent = 20) {
+        if (!container) return;
         const teams = Array.isArray(rows) ? rows : [];
 
-        const container = document.querySelector('[data-leaderboard], [data-leaderboard-stage]');
-        if (!container) return;
-
-        const signature = JSON.stringify((teams || []).slice(0, 8).map((team) => [
-            team?.id, team?.rank, team?.team_name, team?.total_score, team?.team_color
-        ]));
-
-        if (state.leaderboardSignature === signature && container.querySelector('.orbital-stage-container')) {
-            return;
-        }
-        state.leaderboardSignature = signature;
+        // Calculate dynamic team ranks with proper tie handling
+        let currentRank = 1;
+        let prevScore = null;
+        teams.forEach((t, idx) => {
+            const s = Math.round(Number(t.total_score || 0));
+            if (t.rank && Number(t.rank) > 0) {
+                t.displayRankStr = String(t.rank).padStart(2, '0');
+            } else {
+                if (prevScore !== null && s < prevScore) {
+                    currentRank = idx + 1;
+                }
+                t.displayRankStr = String(currentRank).padStart(2, '0');
+                prevScore = s;
+            }
+        });
 
         // Lead point gap calculation
         const score1 = teams[0] ? Math.round(Number(teams[0].total_score || 0)) : 0;
@@ -400,56 +679,30 @@
             { pos: 4, rankStr: '04', defaultColor: '#3b82f6', isLeading: false }
         ];
 
-        function getTeamVideoSrc(colorStr) {
-            const assets = window.TV_VIDEO_ASSETS || {};
-            const c = String(colorStr || '').toLowerCase().trim();
-            if (c.includes('blue') || c.includes('cyan') || c.includes('3b82f6') || c.includes('2563eb') || c.includes('0284c7') || c.includes('60a5fa') || c.includes('#3b82f6')) {
-                return assets.blue || '/assets/videos/bg-blue.mp4';
-            }
-            if (c.includes('green') || c.includes('emerald') || c.includes('10b981') || c.includes('22c55e') || c.includes('059669') || c.includes('34d399') || c.includes('#10b981')) {
-                return assets.green || '/assets/videos/bg-green.mp4';
-            }
-            if (c.includes('purple') || c.includes('violet') || c.includes('pink') || c.includes('red') || c.includes('f43f5e') || c.includes('8b5cf6') || c.includes('a855f7') || c.includes('ec4899') || c.includes('6400a6') || c.includes('#f43f5e') || c.includes('#8b5cf6')) {
-                return assets.purple || '/assets/videos/bg-purple.mp4';
-            }
-            return assets.yellow || '/assets/videos/bg-yellow.mp4';
-        }
-
-        function syncBackdropVideo(teamColor) {
-            const bgVideo = document.getElementById('tvBgVideo');
-            if (!bgVideo) return;
-            const targetSrc = getTeamVideoSrc(teamColor);
-            if (bgVideo.getAttribute('data-current-src') !== targetSrc) {
-                bgVideo.setAttribute('data-current-src', targetSrc);
-                bgVideo.src = targetSrc;
-                bgVideo.load();
-                bgVideo.play().catch(() => {});
-            }
-        }
+        // Sync global background video with top 1st rank team color smoothly
+        const leadingTeamColor = teams[0] && teams[0].team_color ? teams[0].team_color : '#10b981';
+        syncBackdropVideo(leadingTeamColor);
 
         const cardsHtml = posConfigs.map((cfg, idx) => {
             const team = teams[idx] || null;
             const color = team && team.team_color ? team.team_color : cfg.defaultColor;
             const name = team ? (team.team_name || team.short_name || '—') : '—';
             const score = team ? Math.round(Number(team.total_score || 0)) : 0;
-            const leadingBadge = cfg.isLeading ? `<span class="orbital-badge-leading">👑 CHAMPION LEADER</span>` : '';
+            const rankStr = team ? team.displayRankStr : cfg.rankStr;
             const gapText = cfg.isLeading ? `+${leadGap} PTS LEAD` : `-${Math.max(0, score1 - score)} PTS`;
             const gapClass = cfg.isLeading ? 'leader-gap' : 'chaser-gap';
-            const teamVideoSrc = getTeamVideoSrc(color);
+            const badgeContent = `<span class="orbital-gap-pill ${gapClass}">${gapText}</span>`;
 
             return `
                 <div class="orbital-card" data-pos="${cfg.pos}" style="--accent-color: ${escapeHtml(color)};">
-                    <!-- Embedded Team Lead Background Video -->
-                    <video autoplay loop muted playsinline src="${escapeHtml(teamVideoSrc)}" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0.25; pointer-events: none; border-radius: inherit; z-index: 0;"></video>
                     <div class="orbital-card-dark-wave"></div>
                     <div class="orbital-card-header">
-                        ${leadingBadge}
-                        <span class="orbital-gap-pill ${gapClass}">${gapText}</span>
-                        <span class="orbital-rank-index">${cfg.rankStr}</span>
+                        ${badgeContent}
+                        <span class="orbital-rank-index">${rankStr}</span>
                     </div>
                     <div class="orbital-team-title" title="${escapeHtml(name)}">${escapeHtml(name)}</div>
                     <div class="orbital-score-wrapper">
-                        <span class="orbital-score-digit" data-score="${score}">0</span>
+                        <span class="orbital-score-digit" data-score="${score}">${score}</span>
                         <span class="orbital-score-label">MARKS</span>
                     </div>
                 </div>
@@ -467,94 +720,41 @@
                 ${extraTeams.map((t, i) => `
                     <div class="orbital-extra-team-item">
                         <span class="tv-team-dot" style="background:${escapeHtml(t.team_color || '#94a3b8')};"></span>
-                        <span>0${i + 5} ${escapeHtml(t.team_name || t.short_name)}:</span>
+                        <span>${t.displayRankStr || ('0' + (i + 5))} ${escapeHtml(t.team_name || t.short_name)}:</span>
                         <strong style="color: #10b981">${Math.round(Number(t.total_score || 0))}</strong>
                     </div>
                 `).join('<span style="color:rgba(15,23,42,0.2)">|</span>')}
             </div>
         ` : '';
 
-        // Top team color for ambient background video & lines
+        // Top team color for ambient background video & lines & flow canvas
         const rawTopColor = teams[0]?.team_color || '#eab308';
         const firstTeamColor = rawTopColor.startsWith('#') ? rawTopColor : (colorMap[rawTopColor.toLowerCase()] || rawTopColor);
         document.documentElement.style.setProperty('--first-team-color', firstTeamColor);
         document.documentElement.style.setProperty('--top-team-color', firstTeamColor);
-        if (container) {
-            container.style.setProperty('--first-team-color', firstTeamColor);
-            container.style.setProperty('--top-team-color', firstTeamColor);
-        }
-
-        // Sync main background video to #1 leading team's color
+        container.style.setProperty('--first-team-color', firstTeamColor);
+        container.style.setProperty('--top-team-color', firstTeamColor);
         syncBackdropVideo(firstTeamColor);
 
         container.className = 'tv-leaderboard-stage-root';
         container.innerHTML = `
-            <!-- 3D Relief Geometric Layer Cuts Background -->
-            <svg class="bg-3d-cuts-svg" viewBox="0 0 1920 1080" preserveAspectRatio="none" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <filter id="cutShadow" x="-20%" y="-20%" width="140%" height="140%">
-                    <feDropShadow dx="-8" dy="12" stdDeviation="15" flood-color="rgba(0,0,0,0.06)" />
-                </filter>
-                <polygon points="-100,1200 650,540 -100,-100" fill="#ffffff" filter="url(#cutShadow)" />
-                <polygon points="-100,1050 480,540 -100,30" fill="rgba(250,250,252,0.92)" filter="url(#cutShadow)" />
-                <polygon points="2020,1200 1270,540 2020,-100" fill="#ffffff" filter="url(#cutShadow)" />
-                <polygon points="2020,1050 1440,540 2020,30" fill="rgba(250,250,252,0.92)" filter="url(#cutShadow)" />
-            </svg>
-
-            <!-- Dynamic Geometric Chevron Vectors -->
-            <svg class="side-chevrons-svg full-screen" viewBox="0 0 1920 1080" preserveAspectRatio="none" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <g class="animated-chevron-group">
-                    <path class="animated-dash-line" d="M-100 1200 L650 540 L-100 -100" stroke="var(--first-team-color, ${firstTeamColor})" stroke-width="3" stroke-linecap="round" />
-                    <path class="animated-dash-line" d="M-150 1050 L480 540 L-150 30" stroke="var(--first-team-color, ${firstTeamColor})" stroke-width="2" opacity="0.8" stroke-linecap="round" />
-                    <line class="animated-cross-line" x1="200" y1="900" x2="420" y2="680" stroke="var(--first-team-color, ${firstTeamColor})" stroke-width="2" opacity="0.75" />
-                    <line class="animated-cross-line" x1="320" y1="780" x2="540" y2="560" stroke="var(--first-team-color, ${firstTeamColor})" stroke-width="2" opacity="0.75" />
-
-                    <path class="animated-dash-line" d="M2020 1200 L1270 540 L2020 -100" stroke="var(--first-team-color, ${firstTeamColor})" stroke-width="3" stroke-linecap="round" />
-                    <path class="animated-dash-line" d="M2070 1050 L1440 540 L2070 30" stroke="var(--first-team-color, ${firstTeamColor})" stroke-width="2" opacity="0.8" stroke-linecap="round" />
-                    <line class="animated-cross-line" x1="1720" y1="900" x2="1500" y2="680" stroke="var(--first-team-color, ${firstTeamColor})" stroke-width="2" opacity="0.75" />
-                </g>
-            </svg>
-
-            <div class="ambient-mesh-bg"></div>
-
-            <div class="orbital-stage-container">
-                <!-- Glowing Background Auras behind each card direction -->
-                <div class="orbital-aura-bg">
-                    <div class="orbital-aura-spot top" style="--card-1-color: ${escapeHtml(teams[0]?.team_color || '#10b981')}"></div>
-                    <div class="orbital-aura-spot right" style="--card-2-color: ${escapeHtml(teams[1]?.team_color || '#f43f5e')}"></div>
-                    <div class="orbital-aura-spot left" style="--card-3-color: ${escapeHtml(teams[2]?.team_color || '#eab308')}"></div>
-                    <div class="orbital-aura-spot bottom" style="--card-4-color: ${escapeHtml(teams[3]?.team_color || '#3b82f6')}"></div>
-                </div>
-
-                <!-- SVG Connecting Vector Lines, Outer Ring & Pulsing Lasers -->
+            <div class="orbital-stage-container" style="position: relative; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
                 <svg class="orbital-vector-canvas" viewBox="0 0 1050 820" preserveAspectRatio="none">
-                    <!-- Outer Connection Ring -->
-                    <circle class="orbital-ring-path" cx="525" cy="410" r="290" fill="none" stroke="rgba(15, 23, 42, 0.16)" stroke-width="1.5" />
-                    
-                    <!-- Horizontal Crosshair -->
-                    <line class="orbital-crosshair-line" x1="60" y1="410" x2="990" y2="410" stroke="rgba(15, 23, 42, 0.12)" stroke-width="1.5" />
-                    
-                    <!-- Vertical Crosshair -->
-                    <line class="orbital-crosshair-line" x1="525" y1="50" x2="525" y2="770" stroke="rgba(15, 23, 42, 0.12)" stroke-width="1.5" />
-
-                    <!-- Pulsing Radial Laser Connector Beams -->
                     <g class="constellation-lasers">
-                        <line class="constellation-laser-line" x1="525" y1="330" x2="525" y2="135" stroke="${escapeHtml(teams[0]?.team_color || '#10b981')}" stroke-width="3" stroke-dasharray="16 12" />
-                        <line class="constellation-laser-line" x1="605" y1="410" x2="880" y2="410" stroke="${escapeHtml(teams[1]?.team_color || '#f43f5e')}" stroke-width="3" stroke-dasharray="16 12" />
-                        <line class="constellation-laser-line" x1="445" y1="410" x2="170" y2="410" stroke="${escapeHtml(teams[2]?.team_color || '#eab308')}" stroke-width="3" stroke-dasharray="16 12" />
-                        <line class="constellation-laser-line" x1="525" y1="490" x2="525" y2="685" stroke="${escapeHtml(teams[3]?.team_color || '#3b82f6')}" stroke-width="3" stroke-dasharray="16 12" />
+                        <line class="constellation-laser-line" x1="525" y1="330" x2="525" y2="285" stroke="${escapeHtml(teams[0]?.team_color || '#10b981')}" stroke-width="3" stroke-dasharray="16 12" />
+                        <line class="constellation-laser-line" x1="605" y1="410" x2="660" y2="410" stroke="${escapeHtml(teams[1]?.team_color || '#f43f5e')}" stroke-width="3" stroke-dasharray="16 12" />
+                        <line class="constellation-laser-line" x1="445" y1="410" x2="390" y2="410" stroke="${escapeHtml(teams[2]?.team_color || '#eab308')}" stroke-width="3" stroke-dasharray="16 12" />
+                        <line class="constellation-laser-line" x1="525" y1="490" x2="525" y2="535" stroke="${escapeHtml(teams[3]?.team_color || '#3b82f6')}" stroke-width="3" stroke-dasharray="16 12" />
                     </g>
                 </svg>
 
-                <!-- Center Islamic 8-Point Star Medallion Node -->
                 <div class="orbital-center-node constellation-star-node">
                     <svg class="constellation-star-svg" viewBox="0 0 160 160">
-                        <!-- Rotating Outer 8-Point Star Medallion -->
                         <g class="star-rotation-group">
                             <rect x="25" y="25" width="110" height="110" rx="14" fill="none" stroke="${escapeHtml(teams[0]?.team_color || '#10b981')}" stroke-width="2.5" opacity="0.5" />
                             <rect x="25" y="25" width="110" height="110" rx="14" transform="rotate(45 80 80)" fill="none" stroke="${escapeHtml(teams[0]?.team_color || '#10b981')}" stroke-width="2.5" opacity="0.5" />
                             <circle cx="80" cy="80" r="68" fill="none" stroke="rgba(15, 23, 42, 0.12)" stroke-width="1.5" stroke-dasharray="6 4" />
                         </g>
-                        <!-- Inner Progress Arc -->
                         <circle cx="80" cy="80" r="52" fill="none" stroke="rgba(15, 23, 42, 0.08)" stroke-width="6" />
                         <circle class="orbital-progress-bar" cx="80" cy="80" r="52" fill="none" stroke="${escapeHtml(teams[0]?.team_color || '#10b981')}" stroke-width="6" stroke-linecap="round" stroke-dasharray="326.72" stroke-dashoffset="${dashoffset}" transform="rotate(-90 80 80)" />
                     </svg>
@@ -565,17 +765,33 @@
                     </div>
                 </div>
 
-                <!-- 4 Quadrant Cards -->
                 ${cardsHtml}
-
-                <!-- Extra Teams Bar if 5+ teams -->
                 ${extraHtml}
             </div>
         `;
 
-        window.renderLeaderboard = renderLeaderboard;
-
         triggerLeaderboardAnimations(container);
+    }
+
+    function renderLeaderboard(rows, completionPercent = 20) {
+        state.leaderboardData = rows;
+        const teams = Array.isArray(rows) ? rows : [];
+
+        const container = document.querySelector('[data-leaderboard], [data-leaderboard-stage]');
+        if (!container) return;
+
+        const signature = JSON.stringify((teams || []).slice(0, 8).map((team) => [
+            team?.id, team?.rank, team?.team_name, team?.total_score, team?.team_color
+        ]));
+
+        if (state.leaderboardSignature === signature && container.querySelector('.orbital-stage-container')) {
+            return;
+        }
+        state.leaderboardSignature = signature;
+
+        renderLeaderboardStageInto(container, teams, completionPercent);
+
+        window.renderLeaderboard = renderLeaderboard;
     }
 
     function triggerLeaderboardAnimations(customContainer) {
@@ -583,52 +799,51 @@
         if (!root || typeof gsap === 'undefined') return;
 
         const centerNode = root.querySelector('.orbital-center-node');
-        const ringPath = root.querySelector('.orbital-ring-path');
-        const crosshairLines = root.querySelectorAll('.orbital-crosshair-line');
         const card1 = root.querySelector('.orbital-card[data-pos="1"]');
         const card2 = root.querySelector('.orbital-card[data-pos="2"]');
         const card3 = root.querySelector('.orbital-card[data-pos="3"]');
         const card4 = root.querySelector('.orbital-card[data-pos="4"]');
         const scoreEls = root.querySelectorAll('.orbital-score-digit');
 
+        // 1. Center Medallion Pop Entrance
         if (centerNode) {
-            gsap.fromTo(centerNode, { scale: 0.5, opacity: 0, rotationZ: -90 }, { scale: 1, opacity: 1, rotationZ: 0, duration: 1.1, ease: 'back.out(1.5)' });
+            gsap.fromTo(centerNode, { scale: 0.3, opacity: 0, rotationZ: -120 }, { scale: 1, opacity: 1, rotationZ: 0, duration: 1.15, ease: 'back.out(1.8)' });
         }
 
-        if (ringPath) {
-            gsap.fromTo(ringPath, { opacity: 0, scale: 0.9 }, { opacity: 1, scale: 1, duration: 1.1, ease: 'power2.out' });
-        }
-
-        if (crosshairLines.length) {
-            gsap.fromTo(crosshairLines, { opacity: 0 }, { opacity: 1, duration: 0.8, delay: 0.2 });
-        }
-
+        // 2. 3D Card Entrances (Symmetrical Tight Cluster)
         if (card1) {
-            gsap.fromTo(card1, { y: -150, rotationX: -35, scale: 0.8, opacity: 0 }, { y: 0, rotationX: 0, scale: 1, opacity: 1, duration: 0.95, delay: 0.15, ease: 'power4.out' });
+            gsap.fromTo(card1, { y: -90, rotationX: -25, scale: 0.85, opacity: 0 }, { y: 0, rotationX: 0, scale: 1, opacity: 1, duration: 1.0, delay: 0.15, ease: 'power4.out' });
         }
         if (card2) {
-            gsap.fromTo(card2, { x: 150, rotationY: 35, scale: 0.8, opacity: 0 }, { x: 0, rotationY: 0, scale: 1, opacity: 1, duration: 0.95, delay: 0.25, ease: 'power4.out' });
+            gsap.fromTo(card2, { x: 90, rotationY: 25, scale: 0.85, opacity: 0 }, { x: 0, rotationY: 0, scale: 1, opacity: 1, duration: 1.0, delay: 0.25, ease: 'power4.out' });
         }
         if (card3) {
-            gsap.fromTo(card3, { x: -150, rotationY: -35, scale: 0.8, opacity: 0 }, { x: 0, rotationY: 0, scale: 1, opacity: 1, duration: 0.95, delay: 0.35, ease: 'power4.out' });
+            gsap.fromTo(card3, { x: -90, rotationY: -25, scale: 0.85, opacity: 0 }, { x: 0, rotationY: 0, scale: 1, opacity: 1, duration: 1.0, delay: 0.35, ease: 'power4.out' });
         }
         if (card4) {
-            gsap.fromTo(card4, { y: 150, rotationX: 35, scale: 0.8, opacity: 0 }, { y: 0, rotationX: 0, scale: 1, opacity: 1, duration: 0.95, delay: 0.45, ease: 'power4.out' });
+            gsap.fromTo(card4, { y: 90, rotationX: 25, scale: 0.85, opacity: 0 }, { y: 0, rotationX: 0, scale: 1, opacity: 1, duration: 1.0, delay: 0.45, ease: 'power4.out' });
         }
 
+        // 3. Smooth Rolling Score Counter Animation
         scoreEls.forEach(el => {
             const targetScore = parseInt(el.dataset.score || '0', 10);
             const counter = { val: 0 };
             gsap.to(counter, {
                 val: targetScore,
-                duration: 1.4,
-                delay: 0.3,
+                duration: 1.5,
+                delay: 0.35,
                 ease: 'power3.out',
                 onUpdate: () => {
                     el.textContent = Math.round(counter.val);
                 }
             });
         });
+
+        // 4. Continuous Gentle Idle Floating Motion Loop
+        if (card1) gsap.to(card1, { y: '-=6', duration: 3.2, ease: 'sine.inOut', yoyo: true, repeat: -1, delay: 1.2 });
+        if (card2) gsap.to(card2, { x: '+=6', duration: 3.6, ease: 'sine.inOut', yoyo: true, repeat: -1, delay: 1.4 });
+        if (card3) gsap.to(card3, { x: '-=6', duration: 3.4, ease: 'sine.inOut', yoyo: true, repeat: -1, delay: 1.6 });
+        if (card4) gsap.to(card4, { y: '+=6', duration: 3.8, ease: 'sine.inOut', yoyo: true, repeat: -1, delay: 1.8 });
     }
 
     function scheduleRowsPerPage() {
@@ -654,10 +869,6 @@
 
         sections.forEach((section) => {
             (Array.isArray(section.items) ? section.items : []).forEach((item) => {
-                // Remove breaks and completed programs from the live display slideshow table
-                if (item.type === 'break' || item.status === 'completed' || item.approval_status === 'approved') {
-                    return;
-                }
                 rows.push({
                     ...item,
                     section_name: section.name || 'Schedule',
@@ -668,10 +879,6 @@
 
         if (!rows.length && Array.isArray(scheduleData?.timeline)) {
             scheduleData.timeline.forEach((item) => {
-                // Remove breaks and completed programs from the live display slideshow table
-                if (item.type === 'break' || item.status === 'completed' || item.approval_status === 'approved') {
-                    return;
-                }
                 rows.push({
                     ...item,
                     section_name: 'Full Schedule',
@@ -679,6 +886,15 @@
                 });
             });
         }
+
+        rows.sort((a, b) => {
+            const timeA = a.start_time ? new Date(a.start_time).getTime() : 0;
+            const timeB = b.start_time ? new Date(b.start_time).getTime() : 0;
+            if (timeA === timeB) {
+                return (Number(a.id) || 0) - (Number(b.id) || 0);
+            }
+            return timeA - timeB;
+        });
 
         return rows;
     }
@@ -730,7 +946,10 @@
         els.schedule.innerHTML = `
             <div class="schedule-slide-container">
                 <div class="schedule-slide-title">
-                    <span>Program Schedule</span>
+                    <div style="display: flex; align-items: center; gap: 16px;">
+                        <span>Program Schedule</span>
+                        <span class="page-count-badge" data-schedule-day-badge style="display: none; font-size: 14px; text-transform: uppercase; background: rgba(255,255,255,0.14); color: #fff; border: 1.5px solid rgba(255,255,255,0.25);">DAY 1</span>
+                    </div>
                     <span class="page-count-badge" data-schedule-page-badge>Page ${curPage + 1} / ${totalPages}</span>
                 </div>
                 <div class="schedule-table-card">
@@ -738,7 +957,7 @@
                         <thead>
                             <tr>
                                 <th style="width: 75px; text-align: center;">#</th>
-                                <th style="width: 140px;">TIME</th>
+                                <th style="width: 160px;">TIME</th>
                                 <th>PROGRAM</th>
                                 <th style="width: 200px;">STAGE / VENUE</th>
                                 <th style="width: 160px; text-align: right;">STATUS</th>
@@ -794,7 +1013,7 @@
             badgeEl.textContent = `Page ${index + 1} / ${totalPages}`;
         }
 
-        const currentRows = Array.from(pageEl.querySelectorAll('.program-row, .date-header-row'));
+        const currentRows = Array.from(pageEl.querySelectorAll('.program-row'));
 
         const updateAndAnimateIn = () => {
             if (!page.length) {
@@ -831,8 +1050,26 @@
                 dateToDayMap[d] = `Day ${idx + 1}`;
             });
 
+            // Sync Header Day Badge for the current page
+            const pageDays = [...new Set(page.map(item => {
+                const d = item.start_time ? item.start_time.split(' ')[0] : '';
+                return dateToDayMap[d] || null;
+            }))].filter(Boolean);
+
+            const dayBadgeEl = els.schedule?.querySelector('[data-schedule-day-badge]');
+            if (dayBadgeEl) {
+                if (pageDays.length === 1) {
+                    dayBadgeEl.textContent = pageDays[0].toUpperCase();
+                    dayBadgeEl.style.display = 'inline-block';
+                } else if (pageDays.length > 1) {
+                    dayBadgeEl.textContent = `${pageDays[0].toUpperCase()} – ${pageDays[pageDays.length - 1].toUpperCase()}`;
+                    dayBadgeEl.style.display = 'inline-block';
+                } else {
+                    dayBadgeEl.style.display = 'none';
+                }
+            }
+
             let html = '';
-            let lastDay = null;
 
             page.forEach((item, rowIndex) => {
                 const globalIndex = (index * scheduleRowsPerPage()) + rowIndex;
@@ -857,15 +1094,7 @@
                 const venueName = item.venue || item.stage_name || item.room || 'Normal Stage';
 
                 const itemDate = item.start_time ? item.start_time.split(' ')[0] : '';
-                const currentDay = dateToDayMap[itemDate] || 'Unknown Day';
-                if (lastDay !== currentDay) {
-                    html += `
-                        <tr class="date-header-row">
-                            <td colspan="5" class="date-header">${escapeHtml(currentDay)}</td>
-                        </tr>
-                    `;
-                    lastDay = currentDay;
-                }
+                const currentDay = dateToDayMap[itemDate] || '';
 
                 let rowClasses = ['program-row'];
                 let statusHtml = '';
@@ -887,12 +1116,13 @@
                     numBadgeHtml = `<span class="num-badge num-blue">| ${rowNum} |</span>`;
                 }
 
+                const dayPill = (uniqueDates.length > 1 && currentDay) ? `<span class="program-day-tag" style="display: inline-block; font-size: 10px; font-weight: 800; background: rgba(15,23,42,0.06); color: #64748b; padding: 2px 7px; border-radius: 4px; margin-right: 6px; letter-spacing: 0.04em;">${escapeHtml(currentDay.toUpperCase())}</span>` : '';
                 const secBadge = secName ? `<span class="program-sec-tag">${escapeHtml(secName)}</span>` : '';
 
                 html += `
                     <tr class="${rowClasses.join(' ')}">
                         <td style="text-align: center;">${numBadgeHtml}</td>
-                        <td class="col-time">${escapeHtml(timeStr)}</td>
+                        <td class="col-time">${dayPill}${escapeHtml(timeStr)}</td>
                         <td class="col-program">${escapeHtml(title)} ${secBadge}</td>
                         <td class="col-venue">${escapeHtml(venueName)}</td>
                         <td style="text-align: right;">${statusHtml}</td>
@@ -903,7 +1133,7 @@
             pageEl.innerHTML = html;
 
             if (!isSync && typeof gsap !== 'undefined') {
-                const rows = pageEl.querySelectorAll('.program-row, .date-header-row');
+                const rows = pageEl.querySelectorAll('.program-row');
                 gsap.fromTo(rows, {
                     opacity: 0,
                     x: 35,
@@ -1093,10 +1323,39 @@
     function checkScoreRevealEvent(revealData) {
         if (!revealData || !revealData.timestamp || isScoreRevealActive) return;
 
-        const storedTs = Number(sessionStorage.getItem('last_score_reveal_ts') || window.LAST_REVEALED_TS || 0);
-        if (revealData.timestamp > storedTs) {
-            sessionStorage.setItem('last_score_reveal_ts', String(revealData.timestamp));
-            window.LAST_REVEALED_TS = revealData.timestamp;
+        const revealTs = Number(revealData.timestamp);
+        const now = Date.now();
+
+        // Ignore historical score updates (older than 35 seconds) on page open or tab load
+        if (now - revealTs > 35000) {
+            try {
+                localStorage.setItem('last_score_reveal_ts', String(revealTs));
+            } catch (_) {}
+            window.LAST_REVEALED_TS = revealTs;
+            return;
+        }
+
+        let storedTs = 0;
+        try {
+            storedTs = Number(localStorage.getItem('last_score_reveal_ts') || window.LAST_REVEALED_TS || 0);
+        } catch (_) {
+            storedTs = Number(window.LAST_REVEALED_TS || 0);
+        }
+
+        // On first initialization if no stored timestamp, seed it to avoid triggering on initial page load
+        if (storedTs === 0) {
+            try {
+                localStorage.setItem('last_score_reveal_ts', String(revealTs));
+            } catch (_) {}
+            window.LAST_REVEALED_TS = revealTs;
+            return;
+        }
+
+        if (revealTs > storedTs) {
+            try {
+                localStorage.setItem('last_score_reveal_ts', String(revealTs));
+            } catch (_) {}
+            window.LAST_REVEALED_TS = revealTs;
             launchScoreUpdateReveal(revealData);
         }
     }
@@ -1115,9 +1374,11 @@
             document.body.appendChild(overlay);
         }
 
-        // Shuffle teams randomly for phase 2 reveal
-        const originalTeams = Array.isArray(reveal.teams) ? reveal.teams : [];
-        const randomTeams = [...originalTeams].sort(() => Math.random() - 0.5);
+        const revealTeams = Array.isArray(reveal.teams) && reveal.teams.length > 0 
+            ? reveal.teams 
+            : (state.leaderboardData || []);
+
+        const sortedTeams = [...revealTeams].sort((a, b) => (Number(b.total_score) || 0) - (Number(a.total_score) || 0));
 
         // Programs list included in this update
         const programsList = Array.isArray(reveal.programs) && reveal.programs.length > 0 
@@ -1128,205 +1389,41 @@
             ? `${programsList.length} UPDATED PROGRAMS APPROVED` 
             : 'NEW PROGRAM SCORES APPROVED';
 
-        // Render base overlay HTML
+        // Render base overlay HTML — ZERO BUTTONS (DISPLAY ONLY)!
         overlay.innerHTML = `
-            <button type="button" class="reveal-close-btn" id="btnCloseReveal"><i class="fa-solid fa-xmark mr-1"></i> Close</button>
-            <div class="reveal-header-badge">
-                <span class="pulse-dot-red"></span> ${escapeHtml(programCountLabel)}
+            <div style="position: absolute; top: 28px; left: 50%; transform: translateX(-50%); z-index: 10; display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none;">
+                <div style="background: rgba(16, 185, 129, 0.18); backdrop-filter: blur(12px); border: 1.5px solid rgba(16, 185, 129, 0.4); color: #10b981; font-weight: 900; font-size: 13px; padding: 6px 20px; border-radius: 30px; letter-spacing: 0.08em; text-transform: uppercase; box-shadow: 0 8px 25px rgba(16,185,129,0.25);">
+                    <span class="pulse-dot-red" style="background: #10b981; box-shadow: 0 0 10px #10b981; display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 8px;"></span> ${escapeHtml(programCountLabel)}
+                </div>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;">
+                    ${programsList.map(p => `
+                        <div style="background: rgba(15, 23, 42, 0.72); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.15); padding: 5px 16px; border-radius: 20px; font-size: 13px; color: #fff; font-weight: 800; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+                            <i class="fa-solid fa-trophy" style="color: #f59e0b; margin-right: 6px;"></i>
+                            <span>${escapeHtml(p.title)}</span>
+                            ${p.category_name ? `<small style="opacity: 0.75; margin-left: 4px;">(${escapeHtml(p.category_name)})</small>` : ''}
+                        </div>
+                    `).join('')}
+                </div>
             </div>
-            <h1 class="reveal-title">UPDATED TEAM STANDINGS</h1>
-            
-            <div class="reveal-programs-list">
-                ${programsList.map(p => `
-                    <div class="reveal-program-chip">
-                        <i class="fa-solid fa-trophy" style="color: #f59e0b;"></i>
-                        <span>${escapeHtml(p.title)}</span>
-                        ${p.category_name ? `<small>(${escapeHtml(p.category_name)})</small>` : ''}
-                    </div>
-                `).join('')}
-            </div>
-            
-            <div style="font-size: 15px; font-weight: 800; color: #64748b; letter-spacing: 2px; text-transform: uppercase;" id="revealStatusText">
-                REVEALING UPDATED TEAM SCORES...
-            </div>
+
+            <div id="revealStageContainer" style="width: 100%; height: 100%; position: relative;"></div>
         `;
 
         requestAnimationFrame(() => overlay.classList.add('is-active'));
 
-        document.getElementById('btnCloseReveal')?.addEventListener('click', closeScoreRevealOverlay);
+        // Render the exact Leaderboard style stage inside overlay
+        const stageContainer = overlay.querySelector('#revealStageContainer');
+        if (stageContainer) {
+            renderLeaderboardStageInto(stageContainer, sortedTeams);
+        }
 
-        // Play reveal start tone and display results immediately (bypass 10s wait)
         playTone(1100, 'triangle', 0.4, 0.25);
-        startPhase2TeamReveal(overlay, reveal, randomTeams, programsList);
-    }
-
-    function startPhase2TeamReveal(overlay, reveal, randomTeams, programsList) {
-        const titleEl = overlay.querySelector('.reveal-title');
-        const countBox = document.getElementById('revealCountdownBox');
-        const statusText = document.getElementById('revealStatusText');
-
-        if (titleEl) titleEl.textContent = 'UPDATED TEAM STANDINGS';
-        if (statusText) statusText.textContent = 'REVEALING UPDATED TEAM SCORES...';
-
-        if (countBox) countBox.style.display = 'none';
-
-        // Sort teams by total score for final ranking display
-        const sortedTeams = [...randomTeams].sort((a, b) => (Number(b.total_score) || 0) - (Number(a.total_score) || 0));
-        const highestGainer = [...randomTeams].sort((a, b) => (Number(b.program_points) || 0) - (Number(a.program_points) || 0))[0];
-
-        // Build Team Cards HTML
-        const gridHtml = `
-            <div class="reveal-teams-grid" id="revealTeamsGrid">
-                ${randomTeams.map((t, idx) => {
-                    const gainedPts = Number(t.program_points || 0);
-                    const breakdownEntries = t.breakdown && typeof t.breakdown === 'object' ? Object.entries(t.breakdown) : [];
-                    return `
-                        <div class="reveal-team-card reveal-card-stagger" data-team-id="${t.id}" style="animation-delay: ${idx * 0.15}s;">
-                            <div class="reveal-team-header">
-                                ${colorDot(t.team_color)} ${escapeHtml(t.team_name)}
-                            </div>
-                            <div class="reveal-team-score" data-target-score="${t.total_score}">0</div>
-                            <div style="margin-top: 6px;">
-                                ${gainedPts > 0 
-                                    ? `<span class="reveal-gained-pts-badge"><i class="fa-solid fa-arrow-up-right mr-1"></i> +${gainedPts} Pts Total Gained</span>`
-                                    : `<span style="font-size: 12px; font-weight: 700; color: #94a3b8;">No Points Added</span>`
-                                }
-                            </div>
-                            ${breakdownEntries.length > 0 ? `
-                                <div class="reveal-breakdown-box">
-                                    ${breakdownEntries.map(([pTitle, pPts]) => `
-                                        <div class="reveal-breakdown-item">
-                                            <span>${escapeHtml(pTitle)}</span>
-                                            <strong>+${pPts}</strong>
-                                        </div>
-                                    `).join('')}
-                                </div>
-                            ` : ''}
-                        </div>
-                    `;
-                }).join('')}
-            </div>
-            
-            <div style="margin-top: 28px; text-align: center;" id="revealDoneContainer">
-                <button type="button" class="btn btn-primary btn-md" id="btnDoneReveal" style="padding: 12px 40px; border-radius: 999px; font-weight: 800; font-size: 15px; background: linear-gradient(135deg, #4f46e5, #3b82f6); color: #fff; border: none; box-shadow: 0 8px 24px rgba(79, 70, 229, 0.35); cursor: pointer; transition: all 0.2s ease;">
-                    Done & Return to Live Display
-                </button>
-            </div>
-        `;
-
-        const existingGrid = overlay.querySelector('.reveal-teams-grid');
-        if (existingGrid) existingGrid.remove();
-        const existingDone = document.getElementById('revealDoneContainer');
-        if (existingDone) existingDone.remove();
-
-        overlay.insertAdjacentHTML('beforeend', gridHtml);
-        document.getElementById('btnDoneReveal')?.addEventListener('click', closeScoreRevealOverlay);
-
-        // Stage 1: Slot Counter Roll Animation for Scores (0s - 4.5s)
-        overlay.querySelectorAll('.reveal-team-score').forEach(el => {
-            const target = Number(el.dataset.targetScore || 0);
-            let current = 0;
-            const step = Math.max(1, target / 40);
-            const rollTimer = setInterval(() => {
-                current += step;
-                if (current >= target) {
-                    current = target;
-                    clearInterval(rollTimer);
-                }
-                el.textContent = Math.round(current);
-            }, 50);
-        });
-
-        // Stage 2: Highlight Points Gainers (At 5.0 seconds)
         setTimeout(() => {
-            if (statusText) statusText.textContent = '⚡ HIGHLIGHTING PROGRAM SCORE GAINS...';
-            
-            if (highestGainer && Number(highestGainer.program_points || 0) > 0) {
-                const gainerCard = overlay.querySelector(`.reveal-team-card[data-team-id="${highestGainer.id}"]`);
-                if (gainerCard) {
-                    gainerCard.classList.add('is-highest-gainer');
-                    gainerCard.insertAdjacentHTML('afterbegin', `<div class="reveal-top-gainer-badge"><i class="fa-solid fa-bolt mr-1"></i> TOP POINTS GAINER (+${highestGainer.program_points} PTS)</div>`);
-                    playTone(784, 'triangle', 0.2, 0.15);
-                }
-            }
+            playCelebrationFanfare();
+        }, 1500);
 
-            // Stage 3: Grand Coronation of #1 Overall Rank Leader (At 10.0 seconds)
-            setTimeout(() => {
-                if (statusText) statusText.textContent = '👑 ANNOUNCING OVERALL LEADERBOARD CHAMPION...';
-
-                const topTeam = reveal.top_team || sortedTeams[0];
-                if (topTeam) {
-                    const topCard = overlay.querySelector(`.reveal-team-card[data-team-id="${topTeam.id}"]`);
-                    if (topCard) {
-                        topCard.classList.add('is-top-rank');
-                        topCard.insertAdjacentHTML('afterbegin', `<div class="reveal-rank1-banner">👑 OVERALL RANK #1 LEADER</div>`);
-                        playCelebrationFanfare();
-                    }
-                }
-
-                // Stage 4: Showcase Complete & Final Status (At 15.0 seconds)
-                setTimeout(() => {
-                    if (statusText) statusText.textContent = '🎉 SCORE REVEAL COMPLETE · LEADERBOARD UPDATED';
-                }, 5000);
-
-            }, 5000);
-
-        }, 5000);
-
-        // Auto-close overlay after 20 seconds
-        activeRevealTimer = setTimeout(() => {
-            closeScoreRevealOverlay();
-        }, 20000);
-    }
-
-    function startPhase3ProgramBreakdown(overlay, reveal) {
-        const titleEl = overlay.querySelector('.reveal-title');
-        const statusText = document.getElementById('revealStatusText');
-        const teamsGrid = overlay.querySelector('.reveal-teams-grid');
-
-        if (titleEl) titleEl.textContent = 'PROGRAM MARKS & WINNERS';
-        if (statusText) statusText.style.display = 'none';
-        if (teamsGrid) teamsGrid.style.display = 'none';
-
-        const entries = Array.isArray(reveal.entries) ? reveal.entries : [];
-
-        const winnersHtml = `
-            <div class="reveal-winners-container">
-                <div class="reveal-winners-grid">
-                    ${entries.map((e) => {
-                        const rank = Number(e.final_rank || 0);
-                        const badge = rank === 1 ? '🥇 1st Rank' : (rank === 2 ? '🥈 2nd Rank' : (rank === 3 ? '🥉 3rd Rank' : `⭐ Rank ${rank} (+3 Bonus)`));
-                        return `
-                            <div class="reveal-winner-card">
-                                <div>
-                                    <div style="font-size: 11px; font-weight: 800; color: #38bdf8; text-transform: uppercase;">${badge}</div>
-                                    <div style="font-size: 16px; font-weight: 800; color: #fff; margin: 2px 0;">${escapeHtml(e.entry_name)}</div>
-                                    <div style="font-size: 12px; color: rgba(255,255,255,0.7); display: flex; align-items: center; gap: 6px;">
-                                        ${colorDot(e.team_color)} ${escapeHtml(e.team_name)} ${e.entry_number ? `&bull; Chest #${escapeHtml(e.entry_number)}` : ''}
-                                    </div>
-                                </div>
-                                <div style="text-align: right;">
-                                    <div style="font-size: 18px; font-weight: 900; color: #10b981;">+${e.team_score} Pts</div>
-                                    <div style="font-size: 11px; color: rgba(255,255,255,0.6);">${Number(e.final_score).toFixed(2)} Marks</div>
-                                </div>
-                            </div>
-                        `;
-                    }).join('')}
-                </div>
-
-                <div style="margin-top: 24px; text-align: center;">
-                    <button type="button" class="btn btn-primary btn-md" id="btnDoneReveal" style="padding: 10px 30px; border-radius: 999px; font-weight: 800; font-size: 14px;">
-                        Done & Return to Live Display
-                    </button>
-                </div>
-            </div>
-        `;
-
-        overlay.insertAdjacentHTML('beforeend', winnersHtml);
-
-        document.getElementById('btnDoneReveal')?.addEventListener('click', closeScoreRevealOverlay);
-
-        // Auto-close overlay after 16 seconds
+        // Auto-close overlay after 16 seconds (display-only, no user action needed)
+        if (activeRevealTimer) clearTimeout(activeRevealTimer);
         activeRevealTimer = setTimeout(() => {
             closeScoreRevealOverlay();
         }, 16000);
@@ -1488,7 +1585,7 @@
         stopSlideTimer();
         stopScheduleTimer();
 
-        if (!els.schedule || !state.is_playing || state.isCelebrating) {
+        if (!els.schedule || state.isCelebrating) {
             return;
         }
 
@@ -1502,8 +1599,10 @@
         updateScheduleClock();
 
         const totalPages = Math.max(1, state.schedule.pages.length);
-        const configuredDuration = state.slides.schedule?.duration || 18000;
-        const pageDuration = Math.max(3000, configuredDuration);
+        
+        // Locked to perfect timing: 7 seconds (7000ms) per schedule page!
+        const rawDur = Number(state.slides.schedule?.duration) || 7000;
+        const pageDuration = (rawDur > 20000) ? 7000 : Math.max(4000, Math.min(15000, rawDur));
 
         renderSchedulePage(0, false);
 
@@ -1515,8 +1614,10 @@
                 return;
             }
 
-            if (state.schedule.currentPage >= totalPages - 1) {
-                if (state.mode === 'manual') {
+            const currentTotalPages = Math.max(1, (state.schedule.pages || []).length);
+
+            if (state.schedule.currentPage >= currentTotalPages - 1) {
+                if (state.mode === 'manual' || window.location.pathname.includes('/schedule')) {
                     state.schedule.currentPage = 0;
                     renderSchedulePage(0, true);
                     state.schedule.timer = setTimeout(tick, pageDuration);
@@ -1532,7 +1633,9 @@
             state.schedule.timer = setTimeout(tick, pageDuration);
         };
 
-        state.schedule.timer = setTimeout(tick, pageDuration);
+        if (totalPages > 1 || state.mode === 'manual' || window.location.pathname.includes('/schedule')) {
+            state.schedule.timer = setTimeout(tick, pageDuration);
+        }
     }
 
     function initViewportScaler() {
@@ -1699,7 +1802,6 @@
                     const video = document.querySelector('[data-intro-video]') || document.querySelector('.tv-intro-video video');
                     if (video) {
                         try {
-                            video.currentTime = 0;
                             video.play().catch(() => {});
                         } catch (_) {}
                     }
@@ -1729,7 +1831,6 @@
                 const video = document.querySelector('[data-intro-video]') || document.querySelector('.tv-intro-video video');
                 if (video) {
                     try {
-                        video.currentTime = 0;
                         video.play().catch(() => {});
                     } catch (_) {}
                 }
@@ -1761,21 +1862,64 @@
         return enabledKeys[(currentIdx + 1) % enabledKeys.length];
     }
 
+    function getGlobalSynchronizedSlide() {
+        const enabledSlides = state.slideOrder.filter(key => {
+            const slideConf = state.slides[key];
+            const hasEl = document.querySelector(`.tv-slide[data-slide="${key}"]`) || document.getElementById(`slide-${key}`);
+            return slideConf && slideConf.enabled !== false && hasEl;
+        }).map(key => ({
+            key,
+            duration: Math.max(3000, Number(state.slides[key]?.duration || 12000))
+        }));
+
+        if (enabledSlides.length === 0) {
+            return { activeKey: 'intro', remainingMs: 12000 };
+        }
+
+        const totalCycleMs = enabledSlides.reduce((sum, s) => sum + s.duration, 0);
+        if (totalCycleMs <= 0) {
+            return { activeKey: enabledSlides[0].key, remainingMs: 12000 };
+        }
+
+        const now = Date.now();
+        const cyclePos = now % totalCycleMs;
+
+        let elapsed = 0;
+        for (let i = 0; i < enabledSlides.length; i++) {
+            const slide = enabledSlides[i];
+            if (cyclePos >= elapsed && cyclePos < elapsed + slide.duration) {
+                const remaining = (elapsed + slide.duration) - cyclePos;
+                return {
+                    activeKey: slide.key,
+                    remainingMs: Math.max(1000, remaining)
+                };
+            }
+            elapsed += slide.duration;
+        }
+
+        return {
+            activeKey: enabledSlides[0].key,
+            remainingMs: enabledSlides[0].duration
+        };
+    }
+
     function scheduleNextSlide(delay) {
         stopSlideTimer();
         if (!state.is_playing || state.mode === 'manual' || state.isCelebrating) return;
 
-        const actualDelay = Math.max(3000, delay || 12000);
+        const sync = getGlobalSynchronizedSlide();
+        const actualDelay = Math.max(1000, delay ?? sync.remainingMs);
 
         state.timers.slide = setTimeout(() => {
             if (!state.is_playing || state.mode === 'manual' || state.isCelebrating) return;
 
-            const next = getNextEnabledSlide();
-            setActiveSlide(next);
+            const nextSync = getGlobalSynchronizedSlide();
+            setActiveSlide(nextSync.activeKey);
 
-            if (next !== 'schedule') {
-                const duration = state.slides[next]?.duration || 12000;
-                scheduleNextSlide(duration);
+            if (nextSync.activeKey === 'schedule') {
+                startSchedulePlayback();
+            } else {
+                scheduleNextSlide(nextSync.remainingMs);
             }
         }, actualDelay);
     }
@@ -1786,14 +1930,13 @@
 
         if (!state.is_playing || state.mode === 'manual' || state.isCelebrating) return;
 
-        const first = (state.slides[state.activeSlide]?.enabled !== false) ? state.activeSlide : getNextEnabledSlide();
-        setActiveSlide(first);
+        const sync = getGlobalSynchronizedSlide();
+        setActiveSlide(sync.activeKey);
 
-        if (first === 'schedule') {
+        if (sync.activeKey === 'schedule') {
             startSchedulePlayback();
         } else {
-            const duration = state.slides[first]?.duration || 12000;
-            scheduleNextSlide(duration);
+            scheduleNextSlide(sync.remainingMs);
         }
     }
 

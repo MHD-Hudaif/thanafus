@@ -122,8 +122,38 @@ function schedule_items(): array
             }
 
             $isOffstage = (stripos($row['stage_name'] ?? '', 'off') !== false || stripos($row['location'] ?? '', 'off') !== false);
+            $rawDate = $row['start_time'] ? date('Y-m-d', strtotime($row['start_time'])) : '1970-01-01';
             $dateFormatted = $row['start_time'] ? date('M d, Y', strtotime($row['start_time'])) : '';
             $venue = $row['location'] ?: ($row['stage_name'] ?: 'Main Venue');
+
+            // Fetch winners & A grades for completed programs
+            $results = [];
+            $aGradeCount = 0;
+            if ($status === 'completed' || $row['status'] === 'completed') {
+                $stmtRes = $pdo->prepare("
+                    SELECT pe.final_rank, pe.grade, pe.entry_name, t.team_name, t.team_color
+                    FROM musabaqa_program_entries pe
+                    JOIN musabaqa_teams t ON t.id = pe.team_id
+                    WHERE pe.program_id = ?
+                      AND (pe.final_rank IS NOT NULL OR pe.grade = 'A')
+                    ORDER BY pe.final_rank ASC, pe.id ASC
+                ");
+                $stmtRes->execute([(int)$row['id']]);
+                foreach ($stmtRes->fetchAll(PDO::FETCH_ASSOC) as $resRow) {
+                    if ($resRow['grade'] === 'A') {
+                        $aGradeCount++;
+                    }
+                    if ($resRow['final_rank'] !== null && (int)$resRow['final_rank'] >= 1 && (int)$resRow['final_rank'] <= 3) {
+                        $results[] = [
+                            'rank' => (int)$resRow['final_rank'],
+                            'entry_name' => $resRow['entry_name'],
+                            'team_name' => $resRow['team_name'],
+                            'team_color' => $resRow['team_color'] ?: '#64748b',
+                            'grade' => $resRow['grade']
+                        ];
+                    }
+                }
+            }
 
             if ($isOffstage) {
                 $groupKey = $startTimeStr . '_' . $dateFormatted . '_' . $session;
@@ -137,7 +167,10 @@ function schedule_items(): array
                         'duration_minutes' => $duration,
                         'status' => $status,
                         'venue' => 'Various Off-Stage Venues',
+                        'raw_date' => $rawDate,
                         'date' => $dateFormatted,
+                        'results' => $results,
+                        'a_grade_count' => $aGradeCount,
                         'is_stacked' => true,
                         'stacked_programs' => []
                     ];
@@ -163,7 +196,10 @@ function schedule_items(): array
                     'duration_minutes' => $duration,
                     'status' => $status,
                     'venue' => $venue,
+                    'raw_date' => $rawDate,
                     'date' => $dateFormatted,
+                    'results' => $results,
+                    'a_grade_count' => $aGradeCount,
                 ];
             }
         }
@@ -171,13 +207,28 @@ function schedule_items(): array
         $items = array_merge($items, array_values($offstageGroups));
         
         usort($items, function($a, $b) {
-            $timeA = strtotime($a['date'] . ' ' . $a['start_time']);
-            $timeB = strtotime($b['date'] . ' ' . $b['start_time']);
+            $timeA = strtotime($a['raw_date'] . ' ' . $a['start_time']);
+            $timeB = strtotime($b['raw_date'] . ' ' . $b['start_time']);
             if ($timeA == $timeB) {
                 return $a['id'] <=> $b['id'];
             }
             return $timeA <=> $timeB;
         });
+
+        // Group by day and assign daily_program_no starting from 1 for each day
+        $currentDayDate = null;
+        $dailyCount = 0;
+        foreach ($items as &$item) {
+            $itemDayDate = $item['raw_date'];
+            if ($itemDayDate !== $currentDayDate) {
+                $currentDayDate = $itemDayDate;
+                $dailyCount = 1;
+            } else {
+                $dailyCount++;
+            }
+            $item['daily_program_no'] = $dailyCount;
+        }
+        unset($item);
 
         return $items;
     } catch (Throwable $e) {

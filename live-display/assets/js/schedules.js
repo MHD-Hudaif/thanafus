@@ -152,7 +152,11 @@
         const pages = [];
 
         for (const group of dayGroups) {
-            const items = Array.isArray(group?.items) ? group.items : [];
+            const rawItems = Array.isArray(group?.items) ? group.items : [];
+            const items = rawItems.map((item, idx) => ({
+                ...item,
+                daily_program_no: item.daily_program_no || (idx + 1)
+            }));
             const chunks = chunkItems(items, pageSize);
 
             chunks.forEach((chunk, idx) => {
@@ -179,12 +183,13 @@
         const title = String(item?.title || 'Program');
         const place = String(item?.place || '').trim();
         const time = timeRange(item?.start_time || null, item?.end_time || null);
+        const progNo = item?.daily_program_no ? `#${item.daily_program_no}` : '';
 
         if (kind === 'break') {
             card.innerHTML = `
-                <div class="schedule-card-head">
+                <div class="schedule-card-head" style="display: flex; align-items: center; justify-content: space-between;">
                     <div class="schedule-card-title">${escapeHtml(title)}</div>
-                    <div class="schedule-card-time">${escapeHtml(time)}</div>
+                    <div class="schedule-card-time" style="margin-left: auto;">${escapeHtml(time)}</div>
                 </div>
                 ${place ? `<div class="schedule-card-place">${escapeHtml(place)}</div>` : ''}
                 <div class="schedule-card-body schedule-card-body--center">
@@ -201,21 +206,29 @@
 
         const ranksHtml = results.length
             ? `<div class="schedule-ranks">${results.map((r) => {
-                const rank = Number(r?.final_rank || 0);
+                const rank = Number(r?.final_rank || r?.rank || 0);
                 const color = String(r?.team_color || '#1fe08a');
                 const teamName = String(r?.team_name || 'Team');
                 return `<span class="schedule-rank-pill schedule-rank-pill--${rank}" style="background:${escapeHtml(color)};"><span>${rank}${ordinal(rank)}</span><span class="schedule-rank-team">${escapeHtml(teamName)}</span></span>`;
             }).join('')}</div>`
             : '';
 
+        const aGradeHtml = (Number(item?.a_grade_count || 0) > 0)
+            ? `<span class="schedule-grade-a-badge" style="background: rgba(245, 158, 11, 0.2); color: #fbbf24; padding: 2px 8px; border-radius: 12px; font-size: 0.8em; font-weight: 800;"><i class="fa-solid fa-star"></i> ${item.a_grade_count} Grade A</span>`
+            : '';
+
         card.innerHTML = `
-            <div class="schedule-card-head">
-                <div class="schedule-card-title">${escapeHtml(title)}</div>
-                <div class="schedule-card-time">${escapeHtml(time)}</div>
+            <div class="schedule-card-head" style="display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+                <div style="display: flex; align-items: center; gap: 10px; min-width: 0;">
+                    ${progNo ? `<span class="schedule-card-num" style="background: rgba(255,255,255,0.12); color: #38bdf8; font-weight: 900; padding: 2px 8px; border-radius: 6px; font-size: 0.9em; flex-shrink: 0;">${escapeHtml(progNo)}</span>` : ''}
+                    <div class="schedule-card-title">${escapeHtml(title)}</div>
+                </div>
+                <div class="schedule-card-time" style="margin-left: auto; text-align: right; flex-shrink: 0;">${escapeHtml(time)}</div>
             </div>
             ${place ? `<div class="schedule-card-place">${escapeHtml(place)}</div>` : ''}
-            <div class="schedule-card-subhead">
+            <div class="schedule-card-subhead" style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
                 <span class="schedule-status schedule-status--${statusClass}">${escapeHtml(statusLabel)}</span>
+                ${aGradeHtml}
             </div>
             <div class="schedule-card-body">
                 ${ranksHtml}

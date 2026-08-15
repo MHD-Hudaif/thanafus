@@ -729,7 +729,7 @@ $stmt = $pdo->prepare("
     SELECT *
     FROM musabaqa_schedule_sections
     WHERE event_id = ?
-    ORDER BY section_date ASC, start_time ASC, sort_order ASC, id ASC
+    ORDER BY CASE WHEN section_date IS NULL THEN 1 ELSE 0 END ASC, section_date ASC, start_time ASC, sort_order ASC, id ASC
 ");
 $stmt->execute([$activeEventId]);
 $sessionList = $stmt->fetchAll(PDO::FETCH_ASSOC);

@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Green Gradient Morphing Flow</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800;900&family=Plus+Jakarta+Sans:wght@500;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
+            background: #03120e;
+            color: #ffffff;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Deep Ambient Canvas Background */
+        .stage-backdrop {
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at 20% 30%, #064e3b 0%, #022c22 45%, #021a14 80%, #010d0a 100%);
+            z-index: 1;
+        }
+
+        /* Ambient Glow Spheres */
+        .glow-orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(90px);
+            opacity: 0.55;
+            animation: orbFloat 14s ease-in-out infinite alternate;
+        }
+        .glow-orb-1 {
+            top: -10%;
+            left: 10%;
+            width: 550px;
+            height: 550px;
+            background: radial-gradient(circle, #10b981 0%, transparent 70%);
+        }
+        .glow-orb-2 {
+            bottom: -15%;
+            right: 15%;
+            width: 650px;
+            height: 650px;
+            background: radial-gradient(circle, #059669 0%, transparent 70%);
+            animation-delay: -7s;
+        }
+
+        @keyframes orbFloat {
+            0% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(60px, 40px) scale(1.15); }
+            100% { transform: translate(-40px, 70px) scale(0.9); }
+        }
+
+        /* Canvas Overlay */
+        #flowCanvas {
+            position: absolute;
+            inset: 0;
+            z-index: 2;
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        /* Glass Control Interface */
+        .control-panel {
+            position: absolute;
+            top: 28px;
+            left: 28px;
+            z-index: 10;
+            background: rgba(6, 78, 59, 0.35);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(52, 211, 153, 0.25);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4), inset 0 0 20px rgba(16, 185, 129, 0.1);
+            border-radius: 24px;
+            padding: 22px 28px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            min-width: 320px;
+        }
+
+        .panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .panel-title {
+            font-size: 16px;
+            font-weight: 800;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            color: #6ee7b7;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .panel-title i {
+            font-size: 18px;
+            color: #34d399;
+            animation: pulseGlow 2s infinite alternate;
+        }
+
+        @keyframes pulseGlow {
+            from { filter: drop-shadow(0 0 2px #34d399); }
+            to { filter: drop-shadow(0 0 10px #34d399); }
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .control-label {
+            font-size: 12px;
+            font-weight: 700;
+            color: rgba(255, 255, 255, 0.8);
+            display: flex;
+            justify-content: space-between;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+
+        .control-label span {
+            color: #34d399;
+        }
+
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.1);
+            height: 6px;
+            border-radius: 4px;
+            outline: none;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #34d399, #059669);
+            box-shadow: 0 0 12px rgba(52, 211, 153, 0.6);
+            cursor: pointer;
+            transition: transform 0.15s ease;
+        }
+
+        input[type=range]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+
+        .button-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+
+        .btn-mode {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: rgba(255, 255, 255, 0.85);
+            padding: 8px 12px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: center;
+        }
+
+        .btn-mode:hover, .btn-mode.active {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.4), rgba(5, 150, 105, 0.5));
+            border-color: #34d399;
+            color: #ffffff;
+            box-shadow: 0 4px 16px rgba(16, 185, 129, 0.3);
+        }
+
+        /* Bottom Badge */
+        .watermark {
+            position: absolute;
+            bottom: 28px;
+            right: 28px;
+            z-index: 10;
+            font-size: 12px;
+            font-weight: 800;
+            color: rgba(52, 211, 153, 0.7);
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            background: rgba(3, 18, 14, 0.5);
+            backdrop-filter: blur(10px);
+            padding: 8px 18px;
+            border-radius: 99px;
+            border: 1px solid rgba(52, 211, 153, 0.2);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="stage-backdrop">
+        <div class="glow-orb glow-orb-1"></div>
+        <div class="glow-orb glow-orb-2"></div>
+    </div>
+
+    <canvas id="flowCanvas"></canvas>
+
+    <div class="control-panel">
+        <div class="panel-header">
+            <div class="panel-title">
+                <i class="fa-solid fa-shapes"></i> Green Flow Studio
+            </div>
+        </div>
+
+        <div class="control-group">
+            <div class="control-label">Flow Speed <span id="speedVal">1.0x</span></div>
+            <input type="range" id="speedInput" min="0.2" max="3.0" step="0.1" value="1.0">
+        </div>
+
+        <div class="control-group">
+            <div class="control-label">Morph Rate <span id="morphVal">1.0x</span></div>
+            <input type="range" id="morphInput" min="0.2" max="3.0" step="0.1" value="1.0">
+        </div>
+
+        <div class="control-group">
+            <div class="control-label">Shape Style</div>
+            <div class="button-grid">
+                <button type="button" class="btn-mode active" data-style="blobs">Organic</button>
+                <button type="button" class="btn-mode" data-style="polygons">Crystals</button>
+                <button type="button" class="btn-mode" data-style="rings">Rings</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="watermark">
+        <i class="fa-solid fa-water" style="margin-right: 6px;"></i> Liquid Morphing Engine
+    </div>
+
+    <script>
+        const canvas = document.getElementById('flowCanvas');
+        const ctx = canvas.getContext('2d');
+
+        let width = canvas.width = window.innerWidth;
+        let height = canvas.height = window.innerHeight;
+
+        window.addEventListener('resize', () => {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        });
+
+        // Config Controls
+        let flowSpeed = 1.0;
+        let morphRate = 1.0;
+        let currentStyle = 'blobs'; // 'blobs', 'polygons', 'rings'
+
+        document.getElementById('speedInput').addEventListener('input', (e) => {
+            flowSpeed = parseFloat(e.target.value);
+            document.getElementById('speedVal').textContent = flowSpeed.toFixed(1) + 'x';
+        });
+
+        document.getElementById('morphInput').addEventListener('input', (e) => {
+            morphRate = parseFloat(e.target.value);
+            document.getElementById('morphVal').textContent = morphRate.toFixed(1) + 'x';
+        });
+
+        document.querySelectorAll('.btn-mode').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.btn-mode').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentStyle = btn.getAttribute('data-style');
+            });
+        });
+
+        // Rich Green Gradient Presets
+        const gradients = [
+            { start: '#10b981', end: '#047857', alpha: 0.4 }, // Emerald Mint
+            { start: '#34d399', end: '#065f46', alpha: 0.35 }, // Bright Neon Mint
+            { start: '#6ee7b7', end: '#059669', alpha: 0.28 }, // Soft Jade
+            { start: '#a7f3d0', end: '#047857', alpha: 0.32 }, // Pale Electric Emerald
+            { start: '#059669', end: '#022c22', alpha: 0.45 }, // Deep Forest
+            { start: '#3b82f6', end: '#10b981', alpha: 0.25 }  // Cyan Emerald Flare
+        ];
+
+        class MorphShape {
+            constructor() {
+                this.reset(true);
+            }
+
+            reset(initial = false) {
+                this.x = initial ? Math.random() * width : -300 - Math.random() * 200;
+                this.y = Math.random() * height;
+                this.size = Math.random() * 160 + 100; // 100px - 260px
+                this.vx = Math.random() * 1.5 + 0.8; // Sideways drift speed
+                this.vy = (Math.random() - 0.5) * 0.4;
+                this.rot = Math.random() * Math.PI * 2;
+                this.vRot = (Math.random() - 0.5) * 0.015;
+
+                this.pointsCount = Math.floor(Math.random() * 4) + 5; // 5 to 8 points
+                this.points = [];
+                for (let i = 0; i < this.pointsCount; i++) {
+                    this.points.push({
+                        baseR: this.size * (0.7 + Math.random() * 0.6),
+                        phase: Math.random() * Math.PI * 2,
+                        freq: Math.random() * 0.02 + 0.01,
+                        amp: Math.random() * 30 + 15
+                    });
+                }
+
+                this.gradConfig = gradients[Math.floor(Math.random() * gradients.length)];
+                this.time = Math.random() * 1000;
+            }
+
+            update() {
+                this.x += this.vx * flowSpeed;
+                this.y += this.vy * flowSpeed;
+                this.rot += this.vRot * flowSpeed;
+                this.time += 0.02 * morphRate;
+
+                // Loop seamlessly when shape flows off screen right
+                if (this.x - this.size * 2 > width) {
+                    this.reset(false);
+                }
+            }
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.rot);
+
+                // Create Green Gradient
+                const grad = ctx.createLinearGradient(-this.size, -this.size, this.size, this.size);
+                grad.addColorStop(0, this.gradConfig.start);
+                grad.addColorStop(1, this.gradConfig.end);
+
+                ctx.fillStyle = grad;
+                ctx.strokeStyle = '#6ee7b7';
+                ctx.lineWidth = 2;
+                ctx.globalAlpha = this.gradConfig.alpha;
+
+                // Shadow Glow
+                ctx.shadowColor = '#10b981';
+                ctx.shadowBlur = 30;
+
+                ctx.beginPath();
+
+                if (currentStyle === 'blobs') {
+                    // Smooth Morphing Blob
+                    const polyPoints = [];
+                    for (let i = 0; i < this.pointsCount; i++) {
+                        const pt = this.points[i];
+                        const angle = (i / this.pointsCount) * Math.PI * 2;
+                        const r = pt.baseR + Math.sin(this.time * pt.freq * 100 + pt.phase) * pt.amp;
+                        polyPoints.push({
+                            x: Math.cos(angle) * r,
+                            y: Math.sin(angle) * r
+                        });
+                    }
+
+                    ctx.moveTo(polyPoints[0].x, polyPoints[0].y);
+                    for (let i = 0; i < polyPoints.length; i++) {
+                        const next = polyPoints[(i + 1) % polyPoints.length];
+                        const xc = (polyPoints[i].x + next.x) / 2;
+                        const yc = (polyPoints[i].y + next.y) / 2;
+                        ctx.quadraticCurveTo(polyPoints[i].x, polyPoints[i].y, xc, yc);
+                    }
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+
+                } else if (currentStyle === 'polygons') {
+                    // Sharp Morphing Crystal
+                    for (let i = 0; i < this.pointsCount; i++) {
+                        const pt = this.points[i];
+                        const angle = (i / this.pointsCount) * Math.PI * 2;
+                        const r = pt.baseR + Math.cos(this.time * pt.freq * 120 + pt.phase) * pt.amp;
+                        const px = Math.cos(angle) * r;
+                        const py = Math.sin(angle) * r;
+
+                        if (i === 0) ctx.moveTo(px, py);
+                        else ctx.lineTo(px, py);
+                    }
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+
+                } else if (currentStyle === 'rings') {
+                    // Pulsing Concentric Rings
+                    const r = this.size * (0.8 + Math.sin(this.time * 2) * 0.2);
+                    ctx.arc(0, 0, r, 0, Math.PI * 2);
+                    ctx.lineWidth = 14;
+                    ctx.stroke();
+
+                    ctx.beginPath();
+                    ctx.arc(0, 0, r * 0.55, 0, Math.PI * 2);
+                    ctx.lineWidth = 6;
+                    ctx.stroke();
+                }
+
+                ctx.restore();
+            }
+        }
+
+        // Initialize 16 flowing shape instances
+        const shapes = [];
+        const shapeCount = 16;
+        for (let i = 0; i < shapeCount; i++) {
+            shapes.push(new MorphShape());
+        }
+
+        // Horizontal Grid Connector Lines
+        function drawFlowLines() {
+            const time = Date.now() * 0.0005 * flowSpeed;
+            ctx.save();
+            ctx.strokeStyle = 'rgba(52, 211, 153, 0.08)';
+            ctx.lineWidth = 1.5;
+
+            const lineCount = 6;
+            for (let i = 0; i < lineCount; i++) {
+                const yBase = (height / (lineCount + 1)) * (i + 1);
+                ctx.beginPath();
+                for (let x = 0; x <= width; x += 30) {
+                    const y = yBase + Math.sin(x * 0.005 + time + i) * 35 + Math.cos(x * 0.003 - time) * 20;
+                    if (x === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+                ctx.stroke();
+            }
+            ctx.restore();
+        }
+
+        // Animation Loop
+        function animate() {
+            ctx.clearRect(0, 0, width, height);
+
+            // Draw Background Flow Ribbons
+            drawFlowLines();
+
+            // Update & Render Flowing Shapes
+            shapes.forEach(shape => {
+                shape.update();
+                shape.draw();
+            });
+
+            requestAnimationFrame(animate);
+        }
+
+        animate();
+    </script>
+</body>
+</html>

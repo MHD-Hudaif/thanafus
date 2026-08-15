@@ -17,6 +17,25 @@ if (!empty($ordered)) {
 require __DIR__ . '/includes/public-header.php';
 ?>
 
+<style>
+.standing-row {
+  background: linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 60%, color-mix(in srgb, var(--team) 15%, transparent) 100%) !important;
+  border-left: 4px solid var(--team) !important;
+  transition: all 0.3s ease;
+}
+
+.standing-row span i {
+  background: linear-gradient(135deg, var(--team) 0%, color-mix(in srgb, var(--team) 75%, white) 50%, var(--team) 100%) !important;
+  box-shadow: 0 0 12px color-mix(in srgb, var(--team) 45%, transparent) !important;
+}
+
+.score-leader {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--team) 28%, #0d1520) 0%, #0d1520 60%, color-mix(in srgb, var(--team) 15%, #0d1520) 100%) !important;
+  border: 1px solid color-mix(in srgb, var(--team) 40%, transparent) !important;
+  box-shadow: 0 15px 40px -10px color-mix(in srgb, var(--team) 30%, transparent) !important;
+}
+</style>
+
 <section class="scoreboard-dashboard scoreboard-modern section-wrap" data-refresh="scoreboard">
   <div class="scoreboard-watermark" aria-hidden="true">
     <img src="<?= asset_url('thanafus-logo.png') ?>" alt="" />
