@@ -36,7 +36,7 @@ document.querySelector('.tv-topbar')?.setAttribute('hidden', '');
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;700;800;900&family=Outfit:wght@600;700;800;900&family=Cairo:wght@700;800;900&display=swap');
 
 body.tv-leaderboard-only .tv-topbar,
-body:has(#slide-leaderboard.tv-slide--active) .tv-topbar {
+body.tv-leaderboard-active .tv-topbar {
     display: none !important;
 }
 
@@ -46,7 +46,7 @@ body:has(#slide-leaderboard.tv-slide--active) .tv-topbar {
     overflow: hidden;
     background: transparent !important;
     font-family: 'Plus Jakarta Sans', 'Outfit', 'Cairo', system-ui, -apple-system, sans-serif;
-    color: #0f172a;
+    color: #fff;
     width: 100% !important;
     height: 100% !important;
     display: flex;
@@ -65,7 +65,7 @@ body:has(#slide-leaderboard.tv-slide--active) .tv-topbar {
     position: relative;
 }
 
-/* Background Effects (Hiding old SVGs to keep display clean and modern) */
+/* Background Effects */
 .ambient-mesh-bg,
 .bg-3d-cuts-svg,
 .side-chevrons-svg,
@@ -73,41 +73,82 @@ body:has(#slide-leaderboard.tv-slide--active) .tv-topbar {
     display: none !important;
 }
 
-/* 3D stage perspective container support */
-.orbital-stage-container {
-    position: relative;
-    display: flex !important;
-    flex-direction: row !important;
-    align-items: flex-end !important;
-    justify-content: center !important;
-    gap: 24px !important;
-    width: 100% !important;
-    height: 100% !important;
-    max-width: 1450px !important;
-    max-height: 96% !important;
-    padding: 40px 20px 80px 20px !important;
-    margin: 0 auto !important;
-    perspective: 1200px !important;
-    transform-style: preserve-3d !important;
-    box-sizing: border-box;
+/* Broadcast Title Header */
+.leaderboard-header {
+    position: absolute;
+    top: 40px;
+    left: 60px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    z-index: 10;
+}
+.leaderboard-title {
+    font-size: 38px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: -0.015em;
+    color: #fff;
+    margin: 0;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+}
+.leaderboard-subtitle {
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--first-team-color, #10b981);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
 }
 
-/* Orbital Stage Medallion Node (Centered at Top) */
+/* Orbit stage container */
+.orbital-stage-container {
+    position: relative;
+    width: 1050px !important;
+    height: 820px !important;
+    margin: 0 auto !important;
+    box-sizing: border-box;
+    display: block !important;
+    transform-origin: center center;
+    transition: transform 0.3s ease;
+}
+
+/* Vector Laser Connections */
+.orbital-vector-canvas {
+    display: block !important;
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.constellation-laser-line {
+    stroke-dasharray: 12 10;
+    animation: laser-pulse 4s linear infinite;
+}
+
+@keyframes laser-pulse {
+    from { stroke-dashoffset: 44; }
+    to { stroke-dashoffset: 0; }
+}
+
+/* Medallion Node (Centered absolutely in the Orbit) */
 .orbital-center-node.constellation-star-node {
     position: absolute !important;
-    top: 24px !important;
+    top: 50% !important;
     left: 50% !important;
-    transform: translateX(-50%) !important;
+    transform: translate(-50%, -50%) !important;
     width: 140px !important;
     height: 140px !important;
     border-radius: 50%;
-    background: rgba(255, 255, 255, 0.94);
+    background: rgba(15, 23, 42, 0.94) !important;
     backdrop-filter: blur(30px);
     -webkit-backdrop-filter: blur(30px);
-    border: 2.5px solid color-mix(in srgb, var(--first-team-color, #10b981) 45%, white);
+    border: 2px solid var(--first-team-color, #10b981) !important;
     box-shadow: 
-        0 15px 45px rgba(0, 0, 0, 0.12),
-        0 0 40px color-mix(in srgb, var(--first-team-color, #10b981) 35%, transparent);
+        0 15px 45px rgba(0, 0, 0, 0.5),
+        0 0 35px color-mix(in srgb, var(--first-team-color, #10b981) 35%, transparent) !important;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -146,7 +187,7 @@ body:has(#slide-leaderboard.tv-slide--active) .tv-topbar {
     font-size: 9px;
     font-weight: 900;
     letter-spacing: 0.18em;
-    color: #64748b;
+    color: rgba(255, 255, 255, 0.5) !important;
     text-transform: uppercase;
     margin-bottom: 2px;
 }
@@ -154,7 +195,7 @@ body:has(#slide-leaderboard.tv-slide--active) .tv-topbar {
 .constellation-lead-num {
     font-size: 28px;
     font-weight: 900;
-    color: var(--first-team-color, #10b981);
+    color: #fff !important;
     font-family: 'Plus Jakarta Sans', monospace;
     line-height: 1;
 }
@@ -163,7 +204,7 @@ body:has(#slide-leaderboard.tv-slide--active) .tv-topbar {
     font-size: 9px;
     font-weight: 900;
     letter-spacing: 0.12em;
-    color: #475569;
+    color: rgba(255, 255, 255, 0.6) !important;
 }
 
 /* Card Point Gap Pills */
@@ -183,60 +224,44 @@ body:has(#slide-leaderboard.tv-slide--active) .tv-topbar {
 }
 
 .orbital-gap-pill.chaser-gap {
-    background: linear-gradient(135deg, rgba(15, 23, 42, 0.07) 0%, rgba(15, 23, 42, 0.02) 100%);
-    border: 1px solid rgba(15, 23, 42, 0.12);
-    color: rgba(255, 255, 255, 0.7);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: rgba(255, 255, 255, 0.85);
 }
 
-/* 4 Quadrant Cards - Responsive Flex/Podium overhaul */
+/* 4 Quadrant Cards - Absolutely Orbiting around center */
 .orbital-card {
-    position: relative !important;
-    top: auto !important;
-    bottom: auto !important;
-    left: auto !important;
-    right: auto !important;
-    transform: none !important;
-    width: 290px !important;
-    height: 350px !important;
-    border-radius: 24px;
-    padding: 28px 24px;
+    position: absolute !important;
+    width: 320px !important;
+    height: 240px !important;
+    border-radius: 26px !important;
+    padding: 26px !important;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    background: 
-        linear-gradient(
-            135deg, 
-            rgba(15, 23, 42, 0.92) 0%, 
-            rgba(15, 23, 42, 0.82) 55%, 
-            color-mix(in srgb, var(--accent-color, #10b981) 18%, rgba(15, 23, 42, 0.9)) 100%
-        );
-    backdrop-filter: blur(30px);
-    -webkit-backdrop-filter: blur(30px);
-    border: 2px solid color-mix(in srgb, var(--accent-color, #10b981) 45%, rgba(255, 255, 255, 0.15));
+    background: linear-gradient(135deg, #070c18 0%, color-mix(in srgb, var(--accent-color, #10b981) 12%, #03050a) 100%) !important;
+    backdrop-filter: blur(35px);
+    -webkit-backdrop-filter: blur(35px);
+    border: 2.5px solid var(--accent-color, #10b981) !important;
     box-shadow: 
-        0 20px 50px -10px rgba(0, 0, 0, 0.55),
-        inset 0 0 20px rgba(255,255,255,0.03);
+        0 25px 55px rgba(0, 0, 0, 0.85),
+        0 0 35px color-mix(in srgb, var(--accent-color, #10b981) 22%, transparent),
+        inset 0 0 20px rgba(255, 255, 255, 0.02) !important;
     overflow: hidden;
     z-index: 5;
     box-sizing: border-box;
     transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* Top Accent Glow Bar */
-.orbital-card::before {
+/* Internal Glow Backplane */
+.orbital-card::after {
     content: '';
     position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 5px;
-    background: linear-gradient(
-        90deg, 
-        transparent 0%,
-        var(--accent-color, #10b981) 50%, 
-        transparent 100%
-    );
-    box-shadow: 0 0 14px var(--accent-color, #10b981);
+    inset: -50%;
+    background: radial-gradient(circle at center, color-mix(in srgb, var(--accent-color, #10b981) 14%, transparent) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.85;
 }
 
 /* Slide Entrance & Exiting Transitions */
@@ -264,29 +289,29 @@ body:has(#slide-leaderboard.tv-slide--active) .tv-topbar {
     z-index: 1;
 }
 
-/* Podium Heights & Orders (Silver, Gold, Bronze, Runner-up) */
+/* Orbit Node Positioning */
 .orbital-card[data-pos="1"] {
-    order: 2 !important;
-    height: 390px !important;
-    border: 2.5px solid #ffd700 !important;
-    box-shadow: 
-        0 25px 60px rgba(0, 0, 0, 0.6),
-        0 0 40px color-mix(in srgb, var(--accent-color, #10b981) 40%, transparent) !important;
+    top: 30px !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
 }
 
 .orbital-card[data-pos="2"] {
-    order: 1 !important;
-    height: 350px !important;
+    top: 50% !important;
+    right: 20px !important;
+    transform: translateY(-50%) !important;
 }
 
 .orbital-card[data-pos="3"] {
-    order: 3 !important;
-    height: 330px !important;
+    top: 50% !important;
+    left: 20px !important;
+    transform: translateY(-50%) !important;
 }
 
 .orbital-card[data-pos="4"] {
-    order: 4 !important;
-    height: 300px !important;
+    bottom: 30px !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
 }
 
 /* Card Header */
@@ -300,14 +325,43 @@ body:has(#slide-leaderboard.tv-slide--active) .tv-topbar {
 }
 
 .orbital-rank-index {
-    font-size: 24px;
+    font-size: 13px !important;
     font-weight: 900;
-    color: rgba(255, 255, 255, 0.85);
-    letter-spacing: -0.02em;
-    margin-left: auto;
+    padding: 5px 12px !important;
+    border-radius: 20px !important;
     font-family: 'Outfit', sans-serif;
-    display: flex;
+    display: inline-flex;
     align-items: center;
+    gap: 6px;
+    text-transform: uppercase;
+    margin-left: auto;
+}
+
+.orbital-card[data-pos="1"] .orbital-rank-index {
+    background: rgba(251, 191, 36, 0.18) !important;
+    border: 1.5px solid #fbbf24 !important;
+    color: #fef08a !important;
+    box-shadow: 0 0 15px rgba(251, 191, 36, 0.25) !important;
+}
+
+.orbital-card[data-pos="2"] .orbital-rank-index {
+    background: rgba(203, 213, 225, 0.15) !important;
+    border: 1.5px solid #cbd5e1 !important;
+    color: #f1f5f9 !important;
+    box-shadow: 0 0 12px rgba(203, 213, 225, 0.15) !important;
+}
+
+.orbital-card[data-pos="3"] .orbital-rank-index {
+    background: rgba(217, 119, 6, 0.15) !important;
+    border: 1.5px solid #d97706 !important;
+    color: #ffedd5 !important;
+    box-shadow: 0 0 12px rgba(217, 119, 6, 0.12) !important;
+}
+
+.orbital-card[data-pos="4"] .orbital-rank-index {
+    background: rgba(56, 189, 248, 0.12) !important;
+    border: 1.5px solid #38bdf8 !important;
+    color: #e0f2fe !important;
 }
 
 /* Card Main Title */
@@ -324,6 +378,7 @@ body:has(#slide-leaderboard.tv-slide--active) .tv-topbar {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    text-transform: uppercase;
 }
 
 /* Card Score Row */
@@ -336,10 +391,10 @@ body:has(#slide-leaderboard.tv-slide--active) .tv-topbar {
 }
 
 .orbital-score-digit {
-    font-size: 68px;
+    font-size: 64px;
     font-weight: 900;
-    color: var(--accent-color, #10b981);
-    text-shadow: 0 0 25px color-mix(in srgb, var(--accent-color, #10b981) 40%, transparent);
+    color: #ffffff !important;
+    text-shadow: 0 0 20px var(--accent-color, #10b981) !important;
     font-family: 'Plus Jakarta Sans', monospace;
     line-height: 1;
 }
@@ -361,14 +416,14 @@ body:has(#slide-leaderboard.tv-slide--active) .tv-topbar {
     display: flex;
     align-items: center;
     gap: 18px;
-    background: rgba(15, 23, 42, 0.9);
+    background: rgba(10, 15, 30, 0.95) !important;
     backdrop-filter: blur(25px);
     -webkit-backdrop-filter: blur(25px);
-    border: 1.5px solid rgba(255, 255, 255, 0.12);
+    border: 1.5px solid rgba(255, 255, 255, 0.12) !important;
     padding: 10px 28px;
     border-radius: 30px;
     z-index: 20;
-    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6);
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6) !important;
 }
 
 .orbital-extra-team-item {
@@ -401,8 +456,6 @@ body:has(#slide-leaderboard.tv-slide--active) .tv-topbar {
         max-height: none !important;
         padding: 110px 16px 120px 16px !important;
         overflow-y: auto !important;
-        perspective: none !important;
-        transform-style: flat !important;
     }
 
     #slide-leaderboard {
@@ -452,15 +505,9 @@ body:has(#slide-leaderboard.tv-slide--active) .tv-topbar {
         box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4) !important;
     }
 
-    .orbital-card[data-pos="1"] {
-        order: 1 !important;
-        height: auto !important;
-        border: 2px solid #ffd700 !important;
-        box-shadow: 0 8px 24px rgba(255, 215, 0, 0.15), 0 8px 24px rgba(0,0,0,0.4) !important;
+    .orbital-card::after {
+        display: none !important;
     }
-    .orbital-card[data-pos="2"] { order: 2 !important; height: auto !important; }
-    .orbital-card[data-pos="3"] { order: 3 !important; height: auto !important; }
-    .orbital-card[data-pos="4"] { order: 4 !important; height: auto !important; }
 
     .orbital-card-dark-wave {
         display: none !important;
@@ -522,7 +569,6 @@ body:has(#slide-leaderboard.tv-slide--active) .tv-topbar {
         box-shadow: none !important;
         background: rgba(15, 23, 42, 0.7) !important;
         border: 1px solid rgba(255, 255, 255, 0.08) !important;
-        order: 5 !important;
         gap: 12px 16px !important;
     }
 
@@ -530,8 +576,32 @@ body:has(#slide-leaderboard.tv-slide--active) .tv-topbar {
         font-size: 12px !important;
     }
 }
+
+/* ──────────────── Short Viewport Scaling Overhaul ──────────────── */
+@media (max-height: 850px) and (min-width: 1025px) {
+    .orbital-stage-container {
+        transform: scale(0.72) !important;
+        margin-top: -30px !important;
+    }
+    .orbital-extra-teams-bar {
+        bottom: 15px !important;
+    }
+}
+@media (max-height: 700px) and (min-width: 1025px) {
+    .orbital-stage-container {
+        transform: scale(0.58) !important;
+        margin-top: -65px !important;
+    }
+    .orbital-extra-teams-bar {
+        bottom: 8px !important;
+    }
+}
 </style>
 
+<div class="leaderboard-header">
+    <h1 class="leaderboard-title">CHAMPIONSHIP STANDINGS</h1>
+    <span class="leaderboard-subtitle">LIVE POINTS TABLE</span>
+</div>
 <div class="tv-leaderboard-stage-root" data-leaderboard data-leaderboard-stage>
     <!-- Dynamic Leaderboard Stage rendered by live-display.js -->
 </div>

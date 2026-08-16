@@ -831,26 +831,26 @@
         // 3. Precision Broadcast Cards Entrance (Subtle Smooth Slides)
         if (card1) {
             gsap.fromTo(card1, 
-                { y: -45, opacity: 0 }, 
-                { y: 0, opacity: 1, duration: 0.7, delay: 0.08, ease: 'power3.out' }
+                { y: -60, opacity: 0 }, 
+                { y: 0, opacity: 1, duration: 0.8, delay: 0.08, ease: 'power3.out' }
             );
         }
         if (card2) {
             gsap.fromTo(card2, 
-                { x: 45, opacity: 0 }, 
-                { x: 0, opacity: 1, duration: 0.7, delay: 0.16, ease: 'power3.out' }
+                { x: 60, opacity: 0 }, 
+                { x: 0, opacity: 1, duration: 0.8, delay: 0.16, ease: 'power3.out' }
             );
         }
         if (card3) {
             gsap.fromTo(card3, 
-                { x: -45, opacity: 0 }, 
-                { x: 0, opacity: 1, duration: 0.7, delay: 0.24, ease: 'power3.out' }
+                { x: -60, opacity: 0 }, 
+                { x: 0, opacity: 1, duration: 0.8, delay: 0.24, ease: 'power3.out' }
             );
         }
         if (card4) {
             gsap.fromTo(card4, 
-                { y: 45, opacity: 0 }, 
-                { y: 0, opacity: 1, duration: 0.7, delay: 0.32, ease: 'power3.out' }
+                { y: 60, opacity: 0 }, 
+                { y: 0, opacity: 1, duration: 0.8, delay: 0.32, ease: 'power3.out' }
             );
         }
 
@@ -877,7 +877,7 @@
             });
         });
 
-        // 6. Subtle Micro-Hovering Idle Dynamics
+        // 6. Subtle Micro-Hovering Idle Dynamics (Constellation Float)
         if (card1) gsap.to(card1, { y: '-=4', duration: 3.8, ease: 'sine.inOut', yoyo: true, repeat: -1, delay: 0.8 });
         if (card2) gsap.to(card2, { x: '+=4', duration: 4.2, ease: 'sine.inOut', yoyo: true, repeat: -1, delay: 1.0 });
         if (card3) gsap.to(card3, { x: '-=4', duration: 4.0, ease: 'sine.inOut', yoyo: true, repeat: -1, delay: 1.2 });
@@ -885,10 +885,7 @@
     }
 
     function scheduleRowsPerPage() {
-        const height = window.innerHeight || 1080;
-        if (height < 700) return 4;
-        if (height < 900) return 5;
-        return 6;
+        return 8;
     }
 
     function getScheduleStatus(item) {
@@ -940,7 +937,20 @@
     }
 
     function buildSchedulePages(scheduleData) {
-        const rows = flattenScheduleItems(scheduleData);
+        let rows = flattenScheduleItems(scheduleData);
+        
+        // Filter out past completed programs to minimize slides count,
+        // starting from the active program (or first upcoming program) minus 1 for context.
+        let activeIdx = rows.findIndex(item => item.status === 'scoring' || item.status === 'active-stage');
+        if (activeIdx === -1) {
+            activeIdx = rows.findIndex(item => item.status !== 'completed' && item.approval_status !== 'approved' && item.type !== 'break');
+        }
+        
+        if (activeIdx !== -1) {
+            const startIdx = Math.max(0, activeIdx - 1);
+            rows = rows.slice(startIdx);
+        }
+        
         state.schedule.allRows = rows;
         const pageSize = scheduleRowsPerPage();
         const pages = [];
@@ -1842,6 +1852,7 @@
 
         const slides = Array.from(document.querySelectorAll('.tv-slide'));
         els.body.classList.toggle('tv-schedule-active', normalizedKey === 'schedule');
+        els.body.classList.toggle('tv-leaderboard-active', normalizedKey === 'leaderboard');
         state.activeSlide = normalizedKey;
 
         if (window.tvBroadcastChannel) {

@@ -75,11 +75,13 @@ body.tv-intro-only #tvViewportScaler {
 
 .tv-intro-video-element {
     position: absolute;
-    inset: 0;
+    top: 0;
+    left: 0;
     width: 100%;
-    height: 100%;
+    height: 108%;
     object-fit: cover;
     z-index: 1;
+    transform: translateY(-8%); /* Crops the bottom 8% of the video where the date is shown */
 }
 </style>
 
