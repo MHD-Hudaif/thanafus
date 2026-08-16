@@ -120,11 +120,55 @@ try {
   <link href="https://fonts.googleapis.com/css2?family=Ubuntu:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400;1,500;1,700&family=Plus+Jakarta+Sans:wght@700;800;900&family=Outfit:wght@700;800&family=Fredoka:wght@600;700&family=Amiri:wght@400;700&family=Cairo:wght@400;600;700&family=Reem+Kufi:wght@400;500;600;700&family=Tajawal:wght@400;500;700&family=Dosis:wght@300..800&family=Manrope:wght@400..800&family=Noto+Naskh+Arabic:wght@500..700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="assets/css/site.css">
   <link rel="stylesheet" href="assets/css/modern.css">
+  <script>
+    window.isLowEndDevice = 
+        (navigator.hardwareConcurrency && navigator.hardwareConcurrency < 4) ||
+        (navigator.deviceMemory && navigator.deviceMemory < 4) ||
+        /SmartTV|GoogleTV|AppleTV|HbbTV|Tizen|WebOS|Android 9|Android 8|Android 7|Android 6|Android 5/i.test(navigator.userAgent) ||
+        window.location.search.includes('perf=low');
+    if (window.isLowEndDevice) {
+        document.documentElement.classList.add('low-perf-device');
+    }
+  </script>
+  <style>
+    /* Low performance device overrides */
+    .low-perf-device .home-video-bg,
+    .low-perf-device [data-background-video],
+    .low-perf-device .orb,
+    .low-perf-device .ambient-glow {
+        display: none !important;
+    }
+    .low-perf-device .glass-card,
+    .low-perf-device .site-header,
+    .low-perf-device .home-card,
+    .low-perf-device .mobile-tabbar {
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+        background: #121513 !important;
+        box-shadow: none !important;
+        border-color: rgba(255, 255, 255, 0.1) !important;
+    }
+    .low-perf-device * {
+        text-shadow: none !important;
+        box-shadow: none !important;
+        transition: none !important;
+    }
+  </style>
 </head>
 <body class="page-home">
   <main>
     <div class="home-video-bg" aria-hidden="true">
-      <video autoplay muted loop playsinline preload="metadata" data-background-video data-src="assets/intro3.mp4" style="--video-brightness:.25"></video>
+      <video autoplay muted loop playsinline preload="metadata" data-background-video data-src="assets/intro3.mp4" style="--video-brightness:.25" id="homeBgVideo"></video>
+      <script>
+        if (window.isLowEndDevice) {
+            const v = document.getElementById('homeBgVideo');
+            if (v) {
+                v.removeAttribute('autoplay');
+                try { v.pause(); } catch(_) {}
+                v.style.display = 'none';
+            }
+        }
+      </script>
     </div>
     <div id="react-root"></div>
   </main>

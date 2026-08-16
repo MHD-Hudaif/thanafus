@@ -57,6 +57,38 @@ $eventDateFormatted = !empty($event['start_date'])
     <link rel="stylesheet" href="assets/mobile-app.css?v=<?= time() ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
+    <script>
+        window.isLowEndDevice = 
+            (navigator.hardwareConcurrency && navigator.hardwareConcurrency < 4) ||
+            (navigator.deviceMemory && navigator.deviceMemory < 4) ||
+            /SmartTV|GoogleTV|AppleTV|HbbTV|Tizen|WebOS|Android 9|Android 8|Android 7|Android 6|Android 5/i.test(navigator.userAgent) ||
+            window.location.search.includes('perf=low');
+        if (window.isLowEndDevice) {
+            document.documentElement.classList.add('low-perf-device');
+        }
+    </script>
+    <style>
+        /* Low performance device overrides */
+        .low-perf-device .ambient-glow,
+        .low-perf-device .orb {
+            display: none !important;
+        }
+        .low-perf-device .glass-card,
+        .low-perf-device .site-header,
+        .low-perf-device .download-card,
+        .low-perf-device header {
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+            background: #0f1c12 !important;
+            box-shadow: none !important;
+            border-color: rgba(255, 255, 255, 0.1) !important;
+        }
+        .low-perf-device * {
+            text-shadow: none !important;
+            box-shadow: none !important;
+            transition: none !important;
+        }
+    </style>
     <style>
         :root {
           --brand-green: #6f9e7a;

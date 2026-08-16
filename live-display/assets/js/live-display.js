@@ -2,6 +2,17 @@
 (() => {
     'use strict';
 
+    const isLowEndDevice = 
+        (navigator.hardwareConcurrency && navigator.hardwareConcurrency < 4) ||
+        (navigator.deviceMemory && navigator.deviceMemory < 4) ||
+        /SmartTV|GoogleTV|AppleTV|HbbTV|Tizen|WebOS|Android 9|Android 8|Android 7|Android 6|Android 5/i.test(navigator.userAgent) ||
+        window.location.search.includes('perf=low');
+
+    if (isLowEndDevice) {
+        document.documentElement.classList.add('low-perf-device');
+        window.isFlowCanvasPaused = true;
+    }
+
     const state = {
         activeSlide: 'intro',
         is_playing: true,
@@ -180,6 +191,10 @@
     function initFlowCanvas() {
         const canvas = document.getElementById('flowCanvas');
         if (!canvas) return;
+        if (isLowEndDevice) {
+            canvas.style.display = 'none';
+            return;
+        }
         const ctx = canvas.getContext('2d');
 
         let width = canvas.width = window.innerWidth;
@@ -371,6 +386,11 @@
         }
         const bgVideo = document.getElementById('tvBgVideo');
         if (!bgVideo) return;
+        if (isLowEndDevice) {
+            bgVideo.style.display = 'none';
+            try { bgVideo.pause(); } catch (_) {}
+            return;
+        }
         const targetSrc = getTeamVideoSrc(teamColor);
         if (bgVideo.getAttribute('data-current-src') !== targetSrc) {
             bgVideo.setAttribute('data-current-src', targetSrc);
@@ -1855,17 +1875,19 @@
         const bgVideo = document.getElementById('tvBgVideo');
         const isIntro = (normalizedKey === 'intro');
         window.isIntroSlideActive = isIntro;
-        window.isFlowCanvasPaused = isIntro;
+        window.isFlowCanvasPaused = isIntro || isLowEndDevice;
 
         if (bgVideo) {
-            if (isIntro) {
+            if (isIntro || isLowEndDevice) {
                 if (!bgVideo.paused) {
                     try { bgVideo.pause(); } catch (_) {}
                 }
+                bgVideo.style.display = 'none';
             } else {
                 if (bgVideo.paused) {
                     try { bgVideo.play().catch(() => {}); } catch (_) {}
                 }
+                bgVideo.style.display = 'block';
             }
         }
 
@@ -2068,6 +2090,13 @@
     }
 
     function boot() {
+        if (isLowEndDevice) {
+            const bgVideo = document.getElementById('tvBgVideo');
+            if (bgVideo) {
+                bgVideo.style.display = 'none';
+                try { bgVideo.pause(); } catch (_) {}
+            }
+        }
         startClock();
         initParticles();
         initViewportScaler();

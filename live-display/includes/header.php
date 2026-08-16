@@ -42,6 +42,16 @@ $initialBgVideoSrc = tv_get_video_src($headerFirstColor);
     <?php if (!defined('LIVE_DISPLAY_STAGE')): ?>
         <script>window.IS_SINGLE_PAGE = true;</script>
     <?php endif; ?>
+    <script>
+        window.isLowEndDevice = 
+            (navigator.hardwareConcurrency && navigator.hardwareConcurrency < 4) ||
+            (navigator.deviceMemory && navigator.deviceMemory < 4) ||
+            /SmartTV|GoogleTV|AppleTV|HbbTV|Tizen|WebOS|Android 9|Android 8|Android 7|Android 6|Android 5/i.test(navigator.userAgent) ||
+            window.location.search.includes('perf=low');
+        if (window.isLowEndDevice) {
+            document.documentElement.classList.add('low-perf-device');
+        }
+    </script>
     <style>
         .tv-app { animation: tv-page-in .5s ease both; }
         @keyframes tv-page-in {
@@ -53,6 +63,22 @@ $initialBgVideoSrc = tv_get_video_src($headerFirstColor);
         }
         @keyframes tv-page-out {
             to { opacity: 0; transform: scale(0.985); }
+        }
+        
+        /* Low performance device overrides */
+        .low-perf-device #flowCanvas,
+        .low-perf-device #tvBgVideo,
+        .low-perf-device .glow-orb {
+            display: none !important;
+        }
+        .low-perf-device .tv-backdrop {
+            background: radial-gradient(circle at 50% 50%, #0c1220 0%, #05080f 100%) !important;
+        }
+        .low-perf-device * {
+            text-shadow: none !important;
+            box-shadow: none !important;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
         }
     </style>
 </head>
