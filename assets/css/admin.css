@@ -4043,6 +4043,33 @@ body.modal-open {
     flex-shrink: 0 !important;
 }
 
+/* Premium sleek styles for form elements inside modal-overlay */
+.modal-overlay .input-group input,
+.modal-overlay .input-group select,
+.modal-overlay .input-group textarea,
+.modal-overlay #eventStatusSelect,
+.modal-overlay #eventColorEntry {
+    width: 100% !important;
+    background: rgba(15, 23, 42, 0.6) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    color: #fff !important;
+    padding: 12px 14px !important;
+    border-radius: 8px !important;
+    font-size: 14px !important;
+    outline: none !important;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    box-sizing: border-box !important;
+}
+
+.modal-overlay .input-group input:focus,
+.modal-overlay .input-group select:focus,
+.modal-overlay .input-group textarea:focus,
+.modal-overlay #eventColorEntry:focus {
+    border-color: #10b981 !important;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15) !important;
+    background: rgba(15, 23, 42, 0.85) !important;
+}
+
 /* GPU Optimization: Remove heavy backdrop blurs on mobile and low-power displays to prevent lag */
 @media (max-width: 920px) {
     .event-top-nav,

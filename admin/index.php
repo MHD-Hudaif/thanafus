@@ -595,6 +595,9 @@ document.addEventListener('click', (e) => {
         document.getElementById('eventScoreboard').value = String(event.scoreboard_enabled) === '1' ? '1' : '0';
         const formatDateTime = (dtStr) => {
             if (!dtStr) return '';
+            if (dtStr.length === 10) {
+                return dtStr + 'T00:00';
+            }
             return dtStr.replace(' ', 'T').substring(0, 16);
         };
         document.getElementById('eventStart').value = formatDateTime(event.start_date);

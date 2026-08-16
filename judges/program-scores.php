@@ -467,11 +467,20 @@ if (isset($_GET['mode']) && $_GET['mode'] === 'emcee') {
                             <?php
                                 $chestNo = !empty($entry['chest_number']) ? $entry['chest_number'] : $entry['entry_number'];
                                 $formattedChest = is_numeric($chestNo) ? str_pad((string)$chestNo, 3, '0', STR_PAD_LEFT) : (string)$chestNo;
+                                $entryName = $entry['entry_name'] ?: 'Unnamed Entry';
+                                $isGroup = (($program['program_type'] ?? '') === 'group' || !empty($program['only_team_marks']));
+                                if ($isGroup) {
+                                    if (str_contains($entryName, ' - ')) {
+                                        $parts = explode(' - ', $entryName);
+                                        $entryName = trim(end($parts));
+                                    }
+                                    $entryName = preg_replace('/\s*\(\d+\)\s*$/', '', $entryName);
+                                }
                             ?>
                             <tr>
                                 <td class="order-col"><?= $orderIndex++ ?></td>
                                 <td class="chest-col">#<?= e($formattedChest) ?></td>
-                                <td class="name-col"><?= e($entry['entry_name'] ?: 'Unnamed Entry') ?></td>
+                                <td class="name-col"><?= e($entryName) ?></td>
                                 <td class="team-col"><?= e($entry['team_name']) ?></td>
                                 <td class="check-col"><span class="check-box-square"></span></td>
                             </tr>

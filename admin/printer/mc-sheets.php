@@ -358,6 +358,8 @@ if ($action === 'print' && $activeEvent) {
                                         $parts = explode(' - ', $rawEntryName);
                                         $cleanGroupName = trim(end($parts));
                                     }
+                                    // Remove trailing counts in parentheses (e.g. " (2)", "(3)")
+                                    $cleanGroupName = preg_replace('/\s*\(\d+\)\s*$/', '', $cleanGroupName);
                                 ?>
                                 <tr>
                                     <?php if ($isGroup): ?>
