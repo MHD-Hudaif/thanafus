@@ -81,7 +81,10 @@ body.tv-intro-only #tvViewportScaler {
     height: 108%;
     object-fit: cover;
     z-index: 1;
-    transform: translateY(-8%); /* Crops the bottom 8% of the video where the date is shown */
+    transform: translate3d(0, -8%, 0);
+    will-change: transform;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
 }
 </style>
 

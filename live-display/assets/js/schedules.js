@@ -156,7 +156,7 @@
             const items = rawItems.map((item, idx) => ({
                 ...item,
                 daily_program_no: item.daily_program_no || (idx + 1)
-            }));
+            })).filter(item => item.type !== 'break' && item.kind !== 'break');
             const chunks = chunkItems(items, pageSize);
 
             chunks.forEach((chunk, idx) => {

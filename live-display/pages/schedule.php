@@ -239,36 +239,12 @@ body:has(#slide-schedule.tv-slide--active) .tv-topbar {
     font-weight: 900;
     letter-spacing: 0.02em;
     text-transform: uppercase;
-    background: color-mix(in srgb, var(--badge-team-color, #71717a) 15%, #0f172a);
-    color: #fff;
-    border: 1.5px solid var(--badge-team-color, #71717a);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+    background: var(--badge-team-color, #71717a) !important;
+    color: #fff !important;
+    border: 1.5px solid rgba(255, 255, 255, 0.25) !important;
+    box-shadow: 0 0 12px color-mix(in srgb, var(--badge-team-color, #71717a) 40%, transparent), 0 4px 10px rgba(0, 0, 0, 0.3) !important;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
     white-space: nowrap;
-}
-.rank-pill.rank-1 {
-    border-color: #fbbf24;
-    background: rgba(251, 191, 36, 0.18);
-    box-shadow: 0 0 15px rgba(251, 191, 36, 0.3);
-    color: #fef08a;
-}
-.rank-pill.rank-2 {
-    border-color: #cbd5e1;
-    background: rgba(203, 213, 225, 0.15);
-    box-shadow: 0 0 12px rgba(203, 213, 225, 0.2);
-    color: #f1f5f9;
-}
-.rank-pill.rank-3 {
-    border-color: #b45309;
-    background: rgba(180, 83, 9, 0.15);
-    box-shadow: 0 0 12px rgba(180, 83, 9, 0.2);
-    color: #ffedd5;
-}
-.rank-pill.grade-a {
-    border-color: #34d399;
-    background: rgba(52, 211, 153, 0.15);
-    box-shadow: 0 0 12px rgba(52, 211, 153, 0.2);
-    color: #d1fae5;
 }
 .no-results-placeholder {
     color: rgba(255, 255, 255, 0.15);

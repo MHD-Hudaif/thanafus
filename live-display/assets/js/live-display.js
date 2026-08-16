@@ -331,12 +331,14 @@
         }
 
         function animate() {
-            ctx.clearRect(0, 0, width, height);
-            drawFlowLines();
-            shapes.forEach(shape => {
-                shape.update();
-                shape.draw();
-            });
+            if (!window.isFlowCanvasPaused) {
+                ctx.clearRect(0, 0, width, height);
+                drawFlowLines();
+                shapes.forEach(shape => {
+                    shape.update();
+                    shape.draw();
+                });
+            }
             requestAnimationFrame(animate);
         }
 
@@ -373,7 +375,9 @@
         if (bgVideo.getAttribute('data-current-src') !== targetSrc) {
             bgVideo.setAttribute('data-current-src', targetSrc);
             bgVideo.src = targetSrc;
-            bgVideo.play().catch(() => {});
+            if (!window.isIntroSlideActive) {
+                bgVideo.play().catch(() => {});
+            }
         }
     }
 
@@ -382,18 +386,11 @@
 
     function playNextIntroVideo() {
         const videoEl = document.getElementById('introVideoPlayer') || document.querySelector('[data-intro-video]');
-        const videos = window.TV_INTRO_VIDEOS;
-        if (!videoEl || !Array.isArray(videos) || videos.length === 0) return;
+        if (!videoEl) return;
 
-        const src = videos[introVideoIndex % videos.length];
-        introVideoIndex = (introVideoIndex + 1) % videos.length;
-
-        if (videoEl.src !== src) {
-            videoEl.src = src;
-            videoEl.load();
+        if (videoEl.paused) {
+            videoEl.play().catch(() => {});
         }
-
-        videoEl.play().catch(() => {});
     }
 
     function triggerIntroAnimations() {
@@ -938,6 +935,8 @@
 
     function buildSchedulePages(scheduleData) {
         let rows = flattenScheduleItems(scheduleData);
+        // Filter out breaks
+        rows = rows.filter(item => item.type !== 'break' && item.kind !== 'break');
         
         // Filter out past completed programs to minimize slides count,
         // starting from the active program (or first upcoming program) minus 1 for context.
@@ -1085,23 +1084,10 @@
                 dateToDayMap[d] = `Day ${idx + 1}`;
             });
 
-            // Sync Header Day Badge for the current page
-            const pageDays = [...new Set(page.map(item => {
-                const d = item.start_time ? item.start_time.split(' ')[0] : '';
-                return dateToDayMap[d] || null;
-            }))].filter(Boolean);
-
+            // Sync Header Day Badge for the current page (hidden as requested)
             const dayBadgeEl = els.schedule?.querySelector('[data-schedule-day-badge]');
             if (dayBadgeEl) {
-                if (pageDays.length === 1) {
-                    dayBadgeEl.textContent = pageDays[0].toUpperCase();
-                    dayBadgeEl.style.display = 'inline-block';
-                } else if (pageDays.length > 1) {
-                    dayBadgeEl.textContent = `${pageDays[0].toUpperCase()} – ${pageDays[pageDays.length - 1].toUpperCase()}`;
-                    dayBadgeEl.style.display = 'inline-block';
-                } else {
-                    dayBadgeEl.style.display = 'none';
-                }
+                dayBadgeEl.style.display = 'none';
             }
 
             let html = '';
@@ -1151,16 +1137,16 @@
                         let badgeText = '';
                         let badgeClass = 'rank-pill';
                         if (r.rank === 1) {
-                            badgeText = `1st: ${escapeHtml(r.team_short)}`;
+                            badgeText = `1st`;
                             badgeClass += ' rank-1';
                         } else if (r.rank === 2) {
-                            badgeText = `2nd: ${escapeHtml(r.team_short)}`;
+                            badgeText = `2nd`;
                             badgeClass += ' rank-2';
                         } else if (r.rank === 3) {
-                            badgeText = `3rd: ${escapeHtml(r.team_short)}`;
+                            badgeText = `3rd`;
                             badgeClass += ' rank-3';
                         } else if (r.grade === 'A') {
-                            badgeText = `A: ${escapeHtml(r.team_short)}`;
+                            badgeText = `A`;
                             badgeClass += ' grade-a';
                         } else {
                             return '';
@@ -1181,7 +1167,7 @@
                 const secBadge = secName ? `<span class="program-sec-tag">${escapeHtml(secName)}</span>` : '';
 
                 html += `
-                    <div class="${rowClasses.join(' ')}">
+                    <div class="${rowClasses.join(' ')}" style="opacity: 0;">
                         <div class="schedule-card-accent"></div>
                         <div class="schedule-card-program-col">
                             <span class="schedule-index-inline ${indexClass}">${rowNum}</span>
@@ -1207,30 +1193,40 @@
                 const rows = pageEl.querySelectorAll('.program-row');
                 gsap.fromTo(rows, {
                     opacity: 0,
-                    x: 35,
-                    scale: 0.99
+                    x: 40,
+                    filter: 'blur(4px)'
                 }, {
                     opacity: 1,
                     x: 0,
-                    scale: 1,
-                    duration: 0.5,
-                    stagger: 0.04,
+                    filter: 'blur(0px)',
+                    duration: 0.85,
+                    stagger: 0.075,
                     ease: 'power2.out',
                     onComplete: () => {
-                        gsap.set(rows, { clearProps: 'transform,opacity' });
+                        gsap.set(rows, { clearProps: 'transform,opacity,filter' });
                     }
                 });
+            } else {
+                const rows = pageEl.querySelectorAll('.program-row');
+                if (typeof gsap !== 'undefined') {
+                    gsap.set(rows, { clearProps: 'opacity,transform,filter' });
+                } else {
+                    rows.forEach(r => { r.style.opacity = '1'; });
+                }
             }
         };
 
         if (animateOut && typeof gsap !== 'undefined' && currentRows.length > 0) {
             gsap.to(currentRows, {
                 opacity: 0,
-                x: -35,
-                duration: 0.28,
-                stagger: 0.025,
+                x: -40,
+                filter: 'blur(4px)',
+                duration: 0.4,
+                stagger: 0.045,
                 ease: 'power2.in',
-                onComplete: updateAndAnimateIn
+                onComplete: () => {
+                    setTimeout(updateAndAnimateIn, 200);
+                }
             });
         } else {
             updateAndAnimateIn();
@@ -1567,10 +1563,11 @@
             return !s || s.enabled !== false;
         }).sort();
 
-        if (!window.IS_SINGLE_PAGE && JSON.stringify(currentDomSlideKeys) !== JSON.stringify(newEnabledSlideKeys)) {
-            window.location.reload();
-            return;
-        }
+        // Commented out to prevent unprofessional page reloads/refreshes between slide changes.
+        // if (!window.IS_SINGLE_PAGE && JSON.stringify(currentDomSlideKeys) !== JSON.stringify(newEnabledSlideKeys)) {
+        //     window.location.reload();
+        //     return;
+        // }
 
         state.slides = {};
 
@@ -1855,6 +1852,23 @@
         els.body.classList.toggle('tv-leaderboard-active', normalizedKey === 'leaderboard');
         state.activeSlide = normalizedKey;
 
+        const bgVideo = document.getElementById('tvBgVideo');
+        const isIntro = (normalizedKey === 'intro');
+        window.isIntroSlideActive = isIntro;
+        window.isFlowCanvasPaused = isIntro;
+
+        if (bgVideo) {
+            if (isIntro) {
+                if (!bgVideo.paused) {
+                    try { bgVideo.pause(); } catch (_) {}
+                }
+            } else {
+                if (bgVideo.paused) {
+                    try { bgVideo.play().catch(() => {}); } catch (_) {}
+                }
+            }
+        }
+
         if (window.tvBroadcastChannel) {
             try {
                 window.tvBroadcastChannel.postMessage({ type: 'SLIDE_CHANGE', slide: normalizedKey });
@@ -2024,15 +2038,22 @@
 
         const sync = getGlobalSynchronizedState();
 
-        if (state.activeSlide !== sync.activeKey) {
+        const slideChanged = state.activeSlide !== sync.activeKey;
+        if (slideChanged) {
             setActiveSlide(sync.activeKey);
         }
 
         if (sync.activeKey === 'schedule') {
+            const pageChanged = state.schedule.currentPage !== sync.schedulePage;
             state.schedule.currentPage = sync.schedulePage;
             state.schedule.playing = true;
             updateScheduleClock();
-            renderSchedulePage(sync.schedulePage, false);
+            
+            const hasPageContent = els.schedule?.querySelector('.program-row') !== null;
+            if (slideChanged || pageChanged || !hasPageContent) {
+                const shouldAnimateOut = !slideChanged && pageChanged && hasPageContent;
+                renderSchedulePage(sync.schedulePage, shouldAnimateOut);
+            }
         }
 
         const delay = Math.max(120, sync.remainingMs + 40);
