@@ -198,6 +198,12 @@ function admin_require_active_event(PDO $pdo): array
                 $pdo->exec("ALTER TABLE musabaqa_stage_types ADD COLUMN category VARCHAR(50) NOT NULL DEFAULT 'on_stage'");
                 $pdo->exec("UPDATE musabaqa_stage_types SET category = 'off_stage' WHERE name LIKE '%off%' OR name = 'Off Stage'");
             } catch (Throwable $e) {}
+
+            // Auto-migrate musabaqa_events to support DATETIME for start_date and end_date
+            try {
+                $pdo->exec("ALTER TABLE musabaqa_events MODIFY start_date DATETIME DEFAULT NULL");
+                $pdo->exec("ALTER TABLE musabaqa_events MODIFY end_date DATETIME DEFAULT NULL");
+            } catch (Throwable $e) {}
             
             $migrated = true;
         } catch (Throwable $e) {}

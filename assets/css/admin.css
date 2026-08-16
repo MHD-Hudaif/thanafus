@@ -3986,6 +3986,7 @@ body.modal-open {
     box-sizing: border-box;
     overflow-y: auto !important;
     z-index: 100000 !important;
+    overscroll-behavior: contain !important;
 }
 
 .modal-overlay.active {
@@ -4002,6 +4003,9 @@ body.modal-open {
     display: flex !important;
     flex-direction: column !important;
     overflow: hidden !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    border-radius: 16px !important;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7) !important;
 }
 
 .modal-overlay .modal-box form,
@@ -4010,6 +4014,28 @@ body.modal-open {
     overflow-y: auto !important;
     flex: 1 1 auto !important;
     max-height: 100% !important;
+    overscroll-behavior: contain !important;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+}
+
+.modal-overlay .modal-box form::-webkit-scrollbar,
+.modal-overlay .modal-content form::-webkit-scrollbar,
+.modal-overlay .modal-body::-webkit-scrollbar {
+    width: 6px;
+}
+
+.modal-overlay .modal-box form::-webkit-scrollbar-thumb,
+.modal-overlay .modal-content form::-webkit-scrollbar-thumb,
+.modal-overlay .modal-body::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 99px;
+}
+
+.modal-overlay .modal-box form::-webkit-scrollbar-track,
+.modal-overlay .modal-content form::-webkit-scrollbar-track,
+.modal-overlay .modal-body::-webkit-scrollbar-track {
+    background: transparent;
 }
 
 .modal-overlay .modal-header,

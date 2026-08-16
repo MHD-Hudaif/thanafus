@@ -28,6 +28,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $status = in_array($_POST['status'] ?? 'draft', ['draft', 'active', 'completed'], true) ? $_POST['status'] : 'draft';
     $startDate = trim((string)($_POST['start_date'] ?? '')) ?: null;
     $endDate = trim((string)($_POST['end_date'] ?? '')) ?: null;
+    if ($startDate) {
+        $startDate = str_replace('T', ' ', $startDate);
+    }
+    if ($endDate) {
+        $endDate = str_replace('T', ' ', $endDate);
+    }
     $introEnabled = trim((string)($_POST['intro_enabled'] ?? '1')) === '1' ? 1 : 0;
     $scoreboardEnabled = trim((string)($_POST['scoreboard_enabled'] ?? '1')) === '1' ? 1 : 0;
 
@@ -187,8 +193,8 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
                 <div class="event-title"><?= e($event['title']) ?></div>
                 <div class="event-description"><?= e($event['description'] ?: 'No description') ?></div>
                 <div class="event-meta">
-                    <div class="event-meta-item"><span>Start</span><strong><?= e($event['start_date'] ?: '-') ?></strong></div>
-                    <div class="event-meta-item"><span>End</span><strong><?= e($event['end_date'] ?: '-') ?></strong></div>
+                    <div class="event-meta-item"><span>Start</span><strong><?= $event['start_date'] ? date('d M Y, h:i A', strtotime($event['start_date'])) : '-' ?></strong></div>
+                    <div class="event-meta-item"><span>End</span><strong><?= $event['end_date'] ? date('d M Y, h:i A', strtotime($event['end_date'])) : '-' ?></strong></div>
                 </div>
                 <div class="event-actions">
                     <a class="btn btn-success btn-sm" href="<?= app_url('/admin/utilities/set-selected-event.php') ?>?id=<?= (int)$event['id'] ?>" title="Open and manage this event in Admin Panel">
@@ -287,8 +293,8 @@ require_once __DIR__ . '/../includes/sidebar.php';
                     <div class="event-title"><?= e($event['title']) ?></div>
                     <div class="event-description"><?= e($event['description'] ?: 'No description') ?></div>
                     <div class="event-meta">
-                        <div class="event-meta-item"><span>Start</span><strong><?= e($event['start_date'] ?: '-') ?></strong></div>
-                        <div class="event-meta-item"><span>End</span><strong><?= e($event['end_date'] ?: '-') ?></strong></div>
+                        <div class="event-meta-item"><span>Start</span><strong><?= $event['start_date'] ? date('d M Y, h:i A', strtotime($event['start_date'])) : '-' ?></strong></div>
+                        <div class="event-meta-item"><span>End</span><strong><?= $event['end_date'] ? date('d M Y, h:i A', strtotime($event['end_date'])) : '-' ?></strong></div>
                     </div>
                     <div class="event-actions">
                         <a class="btn btn-success btn-sm" href="<?= app_url('/admin/utilities/set-selected-event.php') ?>?id=<?= (int)$event['id'] ?>" title="Open and manage this event in Admin Panel">
@@ -361,12 +367,12 @@ require_once __DIR__ . '/../includes/sidebar.php';
                     </select>
                 </div>
                 <div class="input-group">
-                    <label>Start Date</label>
-                    <input type="date" name="start_date" id="eventStart">
+                    <label>Start Date & Time</label>
+                    <input type="datetime-local" name="start_date" id="eventStart">
                 </div>
                 <div class="input-group">
-                    <label>End Date</label>
-                    <input type="date" name="end_date" id="eventEnd">
+                    <label>End Date & Time</label>
+                    <input type="datetime-local" name="end_date" id="eventEnd">
                 </div>
                 <div class="input-group full-width">
                     <label>Description</label>
@@ -587,8 +593,12 @@ document.addEventListener('click', (e) => {
         document.getElementById('eventStatusRow').classList.remove('hidden');
         document.getElementById('eventIntro').value = String(event.intro_enabled) === '1' ? '1' : '0';
         document.getElementById('eventScoreboard').value = String(event.scoreboard_enabled) === '1' ? '1' : '0';
-        document.getElementById('eventStart').value = event.start_date || '';
-        document.getElementById('eventEnd').value = event.end_date || '';
+        const formatDateTime = (dtStr) => {
+            if (!dtStr) return '';
+            return dtStr.replace(' ', 'T').substring(0, 16);
+        };
+        document.getElementById('eventStart').value = formatDateTime(event.start_date);
+        document.getElementById('eventEnd').value = formatDateTime(event.end_date);
         document.getElementById('eventDescription').value = event.description || '';
         colorSuggestionsEl.classList.remove('active');
         window.openModal('eventModal');
