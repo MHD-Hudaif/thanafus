@@ -249,21 +249,21 @@ $nextProgTime = !empty($initNextProg['start_label']) ? $initNextProg['start_labe
         z-index: 2;
     }
 
-    /* Seamlessly Blended Glass Cards with 1st Team Rank Color Detailing */
+    /* Seamlessly Blended Dark Glass Cards with 1st Team Rank Color Detailing */
     .glass-panel {
-        background: rgba(255, 255, 255, 0.82);
-        backdrop-filter: blur(40px);
-        -webkit-backdrop-filter: blur(40px);
-        border: 1.5px solid color-mix(in srgb, var(--first-team-color) 25%, rgba(255, 255, 255, 0.95));
+        background: linear-gradient(135deg, rgba(15, 23, 42, 0.88) 0%, rgba(6, 78, 59, 0.65) 100%);
+        backdrop-filter: blur(30px);
+        -webkit-backdrop-filter: blur(30px);
+        border: 1.5px solid rgba(52, 211, 153, 0.3);
         border-radius: 36px;
-        padding: 56px 64px;
+        padding: 44px 52px;
         display: flex;
         flex-direction: column;
-        justify-content: center;
+        justify-content: space-between;
         position: relative;
         overflow: hidden;
         box-sizing: border-box;
-        box-shadow: 0 24px 60px -12px rgba(0, 0, 0, 0.05);
+        box-shadow: 0 30px 70px rgba(0, 0, 0, 0.7), inset 0 0 30px rgba(16, 185, 129, 0.1);
         transition: transform 0.6s ease, border-color 1.2s ease;
     }
 
@@ -271,19 +271,55 @@ $nextProgTime = !empty($initNextProg['start_label']) ? $initNextProg['start_labe
         transform: translateY(-4px);
     }
 
-    /* Main Performing Card (Enlarged per Yellow Line Drawing) */
+    /* Main Performing Card */
     .now-performing-card {
         min-height: 560px;
         justify-content: space-between;
         animation: slide-in-main-card 1.6s cubic-bezier(0.19, 1, 0.22, 1) 0.15s both;
     }
 
+    /* Header Live Bar inside Main Card */
+    .program-stage-header-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 20px;
+        padding-bottom: 14px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    }
+
+    .stage-live-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: rgba(16, 185, 129, 0.2);
+        border: 1.5px solid rgba(16, 185, 129, 0.5);
+        color: #34d399;
+        padding: 6px 16px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 900;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        box-shadow: 0 0 15px rgba(16, 185, 129, 0.25);
+    }
+
+    .stage-live-badge .live-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #34d399;
+        box-shadow: 0 0 10px #34d399;
+        animation: live-pulse-dot 1.4s ease-in-out infinite alternate;
+    }
+
     .program-title-display {
-        font-size: 52px;
+        font-size: 48px;
         font-weight: 900;
         line-height: 1.15;
-        margin: 0 0 36px 0;
-        color: #0f172a;
+        margin: 0 0 24px 0;
+        color: #ffffff;
+        text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
         letter-spacing: -0.02em;
         text-transform: uppercase;
         font-family: 'Plus Jakarta Sans', 'Outfit', sans-serif;
@@ -291,8 +327,8 @@ $nextProgTime = !empty($initNextProg['start_label']) ? $initNextProg['start_labe
 
     .program-section-inline {
         font-weight: 800;
-        color: #475569;
-        font-size: 44px;
+        color: #a3e635;
+        font-size: 40px;
         margin-left: 10px;
         letter-spacing: 0;
         text-transform: uppercase;
@@ -301,14 +337,14 @@ $nextProgTime = !empty($initNextProg['start_label']) ? $initNextProg['start_labe
     /* Performer Showcase Box */
     .performer-hero-info {
         position: relative;
-        background: rgba(255, 255, 255, 0.88);
-        border: 1.5px solid color-mix(in srgb, var(--current-team-color, #10b981) 30%, rgba(255, 255, 255, 0.95));
-        padding: 40px 48px;
+        background: rgba(15, 23, 42, 0.7);
+        border: 1.5px solid color-mix(in srgb, var(--current-team-color, #10b981) 50%, rgba(255, 255, 255, 0.2));
+        padding: 34px 44px;
         border-radius: 28px;
         display: flex;
         align-items: center;
         justify-content: space-between;
-        box-shadow: 0 14px 35px rgba(0, 0, 0, 0.03);
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), inset 0 0 25px color-mix(in srgb, var(--current-team-color, #10b981) 15%, transparent);
         transition: border-color 1.2s ease;
     }
 
@@ -344,10 +380,11 @@ $nextProgTime = !empty($initNextProg['start_label']) ? $initNextProg['start_labe
     }
 
     .performer-name {
-        font-size: 68px;
+        font-size: 60px;
         font-weight: 900;
         margin: 0;
-        color: #0f172a;
+        color: #ffffff;
+        text-shadow: 0 2px 14px rgba(0, 0, 0, 0.6);
         letter-spacing: -0.02em;
         line-height: 1.1;
         overflow: hidden;
@@ -360,7 +397,7 @@ $nextProgTime = !empty($initNextProg['start_label']) ? $initNextProg['start_labe
         margin-top: 10px;
         font-size: 24px;
         font-weight: 800;
-        color: #475569;
+        color: rgba(255, 255, 255, 0.85);
         display: flex;
         align-items: center;
         gap: 12px;
@@ -376,12 +413,13 @@ $nextProgTime = !empty($initNextProg['start_label']) ? $initNextProg['start_labe
 
     /* Active Performer Chest Badge */
     .active-chest-hero {
-        background: #0f172a;
+        background: rgba(15, 23, 42, 0.95);
+        border: 1.5px solid rgba(255, 255, 255, 0.2);
         color: #ffffff;
-        padding: 22px 36px;
-        border-radius: 24px;
+        padding: 20px 32px;
+        border-radius: 22px;
         text-align: center;
-        box-shadow: 0 14px 30px rgba(15, 23, 42, 0.18);
+        box-shadow: 0 14px 35px rgba(0, 0, 0, 0.5);
         margin-left: 24px;
     }
 
@@ -389,7 +427,7 @@ $nextProgTime = !empty($initNextProg['start_label']) ? $initNextProg['start_labe
         font-size: 11px;
         font-weight: 900;
         letter-spacing: 0.22em;
-        color: #94a3b8;
+        color: rgba(255, 255, 255, 0.6);
         text-transform: uppercase;
         display: block;
         margin-bottom: 4px;
@@ -398,12 +436,94 @@ $nextProgTime = !empty($initNextProg['start_label']) ? $initNextProg['start_labe
     .active-chest-hero .num {
         font-size: 46px;
         font-weight: 900;
-        color: #ffffff;
+        color: var(--current-team-color, #10b981);
+        text-shadow: 0 0 16px var(--current-team-color, #10b981);
         font-family: 'Plus Jakarta Sans', monospace;
         line-height: 1;
     }
 
-    /* Sidebar Column with 2 Glass Boxes (Top & Bottom) */
+    /* Stage Awaiting / Intermission State Widget */
+    .stage-awaiting-container {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        width: 100%;
+    }
+
+    .stage-awaiting-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background: rgba(16, 185, 129, 0.2);
+        border: 1.5px solid rgba(16, 185, 129, 0.5);
+        color: #34d399;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        box-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
+        animation: mic-pulse 2s ease-in-out infinite alternate;
+    }
+
+    @keyframes mic-pulse {
+        0% { transform: scale(0.95); opacity: 0.8; }
+        100% { transform: scale(1.1); opacity: 1; }
+    }
+
+    .stage-awaiting-title {
+        font-size: 30px;
+        font-weight: 900;
+        color: #ffffff;
+        letter-spacing: -0.01em;
+    }
+
+    .stage-awaiting-sub {
+        font-size: 15px;
+        font-weight: 700;
+        color: rgba(255, 255, 255, 0.65);
+        margin-top: 4px;
+    }
+
+    /* Bottom Program Stats Grid */
+    .program-stats-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+        margin-top: 20px;
+        padding-top: 18px;
+        border-top: 1px solid rgba(255, 255, 255, 0.12);
+    }
+
+    .stat-widget-box {
+        background: rgba(15, 23, 42, 0.5);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        padding: 12px 18px;
+        border-radius: 18px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .stat-widget-icon {
+        font-size: 18px;
+        color: #34d399;
+    }
+
+    .stat-widget-label {
+        font-size: 10px;
+        font-weight: 900;
+        color: rgba(255, 255, 255, 0.55);
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+    }
+
+    .stat-widget-value {
+        font-size: 15px;
+        font-weight: 900;
+        color: #ffffff;
+    }
+
+    /* Sidebar Column with 2 Glass Boxes */
     .sidebar-column {
         display: flex;
         flex-direction: column;
@@ -412,7 +532,7 @@ $nextProgTime = !empty($initNextProg['start_label']) ? $initNextProg['start_labe
         justify-content: space-between;
     }
 
-    /* Top Right Box: NEXT PARTICIPANT / CONTESTANT */
+    /* Top Right Box */
     .side-card-top {
         flex: 1;
         min-height: 260px;
@@ -423,7 +543,7 @@ $nextProgTime = !empty($initNextProg['start_label']) ? $initNextProg['start_labe
         animation: slide-in-side-card 1.6s cubic-bezier(0.19, 1, 0.22, 1) 0.3s both;
     }
 
-    /* Bottom Right Box: NEXT PROGRAM / BREAK */
+    /* Bottom Right Box */
     .side-card-bottom {
         flex: 1;
         min-height: 260px;
@@ -437,7 +557,7 @@ $nextProgTime = !empty($initNextProg['start_label']) ? $initNextProg['start_labe
     .side-box-label {
         font-size: 14px;
         font-weight: 900;
-        color: #64748b;
+        color: rgba(255, 255, 255, 0.65);
         letter-spacing: 0.2em;
         text-transform: uppercase;
         margin-bottom: 14px;
@@ -447,18 +567,21 @@ $nextProgTime = !empty($initNextProg['start_label']) ? $initNextProg['start_labe
         font-size: 88px;
         font-weight: 900;
         line-height: 1;
+        color: #ffffff;
         font-family: 'Plus Jakarta Sans', monospace;
     }
 
     .up-next-chest-big span {
-        color: var(--first-team-color);
+        color: var(--first-team-color, #10b981);
+        text-shadow: 0 0 30px var(--first-team-color, #10b981);
         transition: color 1.2s ease;
     }
 
     .next-prog-title {
-        font-size: 36px;
+        font-size: 34px;
         font-weight: 900;
-        color: #0f172a;
+        color: #ffffff;
+        text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
         line-height: 1.2;
         margin: 0 0 14px 0;
         letter-spacing: -0.01em;
@@ -466,81 +589,22 @@ $nextProgTime = !empty($initNextProg['start_label']) ? $initNextProg['start_labe
     }
 
     .next-prog-cat {
-        font-size: 26px;
+        font-size: 24px;
         font-weight: 800;
-        color: #64748b;
+        color: #a3e635;
     }
 
     .next-prog-time-badge {
         display: inline-flex;
         align-items: center;
         gap: 8px;
-        background: rgba(15, 23, 42, 0.05);
-        border: 1px solid rgba(15, 23, 42, 0.08);
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.2);
         padding: 8px 20px;
         border-radius: 20px;
         font-size: 15px;
         font-weight: 800;
-        color: #334155;
-    }
-
-    /* Upgraded Page Background & Dynamic 3D Cut Geometric Chevrons */
-    .bg-3d-cuts-svg {
-        position: absolute;
-        inset: 0;
-        width: 100%;
-        height: 100%;
-        pointer-events: none;
-        z-index: 0;
-    }
-
-    .side-chevrons-svg.full-screen {
-        position: absolute;
-        inset: 0;
-        width: 100%;
-        height: 100%;
-        pointer-events: none;
-        z-index: 1;
-    }
-
-    @keyframes bg-chevron-pulse-float {
-        0% {
-            transform: translate3d(0, 0, 0) scale(1);
-            opacity: 0.85;
-        }
-        50% {
-            transform: translate3d(0, -6px, 0) scale(1.008);
-            opacity: 1;
-        }
-        100% {
-            transform: translate3d(0, 0, 0) scale(1);
-            opacity: 0.85;
-        }
-    }
-
-    @keyframes line-dash-flow {
-        0% {
-            stroke-dashoffset: 400;
-        }
-        100% {
-            stroke-dashoffset: -400;
-        }
-    }
-
-    .animated-chevron-group {
-        will-change: transform, opacity;
-        animation: bg-chevron-pulse-float 10s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite alternate;
-    }
-
-    .animated-dash-line {
-        stroke-dasharray: 250 120;
-        will-change: stroke-dashoffset;
-        animation: line-dash-flow 24s linear infinite;
-        transition: stroke 1.4s cubic-bezier(0.19, 1, 0.22, 1), opacity 1.4s cubic-bezier(0.19, 1, 0.22, 1);
-    }
-
-    .animated-cross-line {
-        transition: stroke 1.4s cubic-bezier(0.19, 1, 0.22, 1), opacity 1.4s cubic-bezier(0.19, 1, 0.22, 1);
+        color: #ffffff;
     }
 
     /* Dynamic Chevron Lines Strictly Behind Card Text */
@@ -561,45 +625,81 @@ $nextProgTime = !empty($initNextProg['start_label']) ? $initNextProg['start_labe
         will-change: transform, opacity;
         animation: bg-chevron-pulse-float 11s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite alternate;
     }
-
-    #particles-js, .tv-particles {
-        position: absolute;
-        inset: 0;
-        width: 100%;
-        height: 100%;
-        pointer-events: none;
-        z-index: 1;
-    }
 </style>
-
-<script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js" defer></script>
 
 <div class="current-programs-stage-root" data-current-theme-root style="--first-team-color: <?= e($firstTeamColor) ?>; --top-team-color: <?= e($firstTeamColor) ?>;">
     <div class="programs-wrapper">
-        <!-- Main Workspace Grid (Enlarged Left Card + 2 Right Boxes) -->
+        <!-- Main Workspace Grid -->
         <div class="dashboard-grid">
-            <!-- Main Panel (Program Title + Section & Active Performer) -->
+            <!-- Main Panel -->
             <main class="glass-panel now-performing-card">
                 <div>
+                    <!-- Stage Header Bar -->
+                    <div class="program-stage-header-bar">
+                        <span class="stage-live-badge">
+                            <span class="live-dot"></span> LIVE STAGE • NORMAL STAGE
+                        </span>
+                        <span style="font-size: 13px; font-weight: 800; color: rgba(255,255,255,0.65); text-transform: uppercase; letter-spacing: 0.12em;">
+                            <i class="fa-solid fa-circle-play mr-1" style="color: #34d399;"></i> PERFORMANCE STAGE
+                        </span>
+                    </div>
                     <h1 class="program-title-display" data-current-title><?= e($initFullTitle) ?></h1>
                 </div>
 
                 <!-- Performer Hero Details -->
                 <div class="performer-hero-info">
-                    <div class="performer-details">
-                        <h2 class="performer-name" data-current-performer><?= e($initPerfName) ?></h2>
-                        <div class="team-pill" data-current-team style="<?= ($initIsIntro || $initTeamName === '—') ? 'display: none;' : 'display: flex;' ?>">
-                            <span class="tv-team-dot" style="background:<?= e($initTeamColor) ?>;"></span> <?= e($initTeamName) ?>
+                    <?php if ($initIsIntro || empty($initPerf['name']) || $initPerfName === 'Awaiting Performer'): ?>
+                        <!-- Stage Ready / Awaiting Performer Display -->
+                        <div class="stage-awaiting-container">
+                            <div class="stage-awaiting-icon">
+                                <i class="fa-solid fa-microphone-lines"></i>
+                            </div>
+                            <div>
+                                <div class="stage-awaiting-title">STAGE READY • CONTESTANT ENTRY</div>
+                                <div class="stage-awaiting-sub">Judges Ready • Awaiting Contestant Stage Call</div>
+                            </div>
+                        </div>
+                    <?php else: ?>
+                        <div class="performer-details">
+                            <h2 class="performer-name" data-current-performer><?= e($initPerfName) ?></h2>
+                            <div class="team-pill" data-current-team style="<?= ($initIsIntro || $initTeamName === '—') ? 'display: none;' : 'display: flex;' ?>">
+                                <span class="tv-team-dot" style="background:<?= e($initTeamColor) ?>;"></span> <?= e($initTeamName) ?>
+                            </div>
+                        </div>
+                        <div class="active-chest-hero" data-active-chest-box style="<?= $initIsIntro ? 'display: none;' : '' ?>">
+                            <span class="label">CHEST NO</span>
+                            <span class="num" data-current-chest><?= e($initChest) ?></span>
+                        </div>
+                    <?php endif; ?>
+                </div>
+
+                <!-- Bottom Program Stats Widgets Grid -->
+                <div class="program-stats-grid">
+                    <div class="stat-widget-box">
+                        <i class="fa-solid fa-users stat-widget-icon"></i>
+                        <div>
+                            <div class="stat-widget-label">CONTESTANTS</div>
+                            <div class="stat-widget-value" data-current-entry-count-display>12 REGISTERED</div>
                         </div>
                     </div>
-                    <div class="active-chest-hero" data-active-chest-box style="<?= $initIsIntro ? 'display: none;' : '' ?>">
-                        <span class="label">CHEST NO</span>
-                        <span class="num" data-current-chest><?= e($initChest) ?></span>
+                    <div class="stat-widget-box">
+                        <i class="fa-solid fa-bolt stat-widget-icon"></i>
+                        <div>
+                            <div class="stat-widget-label">STAGE STATUS</div>
+                            <div class="stat-widget-value" data-current-status-display>ACTIVE SCORING</div>
+                        </div>
+                    </div>
+                    <div class="stat-widget-box">
+                        <i class="fa-solid fa-location-dot stat-widget-icon"></i>
+                        <div>
+                            <div class="stat-widget-label">LOCATION</div>
+                            <div class="stat-widget-value" data-current-room-display>NORMAL STAGE</div>
+                        </div>
                     </div>
                 </div>
             </main>
 
-            <!-- Sidebar Column: 2 Right Glass Boxes -->
+            <!-- Sidebar Column -->
             <aside class="sidebar-column">
                 <!-- Box 1 (Top Right): NEXT PARTICIPANT / CONTESTANT -->
                 <div class="glass-panel side-card-top">
@@ -625,6 +725,21 @@ $nextProgTime = !empty($initNextProg['start_label']) ? $initNextProg['start_labe
                 </div>
             </aside>
         </div>
+
+        <!-- Hidden elements for tracker compatibility -->
+        <div hidden>
+            <span data-current-status>LIVE STAGE</span>
+            <span data-current-stage>Stage</span>
+            <span data-current-category>Category</span>
+            <span data-current-room>Venue</span>
+            <span data-current-entry-count>0</span>
+            <span data-judges>No judges</span>
+            <span data-next-program>No program</span>
+            <span data-current-progress-label>0 / 0</span>
+            <div data-current-progress-fill style="width: 0%;"></div>
+        </div>
+    </div>
+</div>
 
         <!-- Hidden elements for tracker compatibility -->
         <div hidden>
@@ -693,6 +808,7 @@ $nextProgTime = !empty($initNextProg['start_label']) ? $initNextProg['start_labe
         let activeParticleColor = '';
 
         function initTopTeamParticles(colorHex) {
+            if (!document.getElementById('particles-js')) return;
             if (!colorHex || colorHex === activeParticleColor) return;
             activeParticleColor = colorHex;
 

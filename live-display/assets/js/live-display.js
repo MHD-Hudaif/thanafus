@@ -11,6 +11,7 @@
         leaderboardData: null,
         leaderboardSignature: '',
         slideOrder: ['intro', 'leaderboard', 'schedule', 'current-program'],
+        serverTimeOffset: 0,
         schedule: {
             data: null,
             pages: [],
@@ -671,12 +672,12 @@
         const score2 = teams[1] ? Math.round(Number(teams[1].total_score || 0)) : 0;
         const leadGap = Math.max(0, score1 - score2);
 
-        // Map top 4 teams to position 1 (Top), 2 (Right), 3 (Left), 4 (Bottom)
+        // Map top 4 teams to position 1 (Top/Center), 2 (Right/Silver), 3 (Left/Bronze), 4 (Bottom/Runner-up)
         const posConfigs = [
-            { pos: 1, rankStr: '01', defaultColor: '#10b981', isLeading: true },
-            { pos: 2, rankStr: '02', defaultColor: '#f43f5e', isLeading: false },
-            { pos: 3, rankStr: '03', defaultColor: '#eab308', isLeading: false },
-            { pos: 4, rankStr: '04', defaultColor: '#3b82f6', isLeading: false }
+            { pos: 1, rankStr: '01', defaultColor: '#10b981', isLeading: true, icon: 'fa-crown text-yellow-400' },
+            { pos: 2, rankStr: '02', defaultColor: '#f43f5e', isLeading: false, icon: 'fa-medal text-slate-300' },
+            { pos: 3, rankStr: '03', defaultColor: '#eab308', isLeading: false, icon: 'fa-medal text-amber-600' },
+            { pos: 4, rankStr: '04', defaultColor: '#3b82f6', isLeading: false, icon: 'fa-award text-blue-400' }
         ];
 
         // Sync global background video with top 1st rank team color smoothly
@@ -692,13 +693,14 @@
             const gapText = cfg.isLeading ? `+${leadGap} PTS LEAD` : `-${Math.max(0, score1 - score)} PTS`;
             const gapClass = cfg.isLeading ? 'leader-gap' : 'chaser-gap';
             const badgeContent = `<span class="orbital-gap-pill ${gapClass}">${gapText}</span>`;
+            const rankIcon = cfg.icon ? `<i class="fa-solid ${cfg.icon} mr-1" style="font-size:0.9em; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.15));"></i>` : '';
 
             return `
                 <div class="orbital-card" data-pos="${cfg.pos}" style="--accent-color: ${escapeHtml(color)};">
                     <div class="orbital-card-dark-wave"></div>
                     <div class="orbital-card-header">
                         ${badgeContent}
-                        <span class="orbital-rank-index">${rankStr}</span>
+                        <span class="orbital-rank-index">${rankIcon}${rankStr}</span>
                     </div>
                     <div class="orbital-team-title" title="${escapeHtml(name)}">${escapeHtml(name)}</div>
                     <div class="orbital-score-wrapper">
@@ -753,9 +755,9 @@
                         <g class="star-rotation-group">
                             <rect x="25" y="25" width="110" height="110" rx="14" fill="none" stroke="${escapeHtml(teams[0]?.team_color || '#10b981')}" stroke-width="2.5" opacity="0.5" />
                             <rect x="25" y="25" width="110" height="110" rx="14" transform="rotate(45 80 80)" fill="none" stroke="${escapeHtml(teams[0]?.team_color || '#10b981')}" stroke-width="2.5" opacity="0.5" />
-                            <circle cx="80" cy="80" r="68" fill="none" stroke="rgba(15, 23, 42, 0.12)" stroke-width="1.5" stroke-dasharray="6 4" />
+                            <circle cx="80" cy="80" r="68" fill="none" stroke="rgba(255, 255, 255, 0.2)" stroke-width="1.5" stroke-dasharray="6 4" />
                         </g>
-                        <circle cx="80" cy="80" r="52" fill="none" stroke="rgba(15, 23, 42, 0.08)" stroke-width="6" />
+                        <circle cx="80" cy="80" r="52" fill="none" stroke="rgba(255, 255, 255, 0.1)" stroke-width="6" />
                         <circle class="orbital-progress-bar" cx="80" cy="80" r="52" fill="none" stroke="${escapeHtml(teams[0]?.team_color || '#10b981')}" stroke-width="6" stroke-linecap="round" stroke-dasharray="326.72" stroke-dashoffset="${dashoffset}" transform="rotate(-90 80 80)" />
                     </svg>
                     <div class="constellation-center-content">
@@ -804,51 +806,89 @@
         const card3 = root.querySelector('.orbital-card[data-pos="3"]');
         const card4 = root.querySelector('.orbital-card[data-pos="4"]');
         const scoreEls = root.querySelectorAll('.orbital-score-digit');
+        const laserLines = root.querySelectorAll('.constellation-laser-line');
+        const extraBar = root.querySelector('.orbital-extra-teams-bar');
 
-        // 1. Center Medallion Pop Entrance
+        // Stop any active idle float tweens before starting new entrance
+        gsap.killTweensOf([centerNode, card1, card2, card3, card4, extraBar]);
+
+        // 1. Central Medallion Professional Scale & Fade Entrance
         if (centerNode) {
-            gsap.fromTo(centerNode, { scale: 0.3, opacity: 0, rotationZ: -120 }, { scale: 1, opacity: 1, rotationZ: 0, duration: 1.15, ease: 'back.out(1.8)' });
+            gsap.fromTo(centerNode, 
+                { scale: 0.88, opacity: 0 }, 
+                { scale: 1, opacity: 1, duration: 0.75, ease: 'expo.out' }
+            );
         }
 
-        // 2. 3D Card Entrances (Symmetrical Tight Cluster)
+        // 2. SVG Laser Connectors Fade-In
+        if (laserLines.length > 0) {
+            gsap.fromTo(laserLines,
+                { opacity: 0 },
+                { opacity: 1, duration: 0.6, delay: 0.15, stagger: 0.05, ease: 'power2.out' }
+            );
+        }
+
+        // 3. Precision Broadcast Cards Entrance (Subtle Smooth Slides)
         if (card1) {
-            gsap.fromTo(card1, { y: -90, rotationX: -25, scale: 0.85, opacity: 0 }, { y: 0, rotationX: 0, scale: 1, opacity: 1, duration: 1.0, delay: 0.15, ease: 'power4.out' });
+            gsap.fromTo(card1, 
+                { y: -45, opacity: 0 }, 
+                { y: 0, opacity: 1, duration: 0.7, delay: 0.08, ease: 'power3.out' }
+            );
         }
         if (card2) {
-            gsap.fromTo(card2, { x: 90, rotationY: 25, scale: 0.85, opacity: 0 }, { x: 0, rotationY: 0, scale: 1, opacity: 1, duration: 1.0, delay: 0.25, ease: 'power4.out' });
+            gsap.fromTo(card2, 
+                { x: 45, opacity: 0 }, 
+                { x: 0, opacity: 1, duration: 0.7, delay: 0.16, ease: 'power3.out' }
+            );
         }
         if (card3) {
-            gsap.fromTo(card3, { x: -90, rotationY: -25, scale: 0.85, opacity: 0 }, { x: 0, rotationY: 0, scale: 1, opacity: 1, duration: 1.0, delay: 0.35, ease: 'power4.out' });
+            gsap.fromTo(card3, 
+                { x: -45, opacity: 0 }, 
+                { x: 0, opacity: 1, duration: 0.7, delay: 0.24, ease: 'power3.out' }
+            );
         }
         if (card4) {
-            gsap.fromTo(card4, { y: 90, rotationX: 25, scale: 0.85, opacity: 0 }, { y: 0, rotationX: 0, scale: 1, opacity: 1, duration: 1.0, delay: 0.45, ease: 'power4.out' });
+            gsap.fromTo(card4, 
+                { y: 45, opacity: 0 }, 
+                { y: 0, opacity: 1, duration: 0.7, delay: 0.32, ease: 'power3.out' }
+            );
         }
 
-        // 3. Smooth Rolling Score Counter Animation
+        // 4. Extra Teams Bar Entrance
+        if (extraBar) {
+            gsap.fromTo(extraBar,
+                { y: 25, opacity: 0 },
+                { y: 0, opacity: 1, duration: 0.6, delay: 0.4, ease: 'power3.out' }
+            );
+        }
+
+        // 5. Smooth Numerical Score Interpolation (Clean Broadcast Counter)
         scoreEls.forEach(el => {
             const targetScore = parseInt(el.dataset.score || '0', 10);
             const counter = { val: 0 };
             gsap.to(counter, {
                 val: targetScore,
-                duration: 1.5,
-                delay: 0.35,
-                ease: 'power3.out',
+                duration: 1.1,
+                delay: 0.2,
+                ease: 'power2.out',
                 onUpdate: () => {
                     el.textContent = Math.round(counter.val);
                 }
             });
         });
 
-        // 4. Continuous Gentle Idle Floating Motion Loop
-        if (card1) gsap.to(card1, { y: '-=6', duration: 3.2, ease: 'sine.inOut', yoyo: true, repeat: -1, delay: 1.2 });
-        if (card2) gsap.to(card2, { x: '+=6', duration: 3.6, ease: 'sine.inOut', yoyo: true, repeat: -1, delay: 1.4 });
-        if (card3) gsap.to(card3, { x: '-=6', duration: 3.4, ease: 'sine.inOut', yoyo: true, repeat: -1, delay: 1.6 });
-        if (card4) gsap.to(card4, { y: '+=6', duration: 3.8, ease: 'sine.inOut', yoyo: true, repeat: -1, delay: 1.8 });
+        // 6. Subtle Micro-Hovering Idle Dynamics
+        if (card1) gsap.to(card1, { y: '-=4', duration: 3.8, ease: 'sine.inOut', yoyo: true, repeat: -1, delay: 0.8 });
+        if (card2) gsap.to(card2, { x: '+=4', duration: 4.2, ease: 'sine.inOut', yoyo: true, repeat: -1, delay: 1.0 });
+        if (card3) gsap.to(card3, { x: '-=4', duration: 4.0, ease: 'sine.inOut', yoyo: true, repeat: -1, delay: 1.2 });
+        if (card4) gsap.to(card4, { y: '+=4', duration: 4.4, ease: 'sine.inOut', yoyo: true, repeat: -1, delay: 1.4 });
     }
 
     function scheduleRowsPerPage() {
         const height = window.innerHeight || 1080;
-        return height < 800 ? 7 : 8;
+        if (height < 700) return 4;
+        if (height < 900) return 5;
+        return 6;
     }
 
     function getScheduleStatus(item) {
@@ -952,20 +992,7 @@
                     </div>
                     <span class="page-count-badge" data-schedule-page-badge>Page ${curPage + 1} / ${totalPages}</span>
                 </div>
-                <div class="schedule-table-card">
-                    <table class="schedule-table">
-                        <thead>
-                            <tr>
-                                <th style="width: 75px; text-align: center;">#</th>
-                                <th style="width: 160px;">TIME</th>
-                                <th>PROGRAM</th>
-                                <th style="width: 200px;">STAGE / VENUE</th>
-                                <th style="width: 160px; text-align: right;">STATUS</th>
-                            </tr>
-                        </thead>
-                        <tbody data-schedule-page>
-                        </tbody>
-                    </table>
+                <div class="schedule-timeline-container" data-schedule-page>
                 </div>
             </div>
         `;
@@ -1018,12 +1045,10 @@
         const updateAndAnimateIn = () => {
             if (!page.length) {
                 pageEl.innerHTML = `
-                    <tr>
-                        <td colspan="5" class="tv-schedule-empty" style="padding: 48px; text-align: center; color: #64748b;">
-                            <strong style="font-size: 24px; display: block; margin-bottom: 8px; color: #0f172a;">No programs scheduled</strong>
-                            <span>Stand by for upcoming competition events.</span>
-                        </td>
-                    </tr>
+                    <div class="tv-schedule-empty" style="padding: 48px; text-align: center; color: rgba(255,255,255,0.45); background: rgba(15,23,42,0.4); border-radius: 16px; border: 1px dashed rgba(255,255,255,0.12);">
+                        <strong style="font-size: 24px; display: block; margin-bottom: 8px; color: #fff;">No programs scheduled</strong>
+                        <span>Stand by for upcoming competition events.</span>
+                    </div>
                 `;
                 return;
             }
@@ -1096,37 +1121,73 @@
                 const itemDate = item.start_time ? item.start_time.split(' ')[0] : '';
                 const currentDay = dateToDayMap[itemDate] || '';
 
-                let rowClasses = ['program-row'];
-                let statusHtml = '';
-                let numBadgeHtml = '';
+                let rowClasses = ['program-row', 'schedule-card'];
+                let indexClass = 'num-blue';
 
                 if (isCurrentRunning) {
                     rowClasses.push('is-running-program');
-                    statusHtml = '<span class="status-pill status-in-progress">IN PROGRESS</span>';
-                    numBadgeHtml = `<span class="num-badge num-green">| ${rowNum} |</span>`;
+                    indexClass = 'num-green';
                 } else if (isCompleted) {
-                    statusHtml = '<span class="status-pill status-completed">COMPLETED</span>';
-                    numBadgeHtml = `<span class="num-badge num-gray">| ${rowNum} |</span>`;
+                    indexClass = 'num-gray';
                 } else if (isBreak) {
                     rowClasses.push('is-break');
-                    statusHtml = '<span class="status-pill status-break">BREAK</span>';
-                    numBadgeHtml = `<span class="num-badge num-amber">| ${rowNum} |</span>`;
-                } else {
-                    statusHtml = '<span class="status-pill status-upcoming">UPCOMING</span>';
-                    numBadgeHtml = `<span class="num-badge num-blue">| ${rowNum} |</span>`;
+                    indexClass = 'num-amber';
                 }
 
-                const dayPill = (uniqueDates.length > 1 && currentDay) ? `<span class="program-day-tag" style="display: inline-block; font-size: 10px; font-weight: 800; background: rgba(15,23,42,0.06); color: #64748b; padding: 2px 7px; border-radius: 4px; margin-right: 6px; letter-spacing: 0.04em;">${escapeHtml(currentDay.toUpperCase())}</span>` : '';
+                let resultsHtml = '';
+                const results = Array.isArray(item.results) ? item.results : [];
+                if (results.length > 0) {
+                    const badges = results.map(r => {
+                        let badgeText = '';
+                        let badgeClass = 'rank-pill';
+                        if (r.rank === 1) {
+                            badgeText = `1st: ${escapeHtml(r.team_short)}`;
+                            badgeClass += ' rank-1';
+                        } else if (r.rank === 2) {
+                            badgeText = `2nd: ${escapeHtml(r.team_short)}`;
+                            badgeClass += ' rank-2';
+                        } else if (r.rank === 3) {
+                            badgeText = `3rd: ${escapeHtml(r.team_short)}`;
+                            badgeClass += ' rank-3';
+                        } else if (r.grade === 'A') {
+                            badgeText = `A: ${escapeHtml(r.team_short)}`;
+                            badgeClass += ' grade-a';
+                        } else {
+                            return '';
+                        }
+                        
+                        return `<span class="${badgeClass}" style="--badge-team-color: ${escapeHtml(r.team_color)}">${badgeText}</span>`;
+                    }).filter(Boolean);
+                    
+                    if (badges.length > 0) {
+                        resultsHtml = `<div class="schedule-ranks-row">${badges.join('')}</div>`;
+                    }
+                }
+                if (!resultsHtml) {
+                    resultsHtml = '<span class="no-results-placeholder">—</span>';
+                }
+
+                const dayPill = (uniqueDates.length > 1 && currentDay) ? `<span class="program-day-tag">${escapeHtml(currentDay.toUpperCase())}</span>` : '';
                 const secBadge = secName ? `<span class="program-sec-tag">${escapeHtml(secName)}</span>` : '';
 
                 html += `
-                    <tr class="${rowClasses.join(' ')}">
-                        <td style="text-align: center;">${numBadgeHtml}</td>
-                        <td class="col-time">${dayPill}${escapeHtml(timeStr)}</td>
-                        <td class="col-program">${escapeHtml(title)} ${secBadge}</td>
-                        <td class="col-venue">${escapeHtml(venueName)}</td>
-                        <td style="text-align: right;">${statusHtml}</td>
-                    </tr>
+                    <div class="${rowClasses.join(' ')}">
+                        <div class="schedule-card-accent"></div>
+                        <div class="schedule-card-program-col">
+                            <span class="schedule-index-inline ${indexClass}">${rowNum}</span>
+                            <div class="schedule-program-details-wrap">
+                                <h3 class="schedule-program-title">${escapeHtml(title)}</h3>
+                                ${secBadge}
+                            </div>
+                        </div>
+                        <div class="schedule-card-ranks-col">
+                            ${resultsHtml}
+                        </div>
+                        <div class="schedule-card-time-col">
+                            ${dayPill}
+                            <span class="schedule-time-label">${escapeHtml(timeStr)}</span>
+                        </div>
+                    </div>
                 `;
             });
 
@@ -1199,13 +1260,13 @@
 
         const isBreak = !currentData || currentData.is_break;
         if (isBreak) {
-            els.currentStage.textContent = 'Main Stage';
-            els.currentTitle.textContent = 'BREAK TIME';
-            els.currentPerformer.textContent = 'Stand by for the next act';
-            els.currentTeam.textContent = 'Awaiting next program';
-            els.currentCategory.textContent = 'All Classes';
-            els.currentStatus.textContent = 'Break';
-            els.currentRoom.textContent = 'Main Hall';
+            if (els.currentStage) els.currentStage.textContent = 'Main Stage';
+            if (els.currentTitle) els.currentTitle.textContent = 'BREAK TIME';
+            if (els.currentPerformer) els.currentPerformer.textContent = 'Stand by for the next act';
+            if (els.currentTeam) els.currentTeam.textContent = 'Awaiting next program';
+            if (els.currentCategory) els.currentCategory.textContent = 'All Classes';
+            if (els.currentStatus) els.currentStatus.textContent = 'Break';
+            if (els.currentRoom) els.currentRoom.textContent = 'Main Hall';
 
             if (els.nextPerformer) els.nextPerformer.textContent = '—';
             if (els.nextTeam) els.nextTeam.textContent = '—';
@@ -1222,22 +1283,22 @@
         const currentChest = document.querySelector('[data-current-chest]');
         const nextChest = document.querySelector('[data-next-chest]');
 
-        els.currentStage.textContent = program.stage || 'Main Stage';
-        els.currentTitle.textContent = program.title || 'Current Act';
+        if (els.currentStage) els.currentStage.textContent = program.stage || 'Main Stage';
+        if (els.currentTitle) els.currentTitle.textContent = program.title || 'Current Act';
         
         if (performer.name) {
-            els.currentPerformer.textContent = performer.name;
+            if (els.currentPerformer) els.currentPerformer.textContent = performer.name;
             if (currentChest) currentChest.textContent = performer.number || '—';
-            els.currentTeam.innerHTML = `${performer.team_color ? `<span class="tv-team-dot" style="background:${escapeHtml(performer.team_color)}"></span>` : ''}${escapeHtml(performer.team || '—')}`;
+            if (els.currentTeam) els.currentTeam.innerHTML = `${performer.team_color ? `<span class="tv-team-dot" style="background:${escapeHtml(performer.team_color)}"></span>` : ''}${escapeHtml(performer.team || '—')}`;
         } else {
-            els.currentPerformer.textContent = 'No active performer';
+            if (els.currentPerformer) els.currentPerformer.textContent = 'No active performer';
             if (currentChest) currentChest.textContent = '—';
-            els.currentTeam.textContent = '—';
+            if (els.currentTeam) els.currentTeam.textContent = '—';
         }
 
-        els.currentCategory.textContent = program.category || 'All Classes';
-        els.currentStatus.textContent = currentData.status || 'Active';
-        els.currentRoom.textContent = program.location || 'Stage Room';
+        if (els.currentCategory) els.currentCategory.textContent = program.category || 'All Classes';
+        if (els.currentStatus) els.currentStatus.textContent = currentData.status || 'Active';
+        if (els.currentRoom) els.currentRoom.textContent = program.location || 'Stage Room';
 
         if (els.nextPerformer) {
             els.nextPerformer.textContent = next.name || '—';
@@ -1448,13 +1509,26 @@
     function applyBootstrap(data) {
         if (!data) return;
 
+        const pathLower = window.location.pathname.toLowerCase();
+        window.IS_SINGLE_PAGE = pathLower.includes('/intro') || 
+                                pathLower.includes('/leaderboard') || 
+                                pathLower.includes('/schedule') || 
+                                pathLower.includes('/current-program') || 
+                                pathLower.includes('/current-programs');
+
         const settings = data.settings || {};
         const wasAuto = state.mode === 'auto';
         const wasPlaying = state.is_playing;
 
-        // Sync playback state
-        if (typeof settings.is_playing === 'boolean') state.is_playing = settings.is_playing;
-        if (settings.mode) state.mode = window.IS_SINGLE_PAGE ? 'manual' : settings.mode;
+        // Force auto playback mode on main multi-slide slideshow stage (/web/live-display/)
+        if (!window.IS_SINGLE_PAGE) {
+            state.mode = 'auto';
+            state.is_playing = true;
+        } else {
+            if (typeof settings.is_playing === 'boolean') state.is_playing = settings.is_playing;
+            if (settings.mode) state.mode = settings.mode;
+        }
+
         if (settings.refresh_interval) state.refresh_interval = settings.refresh_interval;
 
         // Sync theme
@@ -1472,17 +1546,16 @@
         const slidesMap = settings.slides || {};
 
         // Compare DOM-rendered slides with the newly fetched settings.
-        // If slide configurations (enabled/disabled) differ, reload the page to render updated structures.
         const currentDomSlideKeys = Array.from(document.querySelectorAll('.tv-slide'))
             .map(el => el.dataset.slide)
             .filter(Boolean)
             .sort();
 
-        const newEnabledSlideKeys = Object.values(slidesMap)
-            .filter(s => s.enabled !== false)
-            .map(s => s.key || s.slide_key)
-            .filter(Boolean)
-            .sort();
+        const supportedSlideKeys = ['intro', 'leaderboard', 'schedule', 'current-program', 'score-reveal'];
+        const newEnabledSlideKeys = supportedSlideKeys.filter(key => {
+            const s = slidesMap[key];
+            return !s || s.enabled !== false;
+        }).sort();
 
         if (!window.IS_SINGLE_PAGE && JSON.stringify(currentDomSlideKeys) !== JSON.stringify(newEnabledSlideKeys)) {
             window.location.reload();
@@ -1498,10 +1571,14 @@
         slideArray.forEach(slide => {
             const key = slide.key || slide.slide_key;
             if (key) {
+                let rawDur = Number(slide.duration || (key === 'intro' ? 10000 : 7000));
+                // Cap manual 999999 duration overrides to 10s for slideshow rotation
+                if (rawDur > 20000) rawDur = (key === 'intro' ? 10000 : 7000);
+
                 state.slides[key] = {
                     key,
                     title: slide.title || key,
-                    duration: slide.duration || (key === 'intro' ? 10000 : 5000),
+                    duration: Math.max(3000, rawDur),
                     enabled: slide.enabled !== false,
                     sort_order: slide.sort_order ?? 99,
                     style: slide.style || 'classic'
@@ -1512,7 +1589,7 @@
         // Fallback: ensure all known slide keys exist so the rotation never stalls
         ['intro', 'leaderboard', 'schedule', 'current-program'].forEach(key => {
             if (!state.slides[key]) {
-                state.slides[key] = { key, title: key, duration: 12000, enabled: true, sort_order: 99, style: 'classic' };
+                state.slides[key] = { key, title: key, duration: 10000, enabled: true, sort_order: 99, style: 'classic' };
             }
             if (!state.slideOrder.includes(key)) {
                 state.slideOrder.push(key);
@@ -1526,15 +1603,13 @@
         if (data.score_reveal) checkScoreRevealEvent(data.score_reveal);
 
         // Control slideshow flow based on mode settings
-        if (state.mode === 'manual') {
+        if (state.mode === 'manual' && window.IS_SINGLE_PAGE) {
             stopSlideTimer();
-            if (!window.IS_SINGLE_PAGE && settings.active_slide && state.activeSlide !== settings.active_slide) {
+            if (settings.active_slide && state.activeSlide !== settings.active_slide) {
                 setActiveSlide(settings.active_slide);
             }
-        } else if (state.mode === 'auto') {
-            if (!wasAuto || (state.is_playing && !wasPlaying)) {
-                startRotation();
-            }
+        } else {
+            startRotation();
         }
     }
 
@@ -1573,12 +1648,7 @@
             return;
         }
 
-        const next = getNextEnabledSlide();
-        setActiveSlide(next);
-
-        if (next !== 'schedule') {
-            scheduleNextSlide(state.slides[next]?.duration || 12000);
-        }
+        advanceToNextSlide();
     }
 
     function startSchedulePlayback() {
@@ -1862,36 +1932,66 @@
         return enabledKeys[(currentIdx + 1) % enabledKeys.length];
     }
 
-    function getGlobalSynchronizedSlide() {
+    function getNowMs() {
+        return Date.now() + (state.serverTimeOffset || 0);
+    }
+
+    function getGlobalSynchronizedState() {
         const enabledSlides = state.slideOrder.filter(key => {
             const slideConf = state.slides[key];
             const hasEl = document.querySelector(`.tv-slide[data-slide="${key}"]`) || document.getElementById(`slide-${key}`);
             return slideConf && slideConf.enabled !== false && hasEl;
-        }).map(key => ({
-            key,
-            duration: Math.max(3000, Number(state.slides[key]?.duration || 12000))
-        }));
+        }).map(key => {
+            let rawDur = Number(state.slides[key]?.duration) || (key === 'intro' ? 10000 : 8000);
+            if (rawDur > 30000) rawDur = (key === 'intro' ? 10000 : 8000);
+
+            if (key === 'schedule') {
+                const schedulePages = buildSchedulePages(state.schedule.data || { sections: [] });
+                const totalPages = Math.max(1, schedulePages.length);
+                const pageDur = (rawDur > 20000) ? 7000 : Math.max(4000, Math.min(15000, rawDur));
+                return { key, duration: totalPages * pageDur, isSchedule: true, totalPages, pageDur };
+            }
+
+            return { key, duration: Math.max(3000, rawDur), isSchedule: false, totalPages: 1, pageDur: rawDur };
+        });
 
         if (enabledSlides.length === 0) {
-            return { activeKey: 'intro', remainingMs: 12000 };
+            return { activeKey: 'intro', remainingMs: 10000, schedulePage: 0, totalCycleMs: 10000 };
         }
 
         const totalCycleMs = enabledSlides.reduce((sum, s) => sum + s.duration, 0);
         if (totalCycleMs <= 0) {
-            return { activeKey: enabledSlides[0].key, remainingMs: 12000 };
+            return { activeKey: enabledSlides[0].key, remainingMs: 10000, schedulePage: 0, totalCycleMs: 10000 };
         }
 
-        const now = Date.now();
-        const cyclePos = now % totalCycleMs;
+        const now = getNowMs();
+        const cyclePos = ((now % totalCycleMs) + totalCycleMs) % totalCycleMs;
 
         let elapsed = 0;
         for (let i = 0; i < enabledSlides.length; i++) {
             const slide = enabledSlides[i];
-            if (cyclePos >= elapsed && cyclePos < elapsed + slide.duration) {
-                const remaining = (elapsed + slide.duration) - cyclePos;
+            const slideEnd = elapsed + slide.duration;
+            if (cyclePos >= elapsed && cyclePos < slideEnd) {
+                const elapsedInSlide = cyclePos - elapsed;
+
+                if (slide.isSchedule) {
+                    const schedulePage = Math.min(slide.totalPages - 1, Math.floor(elapsedInSlide / slide.pageDur));
+                    const pageEnd = (schedulePage + 1) * slide.pageDur;
+                    const remainingInPage = pageEnd - elapsedInSlide;
+                    return {
+                        activeKey: slide.key,
+                        remainingMs: Math.max(100, remainingInPage),
+                        schedulePage: schedulePage,
+                        totalCycleMs
+                    };
+                }
+
+                const remainingInSlide = slideEnd - cyclePos;
                 return {
                     activeKey: slide.key,
-                    remainingMs: Math.max(1000, remaining)
+                    remainingMs: Math.max(100, remainingInSlide),
+                    schedulePage: 0,
+                    totalCycleMs
                 };
             }
             elapsed += slide.duration;
@@ -1899,45 +1999,40 @@
 
         return {
             activeKey: enabledSlides[0].key,
-            remainingMs: enabledSlides[0].duration
+            remainingMs: enabledSlides[0].duration,
+            schedulePage: 0,
+            totalCycleMs
         };
     }
 
-    function scheduleNextSlide(delay) {
-        stopSlideTimer();
-        if (!state.is_playing || state.mode === 'manual' || state.isCelebrating) return;
-
-        const sync = getGlobalSynchronizedSlide();
-        const actualDelay = Math.max(1000, delay ?? sync.remainingMs);
-
-        state.timers.slide = setTimeout(() => {
-            if (!state.is_playing || state.mode === 'manual' || state.isCelebrating) return;
-
-            const nextSync = getGlobalSynchronizedSlide();
-            setActiveSlide(nextSync.activeKey);
-
-            if (nextSync.activeKey === 'schedule') {
-                startSchedulePlayback();
-            } else {
-                scheduleNextSlide(nextSync.remainingMs);
-            }
-        }, actualDelay);
-    }
-
-    function startRotation() {
+    function syncGlobalSlideshow() {
         stopSlideTimer();
         stopScheduleTimer();
 
         if (!state.is_playing || state.mode === 'manual' || state.isCelebrating) return;
 
-        const sync = getGlobalSynchronizedSlide();
-        setActiveSlide(sync.activeKey);
+        const sync = getGlobalSynchronizedState();
+
+        if (state.activeSlide !== sync.activeKey) {
+            setActiveSlide(sync.activeKey);
+        }
 
         if (sync.activeKey === 'schedule') {
-            startSchedulePlayback();
-        } else {
-            scheduleNextSlide(sync.remainingMs);
+            state.schedule.currentPage = sync.schedulePage;
+            state.schedule.playing = true;
+            updateScheduleClock();
+            renderSchedulePage(sync.schedulePage, false);
         }
+
+        const delay = Math.max(120, sync.remainingMs + 40);
+        state.timers.slide = setTimeout(() => {
+            syncGlobalSlideshow();
+        }, delay);
+    }
+
+    function startRotation() {
+        if (!state.is_playing || state.mode === 'manual' || state.isCelebrating) return;
+        syncGlobalSlideshow();
     }
 
     function boot() {
@@ -1968,11 +2063,7 @@
                 syncSettings().then(() => {
                     startRefreshLoop();
                     if (state.mode === 'auto' && !state.isCelebrating) {
-                        if (state.activeSlide === 'schedule') {
-                            startSchedulePlayback();
-                        } else {
-                            scheduleNextSlide(1000);
-                        }
+                        syncGlobalSlideshow();
                     }
                 });
             }

@@ -40,6 +40,17 @@ body.tv-intro-only #tvViewportScaler {
 }
 
 #slide-intro {
+    display: none !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    z-index: -1 !important;
+    pointer-events: none !important;
+}
+
+#slide-intro.tv-slide--active {
+    display: flex !important;
+    opacity: 1 !important;
+    visibility: visible !important;
     padding: 0 !important;
     margin: 0 !important;
     overflow: hidden;
@@ -48,9 +59,17 @@ body.tv-intro-only #tvViewportScaler {
     width: 100vw !important;
     height: 100vh !important;
     background: #000000;
-    display: flex;
     align-items: center;
     justify-content: center;
+    z-index: 99999 !important;
+    pointer-events: auto !important;
+}
+
+#slide-intro.tv-slide--exiting {
+    display: flex !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    transition: opacity 0.4s ease, visibility 0.4s ease !important;
     z-index: 99999 !important;
 }
 

@@ -641,6 +641,34 @@ function live_display_program_payload(array $row): array
         ];
     }
 
+    $stmtResults = $pdo->prepare("
+        SELECT 
+            pe.final_rank,
+            pe.grade,
+            t.team_name,
+            t.short_name,
+            t.team_color
+        FROM musabaqa_program_entries pe
+        JOIN musabaqa_teams t ON t.id = pe.team_id
+        WHERE pe.program_id = ?
+          AND (pe.final_rank IS NOT NULL OR pe.grade = 'A')
+        ORDER BY 
+            CASE WHEN pe.final_rank IS NULL THEN 999 ELSE pe.final_rank END ASC,
+            pe.grade ASC,
+            pe.id ASC
+    ");
+    $stmtResults->execute([(int)$row['id']]);
+    $results = [];
+    foreach ($stmtResults->fetchAll(PDO::FETCH_ASSOC) as $res) {
+        $results[] = [
+            'rank' => $res['final_rank'] !== null ? (int)$res['final_rank'] : null,
+            'grade' => $res['grade'],
+            'team_name' => $res['team_name'],
+            'team_short' => $res['short_name'] ?: $res['team_name'],
+            'team_color' => live_display_color($res['team_color']),
+        ];
+    }
+
     return [
         'id' => (int)$row['id'],
         'title' => $row['title'] ?? 'Program',
@@ -658,6 +686,7 @@ function live_display_program_payload(array $row): array
         'completed_entry_count' => (int)($row['completed_entry_count'] ?? 0),
         'section_id' => isset($row['section_id']) ? (int)$row['section_id'] : null,
         'team_marks' => $teamMarks,
+        'results' => $results,
     ];
 }
 
@@ -1267,6 +1296,7 @@ function live_display_bootstrap_data(): array
         'sponsors' => live_display_sponsors($eventId, $settings),
         'break' => live_display_break_info($eventId, $settings),
         'server_time' => date(DATE_ATOM),
+        'server_time_ms' => (int)round(microtime(true) * 1000),
     ];
 }
 

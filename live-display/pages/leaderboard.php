@@ -65,95 +65,55 @@ body:has(#slide-leaderboard.tv-slide--active) .tv-topbar {
     position: relative;
 }
 
-/* Background Effects (Pure Video Background) */
+/* Background Effects (Hiding old SVGs to keep display clean and modern) */
 .ambient-mesh-bg,
 .bg-3d-cuts-svg,
 .side-chevrons-svg,
-.orbital-aura-bg {
+.orbital-vector-canvas {
     display: none !important;
 }
 
-@keyframes bg-chevron-pulse-float {
-    0% { transform: translate3d(0, 0, 0) scale(1); opacity: 0.85; }
-    50% { transform: translate3d(0, -6px, 0) scale(1.008); opacity: 1; }
-    100% { transform: translate3d(0, 0, 0) scale(1); opacity: 0.85; }
-}
-
-@keyframes line-dash-flow {
-    0% { stroke-dashoffset: 400; }
-    100% { stroke-dashoffset: -400; }
-}
-
-.animated-chevron-group {
-    will-change: transform, opacity;
-    animation: bg-chevron-pulse-float 10s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite alternate;
-}
-
-.animated-dash-line {
-    stroke-dasharray: 250 120;
-    will-change: stroke-dashoffset;
-    animation: line-dash-flow 24s linear infinite;
-    transition: stroke 1.4s cubic-bezier(0.19, 1, 0.22, 1), opacity 1.4s cubic-bezier(0.19, 1, 0.22, 1);
-}
-
-.animated-cross-line {
-    transition: stroke 1.4s cubic-bezier(0.19, 1, 0.22, 1), opacity 1.4s cubic-bezier(0.19, 1, 0.22, 1);
-}
-
-/* Orbital Stage Container */
+/* 3D stage perspective container support */
 .orbital-stage-container {
     position: relative;
-    width: 1050px;
-    height: 820px;
-    max-width: 96%;
-    max-height: 94%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 2;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: flex-end !important;
+    justify-content: center !important;
+    gap: 24px !important;
+    width: 100% !important;
+    height: 100% !important;
+    max-width: 1450px !important;
+    max-height: 96% !important;
+    padding: 40px 20px 80px 20px !important;
+    margin: 0 auto !important;
+    perspective: 1200px !important;
+    transform-style: preserve-3d !important;
+    box-sizing: border-box;
 }
 
-/* Background Glowing Mesh Auras - Disabled to remove color spread */
-.orbital-aura-bg {
-    display: none !important;
-}
-
-@keyframes aura-float {
-    0% { transform: scale(0.92) translate(0, 0); opacity: 0.3; }
-    100% { transform: scale(1.08) translate(0, 0); opacity: 0.45; }
-}
-
-/* SVG Vector Canvas */
-.orbital-vector-canvas {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
-    z-index: 1;
-}
-
-/* Constellation Hub Center 8-Point Star Medallion Node */
+/* Orbital Stage Medallion Node (Centered at Top) */
 .orbital-center-node.constellation-star-node {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 160px;
-    height: 160px;
+    position: absolute !important;
+    top: 24px !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    width: 140px !important;
+    height: 140px !important;
     border-radius: 50%;
     background: rgba(255, 255, 255, 0.94);
     backdrop-filter: blur(30px);
     -webkit-backdrop-filter: blur(30px);
     border: 2.5px solid color-mix(in srgb, var(--first-team-color, #10b981) 45%, white);
     box-shadow: 
-        0 15px 45px rgba(0, 0, 0, 0.08),
-        0 0 30px color-mix(in srgb, var(--first-team-color, #10b981) 28%, transparent);
+        0 15px 45px rgba(0, 0, 0, 0.12),
+        0 0 40px color-mix(in srgb, var(--first-team-color, #10b981) 35%, transparent);
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     z-index: 10;
+    margin: 0 !important;
 }
 
 .constellation-star-svg {
@@ -164,7 +124,7 @@ body:has(#slide-leaderboard.tv-slide--active) .tv-topbar {
 }
 
 .star-rotation-group {
-    transform-origin: 80px 80px;
+    transform-origin: 70px 70px;
     animation: slow-star-spin 30s linear infinite;
 }
 
@@ -183,7 +143,7 @@ body:has(#slide-leaderboard.tv-slide--active) .tv-topbar {
 }
 
 .constellation-kicker {
-    font-size: 10px;
+    font-size: 9px;
     font-weight: 900;
     letter-spacing: 0.18em;
     color: #64748b;
@@ -192,7 +152,7 @@ body:has(#slide-leaderboard.tv-slide--active) .tv-topbar {
 }
 
 .constellation-lead-num {
-    font-size: 32px;
+    font-size: 28px;
     font-weight: 900;
     color: var(--first-team-color, #10b981);
     font-family: 'Plus Jakarta Sans', monospace;
@@ -200,29 +160,18 @@ body:has(#slide-leaderboard.tv-slide--active) .tv-topbar {
 }
 
 .constellation-unit {
-    font-size: 10px;
+    font-size: 9px;
     font-weight: 900;
     letter-spacing: 0.12em;
     color: #475569;
 }
 
-/* Pulsing Radial Laser Connector Beams */
-.constellation-laser-line {
-    animation: laser-flow 1.8s linear infinite;
-    filter: drop-shadow(0 0 4px currentColor);
-}
-
-@keyframes laser-flow {
-    0% { stroke-dashoffset: 56; }
-    100% { stroke-dashoffset: 0; }
-}
-
-/* Card Point Gap Pills with Smooth Diagonal Gradient */
+/* Card Point Gap Pills */
 .orbital-gap-pill {
     font-size: 11px;
     font-weight: 900;
-    letter-spacing: 0.08em;
-    padding: 4px 14px;
+    letter-spacing: 0.06em;
+    padding: 4px 12px;
     border-radius: 16px;
     font-family: 'Plus Jakarta Sans', monospace;
 }
@@ -236,62 +185,58 @@ body:has(#slide-leaderboard.tv-slide--active) .tv-topbar {
 .orbital-gap-pill.chaser-gap {
     background: linear-gradient(135deg, rgba(15, 23, 42, 0.07) 0%, rgba(15, 23, 42, 0.02) 100%);
     border: 1px solid rgba(15, 23, 42, 0.12);
-    color: #64748b;
+    color: rgba(255, 255, 255, 0.7);
 }
 
-/* 4 Quadrant Cards with Smooth Diagonal Gradient Accent */
+/* 4 Quadrant Cards - Responsive Flex/Podium overhaul */
 .orbital-card {
-    position: absolute;
-    width: 320px;
-    height: 255px;
-    border-radius: 30px;
-    padding: 24px 28px;
+    position: relative !important;
+    top: auto !important;
+    bottom: auto !important;
+    left: auto !important;
+    right: auto !important;
+    transform: none !important;
+    width: 290px !important;
+    height: 350px !important;
+    border-radius: 24px;
+    padding: 28px 24px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
     background: 
         linear-gradient(
             135deg, 
-            rgba(255, 255, 255, 0.96) 0%, 
-            rgba(255, 255, 255, 0.88) 55%, 
-            color-mix(in srgb, var(--accent-color, #10b981) 18%, rgba(255, 255, 255, 0.94)) 100%
+            rgba(15, 23, 42, 0.92) 0%, 
+            rgba(15, 23, 42, 0.82) 55%, 
+            color-mix(in srgb, var(--accent-color, #10b981) 18%, rgba(15, 23, 42, 0.9)) 100%
         );
-    backdrop-filter: blur(40px);
-    -webkit-backdrop-filter: blur(40px);
-    border: 2px solid color-mix(in srgb, var(--accent-color, #10b981) 40%, rgba(255, 255, 255, 0.95));
+    backdrop-filter: blur(30px);
+    -webkit-backdrop-filter: blur(30px);
+    border: 2px solid color-mix(in srgb, var(--accent-color, #10b981) 45%, rgba(255, 255, 255, 0.15));
     box-shadow: 
-        0 20px 50px -10px rgba(0, 0, 0, 0.05),
-        0 0 25px color-mix(in srgb, var(--accent-color, #10b981) 25%, transparent);
+        0 20px 50px -10px rgba(0, 0, 0, 0.55),
+        inset 0 0 20px rgba(255,255,255,0.03);
     overflow: hidden;
     z-index: 5;
-    transition: transform 0.4s ease, box-shadow 0.4s ease;
+    box-sizing: border-box;
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* Top Diagonal Gradient Accent Bar */
+/* Top Accent Glow Bar */
 .orbital-card::before {
     content: '';
     position: absolute;
     top: 0;
     left: 0;
     right: 0;
-    height: 6px;
+    height: 5px;
     background: linear-gradient(
-        135deg, 
-        var(--accent-color, #10b981) 0%, 
-        color-mix(in srgb, var(--accent-color, #10b981) 70%, white) 50%, 
+        90deg, 
+        transparent 0%,
+        var(--accent-color, #10b981) 50%, 
         transparent 100%
     );
-}
-
-/* Card hover animation disabled */
-.orbital-card:hover {
-    transform: none !important;
-}
-
-/* 3D stage perspective container support */
-.orbital-stage-container {
-    perspective: 1200px !important;
-    transform-style: preserve-3d !important;
+    box-shadow: 0 0 14px var(--accent-color, #10b981);
 }
 
 /* Slide Entrance & Exiting Transitions */
@@ -301,110 +246,47 @@ body:has(#slide-leaderboard.tv-slide--active) .tv-topbar {
 
 #slide-leaderboard.tv-slide--exiting {
     opacity: 0 !important;
-    transform: scale(0.96) rotateX(12deg) !important;
+    transform: scale(0.98) !important;
+    transition: opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1), transform 0.35s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
-#slide-leaderboard.tv-slide--exiting .orbital-card[data-pos="1"] {
-    transform: translateY(-150px) rotateX(-30deg) scale(0.75) !important;
-    opacity: 0 !important;
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
-}
-
-#slide-leaderboard.tv-slide--exiting .orbital-card[data-pos="2"] {
-    transform: translateX(150px) rotateY(30deg) scale(0.75) !important;
-    opacity: 0 !important;
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
-}
-
-#slide-leaderboard.tv-slide--exiting .orbital-card[data-pos="3"] {
-    transform: translateX(-150px) rotateY(-30deg) scale(0.75) !important;
-    opacity: 0 !important;
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
-}
-
-#slide-leaderboard.tv-slide--exiting .orbital-card[data-pos="4"] {
-    transform: translateY(150px) rotateX(30deg) scale(0.75) !important;
-    opacity: 0 !important;
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
-}
-
-#slide-leaderboard.tv-slide--exiting .orbital-center-node {
-    transform: scale(0.4) rotateZ(90deg) !important;
-    opacity: 0 !important;
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
-}
-
-/* Embedded Card Chevron Animations (Stroked in Team Color) */
-.card-chevrons-svg {
-    position: absolute !important;
-    inset: 0 !important;
-    width: 100% !important;
-    height: 100% !important;
-    pointer-events: none !important;
-    z-index: 0 !important;
-    overflow: hidden !important;
-    border-radius: inherit;
-}
-
-.animated-card-group {
-    will-change: transform, opacity;
-    animation: bg-chevron-pulse-float 9s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite alternate;
-}
-
-.animated-dash-line {
-    stroke-dasharray: 160 80;
-    will-change: stroke-dashoffset;
-    animation: line-dash-flow 18s linear infinite;
-    filter: drop-shadow(0 0 6px var(--accent-color, #10b981));
-    transition: stroke 1s ease;
-}
-
-.animated-cross-line {
-    filter: drop-shadow(0 0 4px var(--accent-color, #10b981));
-    transition: stroke 1s ease;
-}
-
-/* Dark subtle glass curve overlay at bottom of card */
+/* Dark glass curve overlay at bottom of card */
 .orbital-card-dark-wave {
     position: absolute;
     bottom: -40px;
     left: -20px;
     right: -20px;
     height: 120px;
-    background: radial-gradient(ellipse at center bottom, color-mix(in srgb, var(--accent-color, #10b981) 12%, rgba(255,255,255,0.9)) 0%, transparent 80%);
+    background: radial-gradient(ellipse at center bottom, color-mix(in srgb, var(--accent-color, #10b981) 15%, transparent) 0%, transparent 80%);
     border-top-left-radius: 50%;
     border-top-right-radius: 50%;
     pointer-events: none;
     z-index: 1;
 }
 
-/* Positional Alignments - Professional Tight Cluster Layout */
+/* Podium Heights & Orders (Silver, Gold, Bronze, Runner-up) */
 .orbital-card[data-pos="1"] {
-    top: 45px;
-    left: 50%;
-    transform: translateX(-50%);
-    border: 2.5px solid color-mix(in srgb, var(--accent-color, #10b981) 70%, white);
+    order: 2 !important;
+    height: 390px !important;
+    border: 2.5px solid #ffd700 !important;
     box-shadow: 
-        0 24px 60px -10px rgba(0, 0, 0, 0.08),
-        0 0 40px color-mix(in srgb, var(--accent-color, #10b981) 38%, transparent);
+        0 25px 60px rgba(0, 0, 0, 0.6),
+        0 0 40px color-mix(in srgb, var(--accent-color, #10b981) 40%, transparent) !important;
 }
 
 .orbital-card[data-pos="2"] {
-    top: 50%;
-    right: 70px;
-    transform: translateY(-50%);
+    order: 1 !important;
+    height: 350px !important;
 }
 
 .orbital-card[data-pos="3"] {
-    top: 50%;
-    left: 70px;
-    transform: translateY(-50%);
+    order: 3 !important;
+    height: 330px !important;
 }
 
 .orbital-card[data-pos="4"] {
-    bottom: 45px;
-    left: 50%;
-    transform: translateX(-50%);
+    order: 4 !important;
+    height: 300px !important;
 }
 
 /* Card Header */
@@ -414,38 +296,27 @@ body:has(#slide-leaderboard.tv-slide--active) .tv-topbar {
     justify-content: space-between;
     position: relative;
     z-index: 2;
-}
-
-.orbital-badge-leading {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    background: color-mix(in srgb, var(--accent-color, #10b981) 15%, rgba(255,255,255,0.9));
-    border: 1.5px solid color-mix(in srgb, var(--accent-color, #10b981) 45%, white);
-    color: #0f172a;
-    padding: 5px 16px;
-    border-radius: 20px;
-    font-size: 11px;
-    font-weight: 900;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
+    margin-bottom: 8px;
 }
 
 .orbital-rank-index {
-    font-size: 20px;
+    font-size: 24px;
     font-weight: 900;
-    color: #475569;
-    letter-spacing: 0.05em;
+    color: rgba(255, 255, 255, 0.85);
+    letter-spacing: -0.02em;
     margin-left: auto;
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-family: 'Outfit', sans-serif;
+    display: flex;
+    align-items: center;
 }
 
 /* Card Main Title */
 .orbital-team-title {
-    font-size: 34px;
+    font-size: 32px;
     font-weight: 900;
-    color: #0f172a;
-    margin: 10px 0 4px 0;
+    color: #ffffff;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
+    margin: 12px 0 4px 0;
     line-height: 1.15;
     font-family: 'Plus Jakarta Sans', 'Cairo', sans-serif;
     position: relative;
@@ -459,23 +330,24 @@ body:has(#slide-leaderboard.tv-slide--active) .tv-topbar {
 .orbital-score-wrapper {
     display: flex;
     align-items: baseline;
-    gap: 12px;
+    gap: 10px;
     position: relative;
     z-index: 2;
 }
 
 .orbital-score-digit {
-    font-size: 76px;
+    font-size: 68px;
     font-weight: 900;
     color: var(--accent-color, #10b981);
+    text-shadow: 0 0 25px color-mix(in srgb, var(--accent-color, #10b981) 40%, transparent);
     font-family: 'Plus Jakarta Sans', monospace;
     line-height: 1;
 }
 
 .orbital-score-label {
-    font-size: 14px;
-    font-weight: 900;
-    color: #64748b;
+    font-size: 13px;
+    font-weight: 800;
+    color: rgba(255, 255, 255, 0.55);
     letter-spacing: 0.12em;
     text-transform: uppercase;
 }
@@ -483,28 +355,180 @@ body:has(#slide-leaderboard.tv-slide--active) .tv-topbar {
 /* Extra Teams Row (Rank 5+) */
 .orbital-extra-teams-bar {
     position: absolute;
-    bottom: 15px;
+    bottom: 24px;
     left: 50%;
     transform: translateX(-50%);
     display: flex;
     align-items: center;
-    gap: 16px;
-    background: rgba(255, 255, 255, 0.92);
-    backdrop-filter: blur(20px);
-    border: 1px solid rgba(15, 23, 42, 0.12);
-    padding: 8px 24px;
+    gap: 18px;
+    background: rgba(15, 23, 42, 0.9);
+    backdrop-filter: blur(25px);
+    -webkit-backdrop-filter: blur(25px);
+    border: 1.5px solid rgba(255, 255, 255, 0.12);
+    padding: 10px 28px;
     border-radius: 30px;
     z-index: 20;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6);
 }
 
 .orbital-extra-team-item {
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 800;
-    color: #0f172a;
+    color: #ffffff;
+}
+
+.orbital-extra-team-item span.tv-team-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+/* ──────────────── Responsive Overhaul ──────────────── */
+@media (max-width: 1024px) {
+    .orbital-stage-container {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: stretch !important;
+        justify-content: flex-start !important;
+        gap: 16px !important;
+        width: 100% !important;
+        height: auto !important;
+        max-width: 620px !important;
+        max-height: none !important;
+        padding: 110px 16px 120px 16px !important;
+        overflow-y: auto !important;
+        perspective: none !important;
+        transform-style: flat !important;
+    }
+
+    #slide-leaderboard {
+        overflow-y: auto !important;
+    }
+
+    .orbital-center-node.constellation-star-node {
+        position: absolute !important;
+        top: 16px !important;
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+        width: 84px !important;
+        height: 84px !important;
+        border-width: 1.5px !important;
+        z-index: 100 !important;
+    }
+
+    .constellation-star-svg {
+        display: none !important; /* Hide spinner ring on mobile for simplicity */
+    }
+
+    .constellation-kicker {
+        font-size: 7px !important;
+        letter-spacing: 0.1em !important;
+    }
+
+    .constellation-lead-num {
+        font-size: 20px !important;
+    }
+
+    .constellation-unit {
+        font-size: 7px !important;
+    }
+
+    .orbital-card {
+        position: relative !important;
+        inset: auto !important;
+        width: 100% !important;
+        height: auto !important;
+        min-height: 86px !important;
+        padding: 14px 20px !important;
+        border-radius: 16px !important;
+        transform: none !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4) !important;
+    }
+
+    .orbital-card[data-pos="1"] {
+        order: 1 !important;
+        height: auto !important;
+        border: 2px solid #ffd700 !important;
+        box-shadow: 0 8px 24px rgba(255, 215, 0, 0.15), 0 8px 24px rgba(0,0,0,0.4) !important;
+    }
+    .orbital-card[data-pos="2"] { order: 2 !important; height: auto !important; }
+    .orbital-card[data-pos="3"] { order: 3 !important; height: auto !important; }
+    .orbital-card[data-pos="4"] { order: 4 !important; height: auto !important; }
+
+    .orbital-card-dark-wave {
+        display: none !important;
+    }
+
+    .orbital-card-header {
+        display: flex !important;
+        flex-direction: row-reverse !important;
+        align-items: center !important;
+        gap: 12px !important;
+        margin-bottom: 0 !important;
+        width: auto !important;
+    }
+
+    .orbital-rank-index {
+        font-size: 20px !important;
+        margin-left: 0 !important;
+    }
+
+    .orbital-team-title {
+        font-size: 20px !important;
+        margin: 0 0 0 12px !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        flex-grow: 1 !important;
+        text-align: left !important;
+    }
+
+    .orbital-score-wrapper {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: flex-end !important;
+        gap: 0 !important;
+        margin-left: 12px !important;
+    }
+
+    .orbital-score-digit {
+        font-size: 32px !important;
+    }
+
+    .orbital-score-label {
+        font-size: 8px !important;
+        letter-spacing: 0.05em !important;
+    }
+
+    .orbital-extra-teams-bar {
+        position: relative !important;
+        bottom: auto !important;
+        left: auto !important;
+        transform: none !important;
+        display: flex !important;
+        flex-wrap: wrap !important;
+        justify-content: center !important;
+        width: 100% !important;
+        margin-top: 20px !important;
+        padding: 12px 16px !important;
+        border-radius: 16px !important;
+        box-shadow: none !important;
+        background: rgba(15, 23, 42, 0.7) !important;
+        border: 1px solid rgba(255, 255, 255, 0.08) !important;
+        order: 5 !important;
+        gap: 12px 16px !important;
+    }
+
+    .orbital-extra-team-item {
+        font-size: 12px !important;
+    }
 }
 </style>
 
