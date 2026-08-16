@@ -368,7 +368,6 @@ function result_items(): array
             LEFT JOIN " . DB_MAIN_NAME . ".students s ON s.id = tm.student_id
             WHERE pe.event_id = :event_id
               AND (p.status = 'completed' OR p.approval_status = 'approved')
-              AND (p.disable_scores IS NULL OR p.disable_scores = 0)
               AND (pe.final_rank IS NOT NULL OR pe.final_score > 0)
             GROUP BY pe.id, p.title, ct.name, t.team_name, t.short_name, pe.final_score, pe.team_score, pe.final_rank, p.reviewed_at, p.end_time, p.created_at
             ORDER BY COALESCE(p.reviewed_at, p.end_time, p.created_at) DESC, pe.final_rank ASC, pe.final_score DESC";

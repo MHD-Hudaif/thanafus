@@ -127,6 +127,27 @@ if ($programId > 0) {
 
         try {
             if ($action === 'submit_program') {
+                if (!empty($program['disable_scores'])) {
+                    // For no-mark programs, ensure all entries have score sheets created as completed
+                    admin_db_transaction($pdo, function ($pdo) use ($activeEventId, $programId, $currentUserId) {
+                        $stmt = $pdo->prepare("
+                            INSERT INTO musabaqa_score_sheets (entry_id, program_id, judge1_total, judge2_total, final_total, status, created_by)
+                            SELECT pe.id, pe.program_id, 0.00, 0.00, 0.00, 'completed', ?
+                            FROM musabaqa_program_entries pe
+                            LEFT JOIN musabaqa_score_sheets ss ON ss.entry_id = pe.id
+                            WHERE pe.event_id = ? AND pe.program_id = ? AND ss.id IS NULL
+                        ");
+                        $stmt->execute([$currentUserId, $activeEventId, $programId]);
+
+                        $stmt = $pdo->prepare("
+                            UPDATE musabaqa_score_sheets
+                            SET status = 'completed', judge1_total = 0.00, judge2_total = 0.00, final_total = 0.00
+                            WHERE program_id = ? AND status = 'draft'
+                        ");
+                        $stmt->execute([$programId]);
+                    });
+                }
+
                 $unscoredStmt = $pdo->prepare("
                     SELECT COUNT(*) 
                     FROM musabaqa_program_entries pe
@@ -166,31 +187,28 @@ if ($programId > 0) {
 
             if (!empty($program['disable_scores'])) {
                 $rankInput = (int)($_POST['placement_rank'] ?? 0);
-                $finalTotal = 0.0;
-                if ($rankInput === 1) $finalTotal = 100.0;
-                elseif ($rankInput === 2) $finalTotal = 90.0;
-                elseif ($rankInput === 3) $finalTotal = 80.0;
+                $finalRank = $rankInput > 0 ? $rankInput : null;
 
-                $judge1Total = $finalTotal / 2;
-                $judge2Total = $finalTotal / 2;
+                admin_db_transaction($pdo, function ($pdo) use ($entryId, $programId, $finalRank, $currentUserId) {
+                    $stmt = $pdo->prepare('UPDATE musabaqa_program_entries SET final_rank = ?, final_score = 0.00 WHERE id = ?');
+                    $stmt->execute([$finalRank, $entryId]);
 
-                admin_db_transaction($pdo, function ($pdo) use ($entryId, $programId, $judge1Total, $judge2Total, $finalTotal, $currentUserId) {
                     $stmt = $pdo->prepare('SELECT id FROM musabaqa_score_sheets WHERE entry_id = ? LIMIT 1');
                     $stmt->execute([$entryId]);
                     $sheetId = (int)$stmt->fetchColumn();
 
                     if ($sheetId > 0) {
-                        $stmt = $pdo->prepare("UPDATE musabaqa_score_sheets SET program_id = ?, judge1_total = ?, judge2_total = ?, final_total = ?, status = 'completed' WHERE id = ?");
-                        $stmt->execute([$programId, $judge1Total, $judge2Total, $finalTotal, $sheetId]);
+                        $stmt = $pdo->prepare("UPDATE musabaqa_score_sheets SET program_id = ?, judge1_total = 0.00, judge2_total = 0.00, final_total = 0.00, status = 'completed' WHERE id = ?");
+                        $stmt->execute([$programId, $sheetId]);
                     } else {
-                        $stmt = $pdo->prepare("INSERT INTO musabaqa_score_sheets (entry_id, program_id, judge1_total, judge2_total, final_total, status, created_by) VALUES (?, ?, ?, ?, ?, 'completed', ?)");
-                        $stmt->execute([$entryId, $programId, $judge1Total, $judge2Total, $finalTotal, $currentUserId]);
+                        $stmt = $pdo->prepare("INSERT INTO musabaqa_score_sheets (entry_id, program_id, judge1_total, judge2_total, final_total, status, created_by) VALUES (?, ?, 0.00, 0.00, 0.00, 'completed', ?)");
+                        $stmt->execute([$entryId, $programId, $currentUserId]);
                     }
                 });
 
                 if ($isAjax) {
                     header('Content-Type: application/json; charset=utf-8');
-                    echo json_encode(['success' => true, 'final_total' => number_format($finalTotal, 2)]);
+                    echo json_encode(['success' => true, 'rank' => $rankInput]);
                     exit;
                 }
 
@@ -482,9 +500,6 @@ if ($programId > 0) {
                             <th>Entry Name</th>
                             <th>Team</th>
                             <th style="width: 160px; text-align: center;">Placement Rank</th>
-                            <th style="width: 100px; text-align: center;">Final Score</th>
-                            <th style="width: 80px; text-align: center;">Rank</th>
-                            <th style="width: 90px; text-align: center;">Grade</th>
                             <th style="width: 80px; text-align: center;">Status</th>
                         </tr>
                     <?php else: ?>
@@ -547,26 +562,23 @@ if ($programId > 0) {
                                             <?= $scoresLocked ? 'disabled' : '' ?>>
                                         <option value="0">None</option>
                                         <?php
-                                        $teamPoints = [];
-                                        if (!empty($program['team_points_config'])) {
-                                            $teamPoints = json_decode($program['team_points_config'], true);
-                                        }
-                                        if (is_array($teamPoints) && count($teamPoints) > 0) {
-                                            foreach ($teamPoints as $r => $pts) {
-                                                $rInt = (int)$r;
-                                                $suffix = match($rInt) { 1 => 'st', 2 => 'nd', 3 => 'rd', default => 'th' };
-                                                $selected = (int)($entry['final_rank'] ?? 0) === $rInt ? 'selected' : '';
-                                                echo "<option value=\"{$rInt}\" {$selected}>{$rInt}{$suffix} Place</option>";
-                                            }
-                                        } else {
-                                            ?>
-                                            <option value="1" <?= (int)($entry['final_rank'] ?? 0) === 1 ? 'selected' : '' ?>>1st Place</option>
-                                            <option value="2" <?= (int)($entry['final_rank'] ?? 0) === 2 ? 'selected' : '' ?>>2nd Place</option>
-                                            <option value="3" <?= (int)($entry['final_rank'] ?? 0) === 3 ? 'selected' : '' ?>>3rd Place</option>
-                                            <?php
+                                        $entriesCount = count($entries);
+                                        for ($rInt = 1; $rInt <= $entriesCount; $rInt++) {
+                                            $suffix = match($rInt) { 1 => 'st', 2 => 'nd', 3 => 'rd', default => 'th' };
+                                            $selected = (int)($entry['final_rank'] ?? 0) === $rInt ? 'selected' : '';
+                                            echo "<option value=\"{$rInt}\" {$selected}>{$rInt}{$suffix} Place</option>";
                                         }
                                         ?>
                                     </select>
+                                </td>
+                                <td class="row-save-status" id="save-status-<?= $entryId ?>" style="text-align: center; vertical-align: middle;">
+                                    <?php if ($scoresLocked): ?>
+                                        <i class="fa-solid fa-lock text-muted" title="Locked"></i>
+                                    <?php elseif ($hasSheet || ($entry['final_rank'] ?? null) !== null): ?>
+                                        <i class="fa-solid fa-circle-check text-success" title="Saved"></i>
+                                    <?php else: ?>
+                                        <i class="fa-solid fa-circle-minus text-muted" title="Not Scored"></i>
+                                    <?php endif; ?>
                                 </td>
                             <?php else: ?>
                                 <?php for ($j = 1; $j <= $judgesCount; $j++): ?>
@@ -593,51 +605,51 @@ if ($programId > 0) {
                                         </td>
                                     <?php endforeach; ?>
                                 <?php endfor; ?>
+
+                                <td class="row-total-score" id="total-score-<?= $entryId ?>" style="font-weight: 700; color: #34d399; font-size: 14px; text-align: center; vertical-align: middle; border-left: 4px double #818cf8;">
+                                    <?= $hasSheet ? number_format($finalScoreVal, 0) : '0' ?>
+                                </td>
+
+                                <td class="row-percentage" id="percentage-<?= $entryId ?>" style="font-weight: 600; color: #60a5fa; font-size: 13px; text-align: center; vertical-align: middle;">
+                                    <?= $pctVal !== null ? number_format($pctVal, 1) . '%' : '—' ?>
+                                </td>
+
+                                <td class="row-rank-badge" id="rank-badge-<?= $entryId ?>" style="text-align: center; vertical-align: middle;">
+                                    <?php
+                                    $calculatedRank = $entryRanksMap[$entryId] ?? null;
+                                    if ($calculatedRank !== null):
+                                        $rankOrd = match($calculatedRank) { 1 => '1st', 2 => '2nd', 3 => '3rd', default => $calculatedRank . 'th' };
+                                        $rankBg = match($calculatedRank) { 1 => '#10b981', 2 => '#f59e0b', 3 => '#3b82f6', default => '#64748b' };
+                                        $rankFg = $calculatedRank === 2 ? '#000' : '#fff';
+                                    ?>
+                                        <span class="badge badge-rank" style="background: <?= $rankBg ?>; color: <?= $rankFg ?>; font-size: 11px; padding: 3px 8px; font-weight: 800; border-radius: 6px;">
+                                            <?= $rankOrd ?>
+                                        </span>
+                                    <?php else: ?>
+                                        <span class="text-muted">—</span>
+                                    <?php endif; ?>
+                                </td>
+
+                                <td class="row-grade-badge" id="grade-badge-<?= $entryId ?>" style="text-align: center; vertical-align: middle;">
+                                    <?php if (!empty($entryGrade)): ?>
+                                        <span class="badge badge-<?= match($entryGrade) { 'A' => 'success', 'B' => 'info', 'C' => 'warning', 'D' => 'neutral', default => 'neutral' } ?>" style="font-size: 11px; padding: 3px 8px; font-weight: 800;">
+                                            Grade <?= e($entryGrade) ?>
+                                        </span>
+                                    <?php else: ?>
+                                        <span class="text-muted">—</span>
+                                    <?php endif; ?>
+                                </td>
+
+                                <td class="row-save-status" id="save-status-<?= $entryId ?>" style="text-align: center; vertical-align: middle;">
+                                    <?php if ($scoresLocked): ?>
+                                        <i class="fa-solid fa-lock text-muted" title="Locked"></i>
+                                    <?php elseif ($hasSheet): ?>
+                                        <i class="fa-solid fa-circle-check text-success" title="Saved"></i>
+                                    <?php else: ?>
+                                        <i class="fa-solid fa-circle-minus text-muted" title="Not Scored"></i>
+                                    <?php endif; ?>
+                                </td>
                             <?php endif; ?>
-
-                            <td class="row-total-score" id="total-score-<?= $entryId ?>" style="font-weight: 700; color: #34d399; font-size: 14px; text-align: center; vertical-align: middle; border-left: 4px double #818cf8;">
-                                <?= $hasSheet ? number_format($finalScoreVal, 0) : '0' ?>
-                            </td>
-
-                            <td class="row-percentage" id="percentage-<?= $entryId ?>" style="font-weight: 600; color: #60a5fa; font-size: 13px; text-align: center; vertical-align: middle;">
-                                <?= $pctVal !== null ? number_format($pctVal, 1) . '%' : '—' ?>
-                            </td>
-
-                            <td class="row-rank-badge" id="rank-badge-<?= $entryId ?>" style="text-align: center; vertical-align: middle;">
-                                <?php
-                                $calculatedRank = $entryRanksMap[$entryId] ?? null;
-                                if ($calculatedRank !== null):
-                                    $rankOrd = match($calculatedRank) { 1 => '1st', 2 => '2nd', 3 => '3rd', default => $calculatedRank . 'th' };
-                                    $rankBg = match($calculatedRank) { 1 => '#10b981', 2 => '#f59e0b', 3 => '#3b82f6', default => '#64748b' };
-                                    $rankFg = $calculatedRank === 2 ? '#000' : '#fff';
-                                ?>
-                                    <span class="badge badge-rank" style="background: <?= $rankBg ?>; color: <?= $rankFg ?>; font-size: 11px; padding: 3px 8px; font-weight: 800; border-radius: 6px;">
-                                        <?= $rankOrd ?>
-                                    </span>
-                                <?php else: ?>
-                                    <span class="text-muted">—</span>
-                                <?php endif; ?>
-                            </td>
-
-                            <td class="row-grade-badge" id="grade-badge-<?= $entryId ?>" style="text-align: center; vertical-align: middle;">
-                                <?php if (!empty($entryGrade)): ?>
-                                    <span class="badge badge-<?= match($entryGrade) { 'A' => 'success', 'B' => 'info', 'C' => 'warning', 'D' => 'neutral', default => 'neutral' } ?>" style="font-size: 11px; padding: 3px 8px; font-weight: 800;">
-                                        Grade <?= e($entryGrade) ?>
-                                    </span>
-                                <?php else: ?>
-                                    <span class="text-muted">—</span>
-                                <?php endif; ?>
-                            </td>
-
-                            <td class="row-save-status" id="save-status-<?= $entryId ?>" style="text-align: center; vertical-align: middle;">
-                                <?php if ($scoresLocked): ?>
-                                    <i class="fa-solid fa-lock text-muted" title="Locked"></i>
-                                <?php elseif ($hasSheet): ?>
-                                    <i class="fa-solid fa-circle-check text-success" title="Saved"></i>
-                                <?php else: ?>
-                                    <i class="fa-solid fa-circle-minus text-muted" title="Not Scored"></i>
-                                <?php endif; ?>
-                            </td>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>
@@ -709,26 +721,47 @@ if ($programId > 0) {
 
         const rankSelects = document.querySelectorAll('.score-grid-rank-select');
         const scoreInputs = document.querySelectorAll('.score-grid-input');
-        
-        let total = 0;
-        let filled = 0;
 
         if (rankSelects.length > 0) {
-            total = rankSelects.length;
+            let hasRank = false;
+            let assignedCount = 0;
             rankSelects.forEach(select => {
                 if (select.value && select.value !== '0') {
-                    filled++;
+                    hasRank = true;
+                    assignedCount++;
                 }
             });
-        } else {
-            total = scoreInputs.length;
-            scoreInputs.forEach(input => {
-                const val = input.value.trim();
-                if (val !== '' && !isNaN(parseFloat(val))) {
-                    filled++;
+
+            if (hasRank) {
+                btn.disabled = false;
+                btn.style.opacity = '1.0';
+                btn.style.cursor = 'pointer';
+                btn.style.pointerEvents = 'auto';
+                btn.title = 'Click to send program ranks for approval';
+                if (statusText) {
+                    statusText.innerHTML = `<span style="color: #34d399; font-weight: 700; font-size: 13px;"><i class="fa-solid fa-circle-check mr-1"></i> Ranks assigned (${assignedCount} placed) - Ready for approval</span>`;
                 }
-            });
+            } else {
+                btn.disabled = true;
+                btn.style.opacity = '0.45';
+                btn.style.cursor = 'not-allowed';
+                btn.style.pointerEvents = 'auto';
+                btn.title = 'Please assign at least 1st Place rank before sending for approval.';
+                if (statusText) {
+                    statusText.innerHTML = '<span style="color: #f87171; font-weight: 700; font-size: 13px;"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Please assign at least 1st Place rank</span>';
+                }
+            }
+            return;
         }
+
+        let total = scoreInputs.length;
+        let filled = 0;
+        scoreInputs.forEach(input => {
+            const val = input.value.trim();
+            if (val !== '' && !isNaN(parseFloat(val))) {
+                filled++;
+            }
+        });
 
         const allComplete = (total > 0 && filled === total);
 

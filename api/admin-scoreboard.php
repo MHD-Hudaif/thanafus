@@ -45,7 +45,6 @@ try {
         LEFT JOIN musabaqa_scores s ON s.entry_id = pe.id AND s.status = 'approved'
         WHERE t.event_id = ?
           AND (p.class_type_id = ct.id OR p.class_type_id IS NULL)
-          AND (p.disable_scores IS NULL OR p.disable_scores = 0)
         GROUP BY t.id, t.team_name, t.team_color, ct.id, ct.name
         ORDER BY t.id ASC
     ");

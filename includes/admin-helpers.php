@@ -391,9 +391,59 @@ function admin_recalculate_program_results(PDO $pdo, int $eventId, int $programI
     $settings = admin_get_settings($pdo);
     $tiedMode = $settings['tied_rank_mode'] ?? 'shared_full';
 
-    $stmtProg = $pdo->prepare("SELECT judges_count FROM musabaqa_programs WHERE id = ? LIMIT 1");
+    $stmtProg = $pdo->prepare("SELECT judges_count, disable_scores, team_points_config, only_team_marks FROM musabaqa_programs WHERE id = ? LIMIT 1");
     $stmtProg->execute([$programId]);
-    $judgesCount = (int)($stmtProg->fetchColumn() ?: 2);
+    $progInfo = $stmtProg->fetch(PDO::FETCH_ASSOC) ?: [];
+    $judgesCount = (int)($progInfo['judges_count'] ?? 2);
+    $disableScores = !empty($progInfo['disable_scores']);
+
+    $firstPoints = (int)($settings['first_place_points'] ?? 10);
+    $secondPoints = (int)($settings['second_place_points'] ?? 7);
+    $thirdPoints = (int)($settings['third_place_points'] ?? 5);
+
+    $teamPoints = null;
+    $onlyTeamMarks = (int)($progInfo['only_team_marks'] ?? 0);
+    if (!empty($progInfo['team_points_config'])) {
+        $teamPoints = json_decode($progInfo['team_points_config'], true);
+    }
+
+    $pointConfig = [];
+    if (is_array($teamPoints)) {
+        // If program has a custom point config, ONLY award points to ranks explicitly defined in it
+        foreach ($teamPoints as $r => $pts) {
+            $pointConfig[(int)$r] = (int)$pts;
+        }
+    } else {
+        // Fallback to event-wide default points
+        $pointConfig[1] = $firstPoints;
+        $pointConfig[2] = $secondPoints;
+        $pointConfig[3] = $thirdPoints;
+    }
+
+    if ($disableScores) {
+        $stmtEntries = $pdo->prepare("
+            SELECT id, final_rank, status
+            FROM musabaqa_program_entries
+            WHERE event_id = ? AND program_id = ?
+        ");
+        $stmtEntries->execute([$eventId, $programId]);
+        $allEntries = $stmtEntries->fetchAll(PDO::FETCH_ASSOC);
+
+        $update = $pdo->prepare("
+            UPDATE musabaqa_program_entries
+            SET final_score = 0.00, team_score = ?, status = 'completed'
+            WHERE id = ? AND event_id = ? AND program_id = ?
+        ");
+
+        foreach ($allEntries as $e) {
+            $r = (int)($e['final_rank'] ?? 0);
+            $teamScore = ($r > 0 && isset($pointConfig[$r])) ? $pointConfig[$r] : 0;
+            $update->execute([$teamScore, (int)$e['id'], $eventId, $programId]);
+        }
+
+        admin_recalculate_program_status($pdo, $programId);
+        return;
+    }
 
     $orderClause = "ms.total_mark DESC, mpe.entry_number ASC, mpe.id ASC";
     if ($tiedMode === 'tie_breaker') {
@@ -420,33 +470,6 @@ function admin_recalculate_program_results(PDO $pdo, int $eventId, int $programI
     ");
     $stmt->execute([$eventId, $programId]);
     $entries = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-    $firstPoints = (int)($settings['first_place_points'] ?? 10);
-    $secondPoints = (int)($settings['second_place_points'] ?? 7);
-    $thirdPoints = (int)($settings['third_place_points'] ?? 5);
-
-    $teamPoints = null;
-    $onlyTeamMarks = 0;
-    if ($entries) {
-        $firstEntry = $entries[0];
-        $onlyTeamMarks = (int)($firstEntry['only_team_marks'] ?? 0);
-        if (!empty($firstEntry['team_points_config'])) {
-            $teamPoints = json_decode($firstEntry['team_points_config'], true);
-        }
-    }
-
-    $pointConfig = [];
-    if (is_array($teamPoints)) {
-        // If program has a custom point config, ONLY award points to ranks explicitly defined in it
-        foreach ($teamPoints as $r => $pts) {
-            $pointConfig[(int)$r] = (int)$pts;
-        }
-    } else {
-        // Fallback to event-wide default points
-        $pointConfig[1] = $firstPoints;
-        $pointConfig[2] = $secondPoints;
-        $pointConfig[3] = $thirdPoints;
-    }
 
     $bonusThreshold = (float)($settings['grade_85_plus_threshold'] ?? 85.0);
     $bonusPoints = (int)($settings['grade_85_plus_bonus_points'] ?? 3);
@@ -583,7 +606,6 @@ function admin_recalculate_team_totals(PDO $pdo, int $eventId): void
         WHERE pe.event_id = ?
           AND p.approval_status = 'approved'
           AND (p.redirect_to_team IS NULL OR p.redirect_to_team = 1)
-          AND (p.disable_scores IS NULL OR p.disable_scores = 0)
         GROUP BY pe.team_id
     ");
     $stmt->execute([$eventId]);
@@ -766,9 +788,13 @@ function admin_approve_program_scores(PDO $pdo, int $eventId, int $programId, in
             VALUES (?, ?, ?, 'System Final', ?, 'Approved from two-judge score sheet', 'approved', ?, ?, NOW())
         ");
 
+        $stmtProg = $pdo->prepare("SELECT disable_scores FROM musabaqa_programs WHERE id = ? LIMIT 1");
+        $stmtProg->execute([$programId]);
+        $isDisableScores = (bool)$stmtProg->fetchColumn();
+
         foreach ($rows as $row) {
             $entryId = (int)$row['entry_id'];
-            $total = (float)$row['final_total'];
+            $total = $isDisableScores ? 0.00 : (float)$row['final_total'];
             $findScore->execute([$eventId, $programId, $entryId]);
             $scoreId = (int)$findScore->fetchColumn();
 

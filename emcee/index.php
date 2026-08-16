@@ -201,21 +201,38 @@ require_once __DIR__ . '/../includes/header.php';
 ?>
 
 <style>
-    /* CSS REDESIGN FOR EMCEE MASTER STAGE DECK */
+    *, *::before, *::after {
+        -webkit-touch-callout: none !important;
+        -webkit-user-select: none !important;
+        -khtml-user-select: none !important;
+        -moz-user-select: none !important;
+        -ms-user-select: none !important;
+        user-select: none !important;
+        -webkit-tap-highlight-color: transparent !important;
+    }
+    input, textarea, select, [contenteditable="true"] {
+        -webkit-user-select: text !important;
+        -moz-user-select: text !important;
+        -ms-user-select: text !important;
+        user-select: text !important;
+    }
+
+    /* CSS REDESIGN FOR EMCEE MASTER STAGE DECK - CREAM AND WHITE THEME */
     html, body {
         height: 100vh !important;
         margin: 0 !important;
         padding: 0 !important;
-        background: #060907 !important;
+        background: #faf7f0 !important;
         background-image: 
-            radial-gradient(circle at 50% 0%, rgba(16, 185, 129, 0.08) 0%, transparent 60%),
-            linear-gradient(to bottom, #060907, #020403) !important;
+            radial-gradient(at 0% 0%, rgba(180, 200, 160, 0.20) 0px, transparent 50%),
+            radial-gradient(at 100% 100%, rgba(210, 185, 140, 0.20) 0px, transparent 50%),
+            radial-gradient(at 50% 50%, rgba(235, 225, 210, 0.60) 0px, transparent 100%) !important;
         display: flex !important;
         justify-content: center !important;
         align-items: center !important;
         overflow: hidden !important;
         font-family: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif !important;
-        color: #e5e7eb !important;
+        color: #2e2b27 !important;
     }
     
     .admin-layout {
@@ -248,13 +265,13 @@ require_once __DIR__ . '/../includes/header.php';
         flex-direction: column !important;
         justify-content: space-between !important;
         box-sizing: border-box !important;
-        background: #0a0d0b !important;
-        border-left: 1px solid rgba(16, 185, 129, 0.1) !important;
-        border-right: 1px solid rgba(16, 185, 129, 0.1) !important;
-        box-shadow: 0 0 80px rgba(0, 0, 0, 0.85) !important;
-        overflow-y: auto !important;
+        background: rgba(255, 250, 240, 0.75) !important;
+        border-left: 1px solid rgba(200, 180, 150, 0.25) !important;
+        border-right: 1px solid rgba(200, 180, 150, 0.25) !important;
+        box-shadow: 0 10px 40px rgba(140, 120, 100, 0.06) !important;
+        overflow: hidden !important; /* NO SCROLL */
         position: relative !important;
-        scrollbar-width: none; /* Hide scrollbar for clean app experience */
+        scrollbar-width: none;
     }
     .main-content::-webkit-scrollbar {
         display: none;
@@ -276,7 +293,7 @@ require_once __DIR__ . '/../includes/header.php';
         justify-content: space-between !important;
         align-items: center !important;
         padding: 4px 4px 12px 4px !important;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+        border-bottom: 1px solid rgba(200, 180, 150, 0.25) !important;
         box-sizing: border-box !important;
         flex-shrink: 0 !important;
         margin-bottom: 16px !important;
@@ -286,8 +303,8 @@ require_once __DIR__ . '/../includes/header.php';
         display: inline-flex;
         align-items: center;
         gap: 6px;
-        background: rgba(16, 185, 129, 0.08);
-        border: 1px solid rgba(16, 185, 129, 0.2);
+        background: rgba(93, 126, 90, 0.08) !important;
+        border: 1px solid rgba(93, 126, 90, 0.25) !important;
         padding: 6px 12px;
         border-radius: 999px;
     }
@@ -295,28 +312,23 @@ require_once __DIR__ . '/../includes/header.php';
     .status-label {
         font-size: 11px;
         font-weight: 800;
-        color: #34d399;
+        color: #5d7e5a !important;
         letter-spacing: 0.5px;
     }
 
     .status-dot {
         width: 6px;
         height: 6px;
-        background-color: #00ff87;
+        background-color: #5d7e5a !important;
         border-radius: 50%;
-        box-shadow: 0 0 10px #00ff87;
+        box-shadow: 0 0 10px rgba(93, 126, 90, 0.4) !important;
         animation: statusPulse 1.8s infinite ease-in-out;
-    }
-
-    @keyframes statusPulse {
-        0%, 100% { transform: scale(0.95); opacity: 0.6; }
-        50% { transform: scale(1.25); opacity: 1; }
     }
 
     .header-title {
         font-size: 15px;
         font-weight: 800;
-        color: #ffffff;
+        color: #2e2b27 !important;
         letter-spacing: -0.2px;
         white-space: nowrap;
         overflow: hidden;
@@ -328,9 +340,9 @@ require_once __DIR__ . '/../includes/header.php';
         width: 38px;
         height: 38px;
         border-radius: 10px;
-        background: rgba(255, 255, 255, 0.04);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        color: #ffffff;
+        background: rgba(93, 126, 90, 0.06) !important;
+        border: 1px solid rgba(93, 126, 90, 0.15) !important;
+        color: #4b6b47 !important;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -340,9 +352,9 @@ require_once __DIR__ . '/../includes/header.php';
     }
 
     .grid-btn:hover {
-        background: rgba(16, 185, 129, 0.15);
-        border-color: rgba(16, 185, 129, 0.3);
-        color: #34d399;
+        background: rgba(93, 126, 90, 0.12) !important;
+        border-color: rgba(93, 126, 90, 0.3) !important;
+        color: #2e2b27 !important;
     }
 
     /* SLIDE CARD CONTAINER & STYLING */
@@ -358,11 +370,11 @@ require_once __DIR__ . '/../includes/header.php';
 
     .slide-card {
         width: 100%;
-        background: #111614;
-        border: 2px solid rgba(16, 185, 129, 0.2);
+        background: #ffffff !important;
+        border: 2px solid rgba(200, 180, 150, 0.3) !important;
         border-radius: 28px;
         padding: 26px 22px;
-        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+        box-shadow: 0 10px 30px rgba(140, 120, 100, 0.06) !important;
         text-align: center;
         position: relative;
         box-sizing: border-box;
@@ -375,14 +387,14 @@ require_once __DIR__ . '/../includes/header.php';
     }
 
     .slide-card.is-live-box {
-        border-color: #10b981 !important;
-        box-shadow: 0 0 30px rgba(16, 185, 129, 0.25), inset 0 0 15px rgba(16, 185, 129, 0.08) !important;
+        border-color: #5d7e5a !important;
+        box-shadow: 0 0 30px rgba(93, 126, 90, 0.15), inset 0 0 15px rgba(93, 126, 90, 0.05) !important;
     }
 
     .card-subtitle {
         font-size: 11px;
         font-weight: 800;
-        color: #b5b5b5;
+        color: #6b6258 !important;
         letter-spacing: 0.15em;
         text-transform: uppercase;
         margin-bottom: 20px;
@@ -396,29 +408,29 @@ require_once __DIR__ . '/../includes/header.php';
         width: 68px;
         height: 68px;
         border-radius: 50%;
-        background: rgba(16, 185, 129, 0.08);
-        border: 1px solid rgba(16, 185, 129, 0.2);
+        background: rgba(93, 126, 90, 0.08) !important;
+        border: 1px solid rgba(93, 126, 90, 0.2) !important;
         display: flex;
         align-items: center;
         justify-content: center;
         font-size: 22px;
-        color: #10b981;
+        color: #5d7e5a !important;
     }
 
     .card-main-title {
         font-size: 28px;
         font-weight: 900;
-        color: #00ff87;
+        color: #3a5e44 !important;
         letter-spacing: -0.5px;
         line-height: 1.25;
         margin: 0 0 12px 0;
-        text-shadow: 0 0 20px rgba(0, 255, 135, 0.25);
+        text-shadow: none !important;
     }
 
     .card-slot-time {
         font-size: 15px;
         font-weight: 700;
-        color: #10b981;
+        color: #5d7e5a !important;
         margin-bottom: 12px;
         letter-spacing: -0.2px;
     }
@@ -431,18 +443,18 @@ require_once __DIR__ . '/../includes/header.php';
     .neon-chest {
         font-size: 34px;
         font-weight: 900;
-        color: #ffffff;
+        color: #c9a86c !important;
         font-family: monospace;
         letter-spacing: 1px;
         display: block;
         margin-bottom: 4px;
-        text-shadow: 0 0 15px rgba(255,255,255,0.2);
+        text-shadow: none !important;
     }
 
     .participant-name {
         font-size: 18px;
         font-weight: 800;
-        color: #ffffff;
+        color: #2e2b27 !important;
         margin: 4px 0 8px 0;
     }
 
@@ -450,9 +462,9 @@ require_once __DIR__ . '/../includes/header.php';
         display: inline-block;
         padding: 4px 14px;
         border-radius: 99px;
-        background: rgba(255,255,255,0.05);
-        border: 1px solid rgba(255,255,255,0.1);
-        color: #ccc;
+        background: rgba(0, 0, 0, 0.03) !important;
+        border: 1px solid rgba(0, 0, 0, 0.08) !important;
+        color: #6b6258 !important;
         font-size: 12px;
         font-weight: 600;
     }
@@ -467,33 +479,15 @@ require_once __DIR__ . '/../includes/header.php';
     }
     
     .badge-success {
-        background: rgba(16, 185, 129, 0.2);
-        color: #34d399;
-        border: 1px solid rgba(16, 185, 129, 0.4);
+        background: rgba(93, 126, 90, 0.12) !important;
+        color: #5d7e5a !important;
+        border: 1px solid rgba(93, 126, 90, 0.3) !important;
     }
 
     .badge-neutral {
-        background: rgba(255,255,255,0.05);
-        color: #aaa;
-        border: 1px solid rgba(255,255,255,0.1);
-    }
-
-    /* SLIDING TRANSITION ANIMATIONS */
-    .slide-enter-next {
-        animation: slideNext 0.3s cubic-bezier(0.25, 1, 0.5, 1) forwards;
-    }
-    .slide-enter-prev {
-        animation: slidePrev 0.3s cubic-bezier(0.25, 1, 0.5, 1) forwards;
-    }
-
-    @keyframes slideNext {
-        0% { opacity: 0.3; transform: translateX(30px) scale(0.97); }
-        100% { opacity: 1; transform: translateX(0) scale(1); }
-    }
-
-    @keyframes slidePrev {
-        0% { opacity: 0.3; transform: translateX(-30px) scale(0.97); }
-        100% { opacity: 1; transform: translateX(0) scale(1); }
+        background: rgba(0, 0, 0, 0.04) !important;
+        color: #6b6258 !important;
+        border: 1px solid rgba(0, 0, 0, 0.08) !important;
     }
 
     /* CONTROLS ROW */
@@ -511,9 +505,9 @@ require_once __DIR__ . '/../includes/header.php';
         width: 48px;
         height: 48px;
         border-radius: 50%;
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        color: #10b981;
+        background: rgba(93, 126, 90, 0.08) !important;
+        border: 1px solid rgba(93, 126, 90, 0.2) !important;
+        color: #4b6b47 !important;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -524,9 +518,9 @@ require_once __DIR__ . '/../includes/header.php';
     }
 
     .nav-circle-btn:hover:not(.disabled) {
-        background: rgba(16, 185, 129, 0.15);
-        border-color: rgba(16, 185, 129, 0.3);
-        color: #ffffff;
+        background: rgba(93, 126, 90, 0.15) !important;
+        border-color: rgba(93, 126, 90, 0.3) !important;
+        color: #2e2b27 !important;
         transform: scale(1.05);
     }
 
@@ -537,12 +531,14 @@ require_once __DIR__ . '/../includes/header.php';
     .nav-circle-btn.disabled {
         opacity: 0.15;
         cursor: not-allowed;
-        color: #6b7280;
+        color: #9ca3af !important;
+        background: rgba(0, 0, 0, 0.02) !important;
+        border-color: rgba(0, 0, 0, 0.05) !important;
     }
 
     .slide-badge-pill {
-        background: rgba(255, 255, 255, 0.04);
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(0, 0, 0, 0.03) !important;
+        border: 1px solid rgba(180, 160, 140, 0.2) !important;
         border-radius: 999px;
         padding: 8px 18px;
         display: flex;
@@ -550,11 +546,11 @@ require_once __DIR__ . '/../includes/header.php';
         gap: 8px;
         font-size: 13px;
         font-weight: 700;
-        color: #ffffff;
+        color: #2e2b27 !important;
     }
 
     .slide-badge-pill i {
-        color: #10b981;
+        color: #5d7e5a !important;
         font-size: 11px;
     }
 
@@ -567,11 +563,11 @@ require_once __DIR__ . '/../includes/header.php';
 
     .footer-action-btn {
         width: 100%;
-        background: #00ff87;
+        background: linear-gradient(135deg, #7f9e7a, #5d7e5a) !important;
         border: none;
         border-radius: 16px;
         padding: 16px;
-        color: #050d08;
+        color: #ffffff !important;
         font-size: 14px;
         font-weight: 800;
         display: flex;
@@ -579,15 +575,14 @@ require_once __DIR__ . '/../includes/header.php';
         justify-content: center;
         gap: 8px;
         cursor: pointer;
-        box-shadow: 0 0 25px rgba(0, 255, 135, 0.35);
+        box-shadow: 0 4px 14px rgba(93, 126, 90, 0.2) !important;
         transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
         outline: none;
     }
 
     .footer-action-btn:hover {
-        background: #00e575;
-        box-shadow: 0 0 35px rgba(0, 255, 135, 0.55);
         transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(93, 126, 90, 0.3) !important;
     }
 
     .footer-action-btn:active {
@@ -595,15 +590,10 @@ require_once __DIR__ . '/../includes/header.php';
     }
 
     .footer-action-btn.btn-live-active {
-        background: linear-gradient(135deg, #10b981, #059669);
-        color: #ffffff;
-        border: 1px solid #34d399;
-        box-shadow: 0 0 25px rgba(16, 185, 129, 0.4);
-    }
-
-    .footer-action-btn.btn-live-active:hover {
-        background: linear-gradient(135deg, #34d399, #10b981);
-        box-shadow: 0 0 35px rgba(16, 185, 129, 0.6);
+        background: linear-gradient(135deg, #c9a86c, #a8874a) !important;
+        color: #ffffff !important;
+        border: 1px solid rgba(255,255,255,0.3) !important;
+        box-shadow: 0 4px 14px rgba(201, 168, 108, 0.3) !important;
     }
 
     /* STOPWATCH TIMER STYLING */
@@ -611,7 +601,7 @@ require_once __DIR__ . '/../includes/header.php';
         width: 100%;
         margin-top: 18px;
         padding-top: 16px;
-        border-top: 1px dashed rgba(255, 255, 255, 0.08);
+        border-top: 1px dashed rgba(180, 160, 140, 0.2) !important;
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -620,8 +610,8 @@ require_once __DIR__ . '/../includes/header.php';
     .timer-badge {
         font-size: 9px;
         font-weight: 800;
-        color: #9ca3af;
-        background: rgba(255, 255, 255, 0.05);
+        color: #6b6258 !important;
+        background: rgba(0, 0, 0, 0.04) !important;
         padding: 3px 8px;
         border-radius: 4px;
         letter-spacing: 0.05em;
@@ -632,14 +622,14 @@ require_once __DIR__ . '/../includes/header.php';
         font-size: 28px;
         font-weight: 800;
         font-family: monospace;
-        color: #34d399;
-        text-shadow: 0 0 10px rgba(52, 211, 153, 0.3);
+        color: #3a5e44 !important;
+        text-shadow: none !important;
         margin-bottom: 10px;
     }
 
     .timer-clock.is-running {
-        color: #ef4444;
-        text-shadow: 0 0 15px rgba(239, 68, 68, 0.5);
+        color: #dc2626 !important;
+        text-shadow: none !important;
     }
 
     .timer-actions {
@@ -661,20 +651,20 @@ require_once __DIR__ . '/../includes/header.php';
     }
 
     .timer-btn.btn-start {
-        background: rgba(16, 185, 129, 0.15);
-        border: 1px solid rgba(16, 185, 129, 0.3);
-        color: #34d399;
+        background: rgba(93, 126, 90, 0.1) !important;
+        border: 1px solid rgba(93, 126, 90, 0.25) !important;
+        color: #4b6b47 !important;
     }
 
     .timer-btn.btn-stop {
-        background: rgba(239, 68, 68, 0.15);
-        border: 1px solid rgba(239, 68, 68, 0.3);
-        color: #f87171;
+        background: rgba(220, 38, 38, 0.1) !important;
+        border: 1px solid rgba(220, 38, 38, 0.25) !important;
+        color: #dc2626 !important;
     }
 
     .timer-btn.btn-reset {
-        background: rgba(255, 255, 255, 0.08);
-        color: #ccc;
+        background: rgba(0, 0, 0, 0.05) !important;
+        color: #6b6258 !important;
     }
 
     .toast-notify {
@@ -682,13 +672,13 @@ require_once __DIR__ . '/../includes/header.php';
         bottom: 24px;
         left: 50%;
         transform: translateX(-50%);
-        background: rgba(16, 185, 129, 0.95);
+        background: #5d7e5a !important;
         color: #fff;
         padding: 12px 24px;
         border-radius: 12px;
         font-weight: 800;
         font-size: 14px;
-        box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+        box-shadow: 0 8px 30px rgba(140, 120, 100, 0.2) !important;
         z-index: 999999;
         display: none;
         align-items: center;

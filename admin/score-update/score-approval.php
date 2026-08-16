@@ -276,18 +276,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' || isset($_GET['ajax']) || isset($_GET
                 throw new RuntimeException('Program not found.');
             }
 
-            $stmt = $pdo->prepare("
-                SELECT
-                    pe.id, pe.entry_number, pe.entry_name, t.team_name, t.team_color, ss.judge1_total, ss.judge2_total, ss.final_total
-                FROM musabaqa_program_entries pe
-                JOIN musabaqa_teams t ON t.id = pe.team_id
-                JOIN musabaqa_score_sheets ss ON ss.entry_id = pe.id
-                WHERE pe.event_id = ? AND pe.program_id = ?
-                ORDER BY ss.final_total DESC, pe.entry_number ASC, pe.id ASC
-            ");
-            $stmt->execute([$activeEventId, $programId]);
-            $entries = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
             $settings = admin_get_settings($pdo);
             $firstPoints = (int)($settings['first_place_points'] ?? 10);
             $secondPoints = (int)($settings['second_place_points'] ?? 7);
@@ -305,35 +293,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' || isset($_GET['ajax']) || isset($_GET
                 $pointConfig[(int)$r] = (int)$pts;
             }
 
-            $scoreGroups = [];
-            foreach ($entries as $entry) {
-                $scoreKey = (string)(float)$entry['final_total'];
-                $scoreGroups[$scoreKey][] = $entry;
-            }
-            $groupCounts = array_map('count', array_values($scoreGroups));
+            $isDisableScores = !empty($program['disable_scores']);
 
-            $position = 1;
-            $idx = 0;
-            $processedEntries = [];
-            $teamTotals = [];
+            if ($isDisableScores) {
+                $stmt = $pdo->prepare("
+                    SELECT
+                        pe.id, pe.entry_number, pe.entry_name, pe.final_rank, t.team_name, t.team_color
+                    FROM musabaqa_program_entries pe
+                    JOIN musabaqa_teams t ON t.id = pe.team_id
+                    WHERE pe.event_id = ? AND pe.program_id = ?
+                    ORDER BY (CASE WHEN pe.final_rank IS NULL OR pe.final_rank = 0 THEN 9999 ELSE pe.final_rank END) ASC, pe.entry_number ASC, pe.id ASC
+                ");
+                $stmt->execute([$activeEventId, $programId]);
+                $entries = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-            foreach ($scoreGroups as $scoreStr => $groupEntries) {
-                $count = count($groupEntries);
-                $rank = $position;
-                $teamPoints = 0;
-                if ($idx === 0) {
-                    $teamPoints = $pointConfig[1];
-                } elseif ($idx === 1) {
-                    $c1 = $groupCounts[0] ?? 0;
-                    $teamPoints = ($c1 === 1 || $c1 === 2) ? $pointConfig[2] : 0;
-                } elseif ($idx === 2) {
-                    $c1 = $groupCounts[0] ?? 0;
-                    $c2 = $groupCounts[1] ?? 0;
-                    $teamPoints = ($c1 === 1 && $c2 === 1) ? $pointConfig[3] : 0;
-                }
-
-                foreach ($groupEntries as $entry) {
-                    $entry['rank'] = $rank;
+                $processedEntries = [];
+                $teamTotals = [];
+                foreach ($entries as $entry) {
+                    $r = (int)($entry['final_rank'] ?? 0);
+                    $teamPoints = ($r > 0 && isset($pointConfig[$r])) ? $pointConfig[$r] : 0;
+                    $entry['rank'] = $r;
                     $entry['team_points'] = $teamPoints;
                     $processedEntries[] = $entry;
                     $team = (string)$entry['team_name'];
@@ -342,8 +321,59 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' || isset($_GET['ajax']) || isset($_GET
                         'color' => $entry['team_color'] ?: '#64748b',
                     ];
                 }
-                $position += $count;
-                $idx++;
+            } else {
+                $stmt = $pdo->prepare("
+                    SELECT
+                        pe.id, pe.entry_number, pe.entry_name, t.team_name, t.team_color, ss.judge1_total, ss.judge2_total, ss.final_total
+                    FROM musabaqa_program_entries pe
+                    JOIN musabaqa_teams t ON t.id = pe.team_id
+                    JOIN musabaqa_score_sheets ss ON ss.entry_id = pe.id
+                    WHERE pe.event_id = ? AND pe.program_id = ?
+                    ORDER BY ss.final_total DESC, pe.entry_number ASC, pe.id ASC
+                ");
+                $stmt->execute([$activeEventId, $programId]);
+                $entries = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+                $scoreGroups = [];
+                foreach ($entries as $entry) {
+                    $scoreKey = (string)(float)$entry['final_total'];
+                    $scoreGroups[$scoreKey][] = $entry;
+                }
+                $groupCounts = array_map('count', array_values($scoreGroups));
+
+                $position = 1;
+                $idx = 0;
+                $processedEntries = [];
+                $teamTotals = [];
+
+                foreach ($scoreGroups as $scoreStr => $groupEntries) {
+                    $count = count($groupEntries);
+                    $rank = $position;
+                    $teamPoints = 0;
+                    if ($idx === 0) {
+                        $teamPoints = $pointConfig[1] ?? 0;
+                    } elseif ($idx === 1) {
+                        $c1 = $groupCounts[0] ?? 0;
+                        $teamPoints = ($c1 === 1 || $c1 === 2) ? ($pointConfig[2] ?? 0) : 0;
+                    } elseif ($idx === 2) {
+                        $c1 = $groupCounts[0] ?? 0;
+                        $c2 = $groupCounts[1] ?? 0;
+                        $teamPoints = ($c1 === 1 && $c2 === 1) ? ($pointConfig[3] ?? 0) : 0;
+                    }
+
+                    foreach ($groupEntries as $entry) {
+                        $entry['rank'] = $rank;
+                        $entry['team_points'] = $teamPoints;
+                        $processedEntries[] = $entry;
+                        $team = (string)$entry['team_name'];
+                        $teamTotals[$team] = [
+                            'total' => ($teamTotals[$team]['total'] ?? 0) + $teamPoints,
+                            'color' => $entry['team_color'] ?: '#64748b',
+                        ];
+                    }
+                    $position += $count;
+                    $idx++;
+                }
             }
 
             ob_start(); ?>
@@ -359,18 +389,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' || isset($_GET['ajax']) || isset($_GET
                 <div class="table-wrapper mb-4">
                     <table class="table" style="font-size: 13px;">
                         <thead>
-                            <tr><th>Entry Name</th><th>Team</th><th>Judge 1 Total</th><th>Judge 2 Total</th><th>Final Total</th><th>Rank</th><th>Team Pts</th></tr>
+                            <?php if ($isDisableScores): ?>
+                                <tr><th>Entry Name</th><th>Team</th><th style="text-align: center;">Placement Rank</th><th style="text-align: center;">Team Pts</th></tr>
+                            <?php else: ?>
+                                <tr><th>Entry Name</th><th>Team</th><th>Judge 1 Total</th><th>Judge 2 Total</th><th>Final Total</th><th>Rank</th><th>Team Pts</th></tr>
+                            <?php endif; ?>
                         </thead>
                         <tbody>
                             <?php foreach ($processedEntries as $e): ?>
                                 <tr>
                                     <td>#<?= e(str_pad((string)$e['entry_number'], 3, '0', STR_PAD_LEFT)) ?> <?= e($e['entry_name'] ?: 'Unnamed Entry') ?></td>
                                     <td><span class="team-color-pill" style="background: <?= e($e['team_color'] ?? '#64748b') ?>22;"><?= e($e['team_name']) ?></span></td>
-                                    <td><?= number_format((float)$e['judge1_total'], 2) ?></td>
-                                    <td><?= number_format((float)$e['judge2_total'], 2) ?></td>
-                                    <td><strong><?= number_format((float)$e['final_total'], 2) ?></strong></td>
-                                    <td><strong><?= (int)$e['rank'] ?></strong></td>
-                                    <td><strong><?= (int)$e['team_points'] ?></strong></td>
+                                    <?php if ($isDisableScores): ?>
+                                        <td style="text-align: center; font-weight: 700; color: #facc15;">
+                                            <?php
+                                                $r = (int)($e['rank'] ?? 0);
+                                                echo match ($r) {
+                                                    1 => '1st Place 🥇',
+                                                    2 => '2nd Place 🥈',
+                                                    3 => '3rd Place 🥉',
+                                                    default => ($r > 0 ? $r . 'th Place' : '—')
+                                                };
+                                            ?>
+                                        </td>
+                                        <td style="text-align: center;"><strong><?= (int)$e['team_points'] ?></strong></td>
+                                    <?php else: ?>
+                                        <td><?= number_format((float)$e['judge1_total'], 2) ?></td>
+                                        <td><?= number_format((float)$e['judge2_total'], 2) ?></td>
+                                        <td><strong><?= number_format((float)$e['final_total'], 2) ?></strong></td>
+                                        <td><strong><?= (int)$e['rank'] ?></strong></td>
+                                        <td><strong><?= (int)$e['team_points'] ?></strong></td>
+                                    <?php endif; ?>
                                 </tr>
                             <?php endforeach; ?>
                         </tbody>

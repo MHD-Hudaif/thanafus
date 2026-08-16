@@ -5581,4 +5581,140 @@ body.tv-idle-cursor * {
   visibility: hidden !important;
 }
 
+/* ==========================================================================
+   LIGHT THEME OVERRIDES FOR WHITE BACKDROP & SLOW WIND FLOW
+   ========================================================================== */
+html, body {
+  background: #faf6eb !important; /* Premium soft cream background */
+}
+
+.tv-backdrop {
+  background: radial-gradient(circle at center, #ffffff 0%, #fdfcf7 60%, #faf6eb 100%) !important; /* White-to-cream gradient */
+}
+
+.tv-backdrop .stage-backdrop .glow-orb {
+  display: none !important;
+}
+
+#tvBgVideo {
+  display: none !important;
+}
+
+.tv-noise {
+  background-image: 
+      linear-gradient(rgba(15, 23, 42, 0.012) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(15, 23, 42, 0.012) 1px, transparent 1px) !important;
+  opacity: 0.8 !important;
+}
+
+/* Page Header Titles legibility overrides */
+.leaderboard-title,
+.schedule-slide-title {
+  color: #936a0d !important; /* Rich golden text */
+}
+
+.page-count-badge {
+  color: #0f172a !important;
+  background: rgba(15, 23, 42, 0.05) !important;
+  border-color: rgba(15, 23, 42, 0.08) !important;
+}
+
+.tv-brand-title {
+  color: #0f172a !important;
+}
+
+.tv-brand-kicker {
+  color: #64748b !important;
+}
+
+.tv-clock {
+  color: #0f172a !important;
+  border-color: rgba(15, 23, 42, 0.08) !important;
+  background: rgba(255, 255, 255, 0.7) !important;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.04) !important;
+}
+
+.tv-live-chip {
+  background: rgba(220, 38, 38, 0.08) !important;
+  border-color: rgba(220, 38, 38, 0.35) !important;
+  color: #dc2626 !important;
+}
+
+.tv-live-chip span {
+  background-color: #dc2626 !important;
+  box-shadow: 0 0 8px rgba(220, 38, 38, 0.6) !important;
+}
+
+/* ==========================================================================
+   SCHEDULE SLIDE: WHITE TABLE WITH GOLD TEXT OVERRIDES
+   ========================================================================== */
+.schedule-timeline-container {
+  background: rgba(255, 255, 255, 0.82) !important;
+  border: 2px solid rgba(15, 23, 42, 0.06) !important;
+  box-shadow: 0 25px 60px rgba(15, 23, 42, 0.04) !important;
+  backdrop-filter: blur(30px) !important;
+  -webkit-backdrop-filter: blur(30px) !important;
+}
+
+.schedule-card {
+  border-bottom: 1.5px solid rgba(15, 23, 42, 0.06) !important;
+}
+
+.schedule-card:nth-child(odd) {
+  background: #ffffff !important;
+}
+
+.schedule-card:nth-child(even) {
+  background: #faf6eb !important; /* Elegant soft cream background */
+}
+
+.schedule-card.is-running-program {
+  background: rgba(16, 185, 129, 0.1) !important; /* Green highlight */
+}
+
+.schedule-card.is-break {
+  background: rgba(245, 158, 11, 0.08) !important; /* Amber highlight */
+}
+
+.schedule-program-title,
+.schedule-time-label {
+  color: #936a0d !important; /* Premium Gold honey text for high visibility */
+  text-shadow: none !important;
+}
+
+.program-sec-tag,
+.program-day-tag {
+  background: rgba(15, 23, 42, 0.04) !important;
+  color: #475569 !important;
+  border: 1px solid rgba(15, 23, 42, 0.06) !important;
+}
+
+.schedule-index-inline.num-blue {
+  background: rgba(59, 130, 246, 0.08) !important;
+  color: #1d4ed8 !important;
+  border-color: rgba(59, 130, 246, 0.2) !important;
+}
+
+.schedule-index-inline.num-green {
+  background: rgba(16, 185, 129, 0.08) !important;
+  color: #047857 !important;
+  border-color: rgba(16, 185, 129, 0.2) !important;
+}
+
+.schedule-index-inline.num-gray {
+  background: rgba(100, 116, 139, 0.08) !important;
+  color: #475569 !important;
+  border-color: rgba(100, 116, 139, 0.2) !important;
+}
+
+.schedule-index-inline.num-amber {
+  background: rgba(245, 158, 11, 0.08) !important;
+  color: #936a0d !important;
+  border-color: rgba(245, 158, 11, 0.2) !important;
+}
+
+.no-results-placeholder {
+  color: rgba(15, 23, 42, 0.2) !important;
+}
+
 

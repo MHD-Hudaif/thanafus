@@ -487,7 +487,6 @@ function live_display_leaderboard(?int $eventId = null): array
             WHERE pe.event_id = ?
               AND p.approval_status = 'approved'
               AND (p.redirect_to_team IS NULL OR p.redirect_to_team = 1)
-              AND (p.disable_scores IS NULL OR p.disable_scores = 0)
             GROUP BY pe.team_id
         ) approved_scores ON approved_scores.team_id = t.id
         LEFT JOIN musabaqa_manual_scoreboard manual_scores
@@ -1074,7 +1073,6 @@ function live_display_winners(?int $eventId = null, int $limit = 8): array
         LEFT JOIN " . DB_MAIN_NAME . ".class_types ct ON ct.id = p.class_type_id
         WHERE p.event_id = ?
           AND (p.status = 'completed' OR p.approval_status = 'approved')
-          AND (p.disable_scores IS NULL OR p.disable_scores = 0)
         ORDER BY COALESCE(p.reviewed_at, p.end_time, p.created_at) DESC, p.id DESC
         LIMIT ?
     ");

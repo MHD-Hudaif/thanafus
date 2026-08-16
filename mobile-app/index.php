@@ -19,18 +19,30 @@ function get_emcee_passkey($pdo): string {
 }
 
 // Handle AJAX verification POST request
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'auth_emcee') {
-    header('Content-Type: application/json');
-    $pin = trim((string)($_POST['pin'] ?? ''));
-    $emceePasskey = get_emcee_passkey($pdo);
-    
-    if ($pin === $emceePasskey) {
-        $_SESSION['emcee_authenticated'] = true;
-        echo json_encode(['success' => true, 'redirect' => 'emcee/index.php']);
-    } else {
-        echo json_encode(['success' => false, 'message' => 'Invalid Emcee Passkey!']);
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
+    if ($_POST['action'] === 'auth_emcee') {
+        header('Content-Type: application/json');
+        $pin = trim((string)($_POST['pin'] ?? ''));
+        $emceePasskey = get_emcee_passkey($pdo);
+        
+        if ($pin === $emceePasskey) {
+            $_SESSION['emcee_authenticated'] = true;
+            echo json_encode(['success' => true, 'redirect' => 'emcee/index.php']);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Invalid Emcee Passkey!']);
+        }
+        exit;
+    } elseif ($_POST['action'] === 'auth_special') {
+        header('Content-Type: application/json');
+        $pin = trim((string)($_POST['pin'] ?? ''));
+        if ($pin === '7777') {
+            $_SESSION['special_authenticated'] = true;
+            echo json_encode(['success' => true, 'redirect' => 'special/index.php']);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Invalid Special Passkey!']);
+        }
+        exit;
     }
-    exit;
 }
 
 $event = tv_active_event();
@@ -104,6 +116,20 @@ $eventDateFormatted = !empty($event['start_date'])
 
         * {
           box-sizing: border-box;
+          -webkit-touch-callout: none !important;
+          -webkit-user-select: none !important;
+          -khtml-user-select: none !important;
+          -moz-user-select: none !important;
+          -ms-user-select: none !important;
+          user-select: none !important;
+          -webkit-tap-highlight-color: transparent !important;
+        }
+
+        input, textarea, select, [contenteditable="true"] {
+          -webkit-user-select: text !important;
+          -moz-user-select: text !important;
+          -ms-user-select: text !important;
+          user-select: text !important;
         }
 
         body {
@@ -755,6 +781,7 @@ $eventDateFormatted = !empty($event['start_date'])
                     <select id="targetDestination" class="destination-select">
                         <option value="dashboard">🏠 Dashboard (Home Page)</option>
                         <option value="emcee">🎤 Emcee Controls (Stage Deck)</option>
+                        <option value="special">📊 Special Dashboard</option>
                     </select>
                     <i class="fa-solid fa-chevron-down select-chevron"></i>
                 </div>
@@ -885,6 +912,10 @@ $eventDateFormatted = !empty($event['start_date'])
                     passkeySection.style.display = 'block';
                     submitPinBtn.textContent = 'Unlock Stage Deck';
                     setTimeout(() => pinInput.focus(), 150);
+                } else if (val === 'special') {
+                    passkeySection.style.display = 'block';
+                    submitPinBtn.textContent = 'Unlock Special Dashboard';
+                    setTimeout(() => pinInput.focus(), 150);
                 } else {
                     passkeySection.style.display = 'none';
                     errorMsg.style.display = 'none';
@@ -928,7 +959,7 @@ $eventDateFormatted = !empty($event['start_date'])
                 errorMsg.style.display = 'none';
 
                 const formData = new FormData();
-                formData.append('action', 'auth_emcee');
+                formData.append('action', dest === 'special' ? 'auth_special' : 'auth_emcee');
                 formData.append('pin', pin);
 
                 fetch(window.location.href, {
@@ -938,7 +969,7 @@ $eventDateFormatted = !empty($event['start_date'])
                 .then(res => res.json())
                 .then(data => {
                     submitPinBtn.disabled = false;
-                    submitPinBtn.textContent = 'Unlock Stage Deck';
+                    submitPinBtn.textContent = dest === 'special' ? 'Unlock Special Dashboard' : 'Unlock Stage Deck';
                     if (data.success && data.redirect) {
                         window.location.href = data.redirect;
                     } else {
@@ -949,7 +980,7 @@ $eventDateFormatted = !empty($event['start_date'])
                 })
                 .catch(err => {
                     submitPinBtn.disabled = false;
-                    submitPinBtn.textContent = 'Unlock Stage Deck';
+                    submitPinBtn.textContent = dest === 'special' ? 'Unlock Special Dashboard' : 'Unlock Stage Deck';
                     errorMsg.textContent = 'Network error, please try again.';
                     errorMsg.style.display = 'block';
                 });

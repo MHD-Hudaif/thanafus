@@ -164,28 +164,16 @@
         return assets.yellow || 'assets/videos/bg-yellow.mp4';
     }
 
-    // Canvas Flow Engine from green_shapes_flow.html
-    let flowSpeed = 0.2;
-    let morphRate = 0.2;
-    let currentStyle = 'rings'; // 'blobs', 'polygons', 'rings'
-    let currentThemeGradients = [];
-    let currentStrokeColor = '#34d399';
-    let currentShadowColor = '#10b981';
-    let currentFlowLineColor = 'rgba(52, 211, 153, 0.08)';
+    // Canvas Flow Engine - Premium Light-themed Waving Wind Lines & Particles
+    let windColor = { r: 16, g: 185, b: 129, targetR: 16, targetG: 185, targetB: 129 };
+    let flowParticles = [];
 
-    function getThemeGradientSet(hexColor) {
-        const rgb = hexToRgb(hexColor || '#10b981');
-        const r = rgb.r, g = rgb.g, b = rgb.b;
-        const rDark = Math.max(0, r - 90), gDark = Math.max(0, g - 90), bDark = Math.max(0, b - 90);
-        const rLight = Math.min(255, r + 70), gLight = Math.min(255, g + 70), bLight = Math.min(255, b + 70);
-
-        return [
-            { start: `rgb(${r}, ${g}, ${b})`, end: `rgb(${rDark}, ${gDark}, ${bDark})`, alpha: 0.4 },
-            { start: `rgb(${rLight}, ${gLight}, ${bLight})`, end: `rgb(${r}, ${g}, ${b})`, alpha: 0.35 },
-            { start: `rgb(${Math.min(255, r + 110)}, ${Math.min(255, g + 110)}, ${Math.min(255, b + 110)})`, end: `rgb(${rDark}, ${gDark}, ${bDark})`, alpha: 0.28 },
-            { start: `rgb(${r}, ${g}, ${b})`, end: `rgb(2, 26, 20)`, alpha: 0.32 },
-            { start: `rgb(${rDark}, ${gDark}, ${bDark})`, end: `rgb(${rLight}, ${gLight}, ${bLight})`, alpha: 0.45 }
-        ];
+    function updateParticleTargets(rgb) {
+        flowParticles.forEach(p => {
+            p.targetR = rgb.r + (Math.random() - 0.5) * 25;
+            p.targetG = rgb.g + (Math.random() - 0.5) * 25;
+            p.targetB = rgb.b + (Math.random() - 0.5) * 25;
+        });
     }
 
     function initFlowCanvas() {
@@ -206,152 +194,121 @@
             height = canvas.height = window.innerHeight;
         });
 
-        currentThemeGradients = getThemeGradientSet('#10b981');
-
-        class MorphShape {
+        // Soft micro-particles (Slowed down to match wind speed)
+        class MorphedParticle {
             constructor() {
                 this.reset(true);
             }
 
             reset(initial = false) {
-                this.x = initial ? Math.random() * width : -300 - Math.random() * 200;
-                this.y = Math.random() * height;
-                this.size = Math.random() * 160 + 100;
-                this.vx = Math.random() * 1.5 + 0.8;
-                this.vy = (Math.random() - 0.5) * 0.4;
-                this.rot = Math.random() * Math.PI * 2;
-                this.vRot = (Math.random() - 0.5) * 0.015;
+                this.x = Math.random() * width;
+                this.y = initial ? Math.random() * height : height + 10;
+                this.size = Math.random() * 3 + 1.2;
+                this.vx = (Math.random() - 0.5) * 0.15;
+                this.vy = -Math.random() * 0.12 - 0.06; // Ultra slow upward float
+                this.alpha = Math.random() * 0.22 + 0.12;
+                
+                this.r = windColor.r + (Math.random() - 0.5) * 20;
+                this.g = windColor.g + (Math.random() - 0.5) * 20;
+                this.b = windColor.b + (Math.random() - 0.5) * 20;
 
-                this.pointsCount = Math.floor(Math.random() * 4) + 5;
-                this.points = [];
-                for (let i = 0; i < this.pointsCount; i++) {
-                    this.points.push({
-                        baseR: this.size * (0.7 + Math.random() * 0.6),
-                        phase: Math.random() * Math.PI * 2,
-                        freq: Math.random() * 0.02 + 0.01,
-                        amp: Math.random() * 30 + 15
-                    });
-                }
-
-                this.gradConfig = currentThemeGradients[Math.floor(Math.random() * currentThemeGradients.length)] || currentThemeGradients[0];
-                this.time = Math.random() * 1000;
+                this.targetR = this.r;
+                this.targetG = this.g;
+                this.targetB = this.b;
             }
 
             update() {
-                this.x += this.vx * flowSpeed;
-                this.y += this.vy * flowSpeed;
-                this.rot += this.vRot * flowSpeed;
-                this.time += 0.02 * morphRate;
+                this.x += this.vx;
+                this.y += this.vy;
+                this.alpha -= 0.0006;
 
-                if (this.x - this.size * 2 > width) {
+                // Interpolate colors smoothly
+                this.r += (this.targetR - this.r) * 0.05;
+                this.g += (this.targetG - this.g) * 0.05;
+                this.b += (this.targetB - this.b) * 0.05;
+
+                if (this.y < -this.size || this.alpha <= 0) {
                     this.reset(false);
                 }
             }
 
             draw() {
+                const colorStr = `rgb(${Math.round(this.r)}, ${Math.round(this.g)}, ${Math.round(this.b)})`;
                 ctx.save();
-                ctx.translate(this.x, this.y);
-                ctx.rotate(this.rot);
-
-                const grad = ctx.createLinearGradient(-this.size, -this.size, this.size, this.size);
-                grad.addColorStop(0, this.gradConfig.start);
-                grad.addColorStop(1, this.gradConfig.end);
-
-                ctx.fillStyle = grad;
-                ctx.strokeStyle = currentStrokeColor;
-                ctx.lineWidth = 2;
-                ctx.globalAlpha = this.gradConfig.alpha;
-
-                ctx.shadowColor = currentShadowColor;
-                ctx.shadowBlur = 30;
-
+                ctx.globalAlpha = this.alpha;
+                ctx.fillStyle = colorStr;
                 ctx.beginPath();
-
-                if (currentStyle === 'blobs') {
-                    const polyPoints = [];
-                    for (let i = 0; i < this.pointsCount; i++) {
-                        const pt = this.points[i];
-                        const angle = (i / this.pointsCount) * Math.PI * 2;
-                        const r = pt.baseR + Math.sin(this.time * pt.freq * 100 + pt.phase) * pt.amp;
-                        polyPoints.push({
-                            x: Math.cos(angle) * r,
-                            y: Math.sin(angle) * r
-                        });
-                    }
-
-                    ctx.moveTo(polyPoints[0].x, polyPoints[0].y);
-                    for (let i = 0; i < polyPoints.length; i++) {
-                        const next = polyPoints[(i + 1) % polyPoints.length];
-                        const xc = (polyPoints[i].x + next.x) / 2;
-                        const yc = (polyPoints[i].y + next.y) / 2;
-                        ctx.quadraticCurveTo(polyPoints[i].x, polyPoints[i].y, xc, yc);
-                    }
-                    ctx.closePath();
-                    ctx.fill();
-                    ctx.stroke();
-                } else if (currentStyle === 'polygons') {
-                    for (let i = 0; i < this.pointsCount; i++) {
-                        const pt = this.points[i];
-                        const angle = (i / this.pointsCount) * Math.PI * 2;
-                        const r = pt.baseR + Math.cos(this.time * pt.freq * 120 + pt.phase) * pt.amp;
-                        const px = Math.cos(angle) * r;
-                        const py = Math.sin(angle) * r;
-
-                        if (i === 0) ctx.moveTo(px, py);
-                        else ctx.lineTo(px, py);
-                    }
-                    ctx.closePath();
-                    ctx.fill();
-                    ctx.stroke();
-                } else if (currentStyle === 'rings') {
-                    const r = this.size * (0.8 + Math.sin(this.time * 2) * 0.2);
-                    ctx.arc(0, 0, r, 0, Math.PI * 2);
-                    ctx.lineWidth = 14;
-                    ctx.stroke();
-
-                    ctx.beginPath();
-                    ctx.arc(0, 0, r * 0.55, 0, Math.PI * 2);
-                    ctx.lineWidth = 6;
-                    ctx.stroke();
-                }
-
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
                 ctx.restore();
             }
         }
 
-        const shapes = [];
-        for (let i = 0; i < 16; i++) {
-            shapes.push(new MorphShape());
+        flowParticles = [];
+        for (let i = 0; i < 30; i++) {
+            flowParticles.push(new MorphedParticle());
         }
-        window.flowShapes = shapes;
 
-        function drawFlowLines() {
-            const time = Date.now() * 0.0005 * flowSpeed;
-            ctx.save();
-            ctx.strokeStyle = currentFlowLineColor;
-            ctx.lineWidth = 1.5;
+        // Draw Flowing Silk Wind Lines (Slower and more visible)
+        function drawWindFlow() {
+            // Time multiplier 0.00015 for slower movement
+            const time = Date.now() * 0.00015;
+            const linesCount = 5;
 
-            const lineCount = 6;
-            for (let i = 0; i < lineCount; i++) {
-                const yBase = (height / (lineCount + 1)) * (i + 1);
+            // Interpolate global wind color towards target color
+            windColor.r += (windColor.targetR - windColor.r) * 0.05;
+            windColor.g += (windColor.targetG - windColor.g) * 0.05;
+            windColor.b += (windColor.targetB - windColor.b) * 0.05;
+
+            const baseColor = `rgb(${Math.round(windColor.r)}, ${Math.round(windColor.g)}, ${Math.round(windColor.b)})`;
+
+            for (let i = 0; i < linesCount; i++) {
+                ctx.save();
+                
+                // Vertical position spacing
+                const yBase = (height / (linesCount + 1)) * (i + 1);
+
+                // Horizontal gradient fade at edges - Peak opacity 75% for high visibility
+                const lineGrad = ctx.createLinearGradient(0, 0, width, 0);
+                lineGrad.addColorStop(0, 'rgba(255, 255, 255, 0)');
+                lineGrad.addColorStop(0.15, `rgba(${Math.round(windColor.r)}, ${Math.round(windColor.g)}, ${Math.round(windColor.b)}, 0.25)`);
+                lineGrad.addColorStop(0.5, `rgba(${Math.round(windColor.r)}, ${Math.round(windColor.g)}, ${Math.round(windColor.b)}, 0.75)`);
+                lineGrad.addColorStop(0.85, `rgba(${Math.round(windColor.r)}, ${Math.round(windColor.g)}, ${Math.round(windColor.b)}, 0.25)`);
+                lineGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+
+                ctx.strokeStyle = lineGrad;
+                ctx.lineWidth = i % 2 === 0 ? 4.5 : 2.5; // Thickness 2.5px to 4.5px
+                
+                // Neon blur glow blur size 15
+                ctx.shadowColor = baseColor;
+                ctx.shadowBlur = 15;
+
                 ctx.beginPath();
-                for (let x = 0; x <= width; x += 30) {
-                    const y = yBase + Math.sin(x * 0.005 + time + i) * 35 + Math.cos(x * 0.003 - time) * 20;
+
+                const step = 25;
+                for (let x = 0; x <= width + step; x += step) {
+                    const wave1 = Math.sin(x * 0.0025 + time * 1.5 + i * 1.7) * 45;
+                    const wave2 = Math.cos(x * 0.005 - time * 0.8 + i * 2.3) * 20;
+                    const wave3 = Math.sin(x * 0.001 + time * 0.4) * 30;
+
+                    const y = yBase + wave1 + wave2 + wave3;
+
                     if (x === 0) ctx.moveTo(x, y);
                     else ctx.lineTo(x, y);
                 }
+
                 ctx.stroke();
+                ctx.restore();
             }
-            ctx.restore();
         }
 
         function animate() {
             if (!window.isFlowCanvasPaused) {
                 ctx.clearRect(0, 0, width, height);
-                drawFlowLines();
-                shapes.forEach(shape => {
-                    shape.update();
-                    shape.draw();
+                drawWindFlow();
+                flowParticles.forEach(p => {
+                    p.update();
+                    p.draw();
                 });
             }
             requestAnimationFrame(animate);
@@ -372,32 +329,18 @@
             const backdrop = document.querySelector('.tv-backdrop');
             if (backdrop) backdrop.style.setProperty('--first-team-color', teamColor);
 
-            currentThemeGradients = getThemeGradientSet(teamColor);
             const rgb = hexToRgb(teamColor);
-            currentStrokeColor = `rgba(${Math.min(255, rgb.r + 90)}, ${Math.min(255, rgb.g + 90)}, ${Math.min(255, rgb.b + 90)}, 0.85)`;
-            currentShadowColor = teamColor;
-            currentFlowLineColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.12)`;
-
-            if (window.flowShapes) {
-                window.flowShapes.forEach(shape => {
-                    shape.gradConfig = currentThemeGradients[Math.floor(Math.random() * currentThemeGradients.length)] || currentThemeGradients[0];
-                });
-            }
+            windColor.targetR = rgb.r;
+            windColor.targetG = rgb.g;
+            windColor.targetB = rgb.b;
+            updateParticleTargets(rgb);
         }
         const bgVideo = document.getElementById('tvBgVideo');
         if (!bgVideo) return;
-        if (isLowEndDevice) {
+        if (isLowEndDevice || true) {
             bgVideo.style.display = 'none';
             try { bgVideo.pause(); } catch (_) {}
             return;
-        }
-        const targetSrc = getTeamVideoSrc(teamColor);
-        if (bgVideo.getAttribute('data-current-src') !== targetSrc) {
-            bgVideo.setAttribute('data-current-src', targetSrc);
-            bgVideo.src = targetSrc;
-            if (!window.isIntroSlideActive) {
-                bgVideo.play().catch(() => {});
-            }
         }
     }
 

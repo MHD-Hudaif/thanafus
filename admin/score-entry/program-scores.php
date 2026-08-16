@@ -122,8 +122,6 @@ if ($programId > 0) {
                             <th>Entry Name</th>
                             <th>Team</th>
                             <th style="width: 160px; text-align: center;">Placement Rank</th>
-                            <th style="width: 100px; text-align: center;">Final Score</th>
-                            <th style="width: 90px; text-align: center;">Grade</th>
                             <th style="width: 100px; text-align: center;">Status</th>
                         </tr>
                     <?php else: ?>
@@ -185,9 +183,14 @@ if ($programId > 0) {
                                             1 => '1st Place 🥇',
                                             2 => '2nd Place 🥈',
                                             3 => '3rd Place 🥉',
-                                            default => '—'
+                                            default => ($rank > 0 ? $rank . 'th Place' : '—')
                                         };
                                     ?>
+                                </td>
+                                <td style="text-align: center; vertical-align: middle;">
+                                    <span class="badge <?= program_scores_badge($entry['sheet_status'] ?? $program['status']) ?>">
+                                        <?= e(ucfirst((string)($entry['sheet_status'] ?? $program['status']))) ?>
+                                    </span>
                                 </td>
                             <?php else: ?>
                                 <?php for ($j = 1; $j <= $judgesCount; $j++): ?>
@@ -206,31 +209,31 @@ if ($programId > 0) {
                                         </td>
                                     <?php endforeach; ?>
                                 <?php endfor; ?>
-                            <?php endif; ?>
 
-                            <td style="font-weight: 700; color: #34d399; font-size: 14px; text-align: center; vertical-align: middle; border-left: 1px solid rgba(255,255,255,0.1);">
-                                <?= $hasSheet ? number_format($finalScoreVal, 0) : '0' ?>
-                            </td>
+                                <td style="font-weight: 700; color: #34d399; font-size: 14px; text-align: center; vertical-align: middle; border-left: 1px solid rgba(255,255,255,0.1);">
+                                    <?= $hasSheet ? number_format($finalScoreVal, 0) : '0' ?>
+                                </td>
 
-                            <td style="font-weight: 600; color: #60a5fa; font-size: 13px; text-align: center; vertical-align: middle;">
-                                <?= $pctVal !== null ? number_format($pctVal, 1) . '%' : '—' ?>
-                            </td>
+                                <td style="font-weight: 600; color: #60a5fa; font-size: 13px; text-align: center; vertical-align: middle;">
+                                    <?= $pctVal !== null ? number_format($pctVal, 1) . '%' : '—' ?>
+                                </td>
 
-                            <td style="text-align: center; vertical-align: middle;">
-                                <?php if (!empty($entryGrade)): ?>
-                                    <span class="badge badge-<?= match($entryGrade) { 'A' => 'success', 'B' => 'info', 'C' => 'warning', 'D' => 'neutral', default => 'neutral' } ?>" style="font-size: 11px; padding: 3px 8px; font-weight: 800;">
-                                        Grade <?= e($entryGrade) ?>
+                                <td style="text-align: center; vertical-align: middle;">
+                                    <?php if (!empty($entryGrade)): ?>
+                                        <span class="badge badge-<?= match($entryGrade) { 'A' => 'success', 'B' => 'info', 'C' => 'warning', 'D' => 'neutral', default => 'neutral' } ?>" style="font-size: 11px; padding: 3px 8px; font-weight: 800;">
+                                            Grade <?= e($entryGrade) ?>
+                                        </span>
+                                    <?php else: ?>
+                                        <span class="text-muted">—</span>
+                                    <?php endif; ?>
+                                </td>
+
+                                <td style="text-align: center; vertical-align: middle;">
+                                    <span class="badge <?= program_scores_badge($entry['sheet_status'] ?? $program['status']) ?>">
+                                        <?= e(ucfirst((string)($entry['sheet_status'] ?? $program['status']))) ?>
                                     </span>
-                                <?php else: ?>
-                                    <span class="text-muted">—</span>
-                                <?php endif; ?>
-                            </td>
-
-                            <td style="text-align: center; vertical-align: middle;">
-                                <span class="badge <?= program_scores_badge($entry['sheet_status'] ?? $program['status']) ?>">
-                                    <?= e(ucfirst((string)($entry['sheet_status'] ?? $program['status']))) ?>
-                                </span>
-                            </td>
+                                </td>
+                            <?php endif; ?>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>

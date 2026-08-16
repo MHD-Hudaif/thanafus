@@ -104,7 +104,7 @@ function program_scores_entry_locked(array $program, ?array $sheet): bool
     return in_array((string)($sheet['status'] ?? ''), ['submitted', 'approved'], true);
 }
 
-function program_scores_render_row(array $entry, array $categories, int $judgesCount, array $scoresMap, bool $scoresLocked, bool $disableScores, int $orderIndex, int $activeJudgeNo = 0, bool $isAdmin = false, int $liveEntryId = 0, bool $isGroupProgram = false): string
+function program_scores_render_row(array $entry, array $categories, int $judgesCount, array $scoresMap, bool $scoresLocked, bool $disableScores, int $orderIndex, int $activeJudgeNo = 0, bool $isAdmin = false, int $liveEntryId = 0, bool $isGroupProgram = false, int $entriesCount = 0): string
 {
     $entryId = (int)$entry['id'];
     $hasSheet = !empty($entry['score_sheet_id']);
@@ -135,27 +135,23 @@ function program_scores_render_row(array $entry, array $categories, int $judgesC
                         <?= ($scoresLocked || ($activeJudgeNo === 0 && !$isAdmin)) ? 'disabled' : '' ?>>
                     <option value="0">None</option>
                     <?php
-                    $progVal = $GLOBALS['program'] ?? [];
-                    $teamPoints = [];
-                    if (!empty($progVal['team_points_config'])) {
-                        $teamPoints = json_decode($progVal['team_points_config'], true);
-                    }
-                    if (is_array($teamPoints) && count($teamPoints) > 0) {
-                        foreach ($teamPoints as $r => $pts) {
-                            $rInt = (int)$r;
-                            $suffix = match($rInt) { 1 => 'st', 2 => 'nd', 3 => 'rd', default => 'th' };
-                            $selected = (int)($entry['final_rank'] ?? 0) === $rInt ? 'selected' : '';
-                            echo "<option value=\"{$rInt}\" {$selected}>{$rInt}{$suffix} Place</option>";
-                        }
-                    } else {
-                        ?>
-                        <option value="1" <?= (int)($entry['final_rank'] ?? 0) === 1 ? 'selected' : '' ?>>1st Place</option>
-                        <option value="2" <?= (int)($entry['final_rank'] ?? 0) === 2 ? 'selected' : '' ?>>2nd Place</option>
-                        <option value="3" <?= (int)($entry['final_rank'] ?? 0) === 3 ? 'selected' : '' ?>>3rd Place</option>
-                        <?php
+                    $limit = $entriesCount > 0 ? $entriesCount : 3;
+                    for ($rInt = 1; $rInt <= $limit; $rInt++) {
+                        $suffix = match($rInt) { 1 => 'st', 2 => 'nd', 3 => 'rd', default => 'th' };
+                        $selected = (int)($entry['final_rank'] ?? 0) === $rInt ? 'selected' : '';
+                        echo "<option value=\"{$rInt}\" {$selected}>{$rInt}{$suffix} Place</option>";
                     }
                     ?>
                 </select>
+            </td>
+            <td class="row-save-status" id="save-status-<?= $entryId ?>" style="text-align: center; vertical-align: middle;">
+                <?php if ($scoresLocked): ?>
+                    <i class="fa-solid fa-lock text-muted" title="Locked"></i>
+                <?php elseif ($hasSheet || ($entry['final_rank'] ?? null) !== null): ?>
+                    <i class="fa-solid fa-circle-check text-success" title="Saved"></i>
+                <?php else: ?>
+                    <i class="fa-solid fa-circle-minus text-warning" title="Not Scored"></i>
+                <?php endif; ?>
             </td>
         <?php else: ?>
             <?php for ($j = 1; $j <= $judgesCount; $j++): ?>
@@ -189,46 +185,46 @@ function program_scores_render_row(array $entry, array $categories, int $judgesC
                     </td>
                 <?php endforeach; ?>
             <?php endfor; ?>
+            
+            <?php
+                $finalScoreVal = (float)($entry['final_total'] ?? 0);
+                $pctVal = ($hasSheet && $judgesCount > 0) ? round(($finalScoreVal / ($judgesCount * 100)) * 100, 1) : null;
+                $entryGrade = $entry['grade'] ?? '';
+                $gradePts = (float)($entry['grade_points'] ?? 0);
+                if (empty($entryGrade) && $hasSheet && $pctVal !== null) {
+                    $gInfo = admin_calculate_grade_info($finalScoreVal, $judgesCount);
+                    $entryGrade = $gInfo['grade'];
+                    $gradePts = $gInfo['grade_points'];
+                }
+            ?>
+            <td class="row-total-score" id="total-score-<?= $entryId ?>" style="font-weight: 700; color: #34d399; font-size: 14px; text-align: center; vertical-align: middle;">
+                <?= $hasSheet ? number_format($finalScoreVal, 0) : '0' ?>
+            </td>
+            
+            <td class="row-percentage" id="percentage-<?= $entryId ?>" style="font-weight: 600; color: #60a5fa; font-size: 13px; text-align: center; vertical-align: middle;">
+                <?= $pctVal !== null ? number_format($pctVal, 1) . '%' : '—' ?>
+            </td>
+
+            <td class="row-grade-badge" id="grade-badge-<?= $entryId ?>" style="text-align: center; vertical-align: middle;">
+                <?php if (!empty($entryGrade)): ?>
+                    <span class="badge badge-<?= match($entryGrade) { 'A' => 'success', 'B' => 'info', 'C' => 'warning', 'D' => 'neutral', default => 'neutral' } ?>" style="font-size: 11px; padding: 3px 8px; font-weight: 800;">
+                        Grade <?= e($entryGrade) ?>
+                    </span>
+                <?php else: ?>
+                    <span class="text-muted">—</span>
+                <?php endif; ?>
+            </td>
+
+            <td class="row-save-status" id="save-status-<?= $entryId ?>" style="text-align: center; vertical-align: middle;">
+                <?php if ($scoresLocked): ?>
+                    <i class="fa-solid fa-lock text-muted" title="Locked"></i>
+                <?php elseif ($hasSheet): ?>
+                    <i class="fa-solid fa-circle-check text-success" title="Saved"></i>
+                <?php else: ?>
+                    <i class="fa-solid fa-circle-minus text-warning" title="Not Scored"></i>
+                <?php endif; ?>
+            </td>
         <?php endif; ?>
-        
-        <?php
-            $finalScoreVal = (float)($entry['final_total'] ?? 0);
-            $pctVal = ($hasSheet && $judgesCount > 0) ? round(($finalScoreVal / ($judgesCount * 100)) * 100, 1) : null;
-            $entryGrade = $entry['grade'] ?? '';
-            $gradePts = (float)($entry['grade_points'] ?? 0);
-            if (empty($entryGrade) && $hasSheet && $pctVal !== null) {
-                $gInfo = admin_calculate_grade_info($finalScoreVal, $judgesCount);
-                $entryGrade = $gInfo['grade'];
-                $gradePts = $gInfo['grade_points'];
-            }
-        ?>
-        <td class="row-total-score" id="total-score-<?= $entryId ?>" style="font-weight: 700; color: #34d399; font-size: 14px; text-align: center; vertical-align: middle;">
-            <?= $hasSheet ? number_format($finalScoreVal, 0) : '0' ?>
-        </td>
-        
-        <td class="row-percentage" id="percentage-<?= $entryId ?>" style="font-weight: 600; color: #60a5fa; font-size: 13px; text-align: center; vertical-align: middle;">
-            <?= $pctVal !== null ? number_format($pctVal, 1) . '%' : '—' ?>
-        </td>
-
-        <td class="row-grade-badge" id="grade-badge-<?= $entryId ?>" style="text-align: center; vertical-align: middle;">
-            <?php if (!empty($entryGrade)): ?>
-                <span class="badge badge-<?= match($entryGrade) { 'A' => 'success', 'B' => 'info', 'C' => 'warning', 'D' => 'neutral', default => 'neutral' } ?>" style="font-size: 11px; padding: 3px 8px; font-weight: 800;">
-                    Grade <?= e($entryGrade) ?>
-                </span>
-            <?php else: ?>
-                <span class="text-muted">—</span>
-            <?php endif; ?>
-        </td>
-
-        <td class="row-save-status" id="save-status-<?= $entryId ?>" style="text-align: center; vertical-align: middle;">
-            <?php if ($scoresLocked): ?>
-                <i class="fa-solid fa-lock text-muted" title="Locked"></i>
-            <?php elseif ($hasSheet): ?>
-                <i class="fa-solid fa-circle-check text-success" title="Saved"></i>
-            <?php else: ?>
-                <i class="fa-solid fa-circle-minus text-warning" title="Not Scored"></i>
-            <?php endif; ?>
-        </td>
     </tr>
     <?php
     return ob_get_clean();
@@ -1281,6 +1277,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         if ($action === 'submit_program') {
+            if (!empty($program['disable_scores'])) {
+                admin_db_transaction($pdo, function ($pdo) use ($activeEventId, $programId, $currentUserId) {
+                    $stmt = $pdo->prepare("
+                        INSERT INTO musabaqa_score_sheets (entry_id, program_id, judge1_total, judge2_total, final_total, status, created_by)
+                        SELECT pe.id, pe.program_id, 0.00, 0.00, 0.00, 'completed', ?
+                        FROM musabaqa_program_entries pe
+                        LEFT JOIN musabaqa_score_sheets ss ON ss.entry_id = pe.id
+                        WHERE pe.event_id = ? AND pe.program_id = ? AND ss.id IS NULL
+                    ");
+                    $stmt->execute([$currentUserId, $activeEventId, $programId]);
+
+                    $stmt = $pdo->prepare("
+                        UPDATE musabaqa_score_sheets
+                        SET status = 'completed', judge1_total = 0.00, judge2_total = 0.00, final_total = 0.00
+                        WHERE program_id = ? AND status = 'draft'
+                    ");
+                    $stmt->execute([$programId]);
+                });
+            }
+
             admin_db_transaction($pdo, function ($pdo) use ($activeEventId, $programId, $currentUserId) {
                 admin_submit_program_for_approval($pdo, $activeEventId, $programId, $currentUserId);
             });
@@ -1314,15 +1330,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!empty($program['disable_scores'])) {
             // Direct rank entry
             $rankInput = (int)($_POST['placement_rank'] ?? 0);
-            $finalTotal = 0.0;
-            if ($rankInput === 1) $finalTotal = 100.0;
-            elseif ($rankInput === 2) $finalTotal = 90.0;
-            elseif ($rankInput === 3) $finalTotal = 80.0;
+            $finalRank = $rankInput > 0 ? $rankInput : null;
 
-            $judge1Total = $finalTotal / 2;
-            $judge2Total = $finalTotal / 2;
+            admin_db_transaction($pdo, function ($pdo) use ($entryId, $programId, $finalRank, $currentUserId) {
+                $stmt = $pdo->prepare('UPDATE musabaqa_program_entries SET final_rank = ?, final_score = 0.00 WHERE id = ?');
+                $stmt->execute([$finalRank, $entryId]);
 
-            admin_db_transaction($pdo, function ($pdo) use ($entryId, $programId, $judge1Total, $judge2Total, $finalTotal, $currentUserId) {
                 $stmt = $pdo->prepare('SELECT id FROM musabaqa_score_sheets WHERE entry_id = ? LIMIT 1');
                 $stmt->execute([$entryId]);
                 $sheetId = (int)$stmt->fetchColumn();
@@ -1330,23 +1343,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($sheetId > 0) {
                     $stmt = $pdo->prepare("
                         UPDATE musabaqa_score_sheets
-                        SET program_id = ?, judge1_total = ?, judge2_total = ?, final_total = ?, status = 'completed'
+                        SET program_id = ?, judge1_total = 0.00, judge2_total = 0.00, final_total = 0.00, status = 'completed'
                         WHERE id = ?
                     ");
-                    $stmt->execute([$programId, $judge1Total, $judge2Total, $finalTotal, $sheetId]);
+                    $stmt->execute([$programId, $sheetId]);
                 } else {
                     $stmt = $pdo->prepare("
                         INSERT INTO musabaqa_score_sheets (entry_id, program_id, judge1_total, judge2_total, final_total, status, created_by)
-                        VALUES (?, ?, ?, ?, ?, 'completed', ?)
+                        VALUES (?, ?, 0.00, 0.00, 0.00, 'completed', ?)
                     ");
-                    $stmt->execute([$entryId, $programId, $judge1Total, $judge2Total, $finalTotal, $currentUserId]);
+                    $stmt->execute([$entryId, $programId, $currentUserId]);
                 }
             });
 
             admin_flash('success', 'Placement rank saved.');
             if ($isAjax) {
                 header('Content-Type: application/json; charset=utf-8');
-                echo json_encode(['success' => true, 'message' => 'Placement rank saved.', 'final_total' => number_format($finalTotal, 2)]);
+                echo json_encode(['success' => true, 'message' => 'Placement rank saved.', 'rank' => $rankInput]);
                 exit;
             }
             program_scores_redirect($programId);
@@ -1659,12 +1672,12 @@ $isGroupProgram = ($program['program_type'] === 'group' || !empty($program['only
 if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
     ob_start();
     if (!$paginatedEntries) {
-        $colspan = !empty($program['disable_scores']) ? 7 : (6 + count($categories) * $judgesCount);
+        $colspan = !empty($program['disable_scores']) ? 6 : (6 + count($categories) * $judgesCount);
         echo '<tr><td colspan="' . $colspan . '" class="empty-state-row" style="text-align: center; padding: 30px; color: var(--muted);"><div class="empty-title">No Entries Found</div></td></tr>';
     } else {
         $orderIndex = $offset + 1;
         foreach ($paginatedEntries as $entry) {
-            echo program_scores_render_row($entry, $categories, $judgesCount, $scoresMap, $scoresLocked, !empty($program['disable_scores']), $orderIndex++, $activeJudgeNo, $isAdminUser, $liveStageEntryId, $isGroupProgram);
+            echo program_scores_render_row($entry, $categories, $judgesCount, $scoresMap, $scoresLocked, !empty($program['disable_scores']), $orderIndex++, $activeJudgeNo, $isAdminUser, $liveStageEntryId, $isGroupProgram, $totalEntries);
         }
     }
     $tbodyHtml = ob_get_clean();
@@ -1885,7 +1898,6 @@ require_once __DIR__ . '/../includes/header.php';
                             <th>Entry Name</th>
                             <th>Team</th>
                             <th style="width: 160px; text-align: center;">Placement Rank</th>
-                            <th style="width: 100px; text-align: center;">Final Score</th>
                             <th style="width: 80px; text-align: center;">Status</th>
                         </tr>
                     <?php else: ?>
@@ -1919,7 +1931,7 @@ require_once __DIR__ . '/../includes/header.php';
                 <tbody id="table-body">
                     <?php $orderIndex = $offset + 1; ?>
                     <?php foreach ($paginatedEntries as $entry): ?>
-                        <?= program_scores_render_row($entry, $categories, $judgesCount, $scoresMap, $scoresLocked, !empty($program['disable_scores']), $orderIndex++, $activeJudgeNo, $isAdminUser, $liveStageEntryId, $isGroupProgram) ?>
+                        <?= program_scores_render_row($entry, $categories, $judgesCount, $scoresMap, $scoresLocked, !empty($program['disable_scores']), $orderIndex++, $activeJudgeNo, $isAdminUser, $liveStageEntryId, $isGroupProgram, $totalEntries) ?>
                     <?php endforeach; ?>
                 </tbody>
             </table>

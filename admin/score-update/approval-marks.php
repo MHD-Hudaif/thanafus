@@ -15,6 +15,7 @@ $stmt = $pdo->prepare("
         p.id AS program_id,
         p.title AS program_title,
         p.only_team_marks,
+        p.disable_scores,
         ct.name AS class_type_name,
         pe.id AS entry_id,
         pe.final_score,
@@ -33,7 +34,7 @@ $stmt = $pdo->prepare("
     LEFT JOIN " . DB_MAIN_NAME . ".students s ON s.id = tm.student_id
     WHERE p.event_id = ? AND p.approval_status = 'approved'
     GROUP BY p.id, pe.id, t.id
-    ORDER BY p.title ASC, pe.final_rank ASC, pe.final_score DESC, t.team_name ASC
+    ORDER BY p.title ASC, (CASE WHEN pe.final_rank IS NULL OR pe.final_rank = 0 THEN 9999 ELSE pe.final_rank END) ASC, pe.final_score DESC, t.team_name ASC
 ");
 $stmt->execute([$activeEventId]);
 $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -48,6 +49,7 @@ foreach ($rows as $row) {
             'title' => $row['program_title'],
             'class_type_name' => $row['class_type_name'] ?? 'All Classes',
             'only_team_marks' => (bool)$row['only_team_marks'],
+            'disable_scores' => !empty($row['disable_scores']),
             'entries' => []
         ];
     }
@@ -192,7 +194,11 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                             </div>
                                         </td>
                                         <td style="text-align: right; font-weight: 700; color: var(--primary); font-size: 15px; font-family: monospace;">
-                                            <?= number_format($entry['score'], 2) ?>
+                                            <?php if ($program['disable_scores']): ?>
+                                                <span style="color: var(--muted); font-size: 13px; font-family: sans-serif; font-weight: normal;">—</span>
+                                            <?php else: ?>
+                                                <?= number_format($entry['score'], 2) ?>
+                                            <?php endif; ?>
                                         </td>
                                         <td style="text-align: right; padding-right: 24px;">
                                             <?php if ($entry['team_score'] > 0): ?>

@@ -205,21 +205,38 @@ $selectedIndex = isset($_GET['q_idx']) ? max(0, min($totalQueueItems - 1, (int)$
 require_once __DIR__ . '/../../includes/header.php';
 ?>
 <style>
-    /* STAGEDECK LIVE BROADCAST CONSOLE STYLING */
+    *, *::before, *::after {
+        -webkit-touch-callout: none !important;
+        -webkit-user-select: none !important;
+        -khtml-user-select: none !important;
+        -moz-user-select: none !important;
+        -ms-user-select: none !important;
+        user-select: none !important;
+        -webkit-tap-highlight-color: transparent !important;
+    }
+    input, textarea, select, [contenteditable="true"] {
+        -webkit-user-select: text !important;
+        -moz-user-select: text !important;
+        -ms-user-select: text !important;
+        user-select: text !important;
+    }
+
+    /* STAGEDECK LIVE BROADCAST CONSOLE STYLING - CREAM & WHITE THEME */
     html, body {
         height: 100vh !important;
         margin: 0 !important;
         padding: 0 !important;
-        background: #090e0c !important;
+        background: #faf7f0 !important;
         background-image: 
-            radial-gradient(circle at 50% 0%, rgba(16, 185, 129, 0.05) 0%, transparent 70%),
-            linear-gradient(to bottom, #070b09, #020403) !important;
+            radial-gradient(at 0% 0%, rgba(180, 200, 160, 0.20) 0px, transparent 50%),
+            radial-gradient(at 100% 100%, rgba(210, 185, 140, 0.20) 0px, transparent 50%),
+            radial-gradient(at 50% 50%, rgba(235, 225, 210, 0.60) 0px, transparent 100%) !important;
         display: flex !important;
         justify-content: center !important;
         align-items: center !important;
         overflow: hidden !important;
         font-family: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif !important;
-        color: #e2e8f0 !important;
+        color: #2e2b27 !important;
     }
     
     .admin-layout {
@@ -251,11 +268,11 @@ require_once __DIR__ . '/../../includes/header.php';
         display: flex !important;
         flex-direction: column !important;
         box-sizing: border-box !important;
-        background: #080c0a !important;
-        border-left: 1px solid rgba(16, 185, 129, 0.08) !important;
-        border-right: 1px solid rgba(16, 185, 129, 0.08) !important;
-        box-shadow: 0 0 100px rgba(0, 0, 0, 0.9) !important;
-        overflow-y: auto !important;
+        background: rgba(255, 250, 240, 0.75) !important;
+        border-left: 1px solid rgba(200, 180, 150, 0.25) !important;
+        border-right: 1px solid rgba(200, 180, 150, 0.25) !important;
+        box-shadow: 0 10px 40px rgba(140, 120, 100, 0.06) !important;
+        overflow: hidden !important; /* MAKE IT NO-SCROLL */
         position: relative !important;
         scrollbar-width: none;
     }
@@ -270,7 +287,7 @@ require_once __DIR__ . '/../../includes/header.php';
         justify-content: space-between !important;
         align-items: center !important;
         padding-bottom: 14px !important;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.04) !important;
+        border-bottom: 1px solid rgba(200, 180, 150, 0.25) !important;
         box-sizing: border-box !important;
         flex-shrink: 0 !important;
         margin-bottom: 20px !important;
@@ -296,21 +313,21 @@ require_once __DIR__ . '/../../includes/header.php';
     }
 
     .status-badge.status-connected {
-        background: rgba(16, 185, 129, 0.08);
-        border: 1px solid rgba(16, 185, 129, 0.2);
-        color: #34d399;
+        background: rgba(93, 126, 90, 0.08) !important;
+        border: 1px solid rgba(93, 126, 90, 0.25) !important;
+        color: #5d7e5a !important;
     }
 
     .status-badge.status-delayed {
-        background: rgba(245, 158, 11, 0.08);
-        border: 1px solid rgba(245, 158, 11, 0.2);
-        color: #fbbf24;
+        background: rgba(245, 158, 11, 0.08) !important;
+        border: 1px solid rgba(245, 158, 11, 0.25) !important;
+        color: #d97706 !important;
     }
 
     .status-badge.status-offline {
-        background: rgba(239, 68, 68, 0.08);
-        border: 1px solid rgba(239, 68, 68, 0.2);
-        color: #f87171;
+        background: rgba(220, 38, 38, 0.08) !important;
+        border: 1px solid rgba(220, 38, 38, 0.25) !important;
+        color: #dc2626 !important;
     }
 
     .status-dot-pulse {
@@ -319,9 +336,9 @@ require_once __DIR__ . '/../../includes/header.php';
         border-radius: 50%;
         animation: statusPulse 1.8s infinite ease-in-out;
     }
-    .status-connected .status-dot-pulse { background: #10b981; box-shadow: 0 0 10px #10b981; }
-    .status-delayed .status-dot-pulse { background: #fbbf24; box-shadow: 0 0 10px #fbbf24; }
-    .status-offline .status-dot-pulse { background: #ef4444; box-shadow: 0 0 10px #ef4444; }
+    .status-connected .status-dot-pulse { background: #5d7e5a !important; box-shadow: 0 0 10px rgba(93, 126, 90, 0.4) !important; }
+    .status-delayed .status-dot-pulse { background: #d97706 !important; box-shadow: 0 0 10px rgba(245, 158, 11, 0.4) !important; }
+    .status-offline .status-dot-pulse { background: #dc2626 !important; box-shadow: 0 0 10px rgba(220, 38, 38, 0.4) !important; }
 
     @keyframes statusPulse {
         0%, 100% { transform: scale(0.95); opacity: 0.6; }
@@ -331,7 +348,7 @@ require_once __DIR__ . '/../../includes/header.php';
     .header-title {
         font-size: 16px;
         font-weight: 800;
-        color: #ffffff;
+        color: #2e2b27 !important;
         letter-spacing: -0.3px;
     }
 
@@ -345,9 +362,9 @@ require_once __DIR__ . '/../../includes/header.php';
         width: 40px;
         height: 40px;
         border-radius: 12px;
-        background: rgba(255, 255, 255, 0.03);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        color: #ffffff;
+        background: rgba(93, 126, 90, 0.06) !important;
+        border: 1px solid rgba(93, 126, 90, 0.15) !important;
+        color: #4b6b47 !important;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -357,9 +374,9 @@ require_once __DIR__ . '/../../includes/header.php';
     }
 
     .grid-btn:hover {
-        background: rgba(16, 185, 129, 0.12);
-        border-color: rgba(16, 185, 129, 0.25);
-        color: #34d399;
+        background: rgba(93, 126, 90, 0.12) !important;
+        border-color: rgba(93, 126, 90, 0.3) !important;
+        color: #2e2b27 !important;
     }
 
     /* CONSOLE GRID SYSTEM */
@@ -401,15 +418,15 @@ require_once __DIR__ . '/../../includes/header.php';
     }
 
     .broadcast-container.state-preview {
-        background: #111513;
-        border: 2px solid rgba(148, 163, 184, 0.15);
-        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        background: #ffffff !important;
+        border: 2px solid rgba(200, 180, 150, 0.3) !important;
+        box-shadow: 0 10px 30px rgba(140, 120, 100, 0.06) !important;
     }
 
     .broadcast-container.state-live {
-        background: radial-gradient(circle at 50% 0%, rgba(239, 68, 68, 0.08) 0%, #161011 100%);
-        border: 2px solid #ef4444;
-        box-shadow: 0 0 35px rgba(239, 68, 68, 0.15), inset 0 0 20px rgba(239, 68, 68, 0.05);
+        background: radial-gradient(circle at 50% 0%, rgba(220, 38, 38, 0.08) 0%, #ffffff 100%) !important;
+        border: 2px solid #dc2626 !important;
+        box-shadow: 0 0 35px rgba(220, 38, 38, 0.15), inset 0 0 20px rgba(220, 38, 38, 0.05) !important;
     }
 
     .state-banner {
@@ -424,15 +441,15 @@ require_once __DIR__ . '/../../includes/header.php';
     }
 
     .state-preview .state-banner {
-        background: rgba(148, 163, 184, 0.1);
-        color: #94a3b8;
-        border: 1px solid rgba(148, 163, 184, 0.2);
+        background: rgba(0, 0, 0, 0.04) !important;
+        color: #6b6258 !important;
+        border: 1px solid rgba(0, 0, 0, 0.08) !important;
     }
 
     .state-live .state-banner {
-        background: rgba(239, 68, 68, 0.15);
-        color: #f87171;
-        border: 1px solid rgba(239, 68, 68, 0.3);
+        background: rgba(220, 38, 38, 0.15) !important;
+        color: #dc2626 !important;
+        border: 1px solid rgba(220, 38, 38, 0.3) !important;
         animation: livePulse 1.5s ease-in-out infinite;
     }
 
@@ -444,44 +461,44 @@ require_once __DIR__ . '/../../includes/header.php';
     .program-title {
         font-size: 26px;
         font-weight: 900;
-        color: #ffffff;
+        color: #3a5e44 !important;
         letter-spacing: -0.5px;
         margin: 0 0 10px 0;
         line-height: 1.25;
     }
     .state-live .program-title {
-        color: #fca5a5;
-        text-shadow: 0 0 20px rgba(239, 68, 68, 0.15);
+        color: #dc2626 !important;
+        text-shadow: none !important;
     }
 
     .program-subtitle {
         font-size: 13px;
         font-weight: 700;
-        color: #10b981;
+        color: #5d7e5a !important;
         margin-bottom: 14px;
     }
     .state-preview .program-subtitle {
-        color: #94a3b8;
+        color: #6b6258 !important;
     }
 
     .chest-display {
         font-size: 40px;
         font-weight: 900;
-        color: #ffffff;
+        color: #c9a86c !important;
         font-family: monospace;
         letter-spacing: 1px;
         margin-bottom: 4px;
         display: block;
     }
     .state-live .chest-display {
-        color: #ef4444;
-        text-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
+        color: #dc2626 !important;
+        text-shadow: none !important;
     }
 
     .performer-name {
         font-size: 20px;
         font-weight: 800;
-        color: #ffffff;
+        color: #2e2b27 !important;
         margin: 4px 0 10px 0;
     }
 
@@ -489,17 +506,17 @@ require_once __DIR__ . '/../../includes/header.php';
         display: inline-block;
         padding: 4px 14px;
         border-radius: 99px;
-        background: rgba(255, 255, 255, 0.04);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        color: #cbd5e1;
+        background: rgba(0, 0, 0, 0.03) !important;
+        border: 1px solid rgba(0, 0, 0, 0.08) !important;
+        color: #6b6258 !important;
         font-size: 12px;
         font-weight: 600;
     }
 
     /* CONTROL PANEL STYLES */
     .controls-panel {
-        background: #111513;
-        border: 1px solid rgba(16, 185, 129, 0.1);
+        background: #ffffff !important;
+        border: 1px solid rgba(200, 180, 150, 0.25) !important;
         border-radius: 20px;
         padding: 20px;
         display: flex;
@@ -509,8 +526,8 @@ require_once __DIR__ . '/../../includes/header.php';
 
     /* INDEPENDENT PERFORMANCE TIMER */
     .timer-console {
-        background: rgba(0, 0, 0, 0.4);
-        border: 1px solid rgba(255, 255, 255, 0.04);
+        background: rgba(0, 0, 0, 0.03) !important;
+        border: 1px solid rgba(0, 0, 0, 0.06) !important;
         border-radius: 16px;
         padding: 16px;
         display: flex;
@@ -522,7 +539,7 @@ require_once __DIR__ . '/../../includes/header.php';
     .timer-header {
         font-size: 10px;
         font-weight: 800;
-        color: #94a3b8;
+        color: #6b6258 !important;
         letter-spacing: 0.1em;
         text-transform: uppercase;
         display: flex;
@@ -534,12 +551,12 @@ require_once __DIR__ . '/../../includes/header.php';
         font-size: 38px;
         font-weight: 900;
         font-family: monospace;
-        color: #34d399;
-        text-shadow: 0 0 15px rgba(52, 211, 153, 0.25);
+        color: #3a5e44 !important;
+        text-shadow: none !important;
     }
     .timer-clock-large.recording {
-        color: #ef4444;
-        text-shadow: 0 0 20px rgba(239, 68, 68, 0.4);
+        color: #dc2626 !important;
+        text-shadow: none !important;
     }
 
     .timer-control-buttons {
@@ -564,38 +581,38 @@ require_once __DIR__ . '/../../includes/header.php';
     }
 
     .console-btn.btn-primary-live {
-        background: #ef4444;
-        color: #ffffff;
-        box-shadow: 0 4px 15px rgba(239, 68, 68, 0.25);
+        background: #dc2626 !important;
+        color: #ffffff !important;
+        box-shadow: 0 4px 15px rgba(220, 38, 38, 0.25) !important;
     }
     .console-btn.btn-primary-live:hover {
-        background: #f87171;
+        background: #ef4444 !important;
     }
 
     .console-btn.btn-timer-start {
-        background: rgba(16, 185, 129, 0.12);
-        border: 1px solid rgba(16, 185, 129, 0.3);
-        color: #34d399;
+        background: rgba(93, 126, 90, 0.1) !important;
+        border: 1px solid rgba(93, 126, 90, 0.25) !important;
+        color: #4b6b47 !important;
     }
     .console-btn.btn-timer-start:hover {
-        background: rgba(16, 185, 129, 0.2);
+        background: rgba(93, 126, 90, 0.15) !important;
     }
 
     .console-btn.btn-timer-stop {
-        background: rgba(239, 68, 68, 0.12);
-        border: 1px solid rgba(239, 68, 68, 0.3);
-        color: #f87171;
+        background: rgba(220, 38, 38, 0.1) !important;
+        border: 1px solid rgba(220, 38, 38, 0.25) !important;
+        color: #dc2626 !important;
     }
     .console-btn.btn-timer-stop:hover {
-        background: rgba(239, 68, 68, 0.2);
+        background: rgba(220, 38, 38, 0.15) !important;
     }
 
     .console-btn.btn-timer-reset {
-        background: rgba(255, 255, 255, 0.05);
-        color: #94a3b8;
+        background: rgba(0, 0, 0, 0.05) !important;
+        color: #6b6258 !important;
     }
     .console-btn.btn-timer-reset:hover {
-        background: rgba(255, 255, 255, 0.08);
+        background: rgba(0, 0, 0, 0.08) !important;
     }
 
     /* RIGHT DETAIL PANEL COLUMN */
@@ -606,8 +623,8 @@ require_once __DIR__ . '/../../includes/header.php';
     }
 
     .detail-card {
-        background: #111513;
-        border: 1px solid rgba(255, 255, 255, 0.04);
+        background: #ffffff !important;
+        border: 1px solid rgba(200, 180, 150, 0.25) !important;
         border-radius: 20px;
         padding: 20px;
     }
@@ -615,7 +632,7 @@ require_once __DIR__ . '/../../includes/header.php';
     .section-label {
         font-size: 11px;
         font-weight: 900;
-        color: #10b981;
+        color: #5d7e5a !important;
         letter-spacing: 0.08em;
         text-transform: uppercase;
         margin-bottom: 12px;
@@ -626,7 +643,7 @@ require_once __DIR__ . '/../../includes/header.php';
 
     /* PROGRESS TRACKERS */
     .progress-bar-wrap {
-        background: rgba(255, 255, 255, 0.04);
+        background: rgba(0, 0, 0, 0.04) !important;
         border-radius: 99px;
         height: 6px;
         overflow: hidden;
@@ -635,15 +652,15 @@ require_once __DIR__ . '/../../includes/header.php';
 
     .progress-bar-fill {
         height: 100%;
-        background: linear-gradient(90deg, #10b981, #34d399);
+        background: linear-gradient(90deg, #7f9e7a, #5d7e5a) !important;
         border-radius: 99px;
         transition: width 0.3s ease;
     }
 
     /* NEXT UP COMPONENT */
     .next-up-preview {
-        background: rgba(255, 255, 255, 0.02);
-        border: 1px dashed rgba(255, 255, 255, 0.08);
+        background: rgba(0, 0, 0, 0.02) !important;
+        border: 1px dashed rgba(200, 180, 150, 0.3) !important;
         border-radius: 14px;
         padding: 14px;
         margin-top: 10px;
@@ -651,8 +668,8 @@ require_once __DIR__ . '/../../includes/header.php';
         transition: all 0.2s ease;
     }
     .next-up-preview:hover {
-        background: rgba(16, 185, 129, 0.03);
-        border-color: rgba(16, 185, 129, 0.2);
+        background: rgba(93, 126, 90, 0.05) !important;
+        border-color: rgba(93, 126, 90, 0.3) !important;
     }
 
     /* TOGGLE SWITCHES (LIVE LOCK) */
@@ -661,7 +678,7 @@ require_once __DIR__ . '/../../includes/header.php';
         justify-content: space-between;
         align-items: center;
         padding: 12px 14px;
-        background: rgba(255, 255, 255, 0.02);
+        background: rgba(0, 0, 0, 0.02) !important;
         border-radius: 12px;
         margin-top: 8px;
     }
@@ -683,7 +700,7 @@ require_once __DIR__ . '/../../includes/header.php';
         position: absolute;
         cursor: pointer;
         top: 0; left: 0; right: 0; bottom: 0;
-        background-color: rgba(255,255,255,0.1);
+        background-color: rgba(0,0,0,0.08) !important;
         transition: .3s;
         border-radius: 24px;
     }
@@ -695,13 +712,13 @@ require_once __DIR__ . '/../../includes/header.php';
         width: 16px;
         left: 4px;
         bottom: 4px;
-        background-color: #94a3b8;
+        background-color: #94a3b8 !important;
         transition: .3s;
         border-radius: 50%;
     }
 
     input:checked + .slider {
-        background-color: #ef4444;
+        background-color: #dc2626 !important;
     }
 
     input:checked + .slider:before {
@@ -714,8 +731,8 @@ require_once __DIR__ . '/../../includes/header.php';
         display: flex;
         justify-content: space-between;
         align-items: center;
-        background: #111513;
-        border: 1px solid rgba(255, 255, 255, 0.04);
+        background: #ffffff !important;
+        border: 1px solid rgba(200, 180, 150, 0.25) !important;
         border-radius: 16px;
         padding: 8px 16px;
         margin-top: auto;
@@ -725,9 +742,9 @@ require_once __DIR__ . '/../../includes/header.php';
         width: 42px;
         height: 42px;
         border-radius: 50%;
-        background: rgba(255, 255, 255, 0.03);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        color: #10b981;
+        background: rgba(93, 126, 90, 0.08) !important;
+        border: 1px solid rgba(93, 126, 90, 0.2) !important;
+        color: #4b6b47 !important;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -736,13 +753,16 @@ require_once __DIR__ . '/../../includes/header.php';
         transition: all 0.2s ease;
     }
     .pagination-btn:hover:not(.disabled) {
-        background: rgba(16, 185, 129, 0.1);
-        border-color: rgba(16, 185, 129, 0.2);
-        color: #fff;
+        background: rgba(93, 126, 90, 0.15) !important;
+        border-color: rgba(93, 126, 90, 0.3) !important;
+        color: #2e2b27 !important;
     }
     .pagination-btn.disabled {
         opacity: 0.15;
         cursor: not-allowed;
+        background: rgba(0, 0, 0, 0.02) !important;
+        border-color: rgba(0, 0, 0, 0.05) !important;
+        color: #9ca3af !important;
     }
 
     /* TOAST NOTIFIER */
@@ -751,13 +771,13 @@ require_once __DIR__ . '/../../includes/header.php';
         bottom: 24px;
         left: 50%;
         transform: translateX(-50%);
-        background: rgba(16, 185, 129, 0.95);
+        background: #5d7e5a !important;
         color: #fff;
         padding: 12px 24px;
         border-radius: 12px;
         font-weight: 800;
         font-size: 14px;
-        box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+        box-shadow: 0 8px 30px rgba(140, 120, 100, 0.2) !important;
         z-index: 999999;
         display: none;
         align-items: center;
@@ -776,21 +796,21 @@ require_once __DIR__ . '/../../includes/header.php';
     }
 
     .filter-tab-btn {
-        background: rgba(255, 255, 255, 0.04);
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(0, 0, 0, 0.03) !important;
+        border: 1px solid rgba(0, 0, 0, 0.08) !important;
         border-radius: 8px;
         padding: 6px 14px;
         font-size: 12px;
         font-weight: 700;
-        color: #cbd5e1;
+        color: #6b6258 !important;
         cursor: pointer;
         transition: all 0.2s ease;
     }
 
     .filter-tab-btn.active {
-        background: rgba(16, 185, 129, 0.15);
-        border-color: rgba(16, 185, 129, 0.4);
-        color: #34d399;
+        background: rgba(93, 126, 90, 0.1) !important;
+        border-color: rgba(93, 126, 90, 0.25) !important;
+        color: #4b6b47 !important;
     }
 
     @media (max-width: 480px) {

@@ -1,0 +1,1039 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Championship Standings - Green Team Leading</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;700;800;900&family=Outfit:wght@600;700;800;900&family=Cairo:wght@700;800;900&display=swap" rel="stylesheet">
+    
+    <!-- FontAwesome & GSAP -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', 'Outfit', 'Cairo', system-ui, -apple-system, sans-serif;
+            background: #010403;
+            color: #ffffff;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* ----------------------------------------------------
+           Atmospheric Background and Animated Canvas
+        ---------------------------------------------------- */
+        .tv-backdrop {
+            position: absolute;
+            inset: 0;
+            z-index: 0;
+            overflow: hidden;
+            background: radial-gradient(circle at 50% 50%, #051410 0%, #010504 100%);
+        }
+
+        .stage-backdrop {
+            position: absolute;
+            inset: 0;
+            z-index: 1;
+        }
+
+        /* Soft floating neon orbs */
+        .glow-orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(120px);
+            opacity: 0.35;
+            will-change: transform;
+            animation: orbFloat 18s ease-in-out infinite alternate;
+        }
+
+        .glow-orb-1 {
+            top: -10%;
+            left: 15%;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, #10b981 0%, transparent 70%);
+        }
+
+        .glow-orb-2 {
+            bottom: -15%;
+            right: 10%;
+            width: 700px;
+            height: 700px;
+            background: radial-gradient(circle, #064e3b 0%, transparent 70%);
+            animation-delay: -9s;
+        }
+
+        @keyframes orbFloat {
+            0% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(80px, 50px) scale(1.15); }
+            100% { transform: translate(-50px, 90px) scale(0.9); }
+        }
+
+        #flowCanvas {
+            position: absolute;
+            inset: 0;
+            z-index: 2;
+            width: 100%;
+            height: 100%;
+            display: block;
+            opacity: 0.8;
+            pointer-events: none;
+        }
+
+        /* Ambient subtle grids */
+        .cyber-grid {
+            position: absolute;
+            inset: 0;
+            background-image: 
+                linear-gradient(rgba(16, 185, 129, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(16, 185, 129, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            z-index: 3;
+            pointer-events: none;
+            opacity: 0.7;
+            mask-image: radial-gradient(circle at center, black 40%, transparent 80%);
+            -webkit-mask-image: radial-gradient(circle at center, black 40%, transparent 80%);
+        }
+
+        /* ----------------------------------------------------
+           Topbar (Thanafus Style)
+        ---------------------------------------------------- */
+        .tv-topbar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 24px 40px;
+            pointer-events: none;
+        }
+
+        .tv-brand {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .tv-logo-placeholder {
+            width: 58px;
+            height: 58px;
+            border-radius: 14px;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3);
+            border: 2px solid rgba(255, 255, 255, 0.15);
+            font-size: 24px;
+            font-weight: 900;
+            color: #ffffff;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .tv-brand-copy {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .tv-brand-kicker {
+            letter-spacing: 0.22em;
+            text-transform: uppercase;
+            font-size: 11px;
+            color: rgba(244, 247, 246, 0.58);
+            margin-bottom: 4px;
+        }
+
+        .tv-brand-title {
+            font-size: 18px;
+            font-weight: 800;
+            letter-spacing: 0.03em;
+            color: #ffffff;
+        }
+
+        .tv-topbar-right {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .tv-live-chip {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.4);
+            color: #ef4444;
+            padding: 6px 16px;
+            border-radius: 99px;
+            font-size: 12px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .tv-live-chip span {
+            width: 8px;
+            height: 8px;
+            background-color: #ef4444;
+            border-radius: 50%;
+            display: inline-block;
+            box-shadow: 0 0 8px #ef4444;
+            animation: pulse-red 1.5s infinite alternate;
+        }
+
+        @keyframes pulse-red {
+            from { transform: scale(0.9); opacity: 0.6; }
+            to { transform: scale(1.2); opacity: 1; }
+        }
+
+        .tv-clock {
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+            color: #ffffff;
+            padding: 10px 20px;
+            border: 1px solid rgba(16, 185, 129, 0.25);
+            border-radius: 99px;
+            background: rgba(5, 16, 12, 0.6);
+            backdrop-filter: blur(12px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 15px rgba(16, 185, 129, 0.1);
+        }
+
+        /* ----------------------------------------------------
+           Stage Layout
+        ---------------------------------------------------- */
+        .tv-stage {
+            position: absolute;
+            inset: 0;
+            z-index: 5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding-top: 100px;
+        }
+
+        .leaderboard-header {
+            position: absolute;
+            top: 120px;
+            left: 60px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            z-index: 10;
+        }
+        
+        .leaderboard-title {
+            font-size: 38px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: -0.015em;
+            color: #ffffff;
+            margin: 0;
+        }
+        
+        .leaderboard-subtitle {
+            font-size: 13px;
+            font-weight: 800;
+            color: #10b981;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+        }
+
+        /* Symmetrical Orbit Stage */
+        .orbital-stage-container {
+            position: relative;
+            width: 1050px;
+            height: 820px;
+            margin: 0 auto;
+            box-sizing: border-box;
+            display: block;
+        }
+
+        .orbital-vector-canvas {
+            display: block;
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .constellation-laser-line {
+            stroke-dasharray: 12 10;
+            animation: laser-pulse 4s linear infinite;
+        }
+
+        @keyframes laser-pulse {
+            from { stroke-dashoffset: 44; }
+            to { stroke-dashoffset: 0; }
+        }
+
+        /* Central Gyroscopic Node */
+        .orbital-center-node.constellation-star-node {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 140px;
+            height: 140px;
+            border-radius: 50%;
+            background: rgba(15, 23, 20, 0.94);
+            backdrop-filter: blur(30px);
+            border: 2px solid #10b981;
+            box-shadow: 
+                0 15px 45px rgba(0, 0, 0, 0.6),
+                0 0 35px rgba(16, 185, 129, 0.25);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+        }
+
+        .constellation-star-svg {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .star-rotation-group {
+            transform-origin: 70px 70px;
+            animation: slow-star-spin 30s linear infinite;
+        }
+
+        @keyframes slow-star-spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .constellation-center-content {
+            position: relative;
+            z-index: 5;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .constellation-kicker {
+            font-size: 9px;
+            font-weight: 900;
+            letter-spacing: 0.18em;
+            color: rgba(255, 255, 255, 0.5);
+            text-transform: uppercase;
+            margin-bottom: 2px;
+        }
+
+        .constellation-lead-num {
+            font-size: 28px;
+            font-weight: 900;
+            color: #ffffff;
+            font-family: 'Plus Jakarta Sans', monospace;
+            line-height: 1;
+        }
+
+        .constellation-unit {
+            font-size: 9px;
+            font-weight: 900;
+            letter-spacing: 0.12em;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        /* ----------------------------------------------------
+           Luminous Diamond Grid Cards
+        ---------------------------------------------------- */
+        .orbital-card {
+            position: absolute;
+            width: 320px;
+            height: 240px;
+            border-radius: 26px;
+            padding: 26px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            background: linear-gradient(135deg, #050b08 0%, color-mix(in srgb, var(--accent-color) 12%, #020504) 100%);
+            backdrop-filter: blur(35px);
+            border: 2.5px solid var(--accent-color);
+            box-shadow: 
+                0 25px 55px rgba(0, 0, 0, 0.85),
+                0 0 35px color-mix(in srgb, var(--accent-color) 20%, transparent),
+                inset 0 0 20px rgba(255, 255, 255, 0.02);
+            overflow: hidden;
+            z-index: 5;
+            box-sizing: border-box;
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .orbital-card::after {
+            content: '';
+            position: absolute;
+            inset: -50%;
+            background: radial-gradient(circle at center, color-mix(in srgb, var(--accent-color) 14%, transparent) 0%, transparent 60%);
+            pointer-events: none;
+            z-index: 0;
+            opacity: 0.85;
+        }
+
+        .orbital-card-dark-wave {
+            position: absolute;
+            bottom: -40px;
+            left: -20px;
+            right: -20px;
+            height: 120px;
+            background: radial-gradient(ellipse at center bottom, color-mix(in srgb, var(--accent-color) 15%, transparent) 0%, transparent 80%);
+            border-top-left-radius: 50%;
+            border-top-right-radius: 50%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .orbital-card[data-pos="1"] {
+            top: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .orbital-card[data-pos="2"] {
+            top: 50%;
+            right: 20px;
+            transform: translateY(-50%);
+        }
+
+        .orbital-card[data-pos="3"] {
+            top: 50%;
+            left: 20px;
+            transform: translateY(-50%);
+        }
+
+        .orbital-card[data-pos="4"] {
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        /* Card Elements */
+        .orbital-card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: relative;
+            z-index: 2;
+        }
+
+        .orbital-gap-pill {
+            font-size: 11px;
+            font-weight: 900;
+            letter-spacing: 0.06em;
+            padding: 4px 12px;
+            border-radius: 16px;
+            font-family: 'Plus Jakarta Sans', monospace;
+        }
+
+        .orbital-gap-pill.leader-gap {
+            background: linear-gradient(135deg, color-mix(in srgb, var(--accent-color) 22%, #ffffff) 0%, color-mix(in srgb, var(--accent-color) 10%, rgba(255,255,255,0.9)) 100%);
+            border: 1px solid color-mix(in srgb, var(--accent-color) 45%, white);
+            color: var(--accent-color);
+        }
+
+        .orbital-gap-pill.chaser-gap {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            color: rgba(255, 255, 255, 0.85);
+        }
+
+        .orbital-rank-index {
+            font-size: 13px;
+            font-weight: 900;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-family: 'Outfit', sans-serif;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            text-transform: uppercase;
+        }
+
+        .orbital-card[data-pos="1"] .orbital-rank-index {
+            background: rgba(251, 191, 36, 0.18);
+            border: 1.5px solid #fbbf24;
+            color: #fef08a;
+            box-shadow: 0 0 15px rgba(251, 191, 36, 0.25);
+        }
+
+        .orbital-card[data-pos="2"] .orbital-rank-index {
+            background: rgba(203, 213, 225, 0.15);
+            border: 1.5px solid #cbd5e1;
+            color: #f1f5f9;
+            box-shadow: 0 0 12px rgba(203, 213, 225, 0.15);
+        }
+
+        .orbital-card[data-pos="3"] .orbital-rank-index {
+            background: rgba(217, 119, 6, 0.15);
+            border: 1.5px solid #d97706;
+            color: #ffedd5;
+            box-shadow: 0 0 12px rgba(217, 119, 6, 0.12);
+        }
+
+        .orbital-card[data-pos="4"] .orbital-rank-index {
+            background: rgba(56, 189, 248, 0.12);
+            border: 1.5px solid #38bdf8;
+            color: #e0f2fe;
+        }
+
+        .orbital-team-title {
+            font-size: 32px;
+            font-weight: 900;
+            color: #ffffff;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
+            margin: 12px 0 4px 0;
+            line-height: 1.15;
+            font-family: 'Plus Jakarta Sans', 'Cairo', sans-serif;
+            position: relative;
+            z-index: 2;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            text-transform: uppercase;
+        }
+
+        .orbital-score-wrapper {
+            display: flex;
+            align-items: baseline;
+            gap: 10px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .orbital-score-digit {
+            font-size: 64px;
+            font-weight: 900;
+            color: #ffffff;
+            text-shadow: 0 0 20px var(--accent-color);
+            font-family: 'Plus Jakarta Sans', monospace;
+            line-height: 1;
+        }
+
+        .orbital-score-label {
+            font-size: 13px;
+            font-weight: 800;
+            color: rgba(255, 255, 255, 0.55);
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+        }
+
+        /* Rank 5+ Bottom Bar */
+        .orbital-extra-teams-bar {
+            position: absolute;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            background: rgba(10, 20, 16, 0.95);
+            backdrop-filter: blur(25px);
+            border: 1.5px solid rgba(16, 185, 129, 0.2);
+            padding: 10px 28px;
+            border-radius: 30px;
+            z-index: 20;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6);
+        }
+
+        .orbital-extra-team-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            font-weight: 800;
+            color: #ffffff;
+        }
+
+        .orbital-extra-team-item span.tv-team-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .divider-pipe {
+            color: rgba(16, 185, 129, 0.3);
+        }
+
+        /* ──────────────── Responsive Design ──────────────── */
+        @media (max-width: 1024px) {
+            .orbital-stage-container {
+                display: flex;
+                flex-direction: column;
+                align-items: stretch;
+                justify-content: flex-start;
+                gap: 16px;
+                width: 100%;
+                height: auto;
+                max-width: 620px;
+                padding: 110px 16px 120px 16px;
+                overflow-y: auto;
+            }
+
+            .orbital-center-node.constellation-star-node {
+                position: absolute;
+                top: 16px;
+                left: 50%;
+                transform: translateX(-50%);
+                width: 84px;
+                height: 84px;
+                z-index: 100;
+            }
+
+            .constellation-star-svg {
+                display: none;
+            }
+
+            .constellation-kicker {
+                font-size: 7px;
+                letter-spacing: 0.1em;
+            }
+
+            .constellation-lead-num {
+                font-size: 20px;
+            }
+
+            .constellation-unit {
+                font-size: 7px;
+            }
+
+            .orbital-card {
+                position: relative;
+                inset: auto !important;
+                width: 100%;
+                height: auto;
+                min-height: 86px;
+                padding: 14px 20px;
+                border-radius: 16px;
+                transform: none !important;
+                flex-direction: row;
+                align-items: center;
+                justify-content: space-between;
+                box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+            }
+
+            .orbital-card::after, .orbital-card-dark-wave {
+                display: none;
+            }
+
+            .orbital-card-header {
+                flex-direction: row-reverse;
+                gap: 12px;
+                margin-bottom: 0;
+                width: auto;
+            }
+
+            .orbital-rank-index {
+                font-size: 20px;
+            }
+
+            .orbital-team-title {
+                font-size: 20px;
+                margin: 0 0 0 12px;
+                flex-grow: 1;
+                text-align: left;
+            }
+
+            .orbital-score-wrapper {
+                flex-direction: column;
+                align-items: flex-end;
+                gap: 0;
+                margin-left: 12px;
+            }
+
+            .orbital-score-digit {
+                font-size: 32px;
+            }
+
+            .orbital-score-label {
+                font-size: 8px;
+                letter-spacing: 0.05em;
+            }
+
+            .orbital-extra-teams-bar {
+                position: relative;
+                bottom: auto;
+                left: auto;
+                transform: none;
+                flex-wrap: wrap;
+                justify-content: center;
+                width: 100%;
+                margin-top: 20px;
+                padding: 12px 16px;
+                border-radius: 16px;
+                box-shadow: none;
+                background: rgba(15, 23, 20, 0.7);
+                border: 1px solid rgba(16, 185, 129, 0.15);
+                gap: 12px 16px;
+            }
+
+            .orbital-extra-team-item {
+                font-size: 12px;
+            }
+            .divider-pipe {
+                display: none;
+            }
+        }
+
+        @media (max-height: 850px) and (min-width: 1025px) {
+            .orbital-stage-container {
+                transform: scale(0.72);
+                margin-top: -30px;
+            }
+            .orbital-extra-teams-bar {
+                bottom: 15px;
+            }
+        }
+        @media (max-height: 700px) and (min-width: 1025px) {
+            .orbital-stage-container {
+                transform: scale(0.58);
+                margin-top: -65px;
+            }
+            .orbital-extra-teams-bar {
+                bottom: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="tv-backdrop">
+        <div class="cyber-grid"></div>
+        <div class="stage-backdrop">
+            <div class="glow-orb glow-orb-1"></div>
+            <div class="glow-orb glow-orb-2"></div>
+        </div>
+        <canvas id="flowCanvas"></canvas>
+    </div>
+
+    <!-- Topbar HUD -->
+    <header class="tv-topbar">
+        <div class="tv-brand">
+            <div class="tv-logo-placeholder">T</div>
+            <div class="tv-brand-copy">
+                <div class="tv-brand-kicker">Kauzariyya Digital Musabaqa</div>
+                <div class="tv-brand-title">Thanafus 2030</div>
+            </div>
+        </div>
+        <div class="tv-topbar-right">
+            <div class="tv-live-chip"><span></span> Live</div>
+            <div class="tv-clock" id="clockWidget">--:--:--</div>
+        </div>
+    </header>
+
+    <main class="tv-stage">
+        <div class="leaderboard-header">
+            <h1 class="leaderboard-title">CHAMPIONSHIP STANDINGS</h1>
+            <span class="leaderboard-subtitle">LIVE POINTS TABLE</span>
+        </div>
+
+        <div class="orbital-stage-container">
+            <!-- Constellation Lasers connecting nodes dynamically -->
+            <svg class="orbital-vector-canvas" viewBox="0 0 1050 820" preserveAspectRatio="none">
+                <g class="constellation-lasers">
+                    <!-- Connections from Center Node (525, 410) to Card Center Points -->
+                    <line class="constellation-laser-line" x1="525" y1="330" x2="525" y2="270" stroke="#10b981" stroke-width="3" />
+                    <line class="constellation-laser-line" x1="605" y1="410" x2="710" y2="410" stroke="#f43f5e" stroke-width="3" />
+                    <line class="constellation-laser-line" x1="445" y1="410" x2="340" y2="410" stroke="#3b82f6" stroke-width="3" />
+                    <line class="constellation-laser-line" x1="525" y1="490" x2="525" y2="550" stroke="#eab308" stroke-width="3" />
+                </g>
+            </svg>
+
+            <!-- Center Gyro Node -->
+            <div class="orbital-center-node constellation-star-node">
+                <svg class="constellation-star-svg" viewBox="0 0 160 160">
+                    <g class="star-rotation-group">
+                        <rect x="25" y="25" width="110" height="110" rx="14" fill="none" stroke="#10b981" stroke-width="2.5" opacity="0.5" />
+                        <rect x="25" y="25" width="110" height="110" rx="14" transform="rotate(45 80 80)" fill="none" stroke="#10b981" stroke-width="2.5" opacity="0.5" />
+                        <circle cx="80" cy="80" r="68" fill="none" stroke="rgba(255, 255, 255, 0.2)" stroke-width="1.5" stroke-dasharray="6 4" />
+                    </g>
+                    <!-- Stationary background track -->
+                    <circle cx="80" cy="80" r="52" fill="none" stroke="rgba(255, 255, 255, 0.08)" stroke-width="6" />
+                    <!-- Progress ring matching leading team's color (80% full progress) -->
+                    <circle class="orbital-progress-bar" cx="80" cy="80" r="52" fill="none" stroke="#10b981" stroke-width="6" stroke-linecap="round" stroke-dasharray="326.72" stroke-dashoffset="65" transform="rotate(-90 80 80)" />
+                </svg>
+                <div class="constellation-center-content">
+                    <span class="constellation-kicker">LEAD GAP</span>
+                    <span class="constellation-lead-num">+91</span>
+                    <span class="constellation-unit">PTS</span>
+                </div>
+            </div>
+
+            <!-- Position 1: Green Team (القين) - TOP -->
+            <div class="orbital-card" data-pos="1" style="--accent-color: #10b981;">
+                <div class="orbital-card-dark-wave"></div>
+                <div class="orbital-card-header">
+                    <span class="orbital-gap-pill leader-gap">+91 PTS LEAD</span>
+                    <span class="orbital-rank-index"><i class="fa-solid fa-crown text-yellow-400 mr-1"></i>01</span>
+                </div>
+                <div class="orbital-team-title">القين</div>
+                <div class="orbital-score-wrapper">
+                    <span class="orbital-score-digit" data-score="486">486</span>
+                    <span class="orbital-score-label">MARKS</span>
+                </div>
+            </div>
+
+            <!-- Position 2: Red Team (اليقين) - RIGHT -->
+            <div class="orbital-card" data-pos="2" style="--accent-color: #f43f5e;">
+                <div class="orbital-card-dark-wave"></div>
+                <div class="orbital-card-header">
+                    <span class="orbital-gap-pill chaser-gap">-91 PTS</span>
+                    <span class="orbital-rank-index"><i class="fa-solid fa-medal text-slate-300 mr-1"></i>02</span>
+                </div>
+                <div class="orbital-team-title">اليقين</div>
+                <div class="orbital-score-wrapper">
+                    <span class="orbital-score-digit" data-score="395">395</span>
+                    <span class="orbital-score-label">MARKS</span>
+                </div>
+            </div>
+
+            <!-- Position 3: Blue Team (الطين) - LEFT -->
+            <div class="orbital-card" data-pos="3" style="--accent-color: #3b82f6;">
+                <div class="orbital-card-dark-wave"></div>
+                <div class="orbital-card-header">
+                    <span class="orbital-gap-pill chaser-gap">-144 PTS</span>
+                    <span class="orbital-rank-index"><i class="fa-solid fa-medal text-amber-600 mr-1"></i>03</span>
+                </div>
+                <div class="orbital-team-title">الطين</div>
+                <div class="orbital-score-wrapper">
+                    <span class="orbital-score-digit" data-score="342">342</span>
+                    <span class="orbital-score-label">MARKS</span>
+                </div>
+            </div>
+
+            <!-- Position 4: Yellow-Green Team (الفين) - BOTTOM -->
+            <div class="orbital-card" data-pos="4" style="--accent-color: #eab308;">
+                <div class="orbital-card-dark-wave"></div>
+                <div class="orbital-card-header">
+                    <span class="orbital-gap-pill chaser-gap">-206 PTS</span>
+                    <span class="orbital-rank-index"><i class="fa-solid fa-award text-blue-400 mr-1"></i>04</span>
+                </div>
+                <div class="orbital-team-title">الفين</div>
+                <div class="orbital-score-wrapper">
+                    <span class="orbital-score-digit" data-score="280">280</span>
+                    <span class="orbital-score-label">MARKS</span>
+                </div>
+            </div>
+
+            <!-- Rank 5+ Bottom Bar -->
+            <div class="orbital-extra-teams-bar">
+                <div class="orbital-extra-team-item">
+                    <span class="tv-team-dot" style="background:#cbd5e1;"></span>
+                    <span>05 الصدق:</span>
+                    <strong style="color: #10b981">245</strong>
+                </div>
+                <span class="divider-pipe">|</span>
+                <div class="orbital-extra-team-item">
+                    <span class="tv-team-dot" style="background:#475569;"></span>
+                    <span>06 الأمل:</span>
+                    <strong style="color: #10b981">190</strong>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <script>
+        function updateClock() {
+            const clockEl = document.getElementById('clockWidget');
+            if (!clockEl) return;
+            const now = new Date();
+            clockEl.textContent = now.toLocaleTimeString('en-US', { 
+                hour12: false, 
+                hour: '2-digit', 
+                minute: '2-digit', 
+                second: '2-digit' 
+            });
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        // Canvas Flow Animation (Organic Morphing Waves in Emerald/Green)
+        const canvas = document.getElementById('flowCanvas');
+        const ctx = canvas.getContext('2d');
+
+        let width = canvas.width = window.innerWidth;
+        let height = canvas.height = window.innerHeight;
+
+        window.addEventListener('resize', () => {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        });
+
+        class GreenLightBlob {
+            constructor() {
+                this.reset(true);
+            }
+
+            reset(initial = false) {
+                this.x = initial ? Math.random() * width : -300 - Math.random() * 200;
+                this.y = Math.random() * height;
+                this.size = Math.random() * 150 + 120;
+                this.vx = Math.random() * 0.9 + 0.4;
+                this.vy = (Math.random() - 0.5) * 0.2;
+                this.alpha = Math.random() * 0.15 + 0.08;
+                this.color = Math.random() > 0.5 ? '#10b981' : '#047857';
+                this.phase = Math.random() * Math.PI * 2;
+                this.freq = Math.random() * 0.005 + 0.002;
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy + Math.sin(Date.now() * this.freq + this.phase) * 0.3;
+
+                if (this.x - this.size * 2 > width) {
+                    this.reset(false);
+                }
+            }
+
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = this.alpha;
+                
+                const grad = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.size);
+                grad.addColorStop(0, this.color);
+                grad.addColorStop(1, 'transparent');
+                
+                ctx.fillStyle = grad;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        const blobs = [];
+        for (let i = 0; i < 10; i++) {
+            blobs.push(new GreenLightBlob());
+        }
+
+        function drawFlowRibbons() {
+            const time = Date.now() * 0.0003;
+            ctx.save();
+            ctx.strokeStyle = 'rgba(16, 185, 129, 0.07)';
+            ctx.lineWidth = 1.5;
+
+            const linesCount = 4;
+            for (let i = 0; i < linesCount; i++) {
+                const yBase = (height / (linesCount + 1)) * (i + 1);
+                ctx.beginPath();
+                for (let x = 0; x <= width; x += 40) {
+                    const y = yBase + Math.sin(x * 0.004 + time + i) * 40 + Math.cos(x * 0.002 - time) * 20;
+                    if (x === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+                ctx.stroke();
+            }
+            ctx.restore();
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, width, height);
+            drawFlowRibbons();
+            blobs.forEach(b => {
+                b.update();
+                b.draw();
+            });
+            requestAnimationFrame(animate);
+        }
+        animate();
+
+        // GSAP Entrance Animations
+        window.addEventListener('load', () => {
+            if (typeof gsap === 'undefined') return;
+
+            gsap.from('.orbital-center-node', {
+                scale: 0,
+                opacity: 0,
+                duration: 1.2,
+                ease: 'back.out(1.7)'
+            });
+
+            gsap.from('.constellation-laser-line', {
+                strokeDashoffset: 300,
+                opacity: 0,
+                duration: 1.5,
+                delay: 0.4
+            });
+
+            const cardPos = [2, 1, 3, 4];
+            cardPos.forEach((pos, index) => {
+                const card = document.querySelector(`.orbital-card[data-pos="${pos}"]`);
+                if (!card) return;
+                
+                let startX = 0;
+                let startY = 0;
+                
+                if (pos === 1) startY = -80;
+                if (pos === 2) startX = 80;
+                if (pos === 3) startX = -80;
+                if (pos === 4) startY = 80;
+
+                gsap.fromTo(card, 
+                    { 
+                        opacity: 0, 
+                        scale: 0.88,
+                        x: pos === 2 || pos === 3 ? startX : (pos === 1 || pos === 4 ? (width > 1024 ? '-50%' : 0) : 0),
+                        y: pos === 1 || pos === 4 ? startY : (pos === 2 || pos === 3 ? (width > 1024 ? '-50%' : 0) : 0)
+                    },
+                    {
+                        opacity: 1,
+                        scale: 1,
+                        x: pos === 1 || pos === 4 ? (width > 1024 ? '-50%' : 0) : 0,
+                        y: pos === 2 || pos === 3 ? (width > 1024 ? '-50%' : 0) : 0,
+                        duration: 1,
+                        delay: 0.6 + index * 0.15,
+                        ease: 'power3.out'
+                    }
+                );
+            });
+
+            document.querySelectorAll('.orbital-score-digit').forEach(el => {
+                const targetScore = parseInt(el.textContent, 10);
+                const counter = { val: 0 };
+                
+                gsap.to(counter, {
+                    val: targetScore,
+                    duration: 2,
+                    delay: 1.2,
+                    ease: 'power3.out',
+                    onUpdate: () => {
+                        el.textContent = Math.round(counter.val);
+                    }
+                });
+            });
+
+            gsap.from('.orbital-extra-teams-bar', {
+                y: 50,
+                opacity: 0,
+                duration: 1,
+                delay: 1.6,
+                ease: 'power3.out'
+            });
+        });
+    </script>
+</body>
+</html>

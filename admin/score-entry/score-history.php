@@ -52,6 +52,7 @@ $rawLogsStmt = $pdo->prepare("
         pe.team_score,
         p.title AS program_title,
         p.program_type,
+        p.disable_scores,
         COALESCE(p.reviewed_at, p.submitted_at, p.created_at) AS approved_at,
         u.full_name AS approved_by_name,
         t.team_name,
@@ -627,7 +628,11 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                                         <?= $rankBadge ?>
                                                     </td>
                                                     <td style="text-align: right; font-weight: 700; color: #fff; padding: 14px 16px; font-size: 13px;">
-                                                        <?= number_format((float)$eLog['final_score'], 2) ?>
+                                                        <?php if (!empty($eLog['disable_scores'])): ?>
+                                                            <span style="color: var(--muted); font-size: 12px; font-weight: normal;">—</span>
+                                                        <?php else: ?>
+                                                            <?= number_format((float)$eLog['final_score'], 2) ?>
+                                                        <?php endif; ?>
                                                     </td>
                                                     <td style="text-align: center; padding: 14px 16px;">
                                                         <span class="badge" style="background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); font-size: 13.5px; font-weight: 800; padding: 4px 12px;">
