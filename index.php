@@ -86,7 +86,7 @@ try {
             </a>
             
             <ul class="nav-menu">
-                <li><a href="<?= app_url('/live-display-mobile.php') ?>" class="nav-link"><i class="fa-solid fa-chart-line" style="margin-right: 5px; color: #166534;"></i> Live Dashboard</a></li>
+                <li><a href="<?= app_url('/home.php') ?>" class="nav-link"><i class="fa-solid fa-chart-line" style="margin-right: 5px; color: #166534;"></i> Live Dashboard</a></li>
                 <li><a href="#about" class="nav-link">Articles</a></li>
                 <li><a href="#categories" class="nav-link">Categories</a></li>
                 <li><a href="#stages" class="nav-link">Stages</a></li>
@@ -140,7 +140,7 @@ try {
 
             <!-- CTA Actions -->
             <div class="hero-actions">
-                <a href="live-display-mobile.php" class="btn-primary">Live Dashboard</a>
+                <a href="home.php" class="btn-primary">Live Dashboard</a>
                 <a href="live-display/" class="btn-secondary" target="_blank">Event Slideshow</a>
                 <a href="https://github.com/MHD-Hudaif/mobile-app-musabaqa/releases/download/latest/kauzariyya-musabaqa.apk" class="btn-secondary mobile-only" download>
                     <i class="fa-solid fa-mobile-screen-button" style="margin-right: 6px; color: var(--brand-gold);"></i> Get Mobile App
@@ -476,7 +476,7 @@ try {
                     <div class="footer-links-col">
                         <h6>Quick Links</h6>
                         <ul class="footer-links">
-                            <li><a href="live-display-mobile.php">Live Dashboard</a></li>
+                            <li><a href="home.php">Live Dashboard</a></li>
                             <li><a href="live-display/" target="_blank">Event Slideshow</a></li>
                             <li><a href="schedule.php">Program Schedule</a></li>
                             <li><a href="admin.php">Management Portal</a></li>

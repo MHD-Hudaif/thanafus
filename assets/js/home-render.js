@@ -52,7 +52,7 @@
   /* ── header ──────────────────────────────────────────── */
   function header(page) {
     const user = data.user || {};
-    const liveDisplayHTML = `<a href="live-display-mobile.php" class="visitor-logout visitor-logout-floating" style="text-decoration:none;background:#2563eb;color:#fff;border:none;margin-right:6px">Live Display</a>`;
+    const liveDisplayHTML = `<a href="home.php" class="visitor-logout visitor-logout-floating" style="text-decoration:none;background:#2563eb;color:#fff;border:none;margin-right:6px">Live Display</a>`;
     const authHTML = user.isLoggedIn
       ? `${liveDisplayHTML}
          <a href="${user.adminUrl || '#'}" class="visitor-logout visitor-logout-floating" style="text-decoration:none;background:#059669;color:#fff;border:none;margin-right:6px">Dashboard</a>

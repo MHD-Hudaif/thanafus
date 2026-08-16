@@ -1,4 +1,6 @@
 <?php
+header("Location: home.php");
+exit;
 require_once __DIR__ . '/config/auth.php';
 require_once __DIR__ . '/config/app.php';
 require_once __DIR__ . '/includes/event-guard.php';
