@@ -364,11 +364,8 @@ if ($eventId > 0) {
         }
 
         .tab-content {
-            display: none;
-            animation: fadeIn 0.3s ease;
-        }
-        .tab-content.active {
             display: block;
+            animation: fadeIn 0.3s ease;
         }
 
         @keyframes fadeIn {
@@ -628,6 +625,128 @@ if ($eventId > 0) {
             border-radius: 99px;
             display: inline-block;
         }
+
+        /* Responsive Table Columns */
+        .desktop-only {
+            /* visible on desktop */
+        }
+        @media (max-width: 768px) {
+            .desktop-only {
+                display: none !important;
+            }
+            .clickable-row {
+                cursor: pointer;
+            }
+            .clickable-row:active {
+                background: rgba(93, 126, 90, 0.1) !important;
+            }
+        }
+
+        /* Premium Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(46, 43, 39, 0.45);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s ease;
+        }
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .modal-content {
+            background: #faf7f0;
+            border: 1px solid rgba(180, 160, 140, 0.3);
+            border-radius: 24px;
+            width: 92%;
+            max-width: 450px;
+            box-shadow: 0 20px 50px rgba(100, 80, 60, 0.2);
+            overflow: hidden;
+            transform: translateY(20px);
+            transition: transform 0.25s ease;
+        }
+        .modal-overlay.active .modal-content {
+            transform: translateY(0);
+        }
+        .modal-header {
+            padding: 16px 20px;
+            background: rgba(160, 180, 145, 0.15);
+            border-bottom: 1px solid rgba(180, 160, 140, 0.2);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.2rem;
+            font-weight: 800;
+            margin: 0;
+            color: var(--text-main);
+        }
+        .modal-close {
+            background: transparent;
+            border: none;
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-muted);
+            cursor: pointer;
+            line-height: 1;
+            outline: none;
+        }
+        .modal-body {
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .modal-detail-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(180, 160, 140, 0.12);
+        }
+        .modal-detail-row:last-child {
+            border-bottom: none;
+        }
+        .modal-detail-label {
+            font-size: 11px;
+            font-weight: 800;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .modal-detail-value {
+            font-size: 13.5px;
+            font-weight: 800;
+            color: var(--text-main);
+            text-align: right;
+            max-width: 65%;
+        }
+        .mobile-tip {
+            display: none;
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: -8px;
+            margin-bottom: 12px;
+            align-items: center;
+            gap: 6px;
+        }
+        @media (max-width: 768px) {
+            .mobile-tip {
+                display: flex;
+            }
+        }
     </style>
 </head>
 <body>
@@ -645,21 +764,6 @@ if ($eventId > 0) {
     </header>
 
     <main>
-        <!-- Nav Tabs -->
-        <div class="nav-tabs">
-            <button class="tab-btn active" data-target="tabStandings">
-                <i class="fa-solid fa-trophy"></i> Championship Standings
-            </button>
-            <button class="tab-btn" data-target="tabPrograms">
-                <i class="fa-solid fa-list-check"></i> Program Scorecards
-            </button>
-            <button class="tab-btn" data-target="tabIndividuals">
-                <i class="fa-solid fa-user-graduate"></i> Individual Rankings
-            </button>
-            <button class="tab-btn" data-target="tabBulk">
-                <i class="fa-solid fa-database"></i> Bulk Marks Log
-            </button>
-        </div>
 
         <!-- TAB 1: Championship Standings -->
         <div id="tabStandings" class="tab-content active">
@@ -748,17 +852,18 @@ if ($eventId > 0) {
                         </span>
                     </div>
 
+                    <div class="mobile-tip"><i class="fa-solid fa-circle-info"></i> Tap any row to view full participant details.</div>
                     <div class="table-responsive">
                         <table>
                             <thead>
                                 <tr>
-                                    <th style="width: 70px;">Rank</th>
-                                    <th style="width: 100px;">Chest #</th>
+                                    <th style="width: 70px;" class="desktop-only">Rank</th>
+                                    <th style="width: 100px;" class="desktop-only">Chest #</th>
                                     <th>Entry Name / Members</th>
                                     <th>Team</th>
                                     <th style="text-align: center; width: 100px;">Marks</th>
-                                    <th style="text-align: center; width: 90px;">Grade</th>
-                                    <th style="text-align: right; width: 120px;">Points Won</th>
+                                    <th style="text-align: center; width: 90px;" class="desktop-only">Grade</th>
+                                    <th style="text-align: right; width: 120px;" class="desktop-only">Points Won</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -767,15 +872,24 @@ if ($eventId > 0) {
                                         $entryRank = $entry['final_rank'] !== null ? (int)$entry['final_rank'] : null;
                                         $rankClass = $entryRank ? "badge-rank-{$entryRank}" : "";
                                     ?>
-                                        <tr>
-                                            <td>
+                                        <tr class="clickable-row" onclick="showProgramEntryDetails(this)" 
+                                            data-rank="<?= $entryRank ? '#'.$entryRank : '—' ?>" 
+                                            data-chest="<?= htmlspecialchars((string)($entry['chest_number'] ?: '—')) ?>" 
+                                            data-name="<?= htmlspecialchars((string)($entry['entry_name'] ?: 'Team Performance')) ?>" 
+                                            data-members="<?= htmlspecialchars((string)$entry['member_names']) ?>" 
+                                            data-team="<?= htmlspecialchars((string)$entry['team_name']) ?>" 
+                                            data-team-color="<?= htmlspecialchars((string)$entry['team_color']) ?>"
+                                            data-marks="<?= number_format((float)$entry['final_score'], 0) ?>" 
+                                            data-grade="<?= $entry['grade'] ? 'Grade '.$entry['grade'] : '—' ?>" 
+                                            data-points="+<?= number_format((float)$entry['team_score'], 1) ?> pts">
+                                            <td class="desktop-only">
                                                 <?php if ($entryRank): ?>
                                                     <span class="badge-rank <?= $rankClass ?>">#<?= $entryRank ?></span>
                                                 <?php else: ?>
                                                     <span style="color: var(--text-muted)">—</span>
                                                 <?php endif; ?>
                                             </td>
-                                            <td><strong><?= htmlspecialchars((string)($entry['chest_number'] ?: '—')) ?></strong></td>
+                                            <td class="desktop-only"><strong><?= htmlspecialchars((string)($entry['chest_number'] ?: '—')) ?></strong></td>
                                             <td>
                                                 <div>
                                                     <strong style="color: #1e293b;"><?= htmlspecialchars((string)($entry['entry_name'] ?: 'Team Performance')) ?></strong>
@@ -794,14 +908,14 @@ if ($eventId > 0) {
                                             <td style="text-align: center;">
                                                 <span class="score-pill"><?= number_format((float)$entry['final_score'], 0) ?></span>
                                             </td>
-                                            <td style="text-align: center;">
+                                            <td style="text-align: center;" class="desktop-only">
                                                 <?php if ($entry['grade']): ?>
                                                     <span class="badge-grade">Grade <?= htmlspecialchars((string)$entry['grade']) ?></span>
                                                 <?php else: ?>
                                                     <span style="color: var(--text-muted)">—</span>
                                                 <?php endif; ?>
                                             </td>
-                                            <td style="text-align: right;">
+                                            <td style="text-align: right;" class="desktop-only">
                                                 <span class="points-box">+<?= number_format((float)$entry['team_score'], 1) ?> pts</span>
                                             </td>
                                         </tr>
@@ -831,18 +945,19 @@ if ($eventId > 0) {
                     </div>
                 </div>
 
+                <div class="mobile-tip"><i class="fa-solid fa-circle-info"></i> Tap any row to view full participant details.</div>
                 <div class="table-responsive">
                     <table id="indTable">
                         <thead>
                             <tr>
-                                <th style="width: 60px;">Rank</th>
-                                <th style="width: 100px;">Chest #</th>
+                                <th style="width: 60px;" class="desktop-only">Rank</th>
+                                <th style="width: 100px;" class="desktop-only">Chest #</th>
                                 <th>Student Name</th>
                                 <th>Team</th>
-                                <th>Class / Section</th>
-                                <th style="text-align: center; width: 100px;">Events Count</th>
+                                <th class="desktop-only">Class / Section</th>
+                                <th style="text-align: center; width: 100px;" class="desktop-only">Events Count</th>
                                 <th style="text-align: center; width: 110px;">Total Marks</th>
-                                <th style="text-align: right; width: 120px;">Points Won</th>
+                                <th style="text-align: right; width: 120px;" class="desktop-only">Points Won</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -852,23 +967,32 @@ if ($eventId > 0) {
                                 foreach ($individualStandings as $ind): 
                                     $rankBadge = $rIdx <= 3 ? "badge-rank-{$rIdx}" : "";
                                 ?>
-                                    <tr class="ind-row">
-                                        <td>
+                                    <tr class="ind-row clickable-row" onclick="showIndividualDetails(this)" 
+                                        data-rank="#<?= $rIdx ?>" 
+                                        data-chest="<?= htmlspecialchars((string)$ind['chest_number']) ?>" 
+                                        data-name="<?= htmlspecialchars((string)$ind['student_name']) ?>" 
+                                        data-team="<?= htmlspecialchars((string)$ind['team_name']) ?>" 
+                                        data-team-color="<?= htmlspecialchars((string)$ind['team_color']) ?>"
+                                        data-class="<?= htmlspecialchars((string)($ind['student_class_type_name'] ?? 'General')) ?>" 
+                                        data-events="<?= (int)$ind['programs_count'] ?>" 
+                                        data-marks="<?= number_format((float)$ind['total_marks'], 0) ?>" 
+                                        data-points="+<?= number_format((float)$ind['total_points'], 1) ?> pts">
+                                        <td class="desktop-only">
                                             <span class="badge-rank <?= $rankBadge ?>">#<?= $rIdx++ ?></span>
                                         </td>
-                                        <td class="ind-chest"><strong><?= htmlspecialchars((string)$ind['chest_number']) ?></strong></td>
+                                        <td class="ind-chest desktop-only"><strong><?= htmlspecialchars((string)$ind['chest_number']) ?></strong></td>
                                         <td class="ind-name"><strong style="color: #1e293b;"><?= htmlspecialchars((string)$ind['student_name']) ?></strong></td>
                                         <td>
                                             <span class="team-badge" style="background: <?= htmlspecialchars((string)$ind['team_color']) ?>18; color: <?= htmlspecialchars((string)$ind['team_color']) ?>; border-color: <?= htmlspecialchars((string)$ind['team_color']) ?>33;">
                                                 <?= htmlspecialchars((string)$ind['team_name']) ?>
                                             </span>
                                         </td>
-                                        <td><?= htmlspecialchars((string)($ind['student_class_type_name'] ?? 'General')) ?></td>
-                                        <td style="text-align: center;"><?= (int)$ind['programs_count'] ?></td>
+                                        <td class="desktop-only"><?= htmlspecialchars((string)($ind['student_class_type_name'] ?? 'General')) ?></td>
+                                        <td style="text-align: center;" class="desktop-only"><?= (int)$ind['programs_count'] ?></td>
                                         <td style="text-align: center;">
                                             <span class="score-pill"><?= number_format((float)$ind['total_marks'], 0) ?></span>
                                         </td>
-                                        <td style="text-align: right;">
+                                        <td style="text-align: right;" class="desktop-only">
                                             <span class="points-box">+<?= number_format((float)$ind['total_points'], 1) ?> pts</span>
                                         </td>
                                     </tr>
@@ -901,20 +1025,21 @@ if ($eventId > 0) {
                     </div>
                 </div>
 
+                <div class="mobile-tip"><i class="fa-solid fa-circle-info"></i> Tap any row to view full participant details.</div>
                 <div class="table-responsive" style="max-height: 520px; overflow-y: auto;">
                     <table id="bulkTable">
                         <thead style="position: sticky; top: 0; z-index: 10;">
                             <tr>
-                                <th style="width: 100px;">Chest #</th>
+                                <th style="width: 100px;" class="desktop-only">Chest #</th>
                                 <th>Contestant Name</th>
                                 <th>Team</th>
-                                <th>Program Title</th>
-                                <th>Category / Group</th>
+                                <th class="desktop-only">Program Title</th>
+                                <th class="desktop-only">Category / Group</th>
                                 <th style="text-align: center; width: 80px;">Marks</th>
-                                <th style="text-align: center; width: 60px;">Rank</th>
-                                <th style="text-align: center; width: 60px;">Grade</th>
-                                <th style="text-align: right; width: 100px;">Points Won</th>
-                                <th style="text-align: center; width: 100px;">Status</th>
+                                <th style="text-align: center; width: 60px;" class="desktop-only">Rank</th>
+                                <th style="text-align: center; width: 60px;" class="desktop-only">Grade</th>
+                                <th style="text-align: right; width: 100px;" class="desktop-only">Points Won</th>
+                                <th style="text-align: center; width: 100px;" class="desktop-only">Status</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -923,37 +1048,48 @@ if ($eventId > 0) {
                                     $pRank = $row['final_rank'] !== null ? (int)$row['final_rank'] : null;
                                     $rankBadge = $pRank ? "badge-rank-{$pRank}" : "";
                                 ?>
-                                    <tr class="bulk-row">
-                                        <td class="bulk-chest"><strong><?= htmlspecialchars((string)$row['chest_number']) ?></strong></td>
+                                    <tr class="bulk-row clickable-row" onclick="showBulkDetails(this)" 
+                                        data-chest="<?= htmlspecialchars((string)$row['chest_number']) ?>" 
+                                        data-name="<?= htmlspecialchars((string)$row['student_name']) ?>" 
+                                        data-team="<?= htmlspecialchars((string)$row['team_name']) ?>" 
+                                        data-team-color="<?= htmlspecialchars((string)$row['team_color']) ?>"
+                                        data-program="<?= htmlspecialchars((string)$row['program_title']) ?>" 
+                                        data-category="<?= htmlspecialchars((string)($row['category_name'] ?? 'General')) ?>" 
+                                        data-marks="<?= number_format((float)$row['final_score'], 0) ?>" 
+                                        data-rank="<?= $pRank ? '#'.$pRank : '—' ?>" 
+                                        data-grade="<?= $row['grade'] ?: '—' ?>" 
+                                        data-points="+<?= number_format((float)$row['team_score'], 1) ?> pts" 
+                                        data-status="<?= htmlspecialchars((string)($row['program_status'] ?: 'draft')) ?>">
+                                        <td class="bulk-chest desktop-only"><strong><?= htmlspecialchars((string)$row['chest_number']) ?></strong></td>
                                         <td class="bulk-name"><strong style="color: #1e293b;"><?= htmlspecialchars((string)$row['student_name']) ?></strong></td>
                                         <td class="bulk-team">
                                             <span class="team-badge" style="background: <?= htmlspecialchars((string)$row['team_color']) ?>18; color: <?= htmlspecialchars((string)$row['team_color']) ?>; border-color: <?= htmlspecialchars((string)$row['team_color']) ?>33;">
                                                 <?= htmlspecialchars((string)$row['team_name']) ?>
                                             </span>
                                         </td>
-                                        <td class="bulk-program"><?= htmlspecialchars((string)$row['program_title']) ?></td>
-                                        <td><?= htmlspecialchars((string)($row['category_name'] ?? 'General')) ?></td>
+                                        <td class="bulk-program desktop-only"><?= htmlspecialchars((string)$row['program_title']) ?></td>
+                                        <td class="desktop-only"><?= htmlspecialchars((string)($row['category_name'] ?? 'General')) ?></td>
                                         <td style="text-align: center;">
                                             <span class="score-pill"><?= number_format((float)$row['final_score'], 0) ?></span>
                                         </td>
-                                        <td style="text-align: center;">
+                                        <td style="text-align: center;" class="desktop-only">
                                             <?php if ($pRank): ?>
                                                 <span class="badge-rank <?= $rankBadge ?>">#<?= $pRank ?></span>
                                             <?php else: ?>
                                                 <span style="color: var(--text-muted)">—</span>
                                             <?php endif; ?>
                                         </td>
-                                        <td style="text-align: center;">
+                                        <td style="text-align: center;" class="desktop-only">
                                             <?php if ($row['grade']): ?>
                                                 <span class="badge-grade"><?= htmlspecialchars((string)$row['grade']) ?></span>
                                             <?php else: ?>
                                                 <span style="color: var(--text-muted)">—</span>
                                             <?php endif; ?>
                                         </td>
-                                        <td style="text-align: right;">
+                                        <td style="text-align: right;" class="desktop-only">
                                             <span class="points-box">+<?= number_format((float)$row['team_score'], 1) ?> pts</span>
                                         </td>
-                                        <td style="text-align: center;">
+                                        <td style="text-align: center;" class="desktop-only">
                                             <span class="badge-status <?= htmlspecialchars((string)$row['program_status']) ?>">
                                                 <?= htmlspecialchars((string)($row['program_status'] ?: 'draft')) ?>
                                             </span>
@@ -972,35 +1108,191 @@ if ($eventId > 0) {
         </div>
     </main>
 
+    <!-- Details Modal -->
+    <div id="detailsModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title">Details View</h4>
+                <button class="modal-close" onclick="closeDetailsModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                <!-- Content injected dynamically -->
+            </div>
+        </div>
+    </div>
+
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            // Tab Switcher
-            const tabButtons = document.querySelectorAll('.tab-btn');
-            const tabContents = document.querySelectorAll('.tab-content');
+        // Modal functions
+        const modalEl = document.getElementById('detailsModal');
+        const modalBody = document.getElementById('modalBody');
 
-            tabButtons.forEach(button => {
-                button.addEventListener('click', () => {
-                    const target = button.getAttribute('data-target');
+        function openModal() {
+            modalEl.style.display = 'flex';
+            // Force redraw for transition
+            modalEl.offsetHeight; 
+            modalEl.classList.add('active');
+        }
 
-                    tabButtons.forEach(btn => btn.classList.remove('active'));
-                    tabContents.forEach(content => content.classList.remove('active'));
+        function closeDetailsModal() {
+            modalEl.classList.remove('active');
+            setTimeout(() => {
+                modalEl.style.display = 'none';
+            }, 250);
+        }
 
-                    button.classList.add('active');
-                    document.getElementById(target).classList.add('active');
-                });
-            });
-
-            // Restore last active tab if hash matches
-            const urlParams = new URLSearchParams(window.location.search);
-            const initialTab = urlParams.get('tab');
-            if (initialTab && document.querySelector(`[data-target="${initialTab}"]`)) {
-                document.querySelector(`[data-target="${initialTab}"]`).click();
+        // Close on clicking overlay
+        modalEl.addEventListener('click', (e) => {
+            if (e.target === modalEl) {
+                closeDetailsModal();
             }
         });
 
+        function showProgramEntryDetails(row) {
+            const d = row.dataset;
+            let memberRow = '';
+            if (d.members && d.members !== d.name) {
+                memberRow = `
+                    <div class="modal-detail-row">
+                        <span class="modal-detail-label">Members</span>
+                        <span class="modal-detail-value">${d.members}</span>
+                    </div>
+                `;
+            }
+            modalBody.innerHTML = `
+                <div class="modal-detail-row">
+                    <span class="modal-detail-label">Rank</span>
+                    <span class="modal-detail-value"><span class="badge-rank">${d.rank}</span></span>
+                </div>
+                <div class="modal-detail-row">
+                    <span class="modal-detail-label">Chest Number</span>
+                    <span class="modal-detail-value"><strong>${d.chest}</strong></span>
+                </div>
+                <div class="modal-detail-row">
+                    <span class="modal-detail-label">Name / Entry</span>
+                    <span class="modal-detail-value">${d.name}</span>
+                </div>
+                ${memberRow}
+                <div class="modal-detail-row">
+                    <span class="modal-detail-label">Team</span>
+                    <span class="modal-detail-value">
+                        <span class="team-badge" style="background: ${d.teamColor}18; color: ${d.teamColor}; border-color: ${d.teamColor}33;">
+                            ${d.team}
+                        </span>
+                    </span>
+                </div>
+                <div class="modal-detail-row">
+                    <span class="modal-detail-label">Marks</span>
+                    <span class="modal-detail-value"><span class="score-pill">${d.marks}</span></span>
+                </div>
+                <div class="modal-detail-row">
+                    <span class="modal-detail-label">Grade</span>
+                    <span class="modal-detail-value"><span class="badge-grade">${d.grade}</span></span>
+                </div>
+                <div class="modal-detail-row">
+                    <span class="modal-detail-label">Points Won</span>
+                    <span class="modal-detail-value"><span class="points-box">${d.points}</span></span>
+                </div>
+            `;
+            openModal();
+        }
+
+        function showIndividualDetails(row) {
+            const d = row.dataset;
+            modalBody.innerHTML = `
+                <div class="modal-detail-row">
+                    <span class="modal-detail-label">Rank</span>
+                    <span class="modal-detail-value"><span class="badge-rank">${d.rank}</span></span>
+                </div>
+                <div class="modal-detail-row">
+                    <span class="modal-detail-label">Chest Number</span>
+                    <span class="modal-detail-value"><strong>${d.chest}</strong></span>
+                </div>
+                <div class="modal-detail-row">
+                    <span class="modal-detail-label">Student Name</span>
+                    <span class="modal-detail-value">${d.name}</span>
+                </div>
+                <div class="modal-detail-row">
+                    <span class="modal-detail-label">Team</span>
+                    <span class="modal-detail-value">
+                        <span class="team-badge" style="background: ${d.teamColor}18; color: ${d.teamColor}; border-color: ${d.teamColor}33;">
+                            ${d.team}
+                        </span>
+                    </span>
+                </div>
+                <div class="modal-detail-row">
+                    <span class="modal-detail-label">Class / Section</span>
+                    <span class="modal-detail-value">${d.class}</span>
+                </div>
+                <div class="modal-detail-row">
+                    <span class="modal-detail-label">Events Participated</span>
+                    <span class="modal-detail-value"><strong>${d.events}</strong></span>
+                </div>
+                <div class="modal-detail-row">
+                    <span class="modal-detail-label">Total Marks</span>
+                    <span class="modal-detail-value"><span class="score-pill">${d.marks}</span></span>
+                </div>
+                <div class="modal-detail-row">
+                    <span class="modal-detail-label">Points Won</span>
+                    <span class="modal-detail-value"><span class="points-box">${d.points}</span></span>
+                </div>
+            `;
+            openModal();
+        }
+
+        function showBulkDetails(row) {
+            const d = row.dataset;
+            modalBody.innerHTML = `
+                <div class="modal-detail-row">
+                    <span class="modal-detail-label">Chest Number</span>
+                    <span class="modal-detail-value"><strong>${d.chest}</strong></span>
+                </div>
+                <div class="modal-detail-row">
+                    <span class="modal-detail-label">Contestant Name</span>
+                    <span class="modal-detail-value">${d.name}</span>
+                </div>
+                <div class="modal-detail-row">
+                    <span class="modal-detail-label">Team</span>
+                    <span class="modal-detail-value">
+                        <span class="team-badge" style="background: ${d.teamColor}18; color: ${d.teamColor}; border-color: ${d.teamColor}33;">
+                            ${d.team}
+                        </span>
+                    </span>
+                </div>
+                <div class="modal-detail-row">
+                    <span class="modal-detail-label">Program Title</span>
+                    <span class="modal-detail-value">${d.program}</span>
+                </div>
+                <div class="modal-detail-row">
+                    <span class="modal-detail-label">Category / Group</span>
+                    <span class="modal-detail-value">${d.category}</span>
+                </div>
+                <div class="modal-detail-row">
+                    <span class="modal-detail-label">Marks</span>
+                    <span class="modal-detail-value"><span class="score-pill">${d.marks}</span></span>
+                </div>
+                <div class="modal-detail-row">
+                    <span class="modal-detail-label">Rank</span>
+                    <span class="modal-detail-value"><span class="badge-rank">${d.rank}</span></span>
+                </div>
+                <div class="modal-detail-row">
+                    <span class="modal-detail-label">Grade</span>
+                    <span class="modal-detail-value"><span class="badge-grade">${d.grade}</span></span>
+                </div>
+                <div class="modal-detail-row">
+                    <span class="modal-detail-label">Points Won</span>
+                    <span class="modal-detail-value"><span class="points-box">${d.points}</span></span>
+                </div>
+                <div class="modal-detail-row">
+                    <span class="modal-detail-label">Status</span>
+                    <span class="modal-detail-value"><span class="badge-status ${d.status}">${d.status}</span></span>
+                </div>
+            `;
+            openModal();
+        }
+
         // Function to reload page with selected program scorecard
         function loadProgramScorecard(programId) {
-            window.location.href = '?tab=tabPrograms&program_id=' + programId;
+            window.location.href = '?program_id=' + programId + '#tabPrograms';
         }
 
         // Filter individual student championships table

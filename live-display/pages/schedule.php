@@ -128,7 +128,9 @@ body:has(#slide-schedule.tv-slide--active) .tv-topbar {
 }
 
 /* 3-Column Table Row Layout (Program left, Ranks center, Time right) */
-.schedule-card {
+.schedule-card,
+.schedule-card:nth-child(odd),
+.schedule-card:nth-child(even) {
     position: relative;
     display: grid;
     grid-template-columns: 1.2fr 0.8fr 310px;
@@ -433,28 +435,36 @@ body:has(#slide-schedule.tv-slide--active) .tv-topbar {
     }
 }
 
-/* Make background bright and glowing like in the reference image */
+/* Make background cream and white with team-colored animated lines on top */
 body.tv-schedule-active .stage-backdrop {
-    background: radial-gradient(circle at 30% 30%, 
-        var(--first-team-color, #10b981) 0%, 
-        color-mix(in srgb, var(--first-team-color, #10b981) 75%, #047857) 45%, 
-        color-mix(in srgb, var(--first-team-color, #10b981) 40%, #064e3b) 100%) !important;
+    background: radial-gradient(circle at 30% 30%, #fdfcf7 0%, #f5f2eb 50%, #e2ded5 100%) !important;
     transition: background 1.2s ease;
 }
 
 body.tv-schedule-active #tvBgVideo {
-    opacity: 0.65 !important;
-    mix-blend-mode: screen !important;
+    opacity: 0.75 !important;
+    /* Inverts the black video background to white, while keeping the team color correct */
+    filter: invert(1) hue-rotate(180deg) !important;
+    /* Multiplies the white video background with the cream backdrop to make it transparent */
+    mix-blend-mode: multiply !important;
 }
 
 body.tv-schedule-active .glow-orb-1 {
-    background: radial-gradient(circle, var(--first-team-color, #10b981) 0%, transparent 80%) !important;
-    opacity: 0.8 !important;
+    background: radial-gradient(circle, #ffffff 0%, transparent 70%) !important;
+    opacity: 0.9 !important;
 }
 
 body.tv-schedule-active .glow-orb-2 {
-    background: radial-gradient(circle, color-mix(in srgb, var(--first-team-color, #10b981) 80%, #fff) 0%, transparent 80%) !important;
-    opacity: 0.8 !important;
+    background: radial-gradient(circle, #faf6ee 0%, transparent 70%) !important;
+    opacity: 0.9 !important;
+}
+
+body.tv-schedule-active .schedule-slide-title {
+    color: #0f172a !important;
+}
+
+body.tv-schedule-active.low-perf-device .tv-backdrop {
+    background: radial-gradient(circle at 50% 50%, #fdfcf7 0%, #e2ded5 100%) !important;
 }
 </style>
 

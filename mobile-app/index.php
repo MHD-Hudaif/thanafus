@@ -805,7 +805,20 @@ $eventDateFormatted = !empty($event['start_date'])
             const countdownEl = document.getElementById('countdown');
             if (countdownEl) {
                 const targetDateStr = countdownEl.getAttribute('data-target-date');
-                const targetDate = targetDateStr ? new Date(targetDateStr).getTime() : new Date('2027-05-04T09:00:00').getTime();
+                let targetDate;
+                if (targetDateStr) {
+                    const parts = targetDateStr.split(/[-T: ]/);
+                    targetDate = new Date(
+                        parseInt(parts[0], 10),
+                        parseInt(parts[1], 10) - 1,
+                        parseInt(parts[2], 10),
+                        parseInt(parts[3], 10) || 0,
+                        parseInt(parts[4], 10) || 0,
+                        parseInt(parts[5], 10) || 0
+                    ).getTime();
+                } else {
+                    targetDate = new Date('2027-05-04T09:00:00').getTime();
+                }
                 
                 const daysVal = document.getElementById('days-val');
                 const hoursVal = document.getElementById('hours-val');

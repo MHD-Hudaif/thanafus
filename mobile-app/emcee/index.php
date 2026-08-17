@@ -223,7 +223,8 @@ require_once __DIR__ . '/../../includes/header.php';
 
     /* STAGEDECK LIVE BROADCAST CONSOLE STYLING - CREAM & WHITE THEME */
     html, body {
-        height: 100vh !important;
+        height: 100%;
+        height: 100dvh !important;
         margin: 0 !important;
         padding: 0 !important;
         background: #faf7f0 !important;
@@ -235,6 +236,8 @@ require_once __DIR__ . '/../../includes/header.php';
         justify-content: center !important;
         align-items: center !important;
         overflow: hidden !important;
+        position: fixed !important;
+        width: 100% !important;
         font-family: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif !important;
         color: #2e2b27 !important;
     }
@@ -244,11 +247,12 @@ require_once __DIR__ . '/../../includes/header.php';
         flex-direction: column !important;
         align-items: center !important;
         width: 100% !important;
-        height: 100vh !important;
+        height: 100dvh !important;
         max-width: 100% !important;
         margin: 0 !important;
         padding: 0 !important;
         overflow: hidden !important;
+        position: relative !important;
     }
 
     body.layout-sidebar-enabled .main-content {
@@ -263,8 +267,9 @@ require_once __DIR__ . '/../../includes/header.php';
         margin: 0 auto !important;
         width: 100% !important;
         max-width: 1100px !important;
-        height: 100vh !important;
-        padding: 20px !important;
+        height: 100dvh !important;
+        max-height: 100dvh !important;
+        padding: 16px 20px !important;
         display: flex !important;
         flex-direction: column !important;
         box-sizing: border-box !important;
@@ -387,12 +392,17 @@ require_once __DIR__ . '/../../includes/header.php';
         flex: 1;
         min-height: 0;
         margin-bottom: 20px;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
     }
 
     @media (max-width: 820px) {
         .console-grid {
             grid-template-columns: 1fr;
             overflow-y: auto;
+            flex: 1;
+            min-height: 0;
+            -webkit-overflow-scrolling: touch;
         }
     }
 
@@ -813,6 +823,269 @@ require_once __DIR__ . '/../../includes/header.php';
         color: #4b6b47 !important;
     }
 
+    /* Stage Cards Grid Modal Styles */
+    #cardsModal.modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(46, 43, 39, 0.45);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        z-index: 99999;
+        padding: 16px;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.25s ease;
+    }
+    #cardsModal.modal-overlay.active {
+        opacity: 1;
+        pointer-events: auto;
+        display: flex;
+    }
+    .modal-grid-content {
+        width: 100%;
+        max-width: 1400px;
+        height: 100%;
+        max-height: calc(100dvh - 32px);
+        margin: 0 auto;
+        display: flex;
+        flex-direction: column;
+        background: #faf7f0;
+        border: 1px solid rgba(200, 180, 150, 0.3);
+        border-radius: 24px;
+        padding: 24px;
+        box-shadow: 0 25px 60px rgba(100, 80, 60, 0.25);
+        box-sizing: border-box;
+        transform: translateY(20px);
+        transition: transform 0.25s ease;
+    }
+    #cardsModal.modal-overlay.active .modal-grid-content {
+        transform: translateY(0);
+    }
+    .modal-grid-header {
+        flex-shrink: 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid rgba(200, 180, 150, 0.25);
+        padding-bottom: 16px;
+        flex-wrap: wrap;
+        gap: 16px;
+    }
+    .modal-grid-title {
+        margin: 0;
+        font-family: 'Outfit', sans-serif;
+        font-size: 22px;
+        font-weight: 800;
+        color: #2e2b27;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .modal-grid-title i {
+        color: var(--brand-green);
+    }
+    .modal-grid-subtitle {
+        font-size: 12px;
+        font-weight: 600;
+        color: #6b6258;
+        margin-top: 4px;
+    }
+    .modal-grid-actions {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        width: 100%;
+        max-width: 480px;
+    }
+    .grid-search-input {
+        flex: 1;
+        background: #ffffff;
+        border: 1px solid rgba(93, 126, 90, 0.25);
+        color: #2e2b27;
+        padding: 10px 16px;
+        border-radius: 12px;
+        font-size: 14px;
+        font-weight: 600;
+        outline: none;
+        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.02);
+        transition: all 0.2s ease;
+    }
+    .grid-search-input:focus {
+        border-color: var(--brand-green);
+        box-shadow: 0 0 0 3px rgba(93, 126, 90, 0.12);
+    }
+    .grid-close-btn {
+        background: rgba(93, 126, 90, 0.08);
+        border: 1px solid rgba(93, 126, 90, 0.25);
+        color: #4b6b47;
+        border-radius: 12px;
+        padding: 10px 20px;
+        font-size: 14px;
+        font-weight: 800;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        transition: all 0.2s ease;
+    }
+    .grid-close-btn:hover {
+        background: rgba(93, 126, 90, 0.14);
+        border-color: rgba(93, 126, 90, 0.35);
+    }
+    .cards-grid-container {
+        flex: 1;
+        overflow-y: auto;
+        padding: 16px 4px;
+        margin-top: 10px;
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+        gap: 16px;
+        align-content: start;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* Grid Cards */
+    .grid-card {
+        background: #ffffff;
+        border: 1px solid rgba(200, 180, 150, 0.35);
+        border-radius: 16px;
+        padding: 16px;
+        text-align: center;
+        position: relative;
+        box-shadow: 0 4px 12px rgba(140, 120, 100, 0.04);
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        min-height: 165px;
+        box-sizing: border-box;
+    }
+    .grid-card:hover {
+        transform: translateY(-4px);
+        border-color: var(--brand-green);
+        box-shadow: 0 12px 24px rgba(93, 126, 90, 0.12);
+    }
+    .grid-card.state-live {
+        background: linear-gradient(135deg, rgba(220, 38, 38, 0.05) 0%, #ffffff 100%) !important;
+        border: 2px solid #dc2626 !important;
+        box-shadow: 0 8px 30px rgba(220, 38, 38, 0.15) !important;
+    }
+    .grid-card.state-live:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 36px rgba(220, 38, 38, 0.22) !important;
+    }
+
+    .grid-card-badge-row {
+        display: flex;
+        justify-content: center;
+        gap: 6px;
+        margin-bottom: 8px;
+        flex-wrap: wrap;
+    }
+    .badge-status-live {
+        font-size: 10px;
+        font-weight: 800;
+        background: rgba(220, 38, 38, 0.1);
+        border: 1px solid rgba(220, 38, 38, 0.3);
+        color: #dc2626;
+        padding: 2px 8px;
+        border-radius: 6px;
+    }
+    .badge-status-intro {
+        font-size: 10px;
+        font-weight: 800;
+        background: rgba(93, 126, 90, 0.1);
+        color: #4b6b47;
+        border: 1px solid rgba(93, 126, 90, 0.25);
+        padding: 2px 8px;
+        border-radius: 6px;
+    }
+    .badge-status-team {
+        font-size: 10px;
+        font-weight: 800;
+        background: rgba(217, 119, 6, 0.1);
+        color: #d97706;
+        border: 1px solid rgba(217, 119, 6, 0.25);
+        padding: 2px 8px;
+        border-radius: 6px;
+    }
+    .badge-status-chest {
+        font-size: 10px;
+        font-weight: 800;
+        background: rgba(0, 0, 0, 0.04);
+        border: 1px solid rgba(0, 0, 0, 0.08);
+        color: #6b6258;
+        padding: 2px 8px;
+        border-radius: 6px;
+    }
+    .badge-status-time {
+        font-size: 10px;
+        font-weight: 800;
+        background: rgba(93, 126, 90, 0.1);
+        color: #4b6b47;
+        border: 1px solid rgba(93, 126, 90, 0.25);
+        padding: 2px 8px;
+        border-radius: 6px;
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+    }
+    .grid-card-program {
+        font-size: 13px;
+        font-weight: 800;
+        color: #2e2b27;
+        margin-bottom: 6px;
+        line-height: 1.3;
+        height: 34px;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+    .grid-card-main-intro {
+        font-size: 14px;
+        font-weight: 800;
+        color: #4b6b47;
+        margin: 6px 0;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .grid-card-main-group {
+        font-size: 18px;
+        font-weight: 800;
+        margin: 6px 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .grid-card-main-chest {
+        font-size: 24px;
+        font-weight: 900;
+        color: var(--brand-green);
+        margin: 4px 0;
+    }
+    .grid-card-performer {
+        font-size: 12px;
+        font-weight: 700;
+        color: #6b6258;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .grid-card-action-text {
+        font-size: 10px;
+        font-weight: 800;
+        color: #4b6b47;
+        margin-top: 10px;
+        opacity: 0.8;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
     @media (max-width: 480px) {
         .main-content {
             padding: 12px !important;
@@ -823,13 +1096,21 @@ require_once __DIR__ . '/../../includes/header.php';
         .chest-display {
             font-size: 32px !important;
         }
-        #cardsGridContainer {
+        .cards-grid-container {
             grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)) !important;
             gap: 10px !important;
         }
-        #cardsModal > div {
-            padding: 12px !important;
-            border-radius: 14px !important;
+        .modal-grid-content {
+            padding: 16px !important;
+            border-radius: 16px !important;
+            max-height: calc(100dvh - 16px);
+        }
+        .modal-grid-header {
+            gap: 10px;
+            padding-bottom: 12px;
+        }
+        .modal-grid-title {
+            font-size: 18px;
         }
     }
 </style>
@@ -991,16 +1272,15 @@ require_once __DIR__ . '/../../includes/header.php';
 </div>
 
 <!-- FULL SCREEN FIXED STAGE CARDS GRID GALLERY MODAL -->
-<div id="cardsModal" class="modal-overlay" style="display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.94); backdrop-filter: blur(20px); z-index: 99999; padding: 16px; align-items: center; justify-content: center;">
-    <div style="width: 100%; max-width: 1400px; height: 100%; max-height: calc(100vh - 32px); margin: 0 auto; display: flex; flex-direction: column; background: rgba(5, 25, 14, 0.94); border: 1px solid rgba(16, 185, 129, 0.35); border-radius: 20px; padding: 20px; box-shadow: 0 25px 60px rgba(0, 0, 0, 0.9);">
-        
+<div id="cardsModal" class="modal-overlay">
+    <div class="modal-grid-content">
         <!-- Modal Fixed Top Bar -->
-        <div style="flex-shrink: 0; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(16,185,129,0.25); padding-bottom: 14px; flex-wrap: wrap; gap: 12px;">
+        <div class="modal-grid-header">
             <div>
-                <h2 style="margin: 0; font-size: 20px; color: #fff; display: flex; align-items: center; gap: 10px;">
-                    <i class="fa-solid fa-border-all" style="color: #34d399;"></i> Stage Cards Grid
+                <h2 class="modal-grid-title">
+                    <i class="fa-solid fa-border-all"></i> Stage Cards Grid
                 </h2>
-                <div style="font-size: 12px; color: rgba(255,255,255,0.6); margin-top: 2px;">Click any card to preview &amp; manage participant</div>
+                <div class="modal-grid-subtitle">Click any card to preview &amp; manage participant</div>
                 
                 <!-- Filter Tabs -->
                 <div class="grid-filter-bar" id="modalFilterTabs">
@@ -1011,16 +1291,16 @@ require_once __DIR__ . '/../../includes/header.php';
                 </div>
             </div>
 
-            <div style="display: flex; align-items: center; gap: 12px; width: 100%; max-width: 460px;">
-                <input type="text" id="cardsSearchInput" class="form-control" placeholder="🔍 Search team, chest #, or program..." onkeyup="renderCardsGrid(this.value)" style="background: rgba(0,0,0,0.8); border: 1px solid rgba(16,185,129,0.3); color: #fff; padding: 8px 14px; border-radius: 10px; font-size: 13.5px;">
-                <button type="button" class="btn btn-secondary btn-md" onclick="closeCardsModal()" style="background: rgba(0,0,0,0.6); border: 1px solid rgba(16,185,129,0.3); color: #fff; border-radius: 10px; padding: 8px 16px; font-size: 14px; font-weight: 700;">
-                    <i class="fa-solid fa-xmark mr-1"></i> Close
+            <div class="modal-grid-actions">
+                <input type="text" id="cardsSearchInput" class="grid-search-input" placeholder="🔍 Search team, chest #, or program..." onkeyup="renderCardsGrid(this.value)">
+                <button type="button" class="grid-close-btn" onclick="closeCardsModal()">
+                    <i class="fa-solid fa-xmark"></i> Close
                 </button>
             </div>
         </div>
 
         <!-- Scrollable Cards Grid Area -->
-        <div id="cardsGridContainer" style="flex: 1; overflow-y: auto; padding: 14px 4px 4px 4px; margin-top: 10px; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; align-content: start;">
+        <div id="cardsGridContainer" class="cards-grid-container">
         </div>
 
     </div>
@@ -1405,13 +1685,20 @@ function populateJumpDropdown() {
 }
 
 function openCardsModal() {
-    document.getElementById('cardsModal').style.display = 'flex';
+    const modal = document.getElementById('cardsModal');
+    modal.style.display = 'flex';
+    modal.offsetHeight; // Force reflow
+    modal.classList.add('active');
     document.getElementById('cardsSearchInput').value = '';
     changeGridFilter('all');
 }
 
 function closeCardsModal() {
-    document.getElementById('cardsModal').style.display = 'none';
+    const modal = document.getElementById('cardsModal');
+    modal.classList.remove('active');
+    setTimeout(() => {
+        modal.style.display = 'none';
+    }, 250);
 }
 
 function changeGridFilter(filter) {
@@ -1454,75 +1741,48 @@ function renderCardsGrid(filterText = '') {
         }
 
         const card = document.createElement('div');
-        card.style.cssText = `
-            background: ${isLive ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.2) 0%, rgba(0, 0, 0, 0.95) 100%)' : 'linear-gradient(135deg, rgba(16, 185, 129, 0.03) 0%, rgba(0, 0, 0, 0.88) 100%)'};
-            border: ${isLive ? '2px solid #ef4444' : '1px solid rgba(16, 185, 129, 0.2)'};
-            border-radius: 16px;
-            padding: 14px;
-            text-align: center;
-            position: relative;
-            box-shadow: ${isLive ? '0 10px 30px rgba(239, 68, 68, 0.15)' : '0 8px 24px rgba(0,0,0,0.6)'};
-            transition: all 0.25s ease;
-            cursor: pointer;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            min-height: 165px;
-        `;
-
-        card.onmouseover = () => {
-            card.style.transform = 'translateY(-4px)';
-            if (!isLive) {
-                card.style.borderColor = '#10b981';
-                card.style.boxShadow = '0 12px 30px rgba(16, 185, 129, 0.2)';
-            }
-        };
-        card.onmouseout = () => {
-            card.style.transform = 'translateY(0)';
-            if (!isLive) {
-                card.style.borderColor = 'rgba(16, 185, 129, 0.2)';
-                card.style.boxShadow = '0 8px 24px rgba(0,0,0,0.6)';
-            }
-        };
+        card.className = isLive ? 'grid-card state-live' : 'grid-card';
 
         let badgeHtml = '';
         if (isLive) {
-            badgeHtml = '<span class="badge" style="font-size: 9px; margin-bottom: 4px; background:rgba(239,68,68,0.2); border:1px solid rgba(239,68,68,0.4); color:#f87171;">🔴 LIVE ON STAGE</span>';
+            badgeHtml = '<span class="badge-status-live">🔴 LIVE ON STAGE</span>';
         } else if (item.is_intro) {
-            badgeHtml = '<span class="badge" style="font-size: 9px; margin-bottom: 4px; background: rgba(16,185,129,0.1); color: #34d399; border: 1px solid rgba(16,185,129,0.2);">📋 INTRO</span>';
+            badgeHtml = '<span class="badge-status-intro">📋 INTRO</span>';
         } else if (item.is_group) {
-            badgeHtml = '<span class="badge" style="font-size: 9px; margin-bottom: 4px; background: rgba(245, 158, 11, 0.1); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.25);">👥 TEAM</span>';
+            badgeHtml = '<span class="badge-status-team">👥 TEAM</span>';
         } else {
-            badgeHtml = '<span class="badge" style="font-size: 9px; margin-bottom: 4px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); color: #aaa;">#' + escapeHtml(item.chest_number) + '</span>';
+            badgeHtml = '<span class="badge-status-chest">#' + escapeHtml(item.chest_number) + '</span>';
         }
 
         if (item.recorded_time) {
-            badgeHtml += ` <span style="font-size: 9px; background: rgba(16,185,129,0.15); color: #34d399; border: 1px solid rgba(16,185,129,0.3); padding: 1px 5px; border-radius: 4px;">⏱ ${escapeHtml(item.recorded_time)}</span>`;
+            badgeHtml += ` <span class="badge-status-time"><i class="fa-regular fa-clock"></i> ${escapeHtml(item.recorded_time)}</span>`;
         }
 
         let mainDisplay = '';
         if (item.is_intro) {
-            mainDisplay = `<div style="font-size: 16px; font-weight: 800; color: #34d399; margin: 4px 0;">📋 PROGRAM INTRO</div>`;
+            mainDisplay = `<div class="grid-card-main-intro">PROGRAM INTRO</div>`;
         } else if (item.is_group) {
-            mainDisplay = `<div style="font-size: 20px; font-weight: 900; color: #fbbf24; margin: 4px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(item.team_name)}</div>`;
+            mainDisplay = `<div class="grid-card-main-group" style="color: ${item.team_color || '#2e2b27'}">${escapeHtml(item.team_name)}</div>`;
         } else {
-            mainDisplay = `<div style="font-size: 26px; font-weight: 900; color: #10b981; margin: 2px 0;">#${escapeHtml(item.chest_number)}</div>`;
+            mainDisplay = `<div class="grid-card-main-chest">#${escapeHtml(item.chest_number)}</div>`;
         }
 
         let subDisplay = item.is_group ? 'Team Performance' : escapeHtml(item.entry_name);
 
         card.innerHTML = `
             <div>
-                ${badgeHtml}
-                <div style="font-size: 12.5px; font-weight: 700; color: #fff; margin-bottom: 2px; line-height: 1.25; height: 32px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+                <div class="grid-card-badge-row">
+                    ${badgeHtml}
+                </div>
+                <div class="grid-card-program">
                     ${escapeHtml(item.program_title)}
                 </div>
                 ${mainDisplay}
-                <div style="font-size: 11.5px; font-weight: 600; color: rgba(255,255,255,0.6); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                <div class="grid-card-performer">
                     ${subDisplay}
                 </div>
             </div>
-            <div style="font-size: 10px; font-weight: 700; color: #34d399; margin-top: 8px; opacity: 0.8; text-transform: uppercase;">
+            <div class="grid-card-action-text">
                 Select Performer
             </div>
         `;
