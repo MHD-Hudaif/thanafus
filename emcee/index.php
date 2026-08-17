@@ -204,7 +204,22 @@ foreach ($programs as $prog) {
     foreach ($entries as $partIdx => $eRow) {
         $eId = (int)$eRow['id'];
 
-        $chestDisplay = $isGroupProg ? ($eRow['entry_name'] ?: 'Team ' . ($partIdx + 1)) : ($eRow['chest_number'] ?: '-');
+        if ($isGroupProg) {
+            $title = $prog['title'] ?? '';
+            $chestDisplay = $eRow['entry_name'] ?? '';
+            if ($title !== '') {
+                $chestDisplay = trim(str_ireplace($title . ' -', '', $chestDisplay));
+                $chestDisplay = trim(str_ireplace($title . ' - ', '', $chestDisplay));
+                $chestDisplay = trim(str_ireplace($title . '-', '', $chestDisplay));
+                $chestDisplay = trim(str_ireplace($title, '', $chestDisplay));
+                $chestDisplay = ltrim($chestDisplay, "- \t\n\r\0\x0B");
+            }
+            if (empty($chestDisplay)) {
+                $chestDisplay = 'Team ' . ($partIdx + 1);
+            }
+        } else {
+            $chestDisplay = $eRow['chest_number'] ?: '-';
+        }
         $entryDisplay = $isGroupProg ? ($eRow['team_name'] ?: 'Team ' . ($partIdx + 1)) : ($eRow['entry_name'] ?: 'Unnamed Participant');
 
         $recKey = "p{$pId}_e{$eId}";

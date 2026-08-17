@@ -708,6 +708,7 @@ function live_display_program_entries(int $programId): array
             t.team_color,
             p.program_type,
             p.only_team_marks,
+            p.title AS program_title,
             CASE 
                 WHEN p.program_type = 'group' OR p.only_team_marks = 1 THEN pe.entry_name
                 ELSE COALESCE(
@@ -728,7 +729,23 @@ function live_display_program_entries(int $programId): array
     ");
     $stmt->execute([$programId]);
 
-    return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    foreach ($rows as &$row) {
+        if (($row['program_type'] ?? '') === 'group' || !empty($row['only_team_marks'])) {
+            $title = $row['program_title'] ?? '';
+            $entryName = $row['entry_name'] ?? '';
+            $cleanName = $entryName;
+            if ($title !== '') {
+                $cleanName = trim(str_ireplace($title . ' -', '', $cleanName));
+                $cleanName = trim(str_ireplace($title . ' - ', '', $cleanName));
+                $cleanName = trim(str_ireplace($title . '-', '', $cleanName));
+                $cleanName = trim(str_ireplace($title, '', $cleanName));
+                $cleanName = ltrim($cleanName, "- \t\n\r\0\x0B");
+            }
+            $row['chest_number'] = $cleanName ?: $row['entry_name'];
+        }
+    }
+    return $rows;
 }
 
 function live_display_current_program(?int $eventId = null): array
