@@ -1386,13 +1386,17 @@ function admin_save_recorded_time(PDO $pdo, int $programId, int $entryId, int $d
         $settings['recorded_times'] = [];
     }
     $key = "p{$programId}_e{$entryId}";
-    $settings['recorded_times'][$key] = [
-        'program_id' => $programId,
-        'entry_id' => $entryId,
-        'duration_seconds' => $durationSeconds,
-        'formatted_time' => $formattedTime,
-        'updated_at' => date('Y-m-d H:i:s')
-    ];
+    if ($durationSeconds <= 0 && ($formattedTime === '' || $formattedTime === '00:00')) {
+        unset($settings['recorded_times'][$key]);
+    } else {
+        $settings['recorded_times'][$key] = [
+            'program_id' => $programId,
+            'entry_id' => $entryId,
+            'duration_seconds' => $durationSeconds,
+            'formatted_time' => $formattedTime,
+            'updated_at' => date('Y-m-d H:i:s')
+        ];
+    }
     save_musabaqa_settings($pdo, $settings);
 }
 

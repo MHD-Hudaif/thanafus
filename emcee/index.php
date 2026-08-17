@@ -13,6 +13,11 @@ $pdo = $GLOBALS['musabaqa_pdo'];
 $activeEvent = admin_require_active_event($pdo);
 $activeEventId = (int)($activeEvent['id'] ?? 0);
 
+// Load live display functions & settings
+require_once __DIR__ . '/../live-display/includes/functions.php';
+$tvSettings = tv_get_settings($activeEventId);
+$showNext = ($tvSettings['show_next_participant'] ?? true);
+
 // AJAX / Live Action Handling (Zero Refresh)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     $action = (string)$_POST['action'];
@@ -76,6 +81,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             'running' => $running,
             'start_time' => $startTime,
             'elapsed' => $elapsed
+        ]);
+        exit;
+    }
+
+    if ($action === 'toggle_next_participant') {
+        $enabled = (int)($_POST['enabled'] ?? 1);
+        $settings = tv_get_settings($activeEventId);
+        $settings['show_next_participant'] = ($enabled === 1);
+        tv_save_settings($activeEventId, $settings);
+
+        header('Content-Type: application/json');
+        echo json_encode([
+            'success' => true,
+            'show_next_participant' => ($enabled === 1),
+            'message' => $enabled === 1 ? 'Next performer enabled on TV!' : 'Next performer disabled on TV!'
         ]);
         exit;
     }
@@ -1200,8 +1220,14 @@ require_once __DIR__ . '/../includes/header.php';
             </div>
             
             <!-- Broadcast Status Indicator -->
-            <div style="margin-top: 10px;">
+            <div style="margin-top: 10px; display: flex; align-items: center; justify-content: space-between;">
                 <span id="badgeStatus" class="badge">--</span>
+                
+                <!-- Toggle Next Participant Button -->
+                <button type="button" id="btnToggleNextParticipant" class="timer-btn" onclick="toggleNextParticipant()" data-enabled="<?= $showNext ? '1' : '0' ?>" style="background: <?= $showNext ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)' ?>; border: 1px solid <?= $showNext ? 'rgba(16,185,129,0.4)' : 'rgba(239,68,68,0.4)' ?>; color: #fff; padding: 5px 10px; border-radius: 6px; font-size: 10.5px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.2s ease;">
+                    <i class="fa-solid <?= $showNext ? 'fa-eye' : 'fa-eye-slash' ?>" id="toggleNextIcon"></i>
+                    <span id="btnToggleNextParticipantText"><?= $showNext ? 'Next Performer: Visible' : 'Next Performer: Hidden' ?></span>
+                </button>
             </div>
 
             <!-- Stopwatch Timer inside the card -->
@@ -1609,7 +1635,11 @@ function resetTimer() {
     // Send update to backend settings
     updateLiveTimerBackend(0, 0, 0);
 
+    // Save to backend via AJAX (deletes/clears the recorded time data)
+    saveRecordedTimeBackend(item.program_id, item.entry_id, 0, '');
+
     syncTimerUI(item, (item.program_id === liveProgramId && item.entry_id === liveEntryId));
+    showToast("Recorded time deleted!");
 }
 
 function updateLiveTimerBackend(running, startTime, elapsed) {
@@ -1627,6 +1657,60 @@ function updateLiveTimerBackend(running, startTime, elapsed) {
     })
     .then(r => r.json())
     .catch(err => console.error('Failed to sync live timer:', err));
+}
+
+function toggleNextParticipant() {
+    const btn = document.getElementById('btnToggleNextParticipant');
+    if (!btn) return;
+
+    const currentEnabled = btn.dataset.enabled === '1';
+    const nextEnabled = !currentEnabled;
+    const nextVal = nextEnabled ? 1 : 0;
+
+    const formData = new FormData();
+    formData.append('action', 'toggle_next_participant');
+    formData.append('enabled', nextVal);
+    formData.append('csrf_token', csrfToken);
+
+    fetch(window.location.pathname + '?ajax=1', {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        body: formData
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data && data.success) {
+            btn.dataset.enabled = nextVal;
+            const icon = document.getElementById('toggleNextIcon');
+            const text = document.getElementById('btnToggleNextParticipantText');
+            
+            if (nextEnabled) {
+                btn.style.background = 'rgba(16,185,129,0.2)';
+                btn.style.borderColor = 'rgba(16,185,129,0.4)';
+                if (icon) {
+                    icon.className = 'fa-solid fa-eye';
+                }
+                if (text) {
+                    text.innerText = 'Next Performer: Visible';
+                }
+                showToast("Next Performer enabled on TV display");
+            } else {
+                btn.style.background = 'rgba(239,68,68,0.2)';
+                btn.style.borderColor = 'rgba(239,68,68,0.4)';
+                if (icon) {
+                    icon.className = 'fa-solid fa-eye-slash';
+                }
+                if (text) {
+                    text.innerText = 'Next Performer: Hidden';
+                }
+                showToast("Next Performer disabled on TV display");
+            }
+        }
+    })
+    .catch(err => {
+        console.error('Failed to toggle next participant:', err);
+        showToast("Error updating TV settings");
+    });
 }
 
 function toggleTimerFromMobile() {

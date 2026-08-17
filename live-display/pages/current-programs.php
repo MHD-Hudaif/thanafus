@@ -784,7 +784,7 @@ $nextProgTime = !empty($initNextProg['start_label']) ? $initNextProg['start_labe
             <!-- Sidebar Column -->
             <aside class="sidebar-column">
                 <!-- Box 1 (Top Right): NEXT PARTICIPANT / CONTESTANT -->
-                <div class="glass-panel side-card-top">
+                <div class="glass-panel side-card-top" style="<?= ($settings['show_next_participant'] ?? true) ? '' : 'display: none !important;' ?>">
                     <div class="side-box-label" data-next-label>
                         <?= $initIsIntro ? '1ST CONTESTANT STAGE ENTRY' : 'NEXT CONTESTANT' ?>
                     </div>
@@ -970,6 +970,13 @@ $nextProgTime = !empty($initNextProg['start_label']) ? $initNextProg['start_labe
                 .then(res => res.json())
                 .then(res => {
                     if (!res.success || !res.data || !res.data.current) return;
+                    
+                    // Toggle Next Participant Box visibility
+                    const showNext = res.data.settings ? (res.data.settings.show_next_participant !== false) : true;
+                    const sideCardTop = document.querySelector('.side-card-top');
+                    if (sideCardTop) {
+                        sideCardTop.style.display = showNext ? 'block' : 'none';
+                    }
                     
                     // Live Top Rank Team Color Synchronization & Dynamic Particles
                     if (res.data.leaderboard && res.data.leaderboard[0] && res.data.leaderboard[0].team_color) {

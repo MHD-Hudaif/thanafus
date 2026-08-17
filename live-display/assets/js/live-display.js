@@ -1641,6 +1641,13 @@
             }
         }
 
+        // Sync show_next_participant setting
+        state.show_next_participant = settings.show_next_participant !== false;
+        const sideCardTop = document.querySelector('.side-card-top');
+        if (sideCardTop) {
+            sideCardTop.style.display = state.show_next_participant ? 'block' : 'none';
+        }
+
         const wasAuto = state.mode === 'auto';
         const wasPlaying = state.is_playing;
 

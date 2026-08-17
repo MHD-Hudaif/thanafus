@@ -8,6 +8,7 @@ try {
         'event' => tv_event_payload(tv_active_event()),
         'current' => tv_current_program(),
         'leaderboard' => tv_leaderboard(),
+        'settings' => tv_get_settings(),
     ]);
 } catch (Throwable $exception) {
     tv_log($exception, 'TV current program API');
