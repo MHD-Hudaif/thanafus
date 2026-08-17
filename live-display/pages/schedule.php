@@ -225,23 +225,24 @@ body:has(#slide-schedule.tv-slide--active) .tv-topbar {
 .schedule-ranks-row {
     display: flex;
     flex-wrap: wrap;
-    gap: 10px;
+    gap: 7px;
     justify-content: center;
     align-items: center;
 }
 .rank-pill {
     display: inline-flex;
     align-items: center;
-    padding: 7px 18px;
+    padding: 4px 11px;
     border-radius: 30px;
-    font-size: 16px !important;
+    font-size: 12px !important;
     font-weight: 900;
     letter-spacing: 0.02em;
     text-transform: uppercase;
-    background: var(--badge-team-color, #71717a) !important;
+    /* Match the premium, dark-to-team-color treatment of leaderboard cards. */
+    background: linear-gradient(135deg, #070c18 0%, color-mix(in srgb, var(--badge-team-color, #71717a) 42%, #03050a) 100%) !important;
     color: #fff !important;
-    border: 1.5px solid rgba(255, 255, 255, 0.25) !important;
-    box-shadow: 0 0 12px color-mix(in srgb, var(--badge-team-color, #71717a) 40%, transparent), 0 4px 10px rgba(0, 0, 0, 0.3) !important;
+    border: 1.5px solid color-mix(in srgb, var(--badge-team-color, #71717a) 78%, #ffffff) !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .14), 0 0 12px color-mix(in srgb, var(--badge-team-color, #71717a) 42%, transparent), 0 4px 10px rgba(0, 0, 0, 0.3) !important;
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
     white-space: nowrap;
 }

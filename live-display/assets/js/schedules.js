@@ -199,7 +199,9 @@
             return card;
         }
 
-        const results = Array.isArray(item?.results) ? item.results.slice(0, 3) : [];
+        const results = Array.isArray(item?.results)
+            ? item.results.filter(result => Number(result?.final_rank || result?.rank || 0) > 0).slice(0, 3)
+            : [];
         const status = String(item?.status || 'pending');
         const statusLabel = status === 'completed' ? 'Completed' : (status === 'scoring' ? 'Scoring' : 'Pending');
         const statusClass = status === 'completed' ? 'done' : (status === 'scoring' ? 'live' : 'pending');

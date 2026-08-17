@@ -640,32 +640,30 @@ function live_display_program_payload(array $row): array
         ];
     }
 
-    $stmtResults = $pdo->prepare("
-        SELECT 
-            pe.final_rank,
-            pe.grade,
-            t.team_name,
-            t.short_name,
-            t.team_color
-        FROM musabaqa_program_entries pe
-        JOIN musabaqa_teams t ON t.id = pe.team_id
-        WHERE pe.program_id = ?
-          AND (pe.final_rank IS NOT NULL OR pe.grade = 'A')
-        ORDER BY 
-            CASE WHEN pe.final_rank IS NULL THEN 999 ELSE pe.final_rank END ASC,
-            pe.grade ASC,
-            pe.id ASC
-    ");
-    $stmtResults->execute([(int)$row['id']]);
     $results = [];
-    foreach ($stmtResults->fetchAll(PDO::FETCH_ASSOC) as $res) {
-        $results[] = [
-            'rank' => $res['final_rank'] !== null ? (int)$res['final_rank'] : null,
-            'grade' => $res['grade'],
-            'team_name' => $res['team_name'],
-            'team_short' => $res['short_name'] ?: $res['team_name'],
-            'team_color' => live_display_color($res['team_color']),
-        ];
+    // Schedule results are public only after the program has been approved.
+    if (($row['approval_status'] ?? '') === 'approved') {
+        $stmtResults = $pdo->prepare("
+            SELECT
+                pe.final_rank,
+                t.team_name,
+                t.short_name,
+                t.team_color
+            FROM musabaqa_program_entries pe
+            JOIN musabaqa_teams t ON t.id = pe.team_id
+            WHERE pe.program_id = ?
+              AND pe.final_rank IS NOT NULL
+            ORDER BY pe.final_rank ASC, pe.id ASC
+        ");
+        $stmtResults->execute([(int)$row['id']]);
+        foreach ($stmtResults->fetchAll(PDO::FETCH_ASSOC) as $res) {
+            $results[] = [
+                'rank' => (int)$res['final_rank'],
+                'team_name' => $res['team_name'],
+                'team_short' => $res['short_name'] ?: $res['team_name'],
+                'team_color' => live_display_color($res['team_color']),
+            ];
+        }
     }
 
     return [

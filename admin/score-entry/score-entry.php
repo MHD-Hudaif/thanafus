@@ -514,8 +514,8 @@ if ($programId > 0) {
                             <th rowspan="2" style="width: 100px; text-align: center; vertical-align: middle; border-left: 4px double #818cf8;">Final Score</th>
                             <th rowspan="2" style="width: 90px; text-align: center; vertical-align: middle;">Percentage</th>
                             <th rowspan="2" style="width: 80px; text-align: center; vertical-align: middle;">Rank</th>
-                            <th rowspan="2" style="width: 90px; text-align: center; vertical-align: middle;">Grade</th>
-                            <th rowspan="2" style="width: 80px; text-align: center; vertical-align: middle;">Status</th>
+                            <th class="score-grade-column" rowspan="2" style="width: 90px; text-align: center; vertical-align: middle;">Grade</th>
+                            <th class="score-status-column" rowspan="2" style="width: 80px; text-align: center; vertical-align: middle;">Status</th>
                         </tr>
                         <tr>
                             <?php for ($j = 1; $j <= $judgesCount; $j++): ?>
@@ -630,7 +630,7 @@ if ($programId > 0) {
                                     <?php endif; ?>
                                 </td>
 
-                                <td class="row-grade-badge" id="grade-badge-<?= $entryId ?>" style="text-align: center; vertical-align: middle;">
+                                <td class="row-grade-badge score-grade-column" id="grade-badge-<?= $entryId ?>" style="text-align: center; vertical-align: middle;">
                                     <?php if (!empty($entryGrade)): ?>
                                         <span class="badge badge-<?= match($entryGrade) { 'A' => 'success', 'B' => 'info', 'C' => 'warning', 'D' => 'neutral', default => 'neutral' } ?>" style="font-size: 11px; padding: 3px 8px; font-weight: 800;">
                                             Grade <?= e($entryGrade) ?>
@@ -640,7 +640,7 @@ if ($programId > 0) {
                                     <?php endif; ?>
                                 </td>
 
-                                <td class="row-save-status" id="save-status-<?= $entryId ?>" style="text-align: center; vertical-align: middle;">
+                                <td class="row-save-status score-status-column" id="save-status-<?= $entryId ?>" style="text-align: center; vertical-align: middle;">
                                     <?php if ($scoresLocked): ?>
                                         <i class="fa-solid fa-lock text-muted" title="Locked"></i>
                                     <?php elseif ($hasSheet): ?>
@@ -655,6 +655,28 @@ if ($programId > 0) {
                 </tbody>
             </table>
         </div>
+        <style>
+            /* Keep Grade, directly after Rank, visible while the score grid scrolls. */
+            .table-wrapper .score-grade-column,
+            .table-wrapper .score-status-column {
+                position: sticky;
+                z-index: 3;
+                background: #111827;
+            }
+            .table-wrapper .score-grade-column {
+                right: 80px;
+                min-width: 90px;
+                box-shadow: -8px 0 14px rgba(0, 0, 0, .2);
+            }
+            .table-wrapper .score-status-column {
+                right: 0;
+                min-width: 80px;
+            }
+            .table-wrapper thead .score-grade-column,
+            .table-wrapper thead .score-status-column {
+                z-index: 4;
+            }
+        </style>
 
         <?php if (!$scoresLocked): ?>
             <div class="form-actions mt-6 flex justify-between items-center" style="padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.08);">

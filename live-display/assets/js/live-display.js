@@ -1192,7 +1192,9 @@
                 }
 
                 let resultsHtml = '';
-                const results = Array.isArray(item.results) ? item.results : [];
+                const results = Array.isArray(item.results)
+                    ? item.results.filter(result => Number(result?.rank || result?.final_rank || 0) > 0)
+                    : [];
                 if (results.length > 0) {
                     const badges = results.map(r => {
                         let badgeText = '';
@@ -1206,9 +1208,6 @@
                         } else if (r.rank === 3) {
                             badgeText = `3rd`;
                             badgeClass += ' rank-3';
-                        } else if (r.grade === 'A') {
-                            badgeText = `A`;
-                            badgeClass += ' grade-a';
                         } else {
                             return '';
                         }
@@ -1465,6 +1464,7 @@
     // ----------------------------------------------------
     // 3-Phase Score Update Reveal Overlay Controller
     // ----------------------------------------------------
+    const SCORE_UPDATE_COOLDOWN_MS = 10000;
     let activeRevealTimer = null;
     let isScoreRevealActive = false;
 
@@ -1570,11 +1570,13 @@
             playCelebrationFanfare();
         }, 1500);
 
-        // Auto-close overlay after 16 seconds (display-only, no user action needed)
+        // Keep each mark update in its cinematic reveal state for ten seconds.
+        // While it is active, newer updates remain pending and are picked up on
+        // the next refresh instead of interrupting the current reveal.
         if (activeRevealTimer) clearTimeout(activeRevealTimer);
         activeRevealTimer = setTimeout(() => {
             closeScoreRevealOverlay();
-        }, 16000);
+        }, SCORE_UPDATE_COOLDOWN_MS);
     }
 
     function closeScoreRevealOverlay() {
