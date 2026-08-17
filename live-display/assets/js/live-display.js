@@ -99,10 +99,58 @@
                 hour12: true
             });
             if (els.clock) els.clock.textContent = time;
+
+            // Update MC stage timer
+            updateStageTimer();
         };
 
         update();
         state.timers.clock = setInterval(update, 1000);
+    }
+
+    function updateStageTimer() {
+        const timerDisplay = document.getElementById('stageTimerDisplay');
+        const timerBox = document.getElementById('stageTimerBox');
+        if (!timerDisplay) return;
+
+        const running = state.live_timer_running || 0;
+        const startTime = state.live_timer_start_time || 0;
+        const elapsedOffset = state.live_timer_elapsed || 0;
+
+        const currentData = state.current_program_data || {};
+        const performer = currentData.performer || {};
+        const isIntro = !performer.name || performer.name === 'Awaiting Performer';
+        const isBreak = currentData.is_break;
+
+        if (!isIntro && !isBreak && (running > 0 || elapsedOffset > 0)) {
+            let totalElapsedMs = elapsedOffset;
+            if (running > 0 && startTime > 0) {
+                const serverTimeMs = Date.now() + (state.serverClockOffset || 0);
+                const deltaMs = serverTimeMs - (startTime * 1000);
+                if (deltaMs > 0) {
+                    totalElapsedMs = deltaMs;
+                }
+            }
+
+            const totalSeconds = Math.floor(totalElapsedMs / 1000);
+            const mins = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
+            const secs = String(totalSeconds % 60).padStart(2, '0');
+            timerDisplay.textContent = `${mins}:${secs}`;
+            if (timerBox) {
+                timerBox.style.display = 'flex';
+                if (running > 0) {
+                    timerBox.classList.add('is-running');
+                } else {
+                    timerBox.classList.remove('is-running');
+                }
+            }
+        } else {
+            timerDisplay.textContent = '00:00';
+            if (timerBox) {
+                timerBox.style.display = 'none';
+                timerBox.classList.remove('is-running');
+            }
+        }
     }
 
     function initParticles() {
@@ -901,11 +949,48 @@
         // Filter out breaks
         rows = rows.filter(item => item.type !== 'break' && item.kind !== 'break');
         
-        // Filter out past completed programs to minimize slides count,
-        // starting from the active program (or first upcoming program) minus 1 for context.
+        // 1. Find the active program (broadcasted by emcee)
+        const liveProgramId = state.current_program_data?.program?.id || state.schedule.data?.live_program_id || null;
+        let activeProg = null;
+        if (liveProgramId) {
+            activeProg = rows.find(item => Number(item.id) === Number(liveProgramId));
+        }
+        if (!activeProg) {
+            activeProg = rows.find(item => item.status === 'scoring' || item.status === 'active-stage');
+        }
+
+        // 2. Extract its date (or fallbacks)
+        let activeDate = null;
+        if (activeProg && activeProg.start_time) {
+            activeDate = activeProg.start_time.split(' ')[0];
+        }
+
+        if (!activeDate) {
+            const firstUpcoming = rows.find(item => item.status !== 'completed' && item.approval_status !== 'approved');
+            if (firstUpcoming && firstUpcoming.start_time) {
+                activeDate = firstUpcoming.start_time.split(' ')[0];
+            }
+        }
+
+        if (!activeDate) {
+            const firstProg = rows.find(item => item.start_time);
+            if (firstProg) {
+                activeDate = firstProg.start_time.split(' ')[0];
+            }
+        }
+
+        // 3. Filter schedule rows to only show this active day's programs
+        if (activeDate) {
+            rows = rows.filter(item => item.start_time && item.start_time.split(' ')[0] === activeDate);
+        }
+        
+        // 4. Slide/crop past completed programs of the active day
         let activeIdx = rows.findIndex(item => item.status === 'scoring' || item.status === 'active-stage');
+        if (activeIdx === -1 && liveProgramId) {
+            activeIdx = rows.findIndex(item => Number(item.id) === Number(liveProgramId));
+        }
         if (activeIdx === -1) {
-            activeIdx = rows.findIndex(item => item.status !== 'completed' && item.approval_status !== 'approved' && item.type !== 'break');
+            activeIdx = rows.findIndex(item => item.status !== 'completed' && item.approval_status !== 'approved');
         }
         
         if (activeIdx !== -1) {
@@ -1234,10 +1319,16 @@
     }
 
     function renderCurrent(currentData) {
+        state.current_program_data = currentData;
         if (!els.currentTitle) return;
 
+        const heroInfo = document.querySelector('[data-performer-hero-info]');
         const isBreak = !currentData || currentData.is_break;
         if (isBreak) {
+            if (heroInfo) {
+                heroInfo.classList.remove('state-active');
+                heroInfo.classList.add('state-awaiting');
+            }
             if (els.currentStage) els.currentStage.textContent = 'Main Stage';
             if (els.currentTitle) els.currentTitle.textContent = 'BREAK TIME';
             if (els.currentPerformer) els.currentPerformer.textContent = 'Stand by for the next act';
@@ -1264,7 +1355,18 @@
         if (els.currentStage) els.currentStage.textContent = program.stage || 'Main Stage';
         if (els.currentTitle) els.currentTitle.textContent = program.title || 'Current Act';
         
-        if (performer.name) {
+        const isIntro = !performer.name || performer.name === 'Awaiting Performer';
+        if (heroInfo) {
+            if (!isIntro) {
+                heroInfo.classList.remove('state-awaiting');
+                heroInfo.classList.add('state-active');
+            } else {
+                heroInfo.classList.remove('state-active');
+                heroInfo.classList.add('state-awaiting');
+            }
+        }
+
+        if (!isIntro) {
             if (els.currentPerformer) els.currentPerformer.textContent = performer.name;
             if (currentChest) currentChest.textContent = performer.number || '—';
             if (els.currentTeam) els.currentTeam.innerHTML = `${performer.team_color ? `<span class="tv-team-dot" style="background:${escapeHtml(performer.team_color)}"></span>` : ''}${escapeHtml(performer.team || '—')}`;
@@ -1479,6 +1581,8 @@
                 state.isCelebrating = false;
                 if (state.mode === 'auto') {
                     startRotation();
+                } else if (state.mode === 'manual' && state.activeSlide) {
+                    setActiveSlide(state.activeSlide);
                 }
             }, 500);
         }
@@ -1486,6 +1590,23 @@
 
     function applyBootstrap(data) {
         if (!data) return;
+
+        // Synchronize server-to-client clock offset and live timer start timestamp
+        if (data.server_time_ms) {
+            state.serverClockOffset = data.server_time_ms - Date.now();
+        }
+        if (typeof data.live_stage_start_time !== 'undefined') {
+            state.live_stage_start_time = data.live_stage_start_time;
+        }
+        if (typeof data.live_timer_running !== 'undefined') {
+            state.live_timer_running = data.live_timer_running;
+        }
+        if (typeof data.live_timer_start_time !== 'undefined') {
+            state.live_timer_start_time = data.live_timer_start_time;
+        }
+        if (typeof data.live_timer_elapsed !== 'undefined') {
+            state.live_timer_elapsed = data.live_timer_elapsed;
+        }
 
         const pathLower = window.location.pathname.toLowerCase();
         window.IS_SINGLE_PAGE = pathLower.includes('/intro') || 
@@ -1498,10 +1619,10 @@
         const wasAuto = state.mode === 'auto';
         const wasPlaying = state.is_playing;
 
-        // Force auto playback mode on main multi-slide slideshow stage (/web/live-display/)
+        // Respect settings mode on main multi-slide slideshow stage if configured, fallback to auto
         if (!window.IS_SINGLE_PAGE) {
-            state.mode = 'auto';
-            state.is_playing = true;
+            state.mode = settings.mode || 'auto';
+            state.is_playing = typeof settings.is_playing === 'boolean' ? settings.is_playing : true;
         } else {
             if (typeof settings.is_playing === 'boolean') state.is_playing = settings.is_playing;
             if (settings.mode) state.mode = settings.mode;
@@ -1582,8 +1703,9 @@
         if (data.score_reveal) checkScoreRevealEvent(data.score_reveal);
 
         // Control slideshow flow based on mode settings
-        if (state.mode === 'manual' && window.IS_SINGLE_PAGE) {
+        if (state.mode === 'manual') {
             stopSlideTimer();
+            stopScheduleTimer();
             if (settings.active_slide && state.activeSlide !== settings.active_slide) {
                 setActiveSlide(settings.active_slide);
             }

@@ -591,40 +591,160 @@ $eventDateFormatted = !empty($event['start_date'])
           margin-bottom: 8px;
         }
 
-        .select-wrapper {
-          position: relative;
+        /* Custom Select component */
+        .custom-select-container {
+            position: relative;
+            width: 100%;
+            margin: 14px 0 20px 0;
+            text-align: left;
+        }
+        
+        .custom-select-trigger {
+            width: 100%;
+            padding: 14px 18px;
+            background: rgba(255, 250, 240, 0.95);
+            border: 1.5px solid rgba(190, 175, 155, 0.35);
+            border-radius: 18px;
+            color: #2e2b27;
+            font-size: 14.5px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: 0 4px 12px rgba(140, 120, 100, 0.04);
+        }
+        
+        .custom-select-trigger:hover {
+            border-color: #7f9f7a;
+            box-shadow: 0 6px 16px rgba(140, 120, 100, 0.08);
+            transform: translateY(-1px);
+        }
+        
+        .custom-select-trigger.active {
+            border-color: #5d7e5a;
+            box-shadow: 0 0 0 3px rgba(150, 180, 140, 0.20);
+            background: #ffffff;
         }
 
-        .destination-select {
-          width: 100%;
-          padding: 14px 16px;
-          background: rgba(250, 245, 235, 0.8);
-          border: 1.5px solid rgba(180, 165, 140, 0.30);
-          border-radius: 16px;
-          color: #2e2b27;
-          font-size: 14.5px;
-          font-weight: 700;
-          outline: none;
-          cursor: pointer;
-          appearance: none;
-          -webkit-appearance: none;
-          transition: all 0.3s ease;
-          box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+        .custom-select-icon {
+            color: #5d7e5a;
+            font-size: 16px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            background: rgba(160, 180, 145, 0.15);
+            border-radius: 8px;
+            flex-shrink: 0;
+        }
+        
+        .custom-select-text {
+            flex-grow: 1;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-weight: 750;
+            font-size: 13.5px;
+        }
+        
+        .custom-select-arrow {
+            color: #7b7266;
+            font-size: 12px;
+            transition: transform 0.3s ease;
+        }
+        
+        .custom-select-trigger.active .custom-select-arrow {
+            transform: rotate(180deg);
         }
 
-        .destination-select:focus {
-          border-color: #7f9f7a;
-          box-shadow: 0 0 0 3px rgba(150, 180, 140, 0.20);
+        .custom-options-container {
+            position: absolute;
+            top: calc(100% + 8px);
+            left: 0;
+            right: 0;
+            background: rgba(255, 254, 250, 0.98);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1.5px solid rgba(190, 175, 155, 0.35);
+            border-radius: 20px;
+            box-shadow: 0 12px 36px rgba(120, 100, 80, 0.16);
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-8px);
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            padding: 8px;
+            overflow: hidden;
         }
-
-        .select-chevron {
-          position: absolute;
-          right: 16px;
-          top: 50%;
-          transform: translateY(-50%);
-          color: #5d7e5a;
-          font-size: 13px;
-          pointer-events: none;
+        
+        .custom-options-container.show {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+        
+        .custom-option {
+            padding: 10px 12px;
+            border-radius: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: all 0.2s ease;
+            border-left: 3px solid transparent;
+        }
+        
+        .custom-option:hover {
+            background: rgba(160, 180, 145, 0.12);
+        }
+        
+        .custom-option.selected {
+            background: rgba(93, 126, 90, 0.08);
+            border-left-color: #5d7e5a;
+        }
+        
+        .option-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 9px;
+            background: rgba(160, 180, 145, 0.12);
+            color: #5d7e5a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 15px;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+        }
+        
+        .custom-option.selected .option-icon {
+            background: #5d7e5a;
+            color: #ffffff;
+            box-shadow: 0 4px 12px rgba(93, 126, 90, 0.25);
+        }
+        
+        .option-details {
+            display: flex;
+            flex-direction: column;
+            gap: 1px;
+            min-width: 0;
+        }
+        
+        .option-title {
+            font-size: 13.5px;
+            font-weight: 750;
+            color: #2e2b27;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        
+        .option-desc {
+            font-size: 10.5px;
+            color: #7b7266;
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .passkey-note {
@@ -708,6 +828,86 @@ $eventDateFormatted = !empty($event['start_date'])
           color: #2e2b27;
           background: rgba(180, 160, 140, 0.08);
         }
+
+        /* Slideshow button and overlay styles */
+        .btn-slideshow {
+            background: linear-gradient(135deg, var(--brand-green-dark), #4f6b55);
+            color: #ffffff;
+            border: 1.5px solid rgba(255, 255, 255, 0.1);
+            padding: 14px 28px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 800;
+            cursor: pointer;
+            box-shadow: 0 10px 25px rgba(58, 94, 68, 0.25);
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            max-width: 380px;
+            margin: 20px auto 0 auto;
+            font-family: 'Outfit', sans-serif;
+        }
+        .btn-slideshow:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 14px 30px rgba(58, 94, 68, 0.35);
+            background: linear-gradient(135deg, #4c7c59, var(--brand-green-dark)) !important;
+        }
+        .btn-slideshow:active {
+            transform: translateY(1px);
+        }
+
+        .slideshow-view {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100dvh;
+            z-index: 99999;
+            background: #000;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .slideshow-iframe {
+            border: none;
+            width: 100%;
+            height: 100%;
+            flex-grow: 1;
+        }
+        .slideshow-back-btn {
+            position: fixed;
+            top: 16px;
+            left: 16px;
+            z-index: 100000;
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1.5px solid rgba(255, 255, 255, 0.15);
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 99px;
+            font-size: 13px;
+            font-weight: 800;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            font-family: inherit;
+        }
+        .slideshow-back-btn:hover {
+            background: #ef4444;
+            border-color: rgba(239, 68, 68, 0.4);
+            box-shadow: 0 8px 32px rgba(239, 68, 68, 0.35);
+            transform: translateY(-1px);
+        }
+        .slideshow-back-btn:active {
+            transform: translateY(1px);
+        }
     </style>
 </head>
 <body>
@@ -757,6 +957,11 @@ $eventDateFormatted = !empty($event['start_date'])
                 <div class="countdown-label">Secs</div>
             </div>
         </div>
+
+        <!-- Slideshow Button -->
+        <button type="button" class="btn-slideshow" onclick="showSlideshow()">
+            <i class="fa-solid fa-play"></i> View Event Slideshow
+        </button>
     </main>
 
     <footer>
@@ -776,14 +981,37 @@ $eventDateFormatted = !empty($event['start_date'])
             <p class="modal-desc">Select your target destination below.</p>
             
             <div class="dest-group">
-                <label for="targetDestination" class="dest-label">Select Destination</label>
-                <div class="select-wrapper">
-                    <select id="targetDestination" class="destination-select">
-                        <option value="dashboard">🏠 Dashboard (Home Page)</option>
-                        <option value="emcee">🎤 Emcee Controls (Stage Deck)</option>
-                        <option value="special">📊 Special Dashboard</option>
-                    </select>
-                    <i class="fa-solid fa-chevron-down select-chevron"></i>
+                <label class="dest-label">Select Destination</label>
+                <div class="custom-select-container">
+                    <div class="custom-select-trigger" id="customSelectTrigger">
+                        <span class="custom-select-icon"><i class="fa-solid fa-house"></i></span>
+                        <span class="custom-select-text">Dashboard (Home Page)</span>
+                        <i class="fa-solid fa-chevron-down custom-select-arrow"></i>
+                    </div>
+                    <div class="custom-options-container" id="customOptionsContainer">
+                        <div class="custom-option selected" data-value="dashboard" data-icon="fa-house" data-text="Dashboard (Home Page)">
+                            <span class="option-icon"><i class="fa-solid fa-house"></i></span>
+                            <div class="option-details">
+                                <span class="option-title">Dashboard</span>
+                                <span class="option-desc">Main landing page & countdown timer</span>
+                            </div>
+                        </div>
+                        <div class="custom-option" data-value="emcee" data-icon="fa-microphone" data-text="Emcee Controls (Stage Deck)">
+                            <span class="option-icon"><i class="fa-solid fa-microphone"></i></span>
+                            <div class="option-details">
+                                <span class="option-title">Emcee Controls</span>
+                                <span class="option-desc">Stage queue management & live timer</span>
+                            </div>
+                        </div>
+                        <div class="custom-option" data-value="special" data-icon="fa-chart-simple" data-text="Special Dashboard">
+                            <span class="option-icon"><i class="fa-solid fa-chart-simple"></i></span>
+                            <div class="option-details">
+                                <span class="option-title">Special Dashboard</span>
+                                <span class="option-desc">Championship standings & logs view</span>
+                            </div>
+                        </div>
+                    </div>
+                    <input type="hidden" id="targetDestination" value="dashboard">
                 </div>
             </div>
 
@@ -800,6 +1028,14 @@ $eventDateFormatted = !empty($event['start_date'])
 
     <!-- Countdown Javascript -->
     <script>
+        // Global slideshow controls
+        window.showSlideshow = function() {
+            document.getElementById('slideshow-view').style.display = 'block';
+        };
+        window.exitSlideshow = function() {
+            document.getElementById('slideshow-view').style.display = 'none';
+        };
+
         document.addEventListener('DOMContentLoaded', () => {
             // Live Countdown Timer
             const countdownEl = document.getElementById('countdown');
@@ -881,16 +1117,8 @@ $eventDateFormatted = !empty($event['start_date'])
                                         <span style="font-size: 10px; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-top: 4px;">Secs</span>
                                     </div>
                                 </div>
-                                <button type="button" id="btnEndProgram" style="margin-top: 6px; background: linear-gradient(135deg, #ef4444, #dc2626); color: #ffffff; border: none; padding: 10px 28px; border-radius: 999px; font-size: 13px; font-weight: 800; cursor: pointer; box-shadow: 0 6px 20px rgba(239, 68, 68, 0.35); transition: all 0.2s ease;">
-                                    <i class="fa-solid fa-power-off" style="margin-right: 6px;"></i> End Program
-                                </button>
                             </div>
                         `;
-
-                        document.getElementById('btnEndProgram')?.addEventListener('click', () => {
-                            localStorage.setItem('program_ended', 'true');
-                            updateCountdown();
-                        });
                         return;
                     }
                     
@@ -938,10 +1166,67 @@ $eventDateFormatted = !empty($event['start_date'])
 
             targetDestination.addEventListener('change', updateDestinationView);
 
+            // Custom Select Dropdown Logic
+            const trigger = document.getElementById('customSelectTrigger');
+            const optionsContainer = document.getElementById('customOptionsContainer');
+            const triggerIcon = trigger.querySelector('.custom-select-icon i');
+            const triggerText = trigger.querySelector('.custom-select-text');
+            const customOptions = optionsContainer.querySelectorAll('.custom-option');
+
+            trigger.addEventListener('click', (e) => {
+                e.stopPropagation();
+                trigger.classList.toggle('active');
+                optionsContainer.classList.toggle('show');
+            });
+
+            customOptions.forEach(option => {
+                option.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const val = option.dataset.value;
+                    const iconClass = option.dataset.icon;
+                    const text = option.dataset.text;
+
+                    // Update selected states
+                    customOptions.forEach(opt => opt.classList.remove('selected'));
+                    option.classList.add('selected');
+
+                    // Update trigger UI
+                    triggerIcon.className = `fa-solid ${iconClass}`;
+                    triggerText.textContent = text;
+
+                    // Close dropdown
+                    trigger.classList.remove('active');
+                    optionsContainer.classList.remove('show');
+
+                    // Update hidden input and trigger change event
+                    targetDestination.value = val;
+                    targetDestination.dispatchEvent(new Event('change'));
+                });
+            });
+
+            // Close select when clicking outside
+            document.addEventListener('click', () => {
+                trigger.classList.remove('active');
+                optionsContainer.classList.remove('show');
+            });
+
             function openModal() {
                 authModal.classList.add('active');
                 pinInput.value = '';
                 errorMsg.style.display = 'none';
+
+                // Sync custom select trigger text and class on modal open
+                const currentVal = targetDestination.value;
+                customOptions.forEach(opt => {
+                    if (opt.dataset.value === currentVal) {
+                        opt.classList.add('selected');
+                        triggerIcon.className = `fa-solid ${opt.dataset.icon}`;
+                        triggerText.textContent = opt.dataset.text;
+                    } else {
+                        opt.classList.remove('selected');
+                    }
+                });
+
                 updateDestinationView();
             }
 
@@ -1013,5 +1298,13 @@ $eventDateFormatted = !empty($event['start_date'])
             }
         });
     </script>
+
+    <!-- SLIDESHOW VIEW OVERLAY -->
+    <div id="slideshow-view" class="slideshow-view" style="display: none;">
+        <button onclick="exitSlideshow()" class="slideshow-back-btn">
+            <i class="fa-solid fa-arrow-left"></i> Back to Main
+        </button>
+        <iframe class="slideshow-iframe" src="../live-display/"></iframe>
+    </div>
 </body>
 </html>

@@ -1280,6 +1280,17 @@ function live_display_bootstrap_data(): array
     $eventId = (int)($event['id'] ?? 0);
     $settings = live_display_get_settings($eventId);
 
+    // Fetch the global settings to retrieve live_stage_start_time
+    $pdo = live_display_pdo();
+    $stmt = $pdo->prepare("SELECT setting_value FROM musabaqa_settings WHERE setting_key = 'global_musabaqa_settings' LIMIT 1");
+    $stmt->execute();
+    $globalRow = $stmt->fetch();
+    $liveStageStartTime = 0;
+    if ($globalRow) {
+        $globalSettings = json_decode($globalRow['setting_value'], true);
+        $liveStageStartTime = (int)($globalSettings['live_stage_start_time'] ?? 0);
+    }
+
     return [
         'event' => live_display_event_payload($event),
         'settings' => $settings,
@@ -1295,6 +1306,7 @@ function live_display_bootstrap_data(): array
         'break' => live_display_break_info($eventId, $settings),
         'server_time' => date(DATE_ATOM),
         'server_time_ms' => (int)round(microtime(true) * 1000),
+        'live_stage_start_time' => $liveStageStartTime,
     ];
 }
 

@@ -39,7 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($action === 'delete') {
         try {
-            admin_db_transaction($pdo, function ($pdo) use ($eventId, $user) {
+            admin_db_transaction($pdo, function ($pdo) use ($eventId) {
                 $tablesToDelete = [
                     'musabaqa_member_scores',
                     'musabaqa_category_scores',
@@ -79,7 +79,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     unset($_SESSION['selected_event_id'], $_SESSION['active_team_id']);
                 }
 
-                admin_log_activity($pdo, (int)$user['id'], null, 'delete_event', 'musabaqa_events', $eventId, 'Deleted event and all associated programs, entries, teams and scores.');
+                admin_log_activity($pdo, (int)($_SESSION['user_id'] ?? 0), null, 'delete_event', 'musabaqa_events', $eventId, 'Deleted event and all associated programs, entries, teams and scores.');
             });
 
             admin_flash('success', 'Event and all connected programs, entries, and scores were deleted successfully.');
@@ -465,7 +465,7 @@ function renderColorChips() {
             colorState.chips.splice(index, 1);
             renderColorChips();
             updateHiddenColors();
-            updateSuggestions(colorInput.value.trim());
+            renderSuggestions(colorInput.value.trim());
         });
         colorChipsEl.appendChild(chip);
     });
@@ -617,8 +617,14 @@ document.addEventListener('click', (e) => {
     }
 });
 
-eventForm?.addEventListener('submit', () => {
-    updateHiddenColors();
+eventForm?.addEventListener('submit', (e) => {
+    try {
+        console.log('Submitting eventForm, updating color inputs...');
+        updateHiddenColors();
+    } catch (err) {
+        console.error('[EventForm] Submission error caught:', err);
+        alert('An error occurred during form submission: ' + err.message);
+    }
 });
 
 })();

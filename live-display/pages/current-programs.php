@@ -251,10 +251,10 @@ $nextProgTime = !empty($initNextProg['start_label']) ? $initNextProg['start_labe
 
     /* Seamlessly Blended Dark Glass Cards with 1st Team Rank Color Detailing */
     .glass-panel {
-        background: linear-gradient(135deg, rgba(15, 23, 42, 0.88) 0%, rgba(6, 78, 59, 0.65) 100%);
+        background: linear-gradient(135deg, rgba(15, 23, 42, 0.82) 0%, rgba(9, 15, 30, 0.72) 100%) !important;
         backdrop-filter: blur(30px);
         -webkit-backdrop-filter: blur(30px);
-        border: 1.5px solid rgba(52, 211, 153, 0.3);
+        border: 1.5px solid color-mix(in srgb, var(--first-team-color, #10b981) 22%, rgba(255, 255, 255, 0.08)) !important;
         border-radius: 36px;
         padding: 44px 52px;
         display: flex;
@@ -263,7 +263,7 @@ $nextProgTime = !empty($initNextProg['start_label']) ? $initNextProg['start_labe
         position: relative;
         overflow: hidden;
         box-sizing: border-box;
-        box-shadow: 0 30px 70px rgba(0, 0, 0, 0.7), inset 0 0 30px rgba(16, 185, 129, 0.1);
+        box-shadow: 0 25px 65px rgba(0, 0, 0, 0.4), inset 0 0 30px rgba(255, 255, 255, 0.02) !important;
         transition: transform 0.6s ease, border-color 1.2s ease;
     }
 
@@ -374,6 +374,13 @@ $nextProgTime = !empty($initNextProg['start_label']) ? $initNextProg['start_labe
         100% { stroke-dashoffset: 0; }
     }
 
+    .performer-details-container {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+    }
+
     .performer-details {
         flex: 1;
         min-width: 0;
@@ -411,6 +418,66 @@ $nextProgTime = !empty($initNextProg['start_label']) ? $initNextProg['start_labe
         display: inline-block;
     }
 
+    /* Active Metadata Wrapper for Timer + Chest badge side-by-side */
+    .active-metadata-wrap {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        margin-left: 24px;
+    }
+
+    /* Active Stage Timer Badge */
+    .active-stage-timer {
+        background: rgba(15, 23, 42, 0.95);
+        border: 1.5px solid rgba(244, 63, 94, 0.3);
+        color: #ffffff;
+        padding: 20px 32px;
+        border-radius: 22px;
+        text-align: center;
+        box-shadow: 0 14px 35px rgba(244, 63, 94, 0.08);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-width: 150px;
+    }
+
+    .active-stage-timer.is-running {
+        animation: timer-pulse-border 2s infinite alternate;
+    }
+
+    @keyframes timer-pulse-border {
+        0% {
+            border-color: rgba(244, 63, 94, 0.3);
+            box-shadow: 0 14px 35px rgba(244, 63, 94, 0.08);
+        }
+        100% {
+            border-color: rgba(244, 63, 94, 0.75);
+            box-shadow: 0 14px 35px rgba(244, 63, 94, 0.25);
+        }
+    }
+
+    .active-stage-timer .label {
+        font-size: 11px;
+        font-weight: 900;
+        letter-spacing: 0.18em;
+        color: #f43f5e;
+        text-transform: uppercase;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-bottom: 4px;
+    }
+
+    .active-stage-timer .num {
+        font-size: 46px;
+        font-weight: 900;
+        color: #f43f5e;
+        text-shadow: 0 0 16px rgba(244, 63, 94, 0.6);
+        font-family: 'Plus Jakarta Sans', monospace;
+        line-height: 1;
+    }
+
     /* Active Performer Chest Badge */
     .active-chest-hero {
         background: rgba(15, 23, 42, 0.95);
@@ -420,7 +487,6 @@ $nextProgTime = !empty($initNextProg['start_label']) ? $initNextProg['start_labe
         border-radius: 22px;
         text-align: center;
         box-shadow: 0 14px 35px rgba(0, 0, 0, 0.5);
-        margin-left: 24px;
     }
 
     .active-chest-hero .label {
@@ -440,6 +506,14 @@ $nextProgTime = !empty($initNextProg['start_label']) ? $initNextProg['start_labe
         text-shadow: 0 0 16px var(--current-team-color, #10b981);
         font-family: 'Plus Jakarta Sans', monospace;
         line-height: 1;
+    }
+
+    /* State toggling displays */
+    .performer-hero-info.state-awaiting .performer-details-container {
+        display: none !important;
+    }
+    .performer-hero-info.state-active .stage-awaiting-container {
+        display: none !important;
     }
 
     /* Stage Awaiting / Intermission State Widget */
@@ -495,8 +569,8 @@ $nextProgTime = !empty($initNextProg['start_label']) ? $initNextProg['start_labe
     }
 
     .stat-widget-box {
-        background: rgba(15, 23, 42, 0.5);
-        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(255, 255, 255, 0.02) !important;
+        border: 1px solid rgba(255, 255, 255, 0.06) !important;
         padding: 12px 18px;
         border-radius: 18px;
         display: flex;
@@ -647,30 +721,38 @@ $nextProgTime = !empty($initNextProg['start_label']) ? $initNextProg['start_labe
                 </div>
 
                 <!-- Performer Hero Details -->
-                <div class="performer-hero-info">
-                    <?php if ($initIsIntro || empty($initPerf['name']) || $initPerfName === 'Awaiting Performer'): ?>
-                        <!-- Stage Ready / Awaiting Performer Display -->
-                        <div class="stage-awaiting-container">
-                            <div class="stage-awaiting-icon">
-                                <i class="fa-solid fa-microphone-lines"></i>
-                            </div>
-                            <div>
-                                <div class="stage-awaiting-title">STAGE READY • CONTESTANT ENTRY</div>
-                                <div class="stage-awaiting-sub">Judges Ready • Awaiting Contestant Stage Call</div>
-                            </div>
+                <div class="performer-hero-info <?= ($initIsIntro || empty($initPerf['name']) || $initPerfName === 'Awaiting Performer') ? 'state-awaiting' : 'state-active' ?>" data-performer-hero-info>
+                    <!-- Stage Ready / Awaiting Performer Display (State Awaiting) -->
+                    <div class="stage-awaiting-container">
+                        <div class="stage-awaiting-icon">
+                            <i class="fa-solid fa-microphone-lines animate-pulse"></i>
                         </div>
-                    <?php else: ?>
+                        <div>
+                            <div class="stage-awaiting-title">STAGE READY • CONTESTANT ENTRY</div>
+                            <div class="stage-awaiting-sub">Judges Ready • Awaiting Contestant Stage Call</div>
+                        </div>
+                    </div>
+
+                    <!-- Active Performer Showcase (State Active) -->
+                    <div class="performer-details-container">
                         <div class="performer-details">
                             <h2 class="performer-name" data-current-performer><?= e($initPerfName) ?></h2>
                             <div class="team-pill" data-current-team style="<?= ($initIsIntro || $initTeamName === '—') ? 'display: none;' : 'display: flex;' ?>">
                                 <span class="tv-team-dot" style="background:<?= e($initTeamColor) ?>;"></span> <?= e($initTeamName) ?>
                             </div>
                         </div>
-                        <div class="active-chest-hero" data-active-chest-box style="<?= $initIsIntro ? 'display: none;' : '' ?>">
-                            <span class="label">CHEST NO</span>
-                            <span class="num" data-current-chest><?= e($initChest) ?></span>
+                        <div class="active-metadata-wrap">
+                            <!-- Stage Timer Widget -->
+                            <div class="active-stage-timer" id="stageTimerBox" style="display: none;">
+                                <span class="label"><i class="fa-solid fa-stopwatch animate-pulse"></i> LIVE TIMER</span>
+                                <span class="num" id="stageTimerDisplay">00:00</span>
+                            </div>
+                            <div class="active-chest-hero" data-active-chest-box style="<?= $initIsIntro ? 'display: none;' : '' ?>">
+                                <span class="label">CHEST NO</span>
+                                <span class="num" data-current-chest><?= e($initChest) ?></span>
+                            </div>
                         </div>
-                    <?php endif; ?>
+                    </div>
                 </div>
 
                 <!-- Bottom Program Stats Widgets Grid -->

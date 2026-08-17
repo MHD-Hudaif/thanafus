@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Premium Animated Leaderboard Concept</title>
+    <!-- FontAwesome for Premium Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;700;800;900&family=Outfit:wght@600;700;800;900&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: radial-gradient(circle at 30% 30%, #fefcf8 0%, #f6f3eb 50%, #e3dfd6 100%);
+            font-family: 'Plus Jakarta Sans', 'Outfit', system-ui, sans-serif;
+            color: #0f172a;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        /* Animated warm glowing spheres in the background */
+        .glow-orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(100px);
+            opacity: 0.45;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .glow-orb-1 {
+            top: -10%;
+            left: 10%;
+            width: 650px;
+            height: 650px;
+            background: radial-gradient(circle, #ffffff 0%, transparent 70%);
+            animation: float-orb-1 22s ease-in-out infinite alternate;
+        }
+
+        .glow-orb-2 {
+            bottom: -15%;
+            right: 15%;
+            width: 750px;
+            height: 750px;
+            background: radial-gradient(circle, #fcf8ee 0%, transparent 70%);
+            animation: float-orb-2 28s ease-in-out infinite alternate;
+        }
+
+        @keyframes float-orb-1 {
+            0% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(50px, 40px) scale(1.15); }
+            100% { transform: translate(-30px, -50px) scale(0.9); }
+        }
+
+        @keyframes float-orb-2 {
+            0% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(-60px, -30px) scale(1.1); }
+            100% { transform: translate(40px, 50px) scale(0.95); }
+        }
+
+        /* Main Screen Container */
+        .leaderboard-stage {
+            position: relative;
+            z-index: 10;
+            width: 100%;
+            height: 100%;
+            padding: 40px 60px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        /* Header Style */
+        .header-section {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 20px;
+        }
+
+        .title-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .slide-title {
+            font-size: 38px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: -0.015em;
+            color: #0f172a;
+            margin: 0;
+        }
+
+        .slide-subtitle {
+            font-size: 13px;
+            font-weight: 800;
+            color: #64748b;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+        }
+
+        /* Live Indicator Badge */
+        .live-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1.5px solid rgba(16, 185, 129, 0.3);
+            color: #059669;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.06);
+        }
+
+        .live-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #10b981;
+            box-shadow: 0 0 8px #10b981;
+            animation: pulse-dot 1.5s infinite alternate;
+        }
+
+        @keyframes pulse-dot {
+            0% { transform: scale(0.9); opacity: 0.7; }
+            100% { transform: scale(1.15); opacity: 1; }
+        }
+
+        /* 3D-Like Podiums Section (Top 3) */
+        .podium-container {
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            gap: 36px;
+            height: 480px;
+            margin: 10px 0;
+            position: relative;
+        }
+
+        .podium-pillar {
+            width: 250px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        /* Card Content above the Pillar */
+        .podium-card {
+            background: #ffffff;
+            border-radius: 24px;
+            border: 2px solid #e2e8f0;
+            width: 100%;
+            padding: 24px 20px;
+            text-align: center;
+            box-shadow: 0 20px 45px rgba(15, 23, 42, 0.05);
+            position: relative;
+            z-index: 5;
+            margin-bottom: -15px;
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .podium-card.animated {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Rank Badge */
+        .podium-badge {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-weight: 900;
+            color: #ffffff;
+            margin: 0 auto 12px auto;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+            position: relative;
+        }
+
+        /* Crown for 1st Place */
+        .crown-icon {
+            position: absolute;
+            top: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 24px;
+            color: #fbbf24;
+            filter: drop-shadow(0 4px 8px rgba(251, 191, 36, 0.3));
+            animation: float-crown 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes float-crown {
+            0% { transform: translate(-50%, 0) rotate(0deg); }
+            100% { transform: translate(-50%, -4px) rotate(3deg); }
+        }
+
+        /* Colors for Podiums Ranks */
+        .rank-1 .podium-badge { background: linear-gradient(135deg, #fbbf24, #d97706); }
+        .rank-2 .podium-badge { background: linear-gradient(135deg, #cbd5e1, #94a3b8); }
+        .rank-3 .podium-badge { background: linear-gradient(135deg, #f97316, #c2410c); }
+
+        .podium-team-name {
+            font-size: 20px;
+            font-weight: 800;
+            color: #0f172a;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: -0.01em;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .podium-score {
+            font-size: 38px;
+            font-weight: 900;
+            color: #0f172a;
+            font-family: 'Outfit', monospace;
+            line-height: 1;
+        }
+
+        /* The actual rising pillar */
+        .pillar-base {
+            width: 100%;
+            background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+            border-top-left-radius: 16px;
+            border-top-right-radius: 16px;
+            border: 2px solid #e2e8f0;
+            border-bottom: none;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03), inset 0 2px 0 rgba(255, 255, 255, 0.8);
+            position: relative;
+            z-index: 2;
+            height: 0px; /* animated */
+            transition: height 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+            overflow: hidden;
+        }
+
+        .pillar-accent-bar {
+            height: 8px;
+            width: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        .rank-label-huge {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 88px;
+            font-weight: 900;
+            color: rgba(15, 23, 42, 0.04);
+            font-family: 'Outfit', sans-serif;
+            line-height: 1;
+            user-select: none;
+        }
+
+        /* Podiums individual height configurations */
+        .rank-2 { order: 1; }
+        .rank-1 { order: 2; }
+        .rank-3 { order: 3; }
+
+        /* Remaining ranks layout (Ranks 4-8 horizontal cards) */
+        .list-container {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 16px;
+            margin-top: 10px;
+        }
+
+        .list-card {
+            background: #ffffff;
+            border-radius: 20px;
+            border: 1.5px solid #e2e8f0;
+            padding: 16px 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            position: relative;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.03);
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .list-card.animated {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .list-card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .list-rank {
+            font-size: 13px;
+            font-weight: 900;
+            background: #f1f5f9;
+            color: #64748b;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        .list-team-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .list-team-name {
+            font-size: 15px;
+            font-weight: 800;
+            color: #0f172a;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .list-score-row {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+        }
+
+        .list-score {
+            font-size: 24px;
+            font-weight: 900;
+            color: #0f172a;
+            font-family: 'Outfit', monospace;
+        }
+
+        /* Smooth animating progress bar at the bottom of the card */
+        .list-progress-bar {
+            height: 4px;
+            background: #f1f5f9;
+            border-radius: 2px;
+            width: 100%;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        .list-progress-fill {
+            height: 100%;
+            width: 0%; /* animated */
+            border-radius: 2px;
+            transition: width 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        /* Controls Panel (HUD) */
+        .control-panel {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            padding-top: 15px;
+            position: relative;
+            z-index: 100;
+        }
+
+        .btn {
+            background: #ffffff;
+            border: 2px solid #e2e8f0;
+            color: #0f172a;
+            padding: 12px 28px;
+            border-radius: 99px;
+            font-size: 13px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.04);
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            border-color: #cbd5e1;
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
+        }
+
+        .btn-primary {
+            background: #0f172a;
+            border-color: #0f172a;
+            color: #ffffff;
+        }
+
+        .btn-primary:hover {
+            background: #1e293b;
+            border-color: #1e293b;
+            color: #ffffff;
+        }
+    </style>
+</head>
+<body>
+    <!-- Canvas for white background animation -->
+    <div class="glow-orb glow-orb-1"></div>
+    <div class="glow-orb glow-orb-2"></div>
+    <canvas id="bgCanvas"></canvas>
+
+    <!-- Main Content -->
+    <div class="leaderboard-stage">
+        <!-- Header -->
+        <div class="header-section">
+            <div class="title-wrapper">
+                <h1 class="slide-title">Leaderboard Standing</h1>
+                <div class="slide-subtitle">Championship leading group</div>
+            </div>
+            <div class="live-indicator">
+                <span class="live-dot"></span> Live Scores
+            </div>
+        </div>
+
+        <!-- Podiums (Top 3) -->
+        <div class="podium-container" id="podiumContainer">
+            <!-- Rank 2 Podium -->
+            <div class="podium-pillar rank-2" id="podium-rank-2" data-rank="2">
+                <div class="podium-card" id="card-rank-2">
+                    <div class="podium-badge">2</div>
+                    <div class="podium-team-name" id="name-rank-2">Loading...</div>
+                    <div class="podium-score" id="score-rank-2">0</div>
+                </div>
+                <div class="pillar-base" id="base-rank-2" style="height: 0px;">
+                    <div class="pillar-accent-bar" id="accent-rank-2"></div>
+                    <div class="rank-label-huge">2ND</div>
+                </div>
+            </div>
+
+            <!-- Rank 1 Podium -->
+            <div class="podium-pillar rank-1" id="podium-rank-1" data-rank="1">
+                <div class="podium-card" id="card-rank-1">
+                    <i class="fa-solid fa-crown crown-icon"></i>
+                    <div class="podium-badge">1</div>
+                    <div class="podium-team-name" id="name-rank-1">Loading...</div>
+                    <div class="podium-score" id="score-rank-1">0</div>
+                </div>
+                <div class="pillar-base" id="base-rank-1" style="height: 0px;">
+                    <div class="pillar-accent-bar" id="accent-rank-1"></div>
+                    <div class="rank-label-huge">1ST</div>
+                </div>
+            </div>
+
+            <!-- Rank 3 Podium -->
+            <div class="podium-pillar rank-3" id="podium-rank-3" data-rank="3">
+                <div class="podium-card" id="card-rank-3">
+                    <div class="podium-badge">3</div>
+                    <div class="podium-team-name" id="name-rank-3">Loading...</div>
+                    <div class="podium-score" id="score-rank-3">0</div>
+                </div>
+                <div class="pillar-base" id="base-rank-3" style="height: 0px;">
+                    <div class="pillar-accent-bar" id="accent-rank-3"></div>
+                    <div class="rank-label-huge">3RD</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- List Layout (Ranks 4-8) -->
+        <div class="list-container" id="listContainer">
+            <!-- Rendered dynamically by javascript -->
+        </div>
+
+        <!-- Interactive Simulator Control HUD -->
+        <div class="control-panel">
+            <button class="btn btn-primary" id="btnSimulate">
+                <i class="fa-solid fa-bolt"></i> Simulate Score Update
+            </button>
+            <button class="btn" id="btnReplay">
+                <i class="fa-solid fa-rotate-left"></i> Replay Entrance
+            </button>
+        </div>
+    </div>
+
+    <!-- Background Canvas and Page Animations Script -->
+    <script>
+        (() => {
+            'use strict';
+
+            /* ==========================================================================
+               BACKGROUND CANVAS ANIMATION
+               ========================================================================== */
+            const canvas = document.getElementById('bgCanvas');
+            const ctx = canvas.getContext('2d');
+
+            let width = 0;
+            let height = 0;
+            let dpr = 1;
+
+            let bokehs = [];
+            let ripples = [];
+
+            const primaryThemeColor = { r: 16, g: 185, b: 129 }; // Green
+            const teamColorStr = `rgb(${primaryThemeColor.r}, ${primaryThemeColor.g}, ${primaryThemeColor.b})`;
+
+            // Class 1: Pulsing, drifting Bokeh Orbs for color depth (flowing left to right)
+            class BokehOrb {
+                constructor() {
+                    this.reset(true);
+                }
+
+                reset(initial = false) {
+                    this.radius = Math.random() * 200 + 150; // Large soft spheres (150px - 350px)
+                    this.x = initial ? Math.random() * width : -this.radius - Math.random() * 100; // spawn off left
+                    this.y = Math.random() * height;
+                    this.vx = Math.random() * 0.22 + 0.12; // slow left-to-right flow
+                    this.vy = (Math.random() - 0.5) * 0.08; // very slow vertical drift
+                    this.maxOpacity = Math.random() * 0.09 + 0.03; // Extremely soft transparent glow
+                    this.opacity = initial ? Math.random() * this.maxOpacity : 0;
+                    this.fadeSpeed = Math.random() * 0.001 + 0.0004;
+                    this.isFadeIn = true;
+                    this.pulseSpeed = Math.random() * 0.004 + 0.002;
+                    this.pulseTime = Math.random() * Math.PI;
+                }
+
+                update() {
+                    this.x += this.vx;
+                    this.y += this.vy;
+
+                    // Fade in/out logic
+                    if (this.isFadeIn) {
+                        this.opacity += this.fadeSpeed;
+                        if (this.opacity >= this.maxOpacity) {
+                            this.opacity = this.maxOpacity;
+                            this.isFadeIn = false;
+                        }
+                    } else if (this.x > width * 0.55) { // Fade out as it floats to the right
+                        this.opacity -= this.fadeSpeed;
+                    }
+
+                    // Pulse size gently over time
+                    this.pulseTime += this.pulseSpeed;
+                    this.currentRadius = this.radius + Math.sin(this.pulseTime) * 15;
+
+                    if (this.x > width + this.radius || this.opacity <= 0) {
+                        this.reset(false);
+                    }
+                }
+
+                draw() {
+                    ctx.save();
+                    const grad = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.currentRadius);
+                    grad.addColorStop(0, `rgba(${primaryThemeColor.r}, ${primaryThemeColor.g}, ${primaryThemeColor.b}, ${this.opacity})`);
+                    grad.addColorStop(0.5, `rgba(${primaryThemeColor.r}, ${primaryThemeColor.g}, ${primaryThemeColor.b}, ${this.opacity * 0.4})`);
+                    grad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+
+                    ctx.fillStyle = grad;
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.currentRadius, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                }
+            }
+
+            // Class 2: Expanding Circular Ripples (Geometric outlines - drifting to the right)
+            class RippleRing {
+                constructor() {
+                    this.reset(true);
+                }
+
+                reset(initial = false) {
+                    this.x = Math.random() * width;
+                    this.y = Math.random() * height;
+                    this.radius = initial ? Math.random() * 120 + 20 : 10;
+                    this.maxRadius = Math.random() * 160 + 120; // expands up to 280px
+                    this.speed = Math.random() * 0.35 + 0.15; // Slow expand
+                    this.vx = Math.random() * 0.25 + 0.1; // slow drift to right
+                    this.vy = (Math.random() - 0.5) * 0.1;
+                    this.opacity = 1;
+                    this.maxOpacity = Math.random() * 0.16 + 0.05; // Elegant thin lines
+                    this.lineWidth = Math.random() * 1.8 + 0.6;
+                    this.hasConcentric = Math.random() > 0.4;
+                }
+
+                update() {
+                    this.radius += this.speed;
+                    this.x += this.vx;
+                    this.y += this.vy;
+                    
+                    // Fade out as it expands
+                    const progress = this.radius / this.maxRadius;
+                    this.opacity = (1 - progress) * this.maxOpacity;
+
+                    if (this.radius >= this.maxRadius || this.opacity <= 0) {
+                        this.reset(false);
+                    }
+                }
+
+                draw() {
+                    ctx.save();
+                    ctx.strokeStyle = teamColorStr;
+                    ctx.globalAlpha = this.opacity;
+                    ctx.lineWidth = this.lineWidth;
+
+                    // Draw main ring
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                    ctx.stroke();
+
+                    // Optional second ring
+                    if (this.hasConcentric && this.radius > 30) {
+                        ctx.lineWidth = this.lineWidth * 0.6;
+                        ctx.beginPath();
+                        ctx.arc(this.x, this.y, this.radius - 20, 0, Math.PI * 2);
+                        ctx.stroke();
+                    }
+
+                    ctx.restore();
+                }
+            }
+
+            // Flowing slightly darker white wavy silk lines
+            function drawWhiteFlowLines() {
+                const time = Date.now() * 0.0001;
+                const linesCount = 4;
+                const baseColor = `rgba(202, 194, 178, 0.22)`;
+
+                for (let i = 0; i < linesCount; i++) {
+                    ctx.save();
+                    const yBase = (height / (linesCount + 1)) * (i + 1);
+
+                    const lineGrad = ctx.createLinearGradient(0, 0, width, 0);
+                    lineGrad.addColorStop(0, 'rgba(255, 255, 255, 0)');
+                    lineGrad.addColorStop(0.2, baseColor);
+                    lineGrad.addColorStop(0.5, `rgba(182, 172, 150, 0.38)`);
+                    lineGrad.addColorStop(0.8, baseColor);
+                    lineGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+
+                    ctx.strokeStyle = lineGrad;
+                    ctx.lineWidth = i % 2 === 0 ? 3.5 : 2.0;
+
+                    ctx.beginPath();
+                    const step = 40;
+                    for (let x = 0; x <= width + step; x += step) {
+                        const wave1 = Math.sin(x * 0.002 + time * 1.2 + i * 1.9) * 50;
+                        const wave2 = Math.cos(x * 0.004 - time * 0.7 + i * 2.5) * 20;
+                        const y = yBase + wave1 + wave2;
+
+                        if (x === 0) ctx.moveTo(x, y);
+                        else ctx.lineTo(x, y);
+                    }
+
+                    ctx.stroke();
+                    ctx.restore();
+                }
+            }
+
+            function resize() {
+                dpr = window.devicePixelRatio || 1;
+                width = window.innerWidth;
+                height = window.innerHeight;
+
+                canvas.width = width * dpr;
+                canvas.height = height * dpr;
+                ctx.scale(dpr, dpr);
+
+                const area = width * height;
+                
+                const bokehsCount = Math.max(4, Math.floor(area / 180000));
+                bokehs = [];
+                for (let i = 0; i < bokehsCount; i++) {
+                    bokehs.push(new BokehOrb());
+                }
+
+                const ripplesCount = Math.max(5, Math.floor(area / 120000));
+                ripples = [];
+                for (let i = 0; i < ripplesCount; i++) {
+                    ripples.push(new RippleRing());
+                }
+            }
+
+            window.addEventListener('resize', resize);
+            resize();
+
+            function tick() {
+                ctx.clearRect(0, 0, width, height);
+
+                // Shifting white background gradient focal center
+                const time = Date.now() * 0.0003;
+                const gradX = 30 + Math.sin(time) * 12;
+                const gradY = 30 + Math.cos(time * 0.85) * 12;
+                document.body.style.background = `radial-gradient(circle at ${gradX}% ${gradY}%, #fefcf8 0%, #f6f3eb 50%, #e3dfd6 100%)`;
+
+                drawWhiteFlowLines();
+
+                bokehs.forEach(b => { b.update(); b.draw(); });
+                ripples.forEach(r => { r.update(); r.draw(); });
+
+                requestAnimationFrame(tick);
+            }
+
+            requestAnimationFrame(tick);
+
+
+            /* ==========================================================================
+               LEADERBOARD & SCORE SIMULATION ENGINE
+               ========================================================================== */
+            // Sample group of teams with names and colors
+            let teams = [
+                { id: 1, name: "Al Fursan", points: 840, color: "#10b981", accent: "#047857" }, // Green
+                { id: 2, name: "Sabaq Royal", points: 790, color: "#3b82f6", accent: "#1d4ed8" }, // Blue
+                { id: 3, name: "Qalam Gold", points: 760, color: "#f59e0b", accent: "#b45309" }, // Gold
+                { id: 4, name: "Zuhra Elite", points: 710, color: "#8b5cf6", accent: "#5b21b6" }, // Purple
+                { id: 5, name: "Rihab Star", points: 680, color: "#ec4899", accent: "#be185d" }, // Pink
+                { id: 6, name: "Badr Rovers", points: 640, color: "#06b6d4", accent: "#0891b2" }, // Cyan
+                { id: 7, name: "Safa Falcons", points: 590, color: "#10b981", accent: "#047857" }, // Green
+                { id: 8, name: "Mina United", points: 530, color: "#e11d48", accent: "#9f1239" }  // Rose
+            ];
+
+            const podiumHeights = {
+                1: 330, // px height
+                2: 240, // px height
+                3: 170  // px height
+            };
+
+            // Number Counter Animation Helper
+            function animateNumber(element, start, end, duration) {
+                if (!element) return;
+                const range = end - start;
+                let current = start;
+                const increment = end > start ? 1 : -1;
+                const stepTime = Math.abs(Math.floor(duration / range));
+                const startTime = Date.now();
+                const endTime = startTime + duration;
+
+                function run() {
+                    const now = Date.now();
+                    const remaining = Math.max(0, endTime - now);
+                    const value = Math.round(end - (remaining / duration) * range);
+                    element.textContent = value;
+                    if (now < endTime) {
+                        requestAnimationFrame(run);
+                    } else {
+                        element.textContent = end;
+                    }
+                }
+                
+                requestAnimationFrame(run);
+            }
+
+            // Perform sorting and UI rendering
+            function renderLeaderboard(isInitial = false) {
+                // Sort teams descending
+                teams.sort((a, b) => b.points - a.points);
+
+                // Top team color sets the global primary background theme
+                const leaderColor = hexToRgb(teams[0].color);
+                primaryThemeColor.r = leaderColor.r;
+                primaryThemeColor.g = leaderColor.g;
+                primaryThemeColor.b = leaderColor.b;
+
+                // 1. Render Top 3 Podiums
+                for (let rank = 1; rank <= 3; rank++) {
+                    const team = teams[rank - 1];
+                    const pillar = document.getElementById(`podium-rank-${rank}`);
+                    const card = document.getElementById(`card-rank-${rank}`);
+                    const base = document.getElementById(`base-rank-${rank}`);
+                    const accent = document.getElementById(`accent-rank-${rank}`);
+                    const nameText = document.getElementById(`name-rank-${rank}`);
+                    const scoreText = document.getElementById(`score-rank-${rank}`);
+
+                    // Apply team accent bar color
+                    accent.style.background = team.color;
+
+                    // Set team name
+                    nameText.textContent = team.name;
+
+                    // Animate Score
+                    const currentVal = parseInt(scoreText.textContent) || 0;
+                    if (isInitial) {
+                        scoreText.textContent = 0;
+                        animateNumber(scoreText, 0, team.points, 1200);
+                    } else {
+                        animateNumber(scoreText, currentVal, team.points, 800);
+                    }
+
+                    // Set Column Heights and Cards classes
+                    setTimeout(() => {
+                        base.style.height = `${podiumHeights[rank]}px`;
+                        card.classList.add('animated');
+                    }, rank * 150);
+                }
+
+                // 2. Render List Container (Ranks 4-8)
+                const listContainer = document.getElementById('listContainer');
+                
+                // Clear old items or perform smooth layout transitions
+                if (isInitial) {
+                    listContainer.innerHTML = '';
+                }
+
+                const maxLeadScore = teams[0].points;
+
+                for (let i = 3; i < teams.length; i++) {
+                    const team = teams[i];
+                    const rank = i + 1;
+                    const fillPercent = Math.min(100, (team.points / maxLeadScore) * 100);
+
+                    let cardEl = document.getElementById(`list-item-${team.id}`);
+
+                    if (!cardEl) {
+                        // Create item
+                        cardEl = document.createElement('div');
+                        cardEl.id = `list-item-${team.id}`;
+                        cardEl.className = 'list-card';
+                        cardEl.innerHTML = `
+                            <div class="list-card-header">
+                                <span class="list-rank" id="list-rank-badge-${team.id}">#${rank}</span>
+                                <span class="list-team-dot" style="background: ${team.color};"></span>
+                            </div>
+                            <h3 class="list-team-name">${team.name}</h3>
+                            <div class="list-score-row">
+                                <span class="list-score" id="list-score-${team.id}">0</span>
+                                <span style="font-size: 11px; color: #64748b; font-weight: 800;">PTS</span>
+                            </div>
+                            <div class="list-progress-bar">
+                                <div class="list-progress-fill" id="list-fill-${team.id}" style="background: ${team.color};"></div>
+                            </div>
+                        `;
+                        listContainer.appendChild(cardEl);
+                    } else {
+                        // Move card in DOM to keep sorted order visual
+                        listContainer.appendChild(cardEl);
+                        
+                        // Update rank badge text
+                        const badge = document.getElementById(`list-rank-badge-${team.id}`);
+                        badge.textContent = `#${rank}`;
+                    }
+
+                    // Animate list scores
+                    const listScoreText = document.getElementById(`list-score-${team.id}`);
+                    const listFill = document.getElementById(`list-fill-${team.id}`);
+
+                    const prevScore = parseInt(listScoreText.textContent) || 0;
+                    animateNumber(listScoreText, prevScore, team.points, 1000);
+
+                    // Animate fills and card entrance
+                    setTimeout(() => {
+                        cardEl.classList.add('animated');
+                        listFill.style.width = `${fillPercent}%`;
+                    }, i * 80);
+                }
+            }
+
+            // Simulate score update
+            function simulateLiveUpdate() {
+                // Add random score increases to teams
+                teams.forEach(team => {
+                    // Random boost between 15 and 90 points
+                    const pointsAdded = Math.floor(Math.random() * 75) + 15;
+                    team.points += pointsAdded;
+                });
+
+                renderLeaderboard(false);
+            }
+
+            // Replay entrance animations
+            function replayEntrance() {
+                // Reset heights and animations
+                document.querySelectorAll('.pillar-base').forEach(b => b.style.height = '0px');
+                document.querySelectorAll('.podium-card').forEach(c => c.classList.remove('animated'));
+                document.querySelectorAll('.list-card').forEach(c => {
+                    c.classList.remove('animated');
+                    const fill = c.querySelector('.list-progress-fill');
+                    if (fill) fill.style.width = '0%';
+                });
+
+                setTimeout(() => {
+                    renderLeaderboard(true);
+                }, 400);
+            }
+
+            // Bind controls
+            document.getElementById('btnSimulate').addEventListener('click', simulateLiveUpdate);
+            document.getElementById('btnReplay').addEventListener('click', replayEntrance);
+
+            // Initial load
+            setTimeout(() => {
+                renderLeaderboard(true);
+            }, 500);
+
+        })();
+    </script>
+</body>
+</html>

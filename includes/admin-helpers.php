@@ -830,6 +830,9 @@ function admin_approve_program_scores(PDO $pdo, int $eventId, int $programId, in
 
         admin_log_activity($pdo, $userId, $eventId, 'approve_program_scores', 'musabaqa_programs', $programId, 'Program scores approved and finalized.');
         admin_log_activity($pdo, $userId, $eventId, 'leaderboard_update', 'musabaqa_teams', null, 'Leaderboard totals recalculated from approved program scores.');
+        
+        // Auto-redirect TV slideshow to Leaderboard
+        admin_redirect_tv_slide($pdo, $eventId, 'leaderboard');
     });
 }
 
@@ -1335,8 +1338,14 @@ function admin_set_live_stage_control(PDO $pdo, int $programId, int $entryId = 0
     $settings['live_program_id'] = $programId;
     $settings['live_entry_id'] = $entryId;
     
+    $eventId = (int)($_SESSION['selected_event_id'] ?? $_SESSION['active_event_id'] ?? 0);
+    if ($eventId <= 0) {
+        $stmt = $pdo->prepare("SELECT id FROM musabaqa_events WHERE status = 'active' ORDER BY id DESC LIMIT 1");
+        $stmt->execute();
+        $eventId = (int)($stmt->fetchColumn() ?: 0);
+    }
+    
     if ($programId > 0) {
-        $eventId = (int)($_SESSION['selected_event_id'] ?? $_SESSION['active_event_id'] ?? 0);
         if ($eventId > 0) {
             $pdo->prepare("UPDATE musabaqa_programs SET status = 'active' WHERE event_id = ? AND status = 'scoring'")->execute([$eventId]);
         }
@@ -1344,6 +1353,11 @@ function admin_set_live_stage_control(PDO $pdo, int $programId, int $entryId = 0
     }
     
     save_musabaqa_settings($pdo, $settings);
+
+    // Auto-redirect TV slideshow to Current Program
+    if ($programId > 0 && $eventId > 0) {
+        admin_redirect_tv_slide($pdo, $eventId, 'current-program');
+    }
 }
 
 function admin_get_live_stage_control(PDO $pdo): array
@@ -1999,6 +2013,37 @@ if (!function_exists('admin_reshuffle_all_event_program_entries')) {
             }
         }
     }
+}
+
+/**
+ * Update the TV display setting to manually activate a specific slide.
+ */
+function admin_redirect_tv_slide(PDO $pdo, int $eventId, string $slideKey): void
+{
+    if ($eventId <= 0) return;
+    if ($slideKey === 'schedule') return; // Do not redirect to schedule in any action
+    
+    $settKey = 'live_display.event.' . $eventId . '.settings';
+    
+    // Read current settings
+    $stmt = $pdo->prepare('SELECT setting_value FROM musabaqa_settings WHERE setting_key = ? LIMIT 1');
+    $stmt->execute([$settKey]);
+    $existingJson = (string)$stmt->fetchColumn();
+    $settings = json_decode($existingJson, true) ?: [];
+    
+    $settings['mode'] = 'manual';
+    $settings['active_slide'] = $slideKey;
+    $settings['last_updated'] = time();
+    $settings['updated_at'] = date(DATE_ATOM);
+    
+    $saveStmt = $pdo->prepare('
+        INSERT INTO musabaqa_settings (setting_key, setting_value) 
+        VALUES (?, ?) 
+        ON DUPLICATE KEY UPDATE 
+            setting_value = VALUES(setting_value),
+            updated_at = CURRENT_TIMESTAMP
+    ');
+    $saveStmt->execute([$settKey, json_encode($settings)]);
 }
 
 

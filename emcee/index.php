@@ -58,6 +58,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         ]);
         exit;
     }
+
+    if ($action === 'update_live_timer') {
+        $running = (int)($_POST['running'] ?? 0);
+        $startTime = (float)($_POST['start_time'] ?? 0);
+        $elapsed = (int)($_POST['elapsed'] ?? 0);
+
+        $settings = admin_get_settings($pdo);
+        $settings['live_timer_running'] = $running;
+        $settings['live_timer_start_time'] = $startTime;
+        $settings['live_timer_elapsed'] = $elapsed;
+        save_musabaqa_settings($pdo, $settings);
+
+        header('Content-Type: application/json');
+        echo json_encode([
+            'success' => true,
+            'running' => $running,
+            'start_time' => $startTime,
+            'elapsed' => $elapsed
+        ]);
+        exit;
+    }
 }
 
 // Live Status Query API (for polling)
@@ -74,6 +95,11 @@ $liveControl = admin_get_live_stage_control($pdo);
 $liveProgramId = $liveControl['program_id'];
 $liveEntryId = $liveControl['entry_id'];
 $recordedTimes = admin_get_recorded_times($pdo);
+
+$globalSettings = admin_get_settings($pdo);
+$initTimerRunning = (int)($globalSettings['live_timer_running'] ?? 0);
+$initTimerStartTime = (float)($globalSettings['live_timer_start_time'] ?? 0.0);
+$initTimerElapsed = (int)($globalSettings['live_timer_elapsed'] ?? 0);
 
 // 1. Fetch All Programs in Schedule Order
 $stmtProg = $pdo->prepare("
@@ -1261,9 +1287,19 @@ let liveEntryId = <?= (int)$liveEntryId ?>;
 
 // TIMER STATE VARIABLES
 let timerInterval = null;
+let timerElapsedTime = <?= $initTimerElapsed ?>;
+let isTimerRunning = <?= $initTimerRunning ? 'true' : 'false' ?>;
 let timerStartTime = 0;
-let timerElapsedTime = 0;
-let isTimerRunning = false;
+
+if (isTimerRunning) {
+    const elapsedSinceStart = Date.now() - (<?= $initTimerStartTime ?> * 1000);
+    timerStartTime = performance.now() - elapsedSinceStart;
+    timerInterval = setInterval(() => {
+        timerElapsedTime = performance.now() - timerStartTime;
+        const clockEl = document.getElementById('timerClock');
+        if (clockEl) clockEl.innerText = formatTimeMs(timerElapsedTime);
+    }, 90);
+}
 
 function renderStageDeck(index, direction = 'next') {
     if (!stageQueue || stageQueue.length === 0) return;
@@ -1521,6 +1557,12 @@ function startTimer() {
     isTimerRunning = true;
     timerStartTime = performance.now() - timerElapsedTime;
 
+    // Send update to backend settings
+    const nowUnix = Date.now() / 1000;
+    const elapsedSec = timerElapsedTime / 1000;
+    const startUnix = nowUnix - elapsedSec;
+    updateLiveTimerBackend(1, startUnix, timerElapsedTime);
+
     timerInterval = setInterval(() => {
         timerElapsedTime = performance.now() - timerStartTime;
         document.getElementById('timerClock').innerText = formatTimeMs(timerElapsedTime);
@@ -1543,6 +1585,9 @@ function stopTimer() {
     item.recorded_time = formatted;
     item.duration_seconds = durationSec;
 
+    // Send update to backend settings
+    updateLiveTimerBackend(0, 0, timerElapsedTime);
+
     // Save to backend via AJAX
     saveRecordedTimeBackend(item.program_id, item.entry_id, durationSec, formatted);
 
@@ -1561,7 +1606,27 @@ function resetTimer() {
     item.recorded_time = null;
     item.duration_seconds = 0;
 
+    // Send update to backend settings
+    updateLiveTimerBackend(0, 0, 0);
+
     syncTimerUI(item, (item.program_id === liveProgramId && item.entry_id === liveEntryId));
+}
+
+function updateLiveTimerBackend(running, startTime, elapsed) {
+    const formData = new FormData();
+    formData.append('action', 'update_live_timer');
+    formData.append('running', running);
+    formData.append('start_time', startTime);
+    formData.append('elapsed', elapsed);
+    formData.append('csrf_token', csrfToken);
+
+    fetch(window.location.pathname + '?ajax=1', {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        body: formData
+    })
+    .then(r => r.json())
+    .catch(err => console.error('Failed to sync live timer:', err));
 }
 
 function toggleTimerFromMobile() {

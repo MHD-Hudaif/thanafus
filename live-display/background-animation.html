@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cream & White Background Animation - Left-to-Right Edition</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: radial-gradient(circle at 30% 30%, #fefcf8 0%, #f6f3eb 50%, #e3dfd6 100%);
+            transition: background 0.1s linear;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        /* Animated warm glowing spheres in the background */
+        .glow-orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(100px);
+            opacity: 0.45;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .glow-orb-1 {
+            top: -10%;
+            left: 10%;
+            width: 650px;
+            height: 650px;
+            background: radial-gradient(circle, #ffffff 0%, transparent 70%);
+            animation: float-orb-1 22s ease-in-out infinite alternate;
+        }
+
+        .glow-orb-2 {
+            bottom: -15%;
+            right: 15%;
+            width: 750px;
+            height: 750px;
+            background: radial-gradient(circle, #fcf8ee 0%, transparent 70%);
+            animation: float-orb-2 28s ease-in-out infinite alternate;
+        }
+
+        @keyframes float-orb-1 {
+            0% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(50px, 40px) scale(1.15); }
+            100% { transform: translate(-30px, -50px) scale(0.9); }
+        }
+
+        @keyframes float-orb-2 {
+            0% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(-60px, -30px) scale(1.1); }
+            100% { transform: translate(40px, 50px) scale(0.95); }
+        }
+    </style>
+</head>
+<body>
+    <div class="glow-orb glow-orb-1"></div>
+    <div class="glow-orb glow-orb-2"></div>
+    <canvas id="premiumBgCanvas"></canvas>
+
+    <script>
+        (() => {
+            'use strict';
+
+            const canvas = document.getElementById('premiumBgCanvas');
+            const ctx = canvas.getContext('2d');
+
+            let width = 0;
+            let height = 0;
+            let dpr = 1;
+
+            let bokehs = [];
+            let ripples = [];
+
+            // Helper to get query parameter
+            function getQueryParam(name, fallback) {
+                const urlParams = new URLSearchParams(window.location.search);
+                const val = urlParams.get(name);
+                if (val) {
+                    return val.startsWith('#') ? val : '#' + val;
+                }
+                return fallback;
+            }
+
+            // Hex parser
+            function hexToRgb(hex) {
+                const shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
+                const fullHex = hex.replace(shorthandRegex, (m, r, g, b) => r + r + g + g + b + b);
+                const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(fullHex);
+                return result ? {
+                    r: parseInt(result[1], 16),
+                    g: parseInt(result[2], 16),
+                    b: parseInt(result[3], 16)
+                } : { r: 16, g: 185, b: 129 }; // Fallback to green
+            }
+
+            const rawColor = getQueryParam('color', '#10b981');
+            const teamColor = hexToRgb(rawColor);
+            const teamColorStr = `rgb(${teamColor.r}, ${teamColor.g}, ${teamColor.b})`;
+
+            // Class 1: Pulsing, drifting Bokeh Orbs for color depth (flowing left to right)
+            class BokehOrb {
+                constructor() {
+                    this.reset(true);
+                }
+
+                reset(initial = false) {
+                    this.radius = Math.random() * 200 + 150; // Large soft spheres (150px - 350px)
+                    this.x = initial ? Math.random() * width : -this.radius - Math.random() * 100; // spawn off left
+                    this.y = Math.random() * height;
+                    this.vx = Math.random() * 0.22 + 0.12; // slow left-to-right flow
+                    this.vy = (Math.random() - 0.5) * 0.08; // very slow vertical drift
+                    this.maxOpacity = Math.random() * 0.09 + 0.03; // Extremely soft transparent glow
+                    this.opacity = initial ? Math.random() * this.maxOpacity : 0;
+                    this.fadeSpeed = Math.random() * 0.001 + 0.0004;
+                    this.isFadeIn = true;
+                    this.pulseSpeed = Math.random() * 0.004 + 0.002;
+                    this.pulseTime = Math.random() * Math.PI;
+                }
+
+                update() {
+                    this.x += this.vx;
+                    this.y += this.vy;
+
+                    // Fade in/out logic
+                    if (this.isFadeIn) {
+                        this.opacity += this.fadeSpeed;
+                        if (this.opacity >= this.maxOpacity) {
+                            this.opacity = this.maxOpacity;
+                            this.isFadeIn = false;
+                        }
+                    } else if (this.x > width * 0.55) { // Fade out as it floats to the right
+                        this.opacity -= this.fadeSpeed;
+                    }
+
+                    // Pulse size gently over time
+                    this.pulseTime += this.pulseSpeed;
+                    this.currentRadius = this.radius + Math.sin(this.pulseTime) * 15;
+
+                    if (this.x > width + this.radius || this.opacity <= 0) {
+                        this.reset(false);
+                    }
+                }
+
+                draw() {
+                    ctx.save();
+                    const grad = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.currentRadius);
+                    grad.addColorStop(0, `rgba(${teamColor.r}, ${teamColor.g}, ${teamColor.b}, ${this.opacity})`);
+                    grad.addColorStop(0.5, `rgba(${teamColor.r}, ${teamColor.g}, ${teamColor.b}, ${this.opacity * 0.4})`);
+                    grad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+
+                    ctx.fillStyle = grad;
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.currentRadius, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                }
+            }
+
+            // Class 2: Expanding Circular Ripples (Geometric outlines - drifting to the right)
+            class RippleRing {
+                constructor() {
+                    this.reset(true);
+                }
+
+                reset(initial = false) {
+                    this.x = Math.random() * width;
+                    this.y = Math.random() * height;
+                    this.radius = initial ? Math.random() * 120 + 20 : 10;
+                    this.maxRadius = Math.random() * 160 + 120; // expands up to 280px
+                    this.speed = Math.random() * 0.35 + 0.15; // Slow expand
+                    this.vx = Math.random() * 0.25 + 0.1; // slow drift to right
+                    this.vy = (Math.random() - 0.5) * 0.1;
+                    this.opacity = 1;
+                    this.maxOpacity = Math.random() * 0.16 + 0.05; // Elegant thin lines
+                    this.lineWidth = Math.random() * 1.8 + 0.6;
+                    this.hasConcentric = Math.random() > 0.4;
+                }
+
+                update() {
+                    this.radius += this.speed;
+                    this.x += this.vx;
+                    this.y += this.vy;
+                    
+                    // Fade out as it expands
+                    const progress = this.radius / this.maxRadius;
+                    this.opacity = (1 - progress) * this.maxOpacity;
+
+                    if (this.radius >= this.maxRadius || this.opacity <= 0) {
+                        this.reset(false);
+                    }
+                }
+
+                draw() {
+                    ctx.save();
+                    ctx.strokeStyle = teamColorStr;
+                    ctx.globalAlpha = this.opacity;
+                    ctx.lineWidth = this.lineWidth;
+
+                    // Draw main ring
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                    ctx.stroke();
+
+                    // Optional second ring
+                    if (this.hasConcentric && this.radius > 30) {
+                        ctx.lineWidth = this.lineWidth * 0.6;
+                        ctx.beginPath();
+                        ctx.arc(this.x, this.y, this.radius - 20, 0, Math.PI * 2);
+                        ctx.stroke();
+                    }
+
+                    ctx.restore();
+                }
+            }
+
+            // Flowing slightly darker white/cream silk lines for textured motion (flowing left to right)
+            function drawWhiteFlowLines() {
+                const time = Date.now() * 0.0001; // slow movement
+                const linesCount = 4;
+                const baseColor = `rgba(202, 194, 178, 0.22)`; // Slightly darker white/cream line color
+
+                for (let i = 0; i < linesCount; i++) {
+                    ctx.save();
+                    
+                    const yBase = (height / (linesCount + 1)) * (i + 1);
+
+                    // Fade at edges
+                    const lineGrad = ctx.createLinearGradient(0, 0, width, 0);
+                    lineGrad.addColorStop(0, 'rgba(255, 255, 255, 0)');
+                    lineGrad.addColorStop(0.2, baseColor);
+                    lineGrad.addColorStop(0.5, `rgba(182, 172, 150, 0.38)`); // Peak opacity in middle
+                    lineGrad.addColorStop(0.8, baseColor);
+                    lineGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+
+                    ctx.strokeStyle = lineGrad;
+                    ctx.lineWidth = i % 2 === 0 ? 3.5 : 2.0;
+
+                    ctx.beginPath();
+                    const step = 40;
+                    for (let x = 0; x <= width + step; x += step) {
+                        const wave1 = Math.sin(x * 0.002 + time * 1.2 + i * 1.9) * 50;
+                        const wave2 = Math.cos(x * 0.004 - time * 0.7 + i * 2.5) * 20;
+                        const y = yBase + wave1 + wave2;
+
+                        if (x === 0) ctx.moveTo(x, y);
+                        else ctx.lineTo(x, y);
+                    }
+
+                    ctx.stroke();
+                    ctx.restore();
+                }
+            }
+
+            // Handle sizing and High-DPI scaling
+            function resize() {
+                dpr = window.devicePixelRatio || 1;
+                width = window.innerWidth;
+                height = window.innerHeight;
+
+                canvas.width = width * dpr;
+                canvas.height = height * dpr;
+                ctx.scale(dpr, dpr);
+
+                // Populate elements proportionally to screen area
+                const area = width * height;
+                
+                const bokehsCount = Math.max(4, Math.floor(area / 180000));
+                bokehs = [];
+                for (let i = 0; i < bokehsCount; i++) {
+                    bokehs.push(new BokehOrb());
+                }
+
+                const ripplesCount = Math.max(5, Math.floor(area / 120000));
+                ripples = [];
+                for (let i = 0; i < ripplesCount; i++) {
+                    ripples.push(new RippleRing());
+                }
+            }
+
+            window.addEventListener('resize', resize);
+            resize();
+
+            // Main loop
+            function tick() {
+                ctx.clearRect(0, 0, width, height);
+
+                // Dynamic drifting of the white background gradient center point
+                const time = Date.now() * 0.0003;
+                const gradX = 30 + Math.sin(time) * 12; // drifts between 18% and 42%
+                const gradY = 30 + Math.cos(time * 0.85) * 12; // drifts between 18% and 42%
+                document.body.style.background = `radial-gradient(circle at ${gradX}% ${gradY}%, #fefcf8 0%, #f6f3eb 50%, #e3dfd6 100%)`;
+
+                // 1. Draw flowing slightly darker white/cream wavy lines (textured background flow)
+                drawWhiteFlowLines();
+
+                // 2. Draw soft bokehs (background layer)
+                bokehs.forEach(b => {
+                    b.update();
+                    b.draw();
+                });
+
+                // 3. Draw expanding geometric ripples (mid layer)
+                ripples.forEach(r => {
+                    r.update();
+                    r.draw();
+                });
+
+                requestAnimationFrame(tick);
+            }
+
+            requestAnimationFrame(tick);
+        })();
+    </script>
+</body>
+</html>
