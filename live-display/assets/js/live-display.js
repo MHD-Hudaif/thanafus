@@ -959,10 +959,10 @@
             <div class="schedule-slide-container">
                 <div class="schedule-slide-title">
                     <div style="display: flex; align-items: center; gap: 16px;">
-                        <span>Program Schedule</span>
-                        <span class="page-count-badge" data-schedule-day-badge style="display: none; font-size: 14px; text-transform: uppercase; background: rgba(255,255,255,0.14); color: #fff; border: 1.5px solid rgba(255,255,255,0.25);">DAY 1</span>
+                        <span>PROGRAM SCHEDULE</span>
+                        <span class="page-count-badge" data-schedule-day-badge style="display: none; font-size: 14px; text-transform: uppercase; background: var(--first-team-color, #10b981); color: #fff; border: none; padding: 4px 14px; border-radius: 20px; font-weight: 800; letter-spacing: 0.05em;">DAY 2</span>
                     </div>
-                    <span class="page-count-badge" data-schedule-page-badge>Page ${curPage + 1} / ${totalPages}</span>
+                    <span class="page-count-badge" data-schedule-page-badge style="text-transform: uppercase;">PAGE ${curPage + 1} / ${totalPages}</span>
                 </div>
                 <div class="schedule-timeline-container" data-schedule-page>
                 </div>
@@ -1009,7 +1009,7 @@
 
         const badgeEl = els.schedule?.querySelector('[data-schedule-page-badge]');
         if (badgeEl) {
-            badgeEl.textContent = `Page ${index + 1} / ${totalPages}`;
+            badgeEl.textContent = `PAGE ${index + 1} / ${totalPages}`;
         }
 
         const currentRows = Array.from(pageEl.querySelectorAll('.program-row'));
@@ -1047,9 +1047,18 @@
                 dateToDayMap[d] = `Day ${idx + 1}`;
             });
 
-            // Sync Header Day Badge for the current page (hidden as requested)
+            // Sync Header Day Badge for the current page
             const dayBadgeEl = els.schedule?.querySelector('[data-schedule-day-badge]');
-            if (dayBadgeEl) {
+            let pageDay = '';
+            if (page.length > 0) {
+                const firstItem = page[0];
+                const itemDate = firstItem.start_time ? firstItem.start_time.split(' ')[0] : '';
+                pageDay = dateToDayMap[itemDate] || '';
+            }
+            if (dayBadgeEl && pageDay) {
+                dayBadgeEl.textContent = pageDay.toUpperCase();
+                dayBadgeEl.style.display = 'inline-block';
+            } else if (dayBadgeEl) {
                 dayBadgeEl.style.display = 'none';
             }
 

@@ -48,7 +48,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 $event = tv_active_event();
 $eventTitle = trim((string)($event['title'] ?? 'Kauzariyya Musabaqa 2026-27'));
 $eventTitle = $eventTitle !== '' ? $eventTitle : 'Kauzariyya Musabaqa 2026-27';
-$eventStart = !empty($event['start_date']) ? (string)$event['start_date'] : '2027-05-04T09:00:00';
+$eventStart = !empty($event['start_date']) ? str_replace(' ', 'T', (string)$event['start_date']) : '2027-05-04T09:00:00';
 $eventDateFormatted = !empty($event['start_date']) 
     ? date('d F Y', strtotime((string)$event['start_date'])) 
     : '4 - 5 May 2027';

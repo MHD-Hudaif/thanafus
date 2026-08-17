@@ -71,8 +71,8 @@ body:has(#slide-schedule.tv-slide--active) .tv-topbar {
 
 .schedule-slide-container {
     --first-team-color: <?= e($firstTeamColor) ?>;
-    --current-neon: var(--first-team-color, #6400a6);
-    --panel-glow: color-mix(in srgb, var(--first-team-color, #6400a6) 12%, transparent);
+    --current-neon: var(--first-team-color, #10b981);
+    --panel-glow: color-mix(in srgb, var(--first-team-color, #10b981) 12%, transparent);
     width: 100%;
     max-width: 1600px;
     height: 100%;
@@ -98,34 +98,31 @@ body:has(#slide-schedule.tv-slide--active) .tv-topbar {
     padding-bottom: 18px;
     margin-bottom: 24px;
     font-family: 'Plus Jakarta Sans', sans-serif;
-    border-bottom: 2px solid rgba(255, 255, 255, 0.12);
 }
 
 .page-count-badge {
     font-size: 16px;
     font-weight: 800;
     color: #fff !important;
-    background: rgba(255, 255, 255, 0.08);
+    background: rgba(0, 0, 0, 0.4);
     backdrop-filter: blur(15px);
     -webkit-backdrop-filter: blur(15px);
-    border: 1.5px solid rgba(255, 255, 255, 0.15);
+    border: 1.5px solid rgba(255, 255, 255, 0.3);
     padding: 6px 20px;
     border-radius: 30px;
     letter-spacing: 0.05em;
 }
 
-/* Timeline table container with curved corners */
+/* Timeline table container with curved corners and white background */
 .schedule-timeline-container {
     display: flex;
     flex-direction: column;
     gap: 0 !important;
     width: 100%;
-    background: linear-gradient(135deg, rgba(10, 15, 30, 0.95) 0%, rgba(5, 8, 15, 0.9) 100%) !important;
-    backdrop-filter: blur(25px);
-    -webkit-backdrop-filter: blur(25px);
+    background: #ffffff !important;
     border-radius: 24px !important;
-    border: 2px solid rgba(255, 255, 255, 0.1) !important;
-    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.7) !important;
+    border: 1px solid #e2e8f0 !important;
+    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.15) !important;
     overflow: hidden !important;
     box-sizing: border-box;
 }
@@ -136,12 +133,12 @@ body:has(#slide-schedule.tv-slide--active) .tv-topbar {
     display: grid;
     grid-template-columns: 1.2fr 0.8fr 310px;
     align-items: center;
-    background: transparent !important;
+    background: #ffffff !important;
     border: none !important;
     border-radius: 0 !important;
     box-shadow: none !important;
-    border-bottom: 1.5px solid rgba(255, 255, 255, 0.08) !important;
-    padding: 18px 38px;
+    border-bottom: 1px solid #f1f5f9 !important;
+    padding: 24px 38px !important; /* Increased padding to make the table cards bigger */
     box-sizing: border-box;
     overflow: hidden;
     transition: all 0.25s ease;
@@ -161,23 +158,23 @@ body:has(#slide-schedule.tv-slide--active) .tv-topbar {
     transition: all 0.3s ease;
 }
 
-/* Inline index indicator */
+/* Inline index indicator - Enlarged for better visibility */
 .schedule-index-inline {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 44px;
-    height: 44px;
+    width: 48px;
+    height: 48px;
     border-radius: 50%;
-    font-size: 16px;
+    font-size: 18px;
     font-weight: 900;
     font-family: 'Outfit', sans-serif;
     flex-shrink: 0;
 }
-.schedule-index-inline.num-blue { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1.5px solid rgba(59, 130, 246, 0.3); }
-.schedule-index-inline.num-green { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1.5px solid rgba(16, 185, 129, 0.3); }
-.schedule-index-inline.num-gray { background: rgba(148, 163, 184, 0.15); color: #94a3b8; border: 1.5px solid rgba(148, 163, 184, 0.2); }
-.schedule-index-inline.num-amber { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1.5px solid rgba(245, 158, 11, 0.3); }
+.schedule-index-inline.num-blue { background: rgba(37, 99, 235, 0.08); color: #2563eb; border: 1.5px solid rgba(37, 99, 235, 0.2); }
+.schedule-index-inline.num-green { background: rgba(16, 185, 129, 0.08); color: #10b981; border: 1.5px solid rgba(16, 185, 129, 0.2); }
+.schedule-index-inline.num-gray { background: rgba(148, 163, 184, 0.08); color: #64748b; border: 1.5px solid rgba(148, 163, 184, 0.15); }
+.schedule-index-inline.num-amber { background: rgba(245, 158, 11, 0.08); color: #d97706; border: 1.5px solid rgba(245, 158, 11, 0.2); }
 
 /* Left Column: Program details */
 .schedule-card-program-col {
@@ -194,25 +191,25 @@ body:has(#slide-schedule.tv-slide--active) .tv-topbar {
     overflow: hidden;
 }
 .schedule-program-title {
-    font-size: 24px !important;
-    font-weight: 900;
-    color: #fff;
+    font-size: 26px !important; /* Increased font-size for a bigger table */
+    font-weight: 800;
+    color: #0f172a !important; /* Dark text for light background */
     margin: 0;
-    letter-spacing: -0.012em;
+    letter-spacing: -0.01em;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 .program-sec-tag {
-    background: rgba(255, 255, 255, 0.08);
-    color: rgba(255, 255, 255, 0.9);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 8px;
-    padding: 4px 14px;
-    font-size: 12px !important;
+    background: #f1f5f9;
+    color: #475569;
+    border: none;
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 11px !important;
     font-weight: 800;
     text-transform: uppercase;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.05em;
     width: fit-content;
     flex-shrink: 0;
 }
@@ -247,7 +244,7 @@ body:has(#slide-schedule.tv-slide--active) .tv-topbar {
     white-space: nowrap;
 }
 .no-results-placeholder {
-    color: rgba(255, 255, 255, 0.15);
+    color: #cbd5e1; /* Darker placeholder text for white background */
     font-size: 24px;
     font-weight: 700;
     letter-spacing: 0.05em;
@@ -262,37 +259,65 @@ body:has(#slide-schedule.tv-slide--active) .tv-topbar {
     gap: 6px;
 }
 .schedule-time-label {
-    font-size: 32px !important;
-    font-weight: 900;
-    color: #ffffff;
-    font-family: 'Plus Jakarta Sans', monospace;
-    letter-spacing: -0.02em;
-    text-shadow: 0 0 15px rgba(255, 255, 255, 0.15);
+    font-size: 34px !important; /* Increased font-size for a bigger table */
+    font-weight: 800;
+    color: #0f172a !important; /* Dark text for light background */
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    letter-spacing: -0.015em;
     white-space: nowrap !important;
 }
 .program-day-tag {
     display: inline-block;
     font-size: 11px;
     font-weight: 800;
-    background: rgba(255, 255, 255, 0.08);
-    color: rgba(255, 255, 255, 0.7);
-    padding: 3px 10px;
-    border-radius: 5px;
+    background: #f1f5f9;
+    color: #475569;
+    padding: 4px 10px;
+    border-radius: 6px;
     letter-spacing: 0.05em;
     width: fit-content;
+    text-transform: uppercase;
 }
 
-/* Highlighting spotlight features */
+/* Status Outline Badges */
+.schedule-status {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 14px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+.schedule-status.schedule-status--pending {
+    background: #eff6ff !important;
+    border: 1.5px solid #3b82f6 !important;
+    color: #2563eb !important;
+}
+.schedule-status.schedule-status--live {
+    background: #f0fdf4 !important;
+    border: 1.5px solid #10b981 !important;
+    color: #10b981 !important;
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.1);
+}
+.schedule-status.schedule-status--done {
+    background: #f8fafc !important;
+    border: 1.5px solid #94a3b8 !important;
+    color: #64748b !important;
+}
+
+/* Highlighting active program row with subtle style */
 .schedule-card.is-running-program {
-    background: rgba(16, 185, 129, 0.15) !important;
-    box-shadow: inset 0 0 25px rgba(16, 185, 129, 0.12) !important;
+    background: #f8fafc !important; /* soft active background */
 }
 .schedule-card.is-running-program .schedule-card-accent {
     background: var(--first-team-color, #10b981) !important;
 }
 
 .schedule-card.is-break {
-    background: rgba(245, 158, 11, 0.1) !important;
+    background: #fffbeb !important;
 }
 .schedule-card.is-break .schedule-card-accent {
     background: #f59e0b !important;
@@ -318,6 +343,9 @@ body:has(#slide-schedule.tv-slide--active) .tv-topbar {
 
     .schedule-timeline-container {
         gap: 14px !important;
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
     }
 
     .schedule-card {
@@ -325,6 +353,9 @@ body:has(#slide-schedule.tv-slide--active) .tv-topbar {
         gap: 12px !important;
         padding: 18px 24px !important;
         border-radius: 16px !important;
+        background: #ffffff !important;
+        border: 1px solid #e2e8f0 !important;
+        margin-bottom: 12px;
     }
 
     .schedule-card-accent {
@@ -364,7 +395,7 @@ body:has(#slide-schedule.tv-slide--active) .tv-topbar {
         flex-direction: row !important;
         align-items: center !important;
         justify-content: space-between !important;
-        border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+        border-top: 1px solid #f1f5f9 !important;
         padding-top: 10px !important;
         margin-top: 4px !important;
     }
@@ -400,6 +431,30 @@ body:has(#slide-schedule.tv-slide--active) .tv-topbar {
         font-size: 12px !important;
         padding: 4px 12px !important;
     }
+}
+
+/* Make background bright and glowing like in the reference image */
+body.tv-schedule-active .stage-backdrop {
+    background: radial-gradient(circle at 30% 30%, 
+        var(--first-team-color, #10b981) 0%, 
+        color-mix(in srgb, var(--first-team-color, #10b981) 75%, #047857) 45%, 
+        color-mix(in srgb, var(--first-team-color, #10b981) 40%, #064e3b) 100%) !important;
+    transition: background 1.2s ease;
+}
+
+body.tv-schedule-active #tvBgVideo {
+    opacity: 0.65 !important;
+    mix-blend-mode: screen !important;
+}
+
+body.tv-schedule-active .glow-orb-1 {
+    background: radial-gradient(circle, var(--first-team-color, #10b981) 0%, transparent 80%) !important;
+    opacity: 0.8 !important;
+}
+
+body.tv-schedule-active .glow-orb-2 {
+    background: radial-gradient(circle, color-mix(in srgb, var(--first-team-color, #10b981) 80%, #fff) 0%, transparent 80%) !important;
+    opacity: 0.8 !important;
 }
 </style>
 

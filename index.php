@@ -20,7 +20,7 @@ try {
     $eventTitle = trim((string)($event['title'] ?? 'Kauzariyya Musabaqa 2026-27'));
     $eventTitle = $eventTitle !== '' ? $eventTitle : 'Kauzariyya Musabaqa 2026-27';
     
-    $eventStart = !empty($event['start_date']) ? (string)$event['start_date'] : '2027-05-04T09:00:00';
+    $eventStart = !empty($event['start_date']) ? str_replace(' ', 'T', (string)$event['start_date']) : '2027-05-04T09:00:00';
     $eventDateFormatted = !empty($event['start_date']) 
         ? date('d F Y', strtotime((string)$event['start_date'])) 
         : '4 - 5 May 2027';
@@ -142,8 +142,12 @@ try {
             <div class="hero-actions">
                 <a href="home.php" class="btn-primary">Live Dashboard</a>
                 <a href="live-display/" class="btn-secondary" target="_blank">Event Slideshow</a>
-                <a href="https://github.com/MHD-Hudaif/mobile-app-musabaqa/releases/download/latest/kauzariyya-musabaqa.apk" class="btn-secondary mobile-only" download>
-                    <i class="fa-solid fa-mobile-screen-button" style="margin-right: 6px; color: var(--brand-gold);"></i> Get Mobile App
+                <a href="https://github.com/MHD-Hudaif/mobile-app-musabaqa/releases/download/latest/kauzariyya-musabaqa.apk" class="btn-app-download mobile-only" download>
+                    <i class="fa-brands fa-android download-icon"></i>
+                    <div class="download-text-wrap">
+                        <span class="download-sub">DOWNLOAD FOR</span>
+                        <span class="download-main">Android App (APK)</span>
+                    </div>
                 </a>
             </div>
             

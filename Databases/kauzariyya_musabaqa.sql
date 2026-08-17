@@ -119,8 +119,8 @@ CREATE TABLE `musabaqa_events` (
   `scoreboard_enabled` tinyint(1) DEFAULT '1',
   `scoreboard_locked` tinyint(1) DEFAULT '0',
   `status` enum('draft','active','completed') DEFAULT 'draft',
-  `start_date` date DEFAULT NULL,
-  `end_date` date DEFAULT NULL,
+  `start_date` datetime DEFAULT NULL,
+  `end_date` datetime DEFAULT NULL,
   `created_by` int DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
