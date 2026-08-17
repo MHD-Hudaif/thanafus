@@ -103,19 +103,23 @@
                 hour12: true
             });
             if (els.clock) els.clock.textContent = time;
-
-            // Update MC stage timer
-            updateStageTimer();
         };
 
         update();
         state.timers.clock = setInterval(update, 1000);
+
+        // High-frequency stage timer updater to ensure zero delay/lag
+        state.timers.stageTimer = setInterval(updateStageTimer, 100);
     }
 
     function updateStageTimer() {
         const timerDisplay = document.getElementById('stageTimerDisplay');
         const timerBox = document.getElementById('stageTimerBox');
-        if (!timerDisplay) return;
+
+        const globalTimerDisplay = document.getElementById('globalStageTimerDisplay');
+        const globalTimerBox = document.getElementById('globalStageTimerBox');
+
+        if (!timerDisplay && !globalTimerDisplay) return;
 
         const running = state.live_timer_running || 0;
         const startTime = state.live_timer_start_time || 0;
@@ -139,7 +143,9 @@
             const totalSeconds = Math.floor(totalElapsedMs / 1000);
             const mins = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
             const secs = String(totalSeconds % 60).padStart(2, '0');
-            timerDisplay.textContent = `${mins}:${secs}`;
+            const timeText = `${mins}:${secs}`;
+
+            if (timerDisplay) timerDisplay.textContent = timeText;
             if (timerBox) {
                 timerBox.style.display = 'flex';
                 if (running > 0) {
@@ -148,11 +154,27 @@
                     timerBox.classList.remove('is-running');
                 }
             }
+
+            if (globalTimerDisplay) globalTimerDisplay.textContent = timeText;
+            if (globalTimerBox) {
+                globalTimerBox.style.display = 'flex';
+                if (running > 0) {
+                    globalTimerBox.classList.add('is-running');
+                } else {
+                    globalTimerBox.classList.remove('is-running');
+                }
+            }
         } else {
-            timerDisplay.textContent = '00:00';
+            if (timerDisplay) timerDisplay.textContent = '00:00';
             if (timerBox) {
                 timerBox.style.display = 'none';
                 timerBox.classList.remove('is-running');
+            }
+
+            if (globalTimerDisplay) globalTimerDisplay.textContent = '00:00';
+            if (globalTimerBox) {
+                globalTimerBox.style.display = 'none';
+                globalTimerBox.classList.remove('is-running');
             }
         }
     }
@@ -1780,7 +1802,9 @@
         }
 
         let interval = state.refresh_interval || (TV_BOOT.initial?.settings?.refresh_interval) || 5000;
-        if (state.performance_mode === 'performance') {
+        if (state.activeSlide === 'current-programs') {
+            interval = 500; // Boost to 500ms for instantaneous stage timer start/stop updates
+        } else if (state.performance_mode === 'performance') {
             interval = Math.max(10000, interval * 2);
         }
 

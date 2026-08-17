@@ -388,6 +388,7 @@ $nextProgTime = !empty($initNextProg['start_label']) ? $initNextProg['start_labe
     }
 
     .performer-name {
+        display: none !important;
         font-size: 60px;
         font-weight: 900;
         margin: 0;
@@ -1082,7 +1083,7 @@ $nextProgTime = !empty($initNextProg['start_label']) ? $initNextProg['start_labe
             syncTheme();
         } else {
             fetchCurrentProgramState();
-            const pollInterval = (document.documentElement.classList.contains('performance-mode') || window.isLowEndDevice) ? 5000 : 2000;
+            const pollInterval = (document.documentElement.classList.contains('performance-mode') || window.isLowEndDevice) ? 2000 : 500;
             setInterval(fetchCurrentProgramState, pollInterval);
         }
 

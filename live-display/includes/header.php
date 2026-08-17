@@ -158,6 +158,14 @@ $initialBgVideoSrc = tv_get_video_src($headerFirstColor);
                     <div class="tv-brand-title" data-event-title><?= e($eventPayload['title']) ?></div>
                 </div>
             </div>
+
+            <!-- Global Live Stage Timer (Top Left) -->
+            <div class="global-stage-timer" id="globalStageTimerBox" style="display: none; align-items: center; gap: 8px; background: rgba(239, 68, 68, 0.18); border: 1px solid rgba(239, 68, 68, 0.4); padding: 5px 12px; border-radius: 8px; font-weight: 700; color: #f87171; font-family: 'Space Grotesk', 'Cairo', sans-serif; font-size: 12.5px; margin-right: auto; margin-left: 20px; pointer-events: auto; box-shadow: 0 0 15px rgba(239, 68, 68, 0.15); transition: opacity 0.3s ease;">
+                <i class="fa-solid fa-stopwatch animate-pulse" style="color: #ef4444;"></i>
+                <span style="font-size: 9.5px; opacity: 0.85; letter-spacing: 0.05em; text-transform: uppercase;">STAGE TIMER</span>
+                <span id="globalStageTimerDisplay" style="font-size: 14.5px; font-weight: 800; color: #fff; min-width: 44px; text-align: center;">00:00</span>
+            </div>
+
             <div class="tv-topbar-right">
                 <button type="button" class="tv-fullscreen-btn" id="tvFullscreenBtn" onclick="toggleTvFullscreen()" aria-label="Toggle Full Screen" title="Toggle Full Screen">
                     <i class="fa-solid fa-expand" id="tvFsIcon"></i>
