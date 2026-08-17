@@ -71,6 +71,12 @@ body.tv-intro-only #tvViewportScaler {
     visibility: hidden !important;
     transition: opacity 0.4s ease, visibility 0.4s ease !important;
     z-index: 99999 !important;
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    padding: 0 !important;
+    margin: 0 !important;
 }
 
 .tv-intro-video-element {

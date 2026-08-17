@@ -83,7 +83,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     $slides = $_POST['slides'] ?? [];
+    $perfMode = trim((string)($_POST['performance_mode'] ?? 'quality'));
+    if (!in_array($perfMode, ['quality', 'performance'], true)) {
+        $perfMode = 'quality';
+    }
     try {
+        require_once __DIR__ . '/includes/functions.php';
+        $settings = tv_get_settings($activeEventId);
+        $settings['performance_mode'] = $perfMode;
+        tv_save_settings($activeEventId, $settings);
+
         admin_db_transaction($pdo, function ($pdo) use ($slides, $activeEventId) {
             foreach ($slides as $key => $slideData) {
                 $title = trim((string)($slideData['title'] ?? ''));
@@ -134,11 +143,12 @@ if ($activeEventId > 0) {
     $stmt->execute();
     $components = $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
-$flash = admin_take_flash();
 
-// Load TV functions to fetch live statistics
+// Load TV functions to fetch live statistics & settings
 require_once __DIR__ . '/includes/functions.php';
+$tvSettings = tv_get_settings($activeEventId);
 $stats = tv_stats($activeEventId);
+$flash = admin_take_flash();
 
 require_once __DIR__ . '/../includes/header.php';
 require_once __DIR__ . '/../includes/sidebar.php';
@@ -443,6 +453,38 @@ body.dark .tv-stat-card {
                                 <?php endforeach; ?>
                             </tbody>
                         </table>
+                    </div>
+
+                    <!-- Performance Profile Selection -->
+                    <div class="full-width mt-6" style="border-top: 1px dashed var(--border-color, #e2e8f0); padding-top: 20px;">
+                        <h3 style="font-size: 16px; font-weight: 700; margin: 0 0 12px 0; display: flex; align-items: center; gap: 8px;">
+                            <i class="fa-solid fa-gauge-high text-primary"></i> Broadcast Performance Profile
+                        </h3>
+                        <div style="background: var(--bg-secondary, #f8fafc); border: 1px solid var(--border-color, #e2e8f0); border-radius: 12px; padding: 18px; display: flex; flex-direction: column; gap: 14px;">
+                            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+                                <span style="font-size: 14px; font-weight: 600;">Display Performance Profile:</span>
+                                <div style="display: flex; gap: 16px;">
+                                    <label style="display: inline-flex; align-items: center; gap: 8px; font-weight: 600; cursor: pointer;">
+                                        <input type="radio" name="performance_mode" value="quality" <?= ($tvSettings['performance_mode'] ?? 'quality') === 'quality' ? 'checked' : '' ?>> Quality Mode (60 FPS, full animations)
+                                    </label>
+                                    <label style="display: inline-flex; align-items: center; gap: 8px; font-weight: 600; cursor: pointer;">
+                                        <input type="radio" name="performance_mode" value="performance" <?= ($tvSettings['performance_mode'] ?? 'quality') === 'performance' ? 'checked' : '' ?>> Performance Mode (30 FPS, low power)
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="performance-checklist" style="border-top: 1px dashed var(--border-color, #e2e8f0); padding-top: 12px; font-size: 11.5px; opacity: 0.85;">
+                                <div style="font-weight: 700; margin-bottom: 8px;">Performance Mode Optimizations:</div>
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 6px 12px;">
+                                    <div><i class="fa-solid fa-circle-check text-success" style="color: #10b981;"></i> Reduced animations</div>
+                                    <div><i class="fa-solid fa-circle-check text-success" style="color: #10b981;"></i> Disable particles</div>
+                                    <div><i class="fa-solid fa-circle-check text-success" style="color: #10b981;"></i> Disable backdrop blur</div>
+                                    <div><i class="fa-solid fa-circle-check text-success" style="color: #10b981;"></i> Disable heavy shadows</div>
+                                    <div><i class="fa-solid fa-circle-check text-success" style="color: #10b981;"></i> Disable continuous rotation</div>
+                                    <div><i class="fa-solid fa-circle-check text-success" style="color: #10b981;"></i> Reduce refresh frequency</div>
+                                    <div><i class="fa-solid fa-circle-check text-success" style="color: #10b981;"></i> Use simpler transitions</div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="full-width flex justify-end gap-3 mt-4">

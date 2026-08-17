@@ -51,6 +51,10 @@ $initialBgVideoSrc = tv_get_video_src($headerFirstColor);
         if (window.isLowEndDevice) {
             document.documentElement.classList.add('low-perf-device');
         }
+        <?php if (($settings['performance_mode'] ?? 'quality') === 'performance'): ?>
+            document.documentElement.classList.add('performance-mode');
+            document.documentElement.classList.add('low-perf-device');
+        <?php endif; ?>
     </script>
     <style>
         .tv-app { animation: tv-page-in .5s ease both; }
@@ -65,20 +69,56 @@ $initialBgVideoSrc = tv_get_video_src($headerFirstColor);
             to { opacity: 0; transform: scale(0.985); }
         }
         
-        /* Low performance device overrides */
+        /* Low performance device and Performance Mode overrides */
         .low-perf-device #flowCanvas,
         .low-perf-device #tvBgVideo,
-        .low-perf-device .glow-orb {
+        .low-perf-device .glow-orb,
+        .performance-mode #flowCanvas,
+        .performance-mode #tvBgVideo,
+        .performance-mode .glow-orb,
+        .performance-mode .card-chevrons-svg,
+        .performance-mode .constellation-lasers,
+        .performance-mode .orbital-card::after,
+        .performance-mode .orbital-card-dark-wave,
+        .performance-mode .constellation-star-svg,
+        .performance-mode .stage-backdrop {
             display: none !important;
         }
-        .low-perf-device .tv-backdrop {
+        .low-perf-device .tv-backdrop,
+        .performance-mode .tv-backdrop {
             background: radial-gradient(circle at 50% 50%, #0c1220 0%, #05080f 100%) !important;
         }
-        .low-perf-device * {
+        .low-perf-device *,
+        .performance-mode * {
             text-shadow: none !important;
             box-shadow: none !important;
             backdrop-filter: none !important;
             -webkit-backdrop-filter: none !important;
+        }
+
+        /* Stop continuous rotations and pulsing keyframe animations */
+        .performance-mode .star-rotation-group,
+        .performance-mode .constellation-laser-line,
+        .performance-mode .travel-border-rect,
+        .performance-mode .stage-live-badge .live-dot,
+        .performance-mode .live-dot,
+        .performance-mode .animated-card-group,
+        .performance-mode .live-pulse-dot,
+        .performance-mode .animate-pulse,
+        .performance-mode .pulse-dot-red {
+            animation: none !important;
+            animation-play-state: paused !important;
+        }
+
+        /* Simpler and faster transitions for low power rendering */
+        .performance-mode .orbital-card,
+        .performance-mode .active-stage-timer,
+        .performance-mode .active-chest-hero,
+        .performance-mode .orbital-extra-teams-bar,
+        .performance-mode .glass-panel,
+        .performance-mode .tv-slide,
+        .performance-mode .program-row {
+            transition-duration: 0.15s !important;
         }
     </style>
 </head>

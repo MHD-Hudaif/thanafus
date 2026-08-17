@@ -36,6 +36,8 @@ try {
             $settings['active_slide'] = str_replace('_', '-', (string)($_POST['slide'] ?? 'intro'));
         } elseif ($action === 'theme') {
             $settings['theme'] = (string)($_POST['theme'] ?? 'emerald');
+        } elseif ($action === 'performance_mode') {
+            $settings['performance_mode'] = (string)($_POST['performance_mode'] ?? 'quality');
         } else {
             tv_json_error('Unknown TV control action.', 422);
         }

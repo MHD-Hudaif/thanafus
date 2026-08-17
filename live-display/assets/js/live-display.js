@@ -231,7 +231,7 @@
     function initFlowCanvas() {
         const canvas = document.getElementById('flowCanvas');
         if (!canvas) return;
-        if (isLowEndDevice) {
+        if (isLowEndDevice || state.performance_mode === 'performance') {
             canvas.style.display = 'none';
             return;
         }
@@ -400,16 +400,11 @@
     let introTimeline = null;
 
     function playNextIntroVideo() {
-        const videoEl = document.getElementById('introVideoPlayer') || document.querySelector('[data-intro-video]');
-        if (!videoEl) return;
-
-        if (videoEl.paused) {
-            videoEl.play().catch(() => {});
-        }
+        // Handled centrally in setActiveSlide to prevent duplicate play calls and stutters
     }
 
     function triggerIntroAnimations() {
-        playNextIntroVideo();
+        // Playback is controlled in setActiveSlide
 
         const thanafusLogo = document.getElementById('introThanafusLogo');
         const kauzariyyaLogo = document.getElementById('introKauzariyyaLogo');
@@ -890,10 +885,12 @@
         });
 
         // 6. Subtle Micro-Hovering Idle Dynamics (Constellation Float)
-        if (card1) gsap.to(card1, { y: '-=4', duration: 3.8, ease: 'sine.inOut', yoyo: true, repeat: -1, delay: 0.8 });
-        if (card2) gsap.to(card2, { x: '+=4', duration: 4.2, ease: 'sine.inOut', yoyo: true, repeat: -1, delay: 1.0 });
-        if (card3) gsap.to(card3, { x: '-=4', duration: 4.0, ease: 'sine.inOut', yoyo: true, repeat: -1, delay: 1.2 });
-        if (card4) gsap.to(card4, { y: '+=4', duration: 4.4, ease: 'sine.inOut', yoyo: true, repeat: -1, delay: 1.4 });
+        if (state.performance_mode !== 'performance') {
+            if (card1) gsap.to(card1, { y: '-=4', duration: 3.8, ease: 'sine.inOut', yoyo: true, repeat: -1, delay: 0.8 });
+            if (card2) gsap.to(card2, { x: '+=4', duration: 4.2, ease: 'sine.inOut', yoyo: true, repeat: -1, delay: 1.0 });
+            if (card3) gsap.to(card3, { x: '-=4', duration: 4.0, ease: 'sine.inOut', yoyo: true, repeat: -1, delay: 1.2 });
+            if (card4) gsap.to(card4, { y: '+=4', duration: 4.4, ease: 'sine.inOut', yoyo: true, repeat: -1, delay: 1.4 });
+        }
     }
 
     function scheduleRowsPerPage() {
@@ -1625,6 +1622,25 @@
                                 pathLower.includes('/current-programs');
 
         const settings = data.settings || {};
+        
+        // Sync performance mode
+        state.performance_mode = settings.performance_mode || 'quality';
+        if (state.performance_mode === 'performance') {
+            document.documentElement.classList.add('performance-mode');
+            document.documentElement.classList.add('low-perf-device');
+            window.isFlowCanvasPaused = true;
+            const flowCanvas = document.getElementById('flowCanvas');
+            if (flowCanvas) flowCanvas.style.display = 'none';
+        } else {
+            document.documentElement.classList.remove('performance-mode');
+            if (!isLowEndDevice) {
+                document.documentElement.classList.remove('low-perf-device');
+                window.isFlowCanvasPaused = window.isIntroSlideActive;
+                const flowCanvas = document.getElementById('flowCanvas');
+                if (flowCanvas) flowCanvas.style.display = 'block';
+            }
+        }
+
         const wasAuto = state.mode === 'auto';
         const wasPlaying = state.is_playing;
 
@@ -1728,7 +1744,13 @@
 
         // Populate slides with live data
         if (data.leaderboard) renderLeaderboard(data.leaderboard);
-        if (data.current)     renderCurrent(data.current);
+        if (data.current) {
+            const currentHash = JSON.stringify(data.current);
+            if (state.currentSignature !== currentHash) {
+                state.currentSignature = currentHash;
+                renderCurrent(data.current);
+            }
+        }
         if (data.schedule)    renderSchedule(data.schedule);
         if (data.score_reveal) checkScoreRevealEvent(data.score_reveal);
 
@@ -1750,7 +1772,10 @@
             state.timers.refresh = null;
         }
 
-        const interval = state.refresh_interval || (TV_BOOT.initial?.settings?.refresh_interval) || 5000;
+        let interval = state.refresh_interval || (TV_BOOT.initial?.settings?.refresh_interval) || 5000;
+        if (state.performance_mode === 'performance') {
+            interval = Math.max(10000, interval * 2);
+        }
 
         state.timers.refresh = setTimeout(async () => {
             await syncSettings();
@@ -1975,6 +2000,14 @@
             return;
         }
 
+        // Pause intro video immediately when transitioning away to prevent duplicate audio/video decoding overhead
+        if (state.activeSlide === 'intro' && normalizedKey !== 'intro') {
+            const introVideo = document.getElementById('introVideoPlayer') || document.querySelector('[data-intro-video]');
+            if (introVideo) {
+                try { introVideo.pause(); } catch (_) {}
+            }
+        }
+
         const slides = Array.from(document.querySelectorAll('.tv-slide'));
         els.body.classList.toggle('tv-schedule-active', normalizedKey === 'schedule');
         els.body.classList.toggle('tv-leaderboard-active', normalizedKey === 'leaderboard');
@@ -1986,16 +2019,27 @@
         window.isFlowCanvasPaused = isIntro || isLowEndDevice;
 
         if (bgVideo) {
-            if (isIntro || isLowEndDevice) {
+            if (isIntro || isLowEndDevice || state.performance_mode === 'performance') {
                 if (!bgVideo.paused) {
                     try { bgVideo.pause(); } catch (_) {}
                 }
                 bgVideo.style.display = 'none';
             } else {
-                if (bgVideo.paused) {
-                    try { bgVideo.play().catch(() => {}); } catch (_) {}
+                // If transitioning FROM intro, delay showing/playing the background video
+                // until after the 400ms transition completes.
+                if (currentActive && currentActive.id === 'slide-intro') {
+                    setTimeout(() => {
+                        if (state.activeSlide !== 'intro' && bgVideo.paused) {
+                            try { bgVideo.play().catch(() => {}); } catch (_) {}
+                            bgVideo.style.display = 'block';
+                        }
+                    }, 400);
+                } else {
+                    if (bgVideo.paused) {
+                        try { bgVideo.play().catch(() => {}); } catch (_) {}
+                    }
+                    bgVideo.style.display = 'block';
                 }
-                bgVideo.style.display = 'block';
             }
         }
 
@@ -2024,9 +2068,10 @@
                 }
 
                 if (normalizedKey === 'intro') {
-                    const video = document.querySelector('[data-intro-video]') || document.querySelector('.tv-intro-video video');
+                    const video = document.getElementById('introVideoPlayer') || document.querySelector('[data-intro-video]');
                     if (video) {
                         try {
+                            video.currentTime = 0;
                             video.play().catch(() => {});
                         } catch (_) {}
                     }

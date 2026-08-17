@@ -1069,8 +1069,15 @@ $nextProgTime = !empty($initNextProg['start_label']) ? $initNextProg['start_labe
                 .catch(err => console.error('Fetch error:', err));
         }
 
-        fetchCurrentProgramState();
-        setInterval(fetchCurrentProgramState, 2000);
+        if (!window.IS_SINGLE_PAGE) {
+            // Do not run duplicate polling when running inside the main slideshow container,
+            // as parent live-display.js already syncs and calls renderCurrent.
+            syncTheme();
+        } else {
+            fetchCurrentProgramState();
+            const pollInterval = (document.documentElement.classList.contains('performance-mode') || window.isLowEndDevice) ? 5000 : 2000;
+            setInterval(fetchCurrentProgramState, pollInterval);
+        }
 
         // Fluid GSAP Entrance Sequence
         window.triggerCurrentProgramAnimations = function() {

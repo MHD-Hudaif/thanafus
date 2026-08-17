@@ -180,6 +180,32 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                 </div>
             </div>
 
+            <!-- Performance Profile Panel -->
+            <div class="panel">
+                <div class="page-subtitle mb-4">Performance Profile</div>
+                <div class="quick-control-card" style="display: flex; flex-direction: column; gap: 14px; align-items: stretch;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                        <span class="text-sm">TV Display Mode:</span>
+                        <div style="display: flex; gap: 4px;">
+                            <button class="btn <?= ($tvSettings['performance_mode'] ?? 'quality') === 'quality' ? 'btn-primary' : 'btn-secondary' ?> btn-sm" id="btnPerfQuality" type="button">Quality Mode (60 FPS)</button>
+                            <button class="btn <?= ($tvSettings['performance_mode'] ?? 'quality') === 'performance' ? 'btn-primary' : 'btn-secondary' ?> btn-sm" id="btnPerfPerformance" type="button">Performance Mode (30 FPS)</button>
+                        </div>
+                    </div>
+                    <div class="performance-checklist" style="border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 12px; margin-top: 4px; font-size: 11.5px; color: var(--text-muted);">
+                        <div style="font-weight: 700; margin-bottom: 8px; color: var(--text-primary);">Performance Mode Features:</div>
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px 12px; line-height: 1.4;">
+                            <div><i class="fa-solid fa-square-check text-success" style="color: #10b981;"></i> Reduced animations</div>
+                            <div><i class="fa-solid fa-square-check text-success" style="color: #10b981;"></i> Disable particles</div>
+                            <div><i class="fa-solid fa-square-check text-success" style="color: #10b981;"></i> Disable backdrop blur</div>
+                            <div><i class="fa-solid fa-square-check text-success" style="color: #10b981;"></i> Disable heavy shadows</div>
+                            <div><i class="fa-solid fa-square-check text-success" style="color: #10b981;"></i> Disable continuous rotation</div>
+                            <div><i class="fa-solid fa-square-check text-success" style="color: #10b981;"></i> Reduce refresh frequency</div>
+                            <div><i class="fa-solid fa-square-check text-success" style="color: #10b981;"></i> Use simpler transitions</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Slides Configuration Form -->
             <div class="panel">
                 <div class="page-subtitle mb-4">Slide rotation sequence</div>
@@ -475,6 +501,28 @@ require_once __DIR__ . '/../../includes/sidebar.php';
             this.className = 'btn btn-primary btn-sm';
             const auto = document.getElementById('btnModeAuto');
             if (auto) auto.className = 'btn btn-secondary btn-sm';
+        }
+    });
+
+    // Performance Mode switching
+    document.getElementById('btnPerfQuality')?.addEventListener('click', async function() {
+        const res = await postSettings('performance_mode', { performance_mode: 'quality' });
+        if (res && res.success) {
+            this.className = 'btn btn-primary btn-sm';
+            const perfBtn = document.getElementById('btnPerfPerformance');
+            if (perfBtn) perfBtn.className = 'btn btn-secondary btn-sm';
+            // Reload preview iframe
+            if (iframe) iframe.src = iframe.src;
+        }
+    });
+    document.getElementById('btnPerfPerformance')?.addEventListener('click', async function() {
+        const res = await postSettings('performance_mode', { performance_mode: 'performance' });
+        if (res && res.success) {
+            this.className = 'btn btn-primary btn-sm';
+            const qualBtn = document.getElementById('btnPerfQuality');
+            if (qualBtn) qualBtn.className = 'btn btn-secondary btn-sm';
+            // Reload preview iframe
+            if (iframe) iframe.src = iframe.src;
         }
     });
 

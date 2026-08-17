@@ -162,6 +162,7 @@ function live_display_default_settings(): array
         'mode' => 'auto',
         'active_slide' => 'intro',
         'theme' => 'emerald',
+        'performance_mode' => 'quality',
         'refresh_interval' => 5000,
         'slides' => live_display_default_slides(),
         'sponsors' => [],
@@ -260,6 +261,9 @@ function live_display_normalize_settings(array $settings): array
     $settings['theme'] = in_array((string)$settings['theme'], ['emerald', 'royal', 'midnight'], true)
         ? (string)$settings['theme']
         : 'emerald';
+    $settings['performance_mode'] = in_array((string)($settings['performance_mode'] ?? 'quality'), ['quality', 'performance'], true)
+        ? (string)$settings['performance_mode']
+        : 'quality';
     $settings['is_playing'] = (bool)$settings['is_playing'];
     $settings['refresh_interval'] = max(2000, min(30000, (int)$settings['refresh_interval']));
 
