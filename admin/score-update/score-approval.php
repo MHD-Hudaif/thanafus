@@ -369,7 +369,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' || isset($_GET['ajax']) || isset($_GET
                         if ($rank >= 1 && $rank <= 3) {
                             $gradeBonus = 0;
                         }
-                        $entry['rank'] = $rank;
+                        $finalRank = $rank;
+                        if (!isset($pointConfig[3]) && $finalRank >= 3) {
+                            $finalRank = null;
+                        }
+                        $entry['rank'] = $finalRank;
                         $entry['grade'] = $gradeInfo['grade'];
                         $entry['grade_bonus'] = $gradeBonus;
                         $entry['team_points'] = $teamPoints + $gradeBonus;
@@ -428,7 +432,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' || isset($_GET['ajax']) || isset($_GET
                                         <td><strong><?= number_format((float)$e['final_total'], 2) ?></strong></td>
                                         <td><span class="badge badge-<?= ($e['grade'] ?? '') === 'A' ? 'success' : 'neutral' ?>">Grade <?= e($e['grade'] ?? '—') ?></span></td>
                                         <td style="text-align: center; color: #34d399; font-weight: 800;">+<?= number_format((float)($e['grade_bonus'] ?? 0), 0) ?></td>
-                                        <td><strong><?= (int)$e['rank'] ?></strong></td>
+                                        <td><strong><?= $e['rank'] ? (int)$e['rank'] : '—' ?></strong></td>
                                         <td><strong><?= (int)$e['team_points'] ?></strong></td>
                                     <?php endif; ?>
                                 </tr>

@@ -537,8 +537,12 @@ function admin_recalculate_program_results(PDO $pdo, int $eventId, int $programI
                 if ($rank >= 1 && $rank <= 3) {
                     $eBonus = 0.0;
                 }
+                $finalRank = $rank;
+                if (!isset($pointConfig[3]) && $finalRank >= 3) {
+                    $finalRank = null;
+                }
                 $entryTeamScore = $teamScore + $eBonus;
-                $update->execute([$finalScore, $rank, $entryTeamScore, $gradeInfo['grade'], $eBonus, 'completed', (int)$e['id'], $eventId, $programId]);
+                $update->execute([$finalScore, $finalRank, $entryTeamScore, $gradeInfo['grade'], $eBonus, 'completed', (int)$e['id'], $eventId, $programId]);
             }
             $position += $count;
         } elseif ($tiedMode === 'shared_sequential') {
@@ -552,8 +556,12 @@ function admin_recalculate_program_results(PDO $pdo, int $eventId, int $programI
                 if ($rank >= 1 && $rank <= 3) {
                     $eBonus = 0.0;
                 }
+                $finalRank = $rank;
+                if (!isset($pointConfig[3]) && $finalRank >= 3) {
+                    $finalRank = null;
+                }
                 $entryTeamScore = $teamScore + $eBonus;
-                $update->execute([$finalScore, $rank, $entryTeamScore, $gradeInfo['grade'], $eBonus, 'completed', (int)$e['id'], $eventId, $programId]);
+                $update->execute([$finalScore, $finalRank, $entryTeamScore, $gradeInfo['grade'], $eBonus, 'completed', (int)$e['id'], $eventId, $programId]);
             }
             $position += $count;
             $seqRank++;
@@ -567,8 +575,12 @@ function admin_recalculate_program_results(PDO $pdo, int $eventId, int $programI
                 if ($rank >= 1 && $rank <= 3) {
                     $eBonus = 0.0;
                 }
+                $finalRank = $rank;
+                if (!isset($pointConfig[3]) && $finalRank >= 3) {
+                    $finalRank = null;
+                }
                 $entryTeamScore = $teamScore + $eBonus;
-                $update->execute([$finalScore, $rank, $entryTeamScore, $gradeInfo['grade'], $eBonus, 'completed', (int)$e['id'], $eventId, $programId]);
+                $update->execute([$finalScore, $finalRank, $entryTeamScore, $gradeInfo['grade'], $eBonus, 'completed', (int)$e['id'], $eventId, $programId]);
                 $position++;
             }
         } else {
@@ -606,8 +618,12 @@ function admin_recalculate_program_results(PDO $pdo, int $eventId, int $programI
                 if ($rank >= 1 && $rank <= 3) {
                     $eBonus = 0.0;
                 }
+                $finalRank = $rank;
+                if (!isset($pointConfig[3]) && $finalRank >= 3) {
+                    $finalRank = null;
+                }
                 $entryTeamScore = $teamScore + $eBonus;
-                $update->execute([$finalScore, $rank, $entryTeamScore, $gradeInfo['grade'], $eBonus, 'completed', (int)$e['id'], $eventId, $programId]);
+                $update->execute([$finalScore, $finalRank, $entryTeamScore, $gradeInfo['grade'], $eBonus, 'completed', (int)$e['id'], $eventId, $programId]);
             }
             $position += $count;
         }
