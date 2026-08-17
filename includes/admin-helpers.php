@@ -534,6 +534,9 @@ function admin_recalculate_program_results(PDO $pdo, int $eventId, int $programI
                 $eMark = (float)($e['total_mark'] ?? $score);
                 $gradeInfo = admin_calculate_grade_info($eMark, $judgesCount, $settings);
                 $eBonus = $isMarkBased ? (float)$gradeInfo['grade_points'] : 0;
+                if ($rank >= 1 && $rank <= 3) {
+                    $eBonus = 0.0;
+                }
                 $entryTeamScore = $teamScore + $eBonus;
                 $update->execute([$finalScore, $rank, $entryTeamScore, $gradeInfo['grade'], $eBonus, 'completed', (int)$e['id'], $eventId, $programId]);
             }
@@ -546,6 +549,9 @@ function admin_recalculate_program_results(PDO $pdo, int $eventId, int $programI
                 $eMark = (float)($e['total_mark'] ?? $score);
                 $gradeInfo = admin_calculate_grade_info($eMark, $judgesCount, $settings);
                 $eBonus = $isMarkBased ? (float)$gradeInfo['grade_points'] : 0;
+                if ($rank >= 1 && $rank <= 3) {
+                    $eBonus = 0.0;
+                }
                 $entryTeamScore = $teamScore + $eBonus;
                 $update->execute([$finalScore, $rank, $entryTeamScore, $gradeInfo['grade'], $eBonus, 'completed', (int)$e['id'], $eventId, $programId]);
             }
@@ -558,6 +564,9 @@ function admin_recalculate_program_results(PDO $pdo, int $eventId, int $programI
                 $eMark = (float)($e['total_mark'] ?? $score);
                 $gradeInfo = admin_calculate_grade_info($eMark, $judgesCount, $settings);
                 $eBonus = $isMarkBased ? (float)$gradeInfo['grade_points'] : 0;
+                if ($rank >= 1 && $rank <= 3) {
+                    $eBonus = 0.0;
+                }
                 $entryTeamScore = $teamScore + $eBonus;
                 $update->execute([$finalScore, $rank, $entryTeamScore, $gradeInfo['grade'], $eBonus, 'completed', (int)$e['id'], $eventId, $programId]);
                 $position++;
@@ -594,6 +603,9 @@ function admin_recalculate_program_results(PDO $pdo, int $eventId, int $programI
                 $eMark = (float)($e['total_mark'] ?? $score);
                 $gradeInfo = admin_calculate_grade_info($eMark, $judgesCount, $settings);
                 $eBonus = $isMarkBased ? (float)$gradeInfo['grade_points'] : 0;
+                if ($rank >= 1 && $rank <= 3) {
+                    $eBonus = 0.0;
+                }
                 $entryTeamScore = $teamScore + $eBonus;
                 $update->execute([$finalScore, $rank, $entryTeamScore, $gradeInfo['grade'], $eBonus, 'completed', (int)$e['id'], $eventId, $programId]);
             }

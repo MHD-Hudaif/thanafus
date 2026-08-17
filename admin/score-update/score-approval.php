@@ -366,6 +366,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' || isset($_GET['ajax']) || isset($_GET
                     foreach ($groupEntries as $entry) {
                         $gradeInfo = admin_calculate_grade_info((float)$entry['final_total'], $judgesCount, $settings);
                         $gradeBonus = $isMarkBased ? (float)$gradeInfo['grade_points'] : 0;
+                        if ($rank >= 1 && $rank <= 3) {
+                            $gradeBonus = 0;
+                        }
                         $entry['rank'] = $rank;
                         $entry['grade'] = $gradeInfo['grade'];
                         $entry['grade_bonus'] = $gradeBonus;
