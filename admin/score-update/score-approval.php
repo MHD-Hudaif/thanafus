@@ -281,16 +281,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' || isset($_GET['ajax']) || isset($_GET
             $secondPoints = (int)($settings['second_place_points'] ?? 7);
             $thirdPoints = (int)($settings['third_place_points'] ?? 5);
 
-            $teamPointsConfig = [];
+            $teamPointsConfig = null;
             if (!empty($program['team_points_config'])) {
-                $teamPointsConfig = json_decode($program['team_points_config'], true) ?: [];
+                $teamPointsConfig = json_decode($program['team_points_config'], true);
             }
             $pointConfig = [];
-            $pointConfig[1] = isset($teamPointsConfig[1]) ? (int)$teamPointsConfig[1] : $firstPoints;
-            $pointConfig[2] = isset($teamPointsConfig[2]) ? (int)$teamPointsConfig[2] : $secondPoints;
-            $pointConfig[3] = isset($teamPointsConfig[3]) ? (int)$teamPointsConfig[3] : $thirdPoints;
-            foreach ($teamPointsConfig as $r => $pts) {
-                $pointConfig[(int)$r] = (int)$pts;
+            if (is_array($teamPointsConfig)) {
+                foreach ($teamPointsConfig as $r => $pts) {
+                    $pointConfig[(int)$r] = (int)$pts;
+                }
+            } else {
+                $pointConfig[1] = $firstPoints;
+                $pointConfig[2] = $secondPoints;
+                $pointConfig[3] = $thirdPoints;
             }
 
             $isDisableScores = !empty($program['disable_scores']);
