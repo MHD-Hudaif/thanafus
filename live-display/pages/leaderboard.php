@@ -599,7 +599,6 @@ body.tv-leaderboard-active .tv-topbar {
 </style>
 
 <div class="leaderboard-header">
-    <h1 class="leaderboard-title">CHAMPIONSHIP STANDINGS</h1>
     <span class="leaderboard-subtitle">LIVE POINTS TABLE</span>
 </div>
 <div class="tv-leaderboard-stage-root" data-leaderboard data-leaderboard-stage>
