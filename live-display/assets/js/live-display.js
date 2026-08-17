@@ -1372,6 +1372,7 @@
         const nextProg = currentData.next_program || {};
         const judges = currentData.judges || [];
         const currentChest = document.querySelector('[data-current-chest]');
+        const currentChestBox = currentChest?.closest('[data-active-chest-box]');
         const nextChest = document.querySelector('[data-next-chest]');
 
         if (els.currentStage) els.currentStage.textContent = program.stage || 'Main Stage';
@@ -1391,6 +1392,9 @@
         if (!isIntro) {
             if (els.currentPerformer) els.currentPerformer.textContent = performer.name;
             if (currentChest) currentChest.textContent = performer.number || '—';
+            if (currentChestBox && performer.team_color) {
+                currentChestBox.style.setProperty('--participant-team-color', performer.team_color);
+            }
             if (els.currentTeam) els.currentTeam.innerHTML = `${performer.team_color ? `<span class="tv-team-dot" style="background:${escapeHtml(performer.team_color)}"></span>` : ''}${escapeHtml(performer.team || '—')}`;
         } else {
             if (els.currentPerformer) els.currentPerformer.textContent = 'No active performer';
