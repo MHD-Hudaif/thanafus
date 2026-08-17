@@ -64,61 +64,122 @@ try {
     ")->execute([$activeEventId]);
 } catch (Throwable $e) { /* non-fatal */ }
 
-// POST Save Slide components
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'save_slides') {
-    if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
-        admin_flash('error', 'Invalid security token.');
+$tvSettings = $tvSettings ?? tv_get_settings($activeEventId);
+
+// POST Actions
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
+    $action = $_POST['action'];
+
+    if ($action === 'upload_quick_screen') {
+        if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
+            admin_flash('error', 'Invalid security token.');
+            admin_redirect('/admin/live-display/control-live-display.php');
+        }
+
+        try {
+            if (isset($_FILES['quick_screen']) && $_FILES['quick_screen']['error'] === UPLOAD_ERR_OK) {
+                $fileTmpPath = $_FILES['quick_screen']['tmp_name'];
+                $fileName = $_FILES['quick_screen']['name'];
+                $fileExtension = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+                if (!in_array($fileExtension, ['jpg', 'jpeg', 'png', 'webp', 'gif'], true)) {
+                    throw new Exception('Only image files (JPG, PNG, WEBP, GIF) are allowed.');
+                }
+                $uploadFileDir = app_path('uploads/quick-screens/');
+                if (!is_dir($uploadFileDir)) {
+                    mkdir($uploadFileDir, 0755, true);
+                }
+                $newFileName = time() . '_' . preg_replace('/[^a-zA-Z0-9_\.-]/', '', $fileName);
+                $dest_path = $uploadFileDir . $newFileName;
+                if (!move_uploaded_file($fileTmpPath, $dest_path)) {
+                    throw new Exception('Failed to save uploaded image file.');
+                }
+                admin_flash('success', 'Quick screen image uploaded successfully.');
+            } else {
+                throw new Exception('No image file selected or upload error.');
+            }
+        } catch (Throwable $e) {
+            admin_flash('error', $e->getMessage());
+        }
         admin_redirect('/admin/live-display/control-live-display.php');
     }
 
-    $slides = $_POST['slides'] ?? [];
-    try {
-        // Handle Video Upload
-        if (isset($_FILES['intro_video']) && $_FILES['intro_video']['error'] === UPLOAD_ERR_OK) {
-            $fileTmpPath = $_FILES['intro_video']['tmp_name'];
-            $fileName = $_FILES['intro_video']['name'];
-            $fileExtension = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
-            if ($fileExtension !== 'mp4') {
-                throw new Exception('Only MP4 video files (.mp4) are allowed.');
-            }
-            $uploadFileDir = app_path('assets/videos/');
-            if (!is_dir($uploadFileDir)) {
-                mkdir($uploadFileDir, 0755, true);
-            }
-            $dest_path = $uploadFileDir . 'Intro.mp4';
-            if (!move_uploaded_file($fileTmpPath, $dest_path)) {
-                throw new Exception('Failed to save uploaded video file.');
-            }
+    if ($action === 'delete_quick_screen') {
+        if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
+            admin_flash('error', 'Invalid security token.');
+            admin_redirect('/admin/live-display/control-live-display.php');
         }
 
-        admin_db_transaction($pdo, function ($pdo) use ($slides, $activeEventId) {
-            foreach ($slides as $key => $slideData) {
-                $title = trim((string)($slideData['title'] ?? ''));
-                if ($title === '') {
-                    $title = ucfirst($key);
-                }
-                $duration = max(1, (int)($slideData['duration'] ?? 10)) * 1000;
-                $isEnabled = isset($slideData['is_enabled']) ? 1 : 0;
-                $sortOrder = (int)($slideData['sort_order'] ?? 0);
-                
-                $style = trim((string)($slideData['style'] ?? 'classic'));
-                if (!in_array($style, ['classic', 'orbit', 'podium', 'staggered', 'style2'], true)) {
-                    $style = 'classic';
-                }
-
-                $stmt = $pdo->prepare("
-                    UPDATE musabaqa_live_display_components 
-                    SET title = ?, duration = ?, is_enabled = ?, sort_order = ?, style = ?
-                    WHERE event_id = ? AND slide_key = ?
-                ");
-                $stmt->execute([$title, $duration, $isEnabled, $sortOrder, $style, $activeEventId, $key]);
+        $image = (string)($_POST['image'] ?? '');
+        $imagePath = app_path('uploads/quick-screens/' . basename($image));
+        if ($image !== '' && file_exists($imagePath)) {
+            unlink($imagePath);
+            if (($tvSettings['quick_screen_image'] ?? '') === $image) {
+                $tvSettings['quick_screen_enabled'] = false;
+                $tvSettings['quick_screen_image'] = '';
+                tv_save_settings($activeEventId, $tvSettings);
             }
-        });
-        admin_flash('success', 'TV slides configuration saved.');
-    } catch (Throwable $e) {
-        admin_flash('error', 'Failed to save settings: ' . $e->getMessage());
+            admin_flash('success', 'Quick screen image deleted.');
+        } else {
+            admin_flash('error', 'Image not found.');
+        }
+        admin_redirect('/admin/live-display/control-live-display.php');
     }
-    admin_redirect('/admin/live-display/control-live-display.php');
+
+    if ($action === 'save_slides') {
+        if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
+            admin_flash('error', 'Invalid security token.');
+            admin_redirect('/admin/live-display/control-live-display.php');
+        }
+
+        $slides = $_POST['slides'] ?? [];
+        try {
+            // Handle Video Upload
+            if (isset($_FILES['intro_video']) && $_FILES['intro_video']['error'] === UPLOAD_ERR_OK) {
+                $fileTmpPath = $_FILES['intro_video']['tmp_name'];
+                $fileName = $_FILES['intro_video']['name'];
+                $fileExtension = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+                if ($fileExtension !== 'mp4') {
+                    throw new Exception('Only MP4 video files (.mp4) are allowed.');
+                }
+                $uploadFileDir = app_path('assets/videos/');
+                if (!is_dir($uploadFileDir)) {
+                    mkdir($uploadFileDir, 0755, true);
+                }
+                $dest_path = $uploadFileDir . 'Intro.mp4';
+                if (!move_uploaded_file($fileTmpPath, $dest_path)) {
+                    throw new Exception('Failed to save uploaded video file.');
+                }
+            }
+
+            admin_db_transaction($pdo, function ($pdo) use ($slides, $activeEventId) {
+                foreach ($slides as $key => $slideData) {
+                    $title = trim((string)($slideData['title'] ?? ''));
+                    if ($title === '') {
+                        $title = ucfirst($key);
+                    }
+                    $duration = max(1, (int)($slideData['duration'] ?? 10)) * 1000;
+                    $isEnabled = isset($slideData['is_enabled']) ? 1 : 0;
+                    $sortOrder = (int)($slideData['sort_order'] ?? 0);
+                    
+                    $style = trim((string)($slideData['style'] ?? 'classic'));
+                    if (!in_array($style, ['classic', 'orbit', 'podium', 'staggered', 'style2'], true)) {
+                        $style = 'classic';
+                    }
+
+                    $stmt = $pdo->prepare("
+                        UPDATE musabaqa_live_display_components 
+                        SET title = ?, duration = ?, is_enabled = ?, sort_order = ?, style = ?
+                        WHERE event_id = ? AND slide_key = ?
+                    ");
+                    $stmt->execute([$title, $duration, $isEnabled, $sortOrder, $style, $activeEventId, $key]);
+                }
+            });
+            admin_flash('success', 'TV slides configuration saved.');
+        } catch (Throwable $e) {
+            admin_flash('error', 'Failed to save settings: ' . $e->getMessage());
+        }
+        admin_redirect('/admin/live-display/control-live-display.php');
+    }
 }
 
 // Load configurations
@@ -126,7 +187,7 @@ $stmt = $pdo->prepare("SELECT * FROM musabaqa_live_display_components WHERE even
 $stmt->execute([$activeEventId]);
 $components = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-$tvSettings = tv_get_settings($activeEventId);
+$tvSettings = $tvSettings ?? tv_get_settings($activeEventId);
 $stats = tv_stats($activeEventId);
 $flash = admin_take_flash();
 
@@ -134,6 +195,47 @@ require_once __DIR__ . '/../../includes/header.php';
 require_once __DIR__ . '/../../includes/sidebar.php';
 ?>
 <link rel="stylesheet" href="<?= asset_url('css/event-workspace.css') ?>?v=<?= filemtime(__DIR__ . '/../../assets/css/event-workspace.css') ?>">
+<style>
+/* Custom TV Control Dashboard Improvements */
+.panel {
+    background: rgba(30, 41, 59, 0.45) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2) !important;
+    border-radius: 16px !important;
+    padding: 24px !important;
+}
+
+.page-subtitle {
+    font-size: 15px !important;
+    font-weight: 800 !important;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #e2e8f0 !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 10px;
+}
+
+.btn-md {
+    padding: 10px 18px !important;
+    font-size: 13.5px !important;
+    font-weight: 700 !important;
+    border-radius: 10px !important;
+}
+
+.form-control {
+    background: rgba(15, 23, 42, 0.4) !important;
+    border: 1.5px solid rgba(255, 255, 255, 0.1) !important;
+    color: #f8fafc !important;
+    border-radius: 8px !important;
+    padding: 8px 12px !important;
+    transition: all 0.3s ease;
+}
+
+.form-control:focus {
+    border-color: #3b82f6 !important;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25) !important;
+}
+</style>
 
 
 <main class="main-content event-workspace-content">
@@ -333,7 +435,84 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                 </form>
             </div>
 
+            <!-- Quick Screen Image Manager Panel -->
+            <div class="panel">
+                <div class="page-subtitle mb-4">Quick Screen Image Board</div>
+                
+                <!-- Upload Form -->
+                <form method="POST" enctype="multipart/form-data" class="mb-4" style="border-bottom: 1px dashed rgba(255,255,255,0.1); padding-bottom: 18px;">
+                    <?= admin_csrf_field() ?>
+                    <input type="hidden" name="action" value="upload_quick_screen">
+                    <label style="font-size: 13px; font-weight: 700; color: var(--text-primary); display: block; margin-bottom: 8px;">Upload New Quick Screen Image</label>
+                    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                        <input type="file" name="quick_screen" accept="image/*" class="form-control" style="flex: 1; min-width: 200px;" required>
+                        <button type="submit" class="btn btn-primary btn-md">
+                            <i class="fa-solid fa-cloud-arrow-up mr-1"></i> Upload
+                        </button>
+                    </div>
+                </form>
 
+                <!-- Gallery -->
+                <label style="font-size: 13px; font-weight: 700; color: var(--text-primary); display: block; margin-bottom: 12px;">Quick Screen Library</label>
+                <?php
+                $quickScreensDir = app_path('uploads/quick-screens/');
+                $qsImages = [];
+                if (is_dir($quickScreensDir)) {
+                    $files = glob($quickScreensDir . '*.*');
+                    if ($files) {
+                        usort($files, function($a, $b) {
+                            return filemtime($b) <=> filemtime($a);
+                        });
+                        foreach ($files as $file) {
+                            $qsImages[] = basename($file);
+                        }
+                    }
+                }
+                
+                if (empty($qsImages)): ?>
+                    <div style="text-align: center; padding: 24px; color: var(--text-muted); font-size: 13px; border: 1.5px dashed rgba(255,255,255,0.1); border-radius: 12px;">
+                        No quick screen images uploaded yet.
+                    </div>
+                <?php else: ?>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 16px;">
+                        <?php foreach ($qsImages as $img): 
+                            $isActive = (($tvSettings['quick_screen_image'] ?? '') === $img && !empty($tvSettings['quick_screen_enabled']));
+                        ?>
+                            <div class="quick-screen-card <?= $isActive ? 'is-active' : '' ?>" style="background: rgba(15, 23, 42, 0.4); border: 1.5px solid <?= $isActive ? '#10b981' : 'rgba(255,255,255,0.08)' ?>; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; position: relative;">
+                                <div style="aspect-ratio: 16/9; background-image: url('<?= app_url('/uploads/quick-screens/' . e($img)) ?>'); background-size: cover; background-position: center; position: relative; border-bottom: 1px solid rgba(255,255,255,0.08);">
+                                    <?php if ($isActive): ?>
+                                        <span class="badge badge-success" style="position: absolute; top: 8px; left: 8px; font-size: 9px; padding: 2px 6px; border-radius: 6px;">ON AIR</span>
+                                    <?php endif; ?>
+                                </div>
+                                <div style="padding: 10px; display: flex; flex-direction: column; gap: 8px; flex: 1; justify-content: space-between;">
+                                    <span style="font-size: 11px; font-weight: 600; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; color: var(--text-muted); max-width: 100%;" title="<?= e($img) ?>">
+                                        <?= e(preg_replace('/^\d+_/', '', $img)) ?>
+                                    </span>
+                                    <div style="display: flex; gap: 4px;">
+                                        <?php if ($isActive): ?>
+                                            <button class="btn btn-danger btn-xs btn-qs-deactivate" data-image="<?= e($img) ?>" style="flex: 1; padding: 4px;" title="Deactivate Quick Screen">Hide</button>
+                                        <?php else: ?>
+                                            <button class="btn btn-success btn-xs btn-qs-activate" data-image="<?= e($img) ?>" style="flex: 1; padding: 4px;" title="Activate Quick Screen">Show</button>
+                                        <?php endif; ?>
+                                        <form method="POST" style="margin: 0; display: inline;" onsubmit="return confirm('Are you sure you want to delete this image?');">
+                                            <?= admin_csrf_field() ?>
+                                            <input type="hidden" name="action" value="delete_quick_screen">
+                                            <input type="hidden" name="image" value="<?= e($img) ?>">
+                                            <button type="submit" class="btn btn-secondary btn-xs" style="padding: 4px; color: #ff6f6f;" title="Delete image">
+                                                <i class="fa-solid fa-trash"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
+                
+                <div style="font-size: 11.5px; color: var(--text-muted); line-height: 1.4; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 12px; margin-top: 16px;">
+                    <span style="color: #3b82f6; font-weight: 700;">Tip:</span> Activating any image from this library will immediately broadcast it in fullscreen on all connected stage screens (super useful for custom break banners or announcements).
+                </div>
+            </div>
 
             <!-- Statistics Grid -->
             <div class="panel">
@@ -484,6 +663,27 @@ require_once __DIR__ . '/../../includes/sidebar.php';
             const play = document.getElementById('btnPlay');
             if (play) play.className = 'btn btn-secondary btn-md';
         }
+    });
+
+    // Quick Screen Image Actions
+    document.querySelectorAll('.btn-qs-activate').forEach(btn => {
+        btn.addEventListener('click', async function() {
+            const img = this.dataset.image;
+            const res = await postSettings('quick_screen', { image: img, enabled: 1 });
+            if (res && res.success) {
+                window.location.reload();
+            }
+        });
+    });
+
+    document.querySelectorAll('.btn-qs-deactivate').forEach(btn => {
+        btn.addEventListener('click', async function() {
+            const img = this.dataset.image;
+            const res = await postSettings('quick_screen', { image: img, enabled: 0 });
+            if (res && res.success) {
+                window.location.reload();
+            }
+        });
     });
 
     // Loop Display mode auto/manual switching

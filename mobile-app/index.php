@@ -1115,12 +1115,31 @@ $eventDateFormatted = !empty($event['start_date'])
 
     <!-- Countdown Javascript -->
     <script>
-        // Global slideshow controls
         window.showSlideshow = function() {
             document.getElementById('slideshow-view').style.display = 'block';
+            if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.ScreenOrientation) {
+                window.Capacitor.Plugins.ScreenOrientation.lock({ orientation: 'landscape' })
+                    .catch(function(e) { console.warn('Capacitor lock failed:', e); });
+            } else {
+                try {
+                    if (screen.orientation && typeof screen.orientation.lock === 'function') {
+                        screen.orientation.lock('landscape').catch(function(e) {});
+                    }
+                } catch(err) {}
+            }
         };
         window.exitSlideshow = function() {
             document.getElementById('slideshow-view').style.display = 'none';
+            if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.ScreenOrientation) {
+                window.Capacitor.Plugins.ScreenOrientation.unlock()
+                    .catch(function(e) { console.warn('Capacitor unlock failed:', e); });
+            } else {
+                try {
+                    if (screen.orientation && typeof screen.orientation.unlock === 'function') {
+                        screen.orientation.unlock();
+                    }
+                } catch(err) {}
+            }
         };
 
         document.addEventListener('DOMContentLoaded', () => {

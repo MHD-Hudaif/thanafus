@@ -1648,6 +1648,45 @@
         }
     }
 
+    function syncQuickScreen(settings) {
+        let overlay = document.getElementById('tvQuickScreenOverlay');
+        const isEnabled = settings.quick_screen_enabled && settings.quick_screen_image;
+
+        if (isEnabled) {
+            const imageName = settings.quick_screen_image;
+            const bootstrapUrl = window.TV_BOOT?.api?.bootstrap || '';
+            const imageUrl = bootstrapUrl.replace('/live-display/api/settings.php', `/uploads/quick-screens/${imageName}`);
+
+            if (!overlay) {
+                overlay = document.createElement('div');
+                overlay.id = 'tvQuickScreenOverlay';
+                overlay.className = 'quick-screen-overlay';
+                document.body.appendChild(overlay);
+            }
+
+            if (overlay.dataset.image !== imageName) {
+                overlay.dataset.image = imageName;
+                overlay.innerHTML = `
+                    <div class="quick-screen-blur-bg" style="background-image: url('${imageUrl}');"></div>
+                    <div class="quick-screen-contain-img" style="background-image: url('${imageUrl}');"></div>
+                `;
+            }
+
+            setTimeout(() => {
+                overlay.classList.add('is-active');
+            }, 10);
+        } else {
+            if (overlay) {
+                overlay.classList.remove('is-active');
+                setTimeout(() => {
+                    if (!overlay.classList.contains('is-active')) {
+                        overlay.remove();
+                    }
+                }, 500);
+            }
+        }
+    }
+
     function applyBootstrap(data) {
         if (!data) return;
 
@@ -1677,6 +1716,9 @@
 
         const settings = data.settings || {};
         
+        // Sync quick screen image overlay
+        syncQuickScreen(settings);
+
         // Sync performance mode
         state.performance_mode = settings.performance_mode || 'quality';
         if (state.performance_mode === 'performance') {
@@ -1958,9 +2000,20 @@
         };
 
         updateScale();
+        
+        // Multi-stage scale updates to combat layout delays in mobile webviews
+        setTimeout(updateScale, 100);
+        setTimeout(updateScale, 300);
+        setTimeout(updateScale, 600);
+        setTimeout(updateScale, 1000);
+        setTimeout(updateScale, 2000);
 
         window.addEventListener('resize', updateScale, { passive: true });
-        window.addEventListener('orientationchange', () => setTimeout(updateScale, 150), { passive: true });
+        window.addEventListener('orientationchange', () => {
+            setTimeout(updateScale, 100);
+            setTimeout(updateScale, 300);
+            setTimeout(updateScale, 600);
+        }, { passive: true });
 
         // Attempt locking orientation to landscape if Screen Orientation API is supported
         if (screen.orientation && typeof screen.orientation.lock === 'function') {

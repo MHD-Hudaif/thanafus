@@ -220,6 +220,28 @@ try {
         echo "Added otp_expires_at column to users table.\n";
     }
 
+    // 11. Create musabaqa_visitor_logs table if missing
+    $musabaqa_pdo->exec("
+        CREATE TABLE IF NOT EXISTS `musabaqa_visitor_logs` (
+          `id` INT AUTO_INCREMENT PRIMARY KEY,
+          `session_id` VARCHAR(255) NOT NULL,
+          `ip_address` VARCHAR(45) NULL,
+          `user_agent` VARCHAR(500) NULL,
+          `device_type` VARCHAR(50) NULL,
+          `browser` VARCHAR(100) NULL,
+          `platform` VARCHAR(100) NULL,
+          `page_url` VARCHAR(255) NULL,
+          `referrer` VARCHAR(500) NULL,
+          `is_bot` TINYINT NOT NULL DEFAULT 0,
+          `visit_time` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          `event_id` INT NULL,
+          KEY `idx_visit_time` (`visit_time`),
+          KEY `idx_is_bot` (`is_bot`),
+          KEY `idx_session_page` (`session_id`(100), `page_url`(150))
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    ");
+    echo "Ensured musabaqa_visitor_logs table exists.\n";
+
     echo "Migration completed successfully!\n";
 } catch (Throwable $e) {
     echo "Migration error: " . $e->getMessage() . "\n";

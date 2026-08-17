@@ -5794,3 +5794,43 @@ body.theme-light .program-stage-header-bar span[style*="rgba(255,255,255,0.65)"]
 }
 
 
+
+
+/* ==========================================================================
+   CINEMATIC QUICK SCREEN IMAGE OVERLAY
+   ========================================================================== */
+.quick-screen-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 999999;
+    background: #000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.5s ease, visibility 0.5s;
+    overflow: hidden;
+}
+
+.quick-screen-overlay.is-active {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Background blurred cover image */
+.quick-screen-blur-bg {
+    position: absolute;
+    inset: -20px;
+    background-size: cover;
+    background-position: center;
+    filter: blur(40px) brightness(0.35);
+    transform: scale(1.1);
+}
+
+/* Foreground Contain image */
+.quick-screen-contain-img {
+    position: absolute;
+    inset: 0;
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
+    z-index: 2;
+}

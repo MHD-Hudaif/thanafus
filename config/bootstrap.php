@@ -93,6 +93,14 @@ if (isset($musabaqa_pdo)) {
     }
 }
 
+// Hook up visitor tracking
+try {
+    require_once __DIR__ . '/../includes/visitor-tracker.php';
+    track_visitor_visit();
+} catch (Throwable $e) {
+    // Fail silently so a tracking error never breaks the site
+}
+
 // Release session lock for GET/HEAD requests to prevent concurrent request blocking
 if (session_status() === PHP_SESSION_ACTIVE && isset($_SERVER['REQUEST_METHOD']) && in_array(strtoupper($_SERVER['REQUEST_METHOD']), ['GET', 'HEAD'], true)) {
     session_write_close();

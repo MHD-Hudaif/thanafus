@@ -261,6 +261,10 @@ if ($activeEventId) {
                     <i data-lucide="sliders" class="sidebar-icon"></i>
                     <span class="sidebar-label">System Settings</span>
                 </a>
+                <a href="<?= app_url('/admin/event-manager/visitor-analytics.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('visitor-analytics.php') ?>">
+                    <i data-lucide="bar-chart-3" class="sidebar-icon"></i>
+                    <span class="sidebar-label">Visitor Analytics</span>
+                </a>
                 <?php endif; ?>
                 <a href="<?= app_url('/admin/event-manager/accounts.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('accounts.php') ?>">
                     <i data-lucide="user-cog" class="sidebar-icon"></i>

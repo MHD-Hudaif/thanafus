@@ -38,6 +38,9 @@ try {
             $settings['theme'] = (string)($_POST['theme'] ?? 'emerald');
         } elseif ($action === 'performance_mode') {
             $settings['performance_mode'] = (string)($_POST['performance_mode'] ?? 'quality');
+        } elseif ($action === 'quick_screen') {
+            $settings['quick_screen_image'] = trim((string)($_POST['image'] ?? ''));
+            $settings['quick_screen_enabled'] = (bool)(int)($_POST['enabled'] ?? 0);
         } else {
             tv_json_error('Unknown TV control action.', 422);
         }
