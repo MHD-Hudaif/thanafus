@@ -514,8 +514,8 @@ $nextProgTime = !empty($initNextProg['start_label']) ? $initNextProg['start_labe
     .active-chest-hero .num {
         font-size: clamp(58px, 5vw, 86px);
         font-weight: 900;
-        color: var(--current-team-color, #10b981);
-        text-shadow: 0 0 16px var(--current-team-color, #10b981);
+        color: var(--participant-team-color, var(--current-team-color, #10b981));
+        text-shadow: 0 0 16px var(--participant-team-color, var(--current-team-color, #10b981));
         font-family: 'Plus Jakarta Sans', monospace;
         line-height: 1;
     }
@@ -748,7 +748,7 @@ $nextProgTime = !empty($initNextProg['start_label']) ? $initNextProg['start_labe
                     <!-- Active Performer Showcase (State Active) -->
                     <div class="performer-details-container">
                         <div class="performer-details">
-                            <div class="active-chest-hero" data-active-chest-box data-server-has-chest="<?= $initHasChest ? 'true' : 'false' ?>" data-has-chest="<?= $initHasChest ? 'true' : 'false' ?>" style="<?= $initHasChest ? 'display: block;' : 'display: none;' ?>">
+                            <div class="active-chest-hero" data-active-chest-box data-server-has-chest="<?= $initHasChest ? 'true' : 'false' ?>" data-has-chest="<?= $initHasChest ? 'true' : 'false' ?>" style="--participant-team-color: <?= e($initTeamColor) ?>; <?= $initHasChest ? 'display: block;' : 'display: none;' ?>">
                                 <span class="label">CHEST NUMBER</span>
                                 <span class="num" data-current-chest><?= e($initChest) ?></span>
                             </div>
@@ -1053,6 +1053,7 @@ $nextProgTime = !empty($initNextProg['start_label']) ? $initNextProg['start_labe
                     if (activeChestBox) {
                         activeChestBox.dataset.hasChest = hasChest ? 'true' : 'false';
                         activeChestBox.style.display = hasChest ? 'block' : 'none';
+                        activeChestBox.style.setProperty('--participant-team-color', perf.team_color || '<?= e($initTeamColor) ?>');
                     }
                     if (chestEl && hasChest) chestEl.textContent = chestValue;
 
