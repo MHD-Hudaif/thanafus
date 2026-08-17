@@ -53,7 +53,12 @@ $initTitleRaw = !empty($initProg['title']) ? $initProg['title'] : 'No Active Pro
 $initCategory = tv_format_section_name($initProg['category'] ?? null);
 $initFullTitle = trim($initTitleRaw . ($initCategory !== '' ? ' ' . $initCategory : ''));
 
-$initChest = !empty($initPerf['chest_number']) ? $initPerf['chest_number'] : (!empty($initPerf['number']) ? $initPerf['number'] : '—');
+$isGroupProg = (($initProg['program_type'] ?? '') === 'group' || !empty($initProg['only_team_marks']));
+if ($isGroupProg) {
+    $initChest = !empty($initPerf['entry_name']) ? $initPerf['entry_name'] : '—';
+} else {
+    $initChest = !empty($initPerf['chest_number']) ? $initPerf['chest_number'] : (!empty($initPerf['number']) ? $initPerf['number'] : '—');
+}
 $initHasChest = $initChest !== '—';
 $initPerfName = !empty($initPerf['name']) ? $initPerf['name'] : 'Awaiting Performer';
 $initTeamName = !empty($initPerf['team']) ? $initPerf['team'] : '—';
@@ -749,7 +754,7 @@ $nextProgTime = !empty($initNextProg['start_label']) ? $initNextProg['start_labe
                     <div class="performer-details-container">
                         <div class="performer-details">
                             <div class="active-chest-hero" data-active-chest-box data-server-has-chest="<?= $initHasChest ? 'true' : 'false' ?>" data-has-chest="<?= $initHasChest ? 'true' : 'false' ?>" style="--participant-team-color: <?= e($initTeamColor) ?>; <?= $initHasChest ? 'display: block;' : 'display: none;' ?>">
-                                <span class="label">CHEST NUMBER</span>
+                                <span class="label" data-chest-label><?= $isGroupProg ? 'GROUP NAME' : 'CHEST NUMBER' ?></span>
                                 <span class="num" data-current-chest><?= e($initChest) ?></span>
                             </div>
                         </div>
@@ -1056,6 +1061,11 @@ $nextProgTime = !empty($initNextProg['start_label']) ? $initNextProg['start_labe
                         activeChestBox.style.setProperty('--participant-team-color', perf.team_color || '<?= e($initTeamColor) ?>');
                     }
                     if (chestEl && hasChest) chestEl.textContent = chestValue;
+                    const labelEl = document.querySelector('[data-chest-label]');
+                    if (labelEl) {
+                        const isGroup = (prog.program_type === 'group' || !!prog.only_team_marks);
+                        labelEl.textContent = isGroup ? 'GROUP NAME' : 'CHEST NUMBER';
+                    }
 
                     // Update Performer Name
                     const perfEl = document.querySelector('[data-current-performer]');

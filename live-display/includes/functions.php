@@ -706,15 +706,21 @@ function live_display_program_entries(int $programId): array
             t.team_name,
             t.short_name,
             t.team_color,
-            COALESCE(
-                (SELECT GROUP_CONCAT(tm.chest_number SEPARATOR ', ')
-                 FROM musabaqa_entry_members em
-                 JOIN musabaqa_team_members tm ON tm.id = em.team_member_id
-                 WHERE em.entry_id = pe.id AND tm.chest_number IS NOT NULL AND tm.chest_number <> ''),
-                pe.entry_number
-            ) AS chest_number
+            p.program_type,
+            p.only_team_marks,
+            CASE 
+                WHEN p.program_type = 'group' OR p.only_team_marks = 1 THEN pe.entry_name
+                ELSE COALESCE(
+                    (SELECT GROUP_CONCAT(tm.chest_number SEPARATOR ', ')
+                     FROM musabaqa_entry_members em
+                     JOIN musabaqa_team_members tm ON tm.id = em.team_member_id
+                     WHERE em.entry_id = pe.id AND tm.chest_number IS NOT NULL AND tm.chest_number <> ''),
+                    pe.entry_number
+                )
+            END AS chest_number
         FROM musabaqa_program_entries pe
         JOIN musabaqa_teams t ON t.id = pe.team_id
+        JOIN musabaqa_programs p ON p.id = pe.program_id
         WHERE pe.program_id = ?
         ORDER BY
             COALESCE(pe.performance_order, pe.entry_number, pe.id) ASC,

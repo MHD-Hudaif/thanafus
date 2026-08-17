@@ -204,7 +204,7 @@ foreach ($programs as $prog) {
     foreach ($entries as $partIdx => $eRow) {
         $eId = (int)$eRow['id'];
 
-        $chestDisplay = $isGroupProg ? ($eRow['team_name'] ?: 'Team ' . ($partIdx + 1)) : ($eRow['chest_number'] ?: '-');
+        $chestDisplay = $isGroupProg ? ($eRow['entry_name'] ?: 'Team ' . ($partIdx + 1)) : ($eRow['chest_number'] ?: '-');
         $entryDisplay = $isGroupProg ? ($eRow['team_name'] ?: 'Team ' . ($partIdx + 1)) : ($eRow['entry_name'] ?: 'Unnamed Participant');
 
         $recKey = "p{$pId}_e{$eId}";
@@ -1382,8 +1382,8 @@ function renderStageDeck(index, direction = 'next') {
         // Group Program
         document.getElementById('textParticipantProgress').innerHTML = 
             `Team <strong>${item.participant_order}</strong> of <strong>${item.total_participants}</strong>`;
-        textChestHeader.innerText = 'STAGE GROUP TEAM';
-        textChestNum.innerText = item.team_name;
+        textChestHeader.innerText = 'GROUP NAME';
+        textChestNum.innerText = item.chest_number;
         textChestNum.style.fontSize = window.innerWidth <= 480 ? '26px' : '38px';
         textPartName.innerText = 'Team Performance';
         textSlideMode.innerText = 'GROUP PERFORMANCE';
@@ -1897,7 +1897,7 @@ function renderCardsGrid(filterText = '') {
             mainDisplay = `<div style="font-size: 26px; font-weight: 900; color: #34d399; margin: 2px 0;">#${escapeHtml(item.chest_number)}</div>`;
         }
 
-        let subDisplay = item.is_group ? 'Team Performance' : escapeHtml(item.entry_name);
+        let subDisplay = item.is_group ? escapeHtml(item.team_name) : escapeHtml(item.entry_name);
 
         card.innerHTML = `
             <div>
