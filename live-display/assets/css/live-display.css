@@ -737,7 +737,7 @@ body:has(#slide-schedule.tv-slide--active) .tv-topbar {
 .stage-backdrop {
     position: absolute;
     inset: 0;
-    background: radial-gradient(circle at 20% 30%, color-mix(in srgb, var(--first-team-color, #10b981) 35%, #022c22) 0%, color-mix(in srgb, var(--first-team-color, #10b981) 18%, #022c22) 45%, #021a14 80%, #010d0a 100%);
+    background: radial-gradient(circle at 20% 30%, color-mix(in srgb, var(--first-team-color, #10b981) 35%, #0c1220) 0%, color-mix(in srgb, var(--first-team-color, #10b981) 18%, #0c1220) 45%, #05080f 80%, #020306 100%);
     z-index: 1;
     transition: background 1.2s ease;
 }

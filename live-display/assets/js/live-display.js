@@ -253,6 +253,17 @@
     function initFlowCanvas() {
         const canvas = document.getElementById('flowCanvas');
         if (!canvas) return;
+
+        // Initialize windColor with first team color from CSS variables if available
+        const computedStyle = getComputedStyle(document.documentElement);
+        const cssFirstColor = computedStyle.getPropertyValue('--first-team-color') || computedStyle.getPropertyValue('--top-team-color');
+        if (cssFirstColor && cssFirstColor.trim()) {
+            const rgb = hexToRgb(cssFirstColor.trim());
+            if (rgb) {
+                windColor = { r: rgb.r, g: rgb.g, b: rgb.b, targetR: rgb.r, targetG: rgb.g, targetB: rgb.b };
+            }
+        }
+
         if (isLowEndDevice || state.performance_mode === 'performance') {
             canvas.style.display = 'none';
             return;
