@@ -34,7 +34,11 @@
             slide: null,
             clock: null,
             refresh: null
-        }
+        },
+        // A live action can temporarily bring a slide to the front without
+        // turning off the automatic slideshow.
+        actionOverride: null,
+        lastUpdatedTimestamp: null
     };
 
     const els = {
@@ -122,7 +126,7 @@
         const isIntro = !performer.name || performer.name === 'Awaiting Performer';
         const isBreak = currentData.is_break;
 
-        if (!isIntro && !isBreak && (running > 0 || elapsedOffset > 0)) {
+        if (!isIntro && !isBreak) {
             let totalElapsedMs = elapsedOffset;
             if (running > 0 && startTime > 0) {
                 const serverTimeMs = Date.now() + (state.serverClockOffset || 0);
@@ -1389,6 +1393,9 @@
 
         if (nextChest) {
             nextChest.textContent = next.number || '—';
+            const nextColor = next.team_color || 'var(--first-team-color, #10b981)';
+            nextChest.style.color = nextColor;
+            nextChest.style.textShadow = `0 0 30px ${nextColor}`;
         }
 
         if (els.judges) {
@@ -1630,6 +1637,17 @@
 
         if (settings.refresh_interval) state.refresh_interval = settings.refresh_interval;
 
+        // An application action requests a slide without changing auto mode.
+        // Let it remain on screen for its own configured duration before the
+        // synchronized carousel takes over again.
+        const isNewSlideAction = settings.last_updated
+            && state.lastUpdatedTimestamp !== null
+            && settings.last_updated !== state.lastUpdatedTimestamp;
+
+        if (settings.last_updated) {
+            state.lastUpdatedTimestamp = settings.last_updated;
+        }
+
         // Sync theme
         if (settings.theme) {
             state.theme = settings.theme;
@@ -1685,6 +1703,16 @@
                 };
             }
         });
+
+        if (isNewSlideAction && state.mode === 'auto' && !window.IS_SINGLE_PAGE && settings.active_slide) {
+            const actionKey = String(settings.active_slide).replace('_', '-');
+            const configuredDuration = Number(state.slides[actionKey]?.duration);
+            state.actionOverride = {
+                key: actionKey,
+                expiresAt: Date.now() + Math.max(3000, configuredDuration || 7000)
+            };
+            setActiveSlide(actionKey);
+        }
 
         // Fallback: ensure all known slide keys exist so the rotation never stalls
         ['intro', 'leaderboard', 'schedule', 'current-program'].forEach(key => {
@@ -1753,7 +1781,11 @@
     }
 
     function startSchedulePlayback() {
-        stopSlideTimer();
+        // The action override owns the slide timer while a requested schedule
+        // slide is being shown. Do not cancel its configured expiry.
+        if (!state.actionOverride) {
+            stopSlideTimer();
+        }
         stopScheduleTimer();
 
         if (!els.schedule || state.isCelebrating) {
@@ -2131,6 +2163,19 @@
         stopScheduleTimer();
 
         if (!state.is_playing || state.mode === 'manual' || state.isCelebrating) return;
+
+        // Keep an action-requested slide visible for its configured time.
+        // Once it expires, resume the normal synchronized slideshow cycle.
+        if (state.actionOverride) {
+            const remainingMs = state.actionOverride.expiresAt - Date.now();
+            if (remainingMs > 0) {
+                state.timers.slide = setTimeout(() => {
+                    syncGlobalSlideshow();
+                }, Math.max(100, remainingMs));
+                return;
+            }
+            state.actionOverride = null;
+        }
 
         const sync = getGlobalSynchronizedState();
 

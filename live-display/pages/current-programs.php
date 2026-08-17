@@ -59,6 +59,7 @@ $initTeamName = !empty($initPerf['team']) ? $initPerf['team'] : '—';
 $initTeamColor = !empty($initPerf['team_color']) ? live_display_color($initPerf['team_color'] ?? null) : $firstTeamColor;
 
 $initNextChest = !empty($initNext['chest_number']) ? $initNext['chest_number'] : (!empty($initNext['number']) ? $initNext['number'] : '—');
+$initNextColor = !empty($initNext['team_color']) ? live_display_color($initNext['team_color'] ?? null) : $firstTeamColor;
 
 $nextProgTitle = !empty($initNextProg['title']) ? $initNextProg['title'] : ($isBreak ? 'Upcoming Extra' : 'Next Program');
 $nextProgCategory = tv_format_section_name($initNextProg['category'] ?? null);
@@ -742,8 +743,7 @@ $nextProgTime = !empty($initNextProg['start_label']) ? $initNextProg['start_labe
                             </div>
                         </div>
                         <div class="active-metadata-wrap">
-                            <!-- Stage Timer Widget -->
-                            <div class="active-stage-timer" id="stageTimerBox" style="display: none;">
+                            <div class="active-stage-timer" id="stageTimerBox" style="<?= ($initIsIntro || empty($initPerf['name']) || $initPerfName === 'Awaiting Performer') ? 'display: none;' : 'display: flex;' ?>">
                                 <span class="label"><i class="fa-solid fa-stopwatch animate-pulse"></i> LIVE TIMER</span>
                                 <span class="num" id="stageTimerDisplay">00:00</span>
                             </div>
@@ -789,7 +789,7 @@ $nextProgTime = !empty($initNextProg['start_label']) ? $initNextProg['start_labe
                         <?= $initIsIntro ? '1ST CONTESTANT STAGE ENTRY' : 'NEXT CONTESTANT' ?>
                     </div>
                     <div class="up-next-chest-big">
-                        <span data-next-chest><?= e($initNextChest) ?></span>
+                        <span data-next-chest style="color: <?= e($initNextColor) ?>; text-shadow: 0 0 30px <?= e($initNextColor) ?>;"><?= e($initNextChest) ?></span>
                     </div>
                 </div>
 

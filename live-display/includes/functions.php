@@ -1280,15 +1280,21 @@ function live_display_bootstrap_data(): array
     $eventId = (int)($event['id'] ?? 0);
     $settings = live_display_get_settings($eventId);
 
-    // Fetch the global settings to retrieve live_stage_start_time
+    // Fetch the global settings to retrieve live_stage_start_time and live_timer parameters
     $pdo = live_display_pdo();
     $stmt = $pdo->prepare("SELECT setting_value FROM musabaqa_settings WHERE setting_key = 'global_musabaqa_settings' LIMIT 1");
     $stmt->execute();
     $globalRow = $stmt->fetch();
     $liveStageStartTime = 0;
+    $liveTimerRunning = 0;
+    $liveTimerStartTime = 0.0;
+    $liveTimerElapsed = 0;
     if ($globalRow) {
         $globalSettings = json_decode($globalRow['setting_value'], true);
         $liveStageStartTime = (int)($globalSettings['live_stage_start_time'] ?? 0);
+        $liveTimerRunning = (int)($globalSettings['live_timer_running'] ?? 0);
+        $liveTimerStartTime = (float)($globalSettings['live_timer_start_time'] ?? 0.0);
+        $liveTimerElapsed = (int)($globalSettings['live_timer_elapsed'] ?? 0);
     }
 
     return [
@@ -1307,6 +1313,9 @@ function live_display_bootstrap_data(): array
         'server_time' => date(DATE_ATOM),
         'server_time_ms' => (int)round(microtime(true) * 1000),
         'live_stage_start_time' => $liveStageStartTime,
+        'live_timer_running' => $liveTimerRunning,
+        'live_timer_start_time' => $liveTimerStartTime,
+        'live_timer_elapsed' => $liveTimerElapsed,
     ];
 }
 

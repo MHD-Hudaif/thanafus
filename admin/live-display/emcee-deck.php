@@ -67,7 +67,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         if ($slideKey !== '') {
             $settDecoded['active_slide'] = $slideKey;
         }
-        $settDecoded['last_updated'] = time();
+        // Milliseconds ensure two quick actions are still distinct to every TV.
+        $settDecoded['last_updated'] = (int) round(microtime(true) * 1000);
 
         $saveStmt = $pdo->prepare('INSERT INTO musabaqa_settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)');
         $saveStmt->execute([$settKey, json_encode($settDecoded)]);

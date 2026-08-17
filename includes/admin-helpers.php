@@ -2031,9 +2031,10 @@ function admin_redirect_tv_slide(PDO $pdo, int $eventId, string $slideKey): void
     $existingJson = (string)$stmt->fetchColumn();
     $settings = json_decode($existingJson, true) ?: [];
     
-    $settings['mode'] = 'manual';
+    // Keep the existing slideshow mode, do not override it to manual!
     $settings['active_slide'] = $slideKey;
-    $settings['last_updated'] = time();
+    // Milliseconds ensure two quick actions are still distinct to every TV.
+    $settings['last_updated'] = (int) round(microtime(true) * 1000);
     $settings['updated_at'] = date(DATE_ATOM);
     
     $saveStmt = $pdo->prepare('

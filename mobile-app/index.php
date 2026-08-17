@@ -908,6 +908,82 @@ $eventDateFormatted = !empty($event['start_date'])
         .slideshow-back-btn:active {
             transform: translateY(1px);
         }
+        /* Live Performer Stage Stopwatch */
+        .stage-stopwatch-container {
+            background: rgba(15, 23, 42, 0.72);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-radius: 28px;
+            border: 1.5px solid rgba(16, 185, 129, 0.4);
+            box-shadow: 0 16px 40px rgba(0,0,0,0.35), 0 0 30px rgba(16,185,129,0.15);
+            padding: 22px 28px;
+            margin: 20px auto 0;
+            max-width: 520px;
+            width: 100%;
+            text-align: center;
+            color: #ffffff;
+            font-family: 'Outfit', 'Inter', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+        .stage-stopwatch-header {
+            font-size: 13px;
+            font-weight: 900;
+            color: #10b981;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .stage-stopwatch-program {
+            font-size: 14px;
+            color: #94a3b8;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .stage-stopwatch-performer {
+            font-size: 24px;
+            font-weight: 900;
+            color: #ffffff;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+        }
+        .stage-stopwatch-time-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.06);
+            padding: 12px 24px;
+            border-radius: 18px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            min-width: 140px;
+            font-size: 38px;
+            font-weight: 900;
+            color: #10b981;
+            line-height: 1;
+            letter-spacing: 1px;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .live-dot-pulse {
+            animation: pulse-green 1.5s infinite;
+        }
+        @keyframes pulse-green {
+            0% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+            }
+            70% {
+                transform: scale(1);
+                box-shadow: 0 0 0 8px rgba(16, 185, 129, 0);
+            }
+            100% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+            }
+        }
     </style>
 </head>
 <body>
@@ -956,6 +1032,17 @@ $eventDateFormatted = !empty($event['start_date'])
                 <div class="countdown-value" id="seconds-val">00</div>
                 <div class="countdown-label">Secs</div>
             </div>
+        </div>
+
+        <!-- Live Performer Stage Stopwatch -->
+        <div id="mobileStageStopwatch" class="stage-stopwatch-container" style="display: none;">
+            <div class="stage-stopwatch-header">
+                <span class="live-dot-pulse" style="background: #10b981; display: inline-block; width: 8px; height: 8px; border-radius: 50%;"></span>
+                STAGE TIMING &bull; CONTESTANT STOPWATCH
+            </div>
+            <div class="stage-stopwatch-program" id="stopwatchProgramTitle">--</div>
+            <div class="stage-stopwatch-performer" id="stopwatchPerformerName">--</div>
+            <div class="stage-stopwatch-time-box" id="stopwatchTimeDisplay">00:00</div>
         </div>
 
         <!-- Slideshow Button -->
