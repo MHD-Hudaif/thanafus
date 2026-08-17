@@ -422,10 +422,27 @@
         }
         const bgVideo = document.getElementById('tvBgVideo');
         if (!bgVideo) return;
-        if (isLowEndDevice || true) {
+
+        if (isLowEndDevice || state.performance_mode === 'performance') {
             bgVideo.style.display = 'none';
             try { bgVideo.pause(); } catch (_) {}
             return;
+        }
+
+        // Dynamically switch the background video source if it changed
+        if (teamColor) {
+            const videoSrc = getTeamVideoSrc(teamColor);
+            const currentSrc = bgVideo.getAttribute('data-current-src') || '';
+            if (currentSrc !== videoSrc) {
+                bgVideo.setAttribute('data-current-src', videoSrc);
+                bgVideo.src = videoSrc;
+                try {
+                    bgVideo.load();
+                    if (state.activeSlide !== 'intro' && !window.isIntroSlideActive) {
+                        bgVideo.play().catch(() => {});
+                    }
+                } catch (_) {}
+            }
         }
     }
 
