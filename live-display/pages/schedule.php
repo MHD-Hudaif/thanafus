@@ -74,9 +74,9 @@ body:has(#slide-schedule.tv-slide--active) .tv-topbar {
     --current-neon: var(--first-team-color, #10b981);
     --panel-glow: color-mix(in srgb, var(--first-team-color, #10b981) 12%, transparent);
     width: 100%;
-    max-width: 1600px;
+    max-width: 95vw;
     height: 100%;
-    padding: 32px 48px;
+    padding: 32px 0px;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -87,7 +87,7 @@ body:has(#slide-schedule.tv-slide--active) .tv-topbar {
 
 /* Title Header: Premium Minimalist Broadcast style */
 .schedule-slide-title {
-    font-size: 38px;
+    font-size: 48px;
     font-weight: 900;
     text-transform: uppercase;
     letter-spacing: -0.015em;
@@ -95,8 +95,8 @@ body:has(#slide-schedule.tv-slide--active) .tv-topbar {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding-bottom: 18px;
-    margin-bottom: 24px;
+    padding-bottom: 24px;
+    margin-bottom: 32px;
     font-family: 'Plus Jakarta Sans', sans-serif;
 }
 
@@ -133,14 +133,14 @@ body:has(#slide-schedule.tv-slide--active) .tv-topbar {
 .schedule-card:nth-child(even) {
     position: relative;
     display: grid;
-    grid-template-columns: 1.2fr 0.8fr 310px;
+    grid-template-columns: 1.2fr 0.8fr 430px;
     align-items: center;
     background: #ffffff !important;
     border: none !important;
     border-radius: 0 !important;
     box-shadow: none !important;
     border-bottom: 1px solid #f1f5f9 !important;
-    padding: 24px 38px !important; /* Increased padding to make the table cards bigger */
+    padding: 32px 54px !important; /* Increased padding to make the table cards bigger */
     box-sizing: border-box;
     overflow: hidden;
     transition: all 0.25s ease;
@@ -165,10 +165,10 @@ body:has(#slide-schedule.tv-slide--active) .tv-topbar {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 48px;
-    height: 48px;
+    width: 64px;
+    height: 64px;
     border-radius: 50%;
-    font-size: 18px;
+    font-size: 24px;
     font-weight: 900;
     font-family: 'Outfit', sans-serif;
     flex-shrink: 0;
@@ -193,7 +193,7 @@ body:has(#slide-schedule.tv-slide--active) .tv-topbar {
     overflow: hidden;
 }
 .schedule-program-title {
-    font-size: 26px !important; /* Increased font-size for a bigger table */
+    font-size: 32px !important; /* Increased font-size for a bigger table */
     font-weight: 800;
     color: #0f172a !important; /* Dark text for light background */
     margin: 0;
@@ -207,8 +207,8 @@ body:has(#slide-schedule.tv-slide--active) .tv-topbar {
     color: #475569;
     border: none;
     border-radius: 6px;
-    padding: 4px 10px;
-    font-size: 11px !important;
+    padding: 6px 12px;
+    font-size: 14px !important;
     font-weight: 800;
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -225,16 +225,16 @@ body:has(#slide-schedule.tv-slide--active) .tv-topbar {
 .schedule-ranks-row {
     display: flex;
     flex-wrap: wrap;
-    gap: 7px;
+    gap: 12px;
     justify-content: center;
     align-items: center;
 }
 .rank-pill {
     display: inline-flex;
     align-items: center;
-    padding: 4px 11px;
+    padding: 8px 20px !important;
     border-radius: 30px;
-    font-size: 12px !important;
+    font-size: 18px !important;
     font-weight: 900;
     letter-spacing: 0.02em;
     text-transform: uppercase;
@@ -242,7 +242,7 @@ body:has(#slide-schedule.tv-slide--active) .tv-topbar {
     background: linear-gradient(135deg, #070c18 0%, color-mix(in srgb, var(--badge-team-color, #71717a) 42%, #03050a) 100%) !important;
     color: #fff !important;
     border: 1.5px solid color-mix(in srgb, var(--badge-team-color, #71717a) 78%, #ffffff) !important;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .14), 0 0 12px color-mix(in srgb, var(--badge-team-color, #71717a) 42%, transparent), 0 4px 10px rgba(0, 0, 0, 0.3) !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .14), 0 0 16px color-mix(in srgb, var(--badge-team-color, #71717a) 50%, transparent), 0 6px 14px rgba(0, 0, 0, 0.35) !important;
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
     white-space: nowrap;
 }
@@ -262,7 +262,7 @@ body:has(#slide-schedule.tv-slide--active) .tv-topbar {
     gap: 6px;
 }
 .schedule-time-label {
-    font-size: 34px !important; /* Increased font-size for a bigger table */
+    font-size: 40px !important; /* Increased font-size for a bigger table */
     font-weight: 800;
     color: #0f172a !important; /* Dark text for light background */
     font-family: 'Plus Jakarta Sans', sans-serif;
@@ -271,11 +271,11 @@ body:has(#slide-schedule.tv-slide--active) .tv-topbar {
 }
 .program-day-tag {
     display: inline-block;
-    font-size: 11px;
+    font-size: 14px;
     font-weight: 800;
     background: #f1f5f9;
     color: #475569;
-    padding: 4px 10px;
+    padding: 6px 12px;
     border-radius: 6px;
     letter-spacing: 0.05em;
     width: fit-content;
