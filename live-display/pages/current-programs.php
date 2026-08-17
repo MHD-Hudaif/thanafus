@@ -54,6 +54,7 @@ $initCategory = tv_format_section_name($initProg['category'] ?? null);
 $initFullTitle = trim($initTitleRaw . ($initCategory !== '' ? ' ' . $initCategory : ''));
 
 $initChest = !empty($initPerf['chest_number']) ? $initPerf['chest_number'] : (!empty($initPerf['number']) ? $initPerf['number'] : '—');
+$initHasChest = $initChest !== '—';
 $initPerfName = !empty($initPerf['name']) ? $initPerf['name'] : 'Awaiting Performer';
 $initTeamName = !empty($initPerf['team']) ? $initPerf['team'] : '—';
 $initTeamColor = !empty($initPerf['team_color']) ? live_display_color($initPerf['team_color'] ?? null) : $firstTeamColor;
@@ -385,6 +386,8 @@ $nextProgTime = !empty($initNextProg['start_label']) ? $initNextProg['start_labe
     .performer-details {
         flex: 1;
         min-width: 0;
+        display: flex;
+        align-items: center;
     }
 
     .performer-name {
@@ -485,14 +488,21 @@ $nextProgTime = !empty($initNextProg['start_label']) ? $initNextProg['start_labe
         background: rgba(15, 23, 42, 0.95);
         border: 1.5px solid rgba(255, 255, 255, 0.2);
         color: #ffffff;
-        padding: 20px 32px;
+        width: min(100%, 340px);
+        padding: 24px 36px;
         border-radius: 22px;
         text-align: center;
         box-shadow: 0 14px 35px rgba(0, 0, 0, 0.5);
     }
 
+    /* The live polling script may briefly report an intro state while the
+       emcee deck is switching entries. Keep a confirmed chest number visible. */
+    .active-chest-hero[data-active-chest-box][data-server-has-chest="true"] {
+        display: block !important;
+    }
+
     .active-chest-hero .label {
-        font-size: 11px;
+        font-size: 13px;
         font-weight: 900;
         letter-spacing: 0.22em;
         color: rgba(255, 255, 255, 0.6);
@@ -502,7 +512,7 @@ $nextProgTime = !empty($initNextProg['start_label']) ? $initNextProg['start_labe
     }
 
     .active-chest-hero .num {
-        font-size: 46px;
+        font-size: clamp(58px, 5vw, 86px);
         font-weight: 900;
         color: var(--current-team-color, #10b981);
         text-shadow: 0 0 16px var(--current-team-color, #10b981);
@@ -738,19 +748,15 @@ $nextProgTime = !empty($initNextProg['start_label']) ? $initNextProg['start_labe
                     <!-- Active Performer Showcase (State Active) -->
                     <div class="performer-details-container">
                         <div class="performer-details">
-                            <h2 class="performer-name" data-current-performer><?= e($initPerfName) ?></h2>
-                            <div class="team-pill" data-current-team style="<?= ($initIsIntro || $initTeamName === '—') ? 'display: none;' : 'display: flex;' ?>">
-                                <span class="tv-team-dot" style="background:<?= e($initTeamColor) ?>;"></span> <?= e($initTeamName) ?>
+                            <div class="active-chest-hero" data-active-chest-box data-server-has-chest="<?= $initHasChest ? 'true' : 'false' ?>" data-has-chest="<?= $initHasChest ? 'true' : 'false' ?>" style="<?= $initHasChest ? 'display: block;' : 'display: none;' ?>">
+                                <span class="label">CHEST NUMBER</span>
+                                <span class="num" data-current-chest><?= e($initChest) ?></span>
                             </div>
                         </div>
                         <div class="active-metadata-wrap">
                             <div class="active-stage-timer" id="stageTimerBox" style="<?= ($initIsIntro || empty($initPerf['name']) || $initPerfName === 'Awaiting Performer') ? 'display: none;' : 'display: flex;' ?>">
                                 <span class="label"><i class="fa-solid fa-stopwatch animate-pulse"></i> LIVE TIMER</span>
                                 <span class="num" id="stageTimerDisplay">00:00</span>
-                            </div>
-                            <div class="active-chest-hero" data-active-chest-box style="<?= $initIsIntro ? 'display: none;' : '' ?>">
-                                <span class="label">CHEST NO</span>
-                                <span class="num" data-current-chest><?= e($initChest) ?></span>
                             </div>
                         </div>
                     </div>
@@ -965,6 +971,26 @@ $nextProgTime = !empty($initNextProg['start_label']) ? $initNextProg['start_labe
         // Real-Time Live API Polling Engine
         let lastStateHash = '';
 
+        // The slideshow controller updates the chest text independently of this
+        // page's polling loop. Reflect that update in the visible stage badge.
+        const stageChestBox = document.querySelector('[data-active-chest-box]');
+        const stageChestText = document.querySelector('[data-current-chest]');
+        const syncStageChestVisibility = () => {
+            if (!stageChestBox || !stageChestText) return;
+            const value = stageChestText.textContent.trim();
+            const hasChest = value !== '' && value !== '—';
+            stageChestBox.dataset.hasChest = hasChest ? 'true' : 'false';
+            stageChestBox.style.display = hasChest ? 'block' : 'none';
+        };
+        if (stageChestText) {
+            new MutationObserver(syncStageChestVisibility).observe(stageChestText, {
+                childList: true,
+                characterData: true,
+                subtree: true
+            });
+        }
+        syncStageChestVisibility();
+
         function fetchCurrentProgramState() {
             const apiPath = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/')) + '/api/current-program.php';
             fetch(apiPath)
@@ -1018,11 +1044,17 @@ $nextProgTime = !empty($initNextProg['start_label']) ? $initNextProg['start_labe
 
                     // Update Active Chest Box
                     const activeChestBox = document.querySelector('[data-active-chest-box]');
-                    if (activeChestBox) {
-                        activeChestBox.style.display = isIntro ? 'none' : 'block';
-                    }
                     const chestEl = document.querySelector('[data-current-chest]');
-                    if (chestEl) chestEl.textContent = perf.chest_number || perf.number || '—';
+                    // Keep the server-rendered number visible until the live feed
+                    // supplies a replacement. This avoids a brief empty state while
+                    // the emcee deck and TV feed synchronize.
+                    const chestValue = perf.chest_number || perf.number || chestEl?.textContent.trim() || '';
+                    const hasChest = chestValue !== '' && chestValue !== '—';
+                    if (activeChestBox) {
+                        activeChestBox.dataset.hasChest = hasChest ? 'true' : 'false';
+                        activeChestBox.style.display = hasChest ? 'block' : 'none';
+                    }
+                    if (chestEl && hasChest) chestEl.textContent = chestValue;
 
                     // Update Performer Name
                     const perfEl = document.querySelector('[data-current-performer]');
