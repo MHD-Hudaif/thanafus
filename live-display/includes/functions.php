@@ -742,6 +742,7 @@ function live_display_program_entries(int $programId): array
                 $cleanName = trim(str_ireplace($title, '', $cleanName));
                 $cleanName = ltrim($cleanName, "- \t\n\r\0\x0B");
             }
+            $cleanName = preg_replace('/\s*\(\d+\)\s*$/u', '', $cleanName);
             $row['chest_number'] = $cleanName ?: $row['entry_name'];
         }
     }

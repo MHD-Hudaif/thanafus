@@ -214,6 +214,7 @@ foreach ($programs as $prog) {
                 $chestDisplay = trim(str_ireplace($title, '', $chestDisplay));
                 $chestDisplay = ltrim($chestDisplay, "- \t\n\r\0\x0B");
             }
+            $chestDisplay = preg_replace('/\s*\(\d+\)\s*$/u', '', $chestDisplay);
             if (empty($chestDisplay)) {
                 $chestDisplay = 'Team ' . ($partIdx + 1);
             }
