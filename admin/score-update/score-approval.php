@@ -294,6 +294,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' || isset($_GET['ajax']) || isset($_GET
             }
 
             $isDisableScores = !empty($program['disable_scores']);
+            $judgesCount = max(1, (int)($program['judges_count'] ?? 2));
+            $isMarkBased = empty($program['only_team_marks']);
 
             if ($isDisableScores) {
                 $stmt = $pdo->prepare("
@@ -362,12 +364,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' || isset($_GET['ajax']) || isset($_GET
                     }
 
                     foreach ($groupEntries as $entry) {
+                        $gradeInfo = admin_calculate_grade_info((float)$entry['final_total'], $judgesCount, $settings);
+                        $gradeBonus = $isMarkBased ? (float)$gradeInfo['grade_points'] : 0;
                         $entry['rank'] = $rank;
-                        $entry['team_points'] = $teamPoints;
+                        $entry['grade'] = $gradeInfo['grade'];
+                        $entry['grade_bonus'] = $gradeBonus;
+                        $entry['team_points'] = $teamPoints + $gradeBonus;
                         $processedEntries[] = $entry;
                         $team = (string)$entry['team_name'];
                         $teamTotals[$team] = [
-                            'total' => ($teamTotals[$team]['total'] ?? 0) + $teamPoints,
+                            'total' => ($teamTotals[$team]['total'] ?? 0) + $entry['team_points'],
                             'color' => $entry['team_color'] ?: '#64748b',
                         ];
                     }
@@ -392,7 +398,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' || isset($_GET['ajax']) || isset($_GET
                             <?php if ($isDisableScores): ?>
                                 <tr><th>Entry Name</th><th>Team</th><th style="text-align: center;">Placement Rank</th><th style="text-align: center;">Team Pts</th></tr>
                             <?php else: ?>
-                                <tr><th>Entry Name</th><th>Team</th><th>Judge 1 Total</th><th>Judge 2 Total</th><th>Final Total</th><th>Rank</th><th>Team Pts</th></tr>
+                                <tr><th>Entry Name</th><th>Team</th><th>Judge 1 Total</th><th>Judge 2 Total</th><th>Final Total</th><th>Grade</th><th>Grade A Bonus</th><th>Rank</th><th>Team Pts</th></tr>
                             <?php endif; ?>
                         </thead>
                         <tbody>
@@ -417,6 +423,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' || isset($_GET['ajax']) || isset($_GET
                                         <td><?= number_format((float)$e['judge1_total'], 2) ?></td>
                                         <td><?= number_format((float)$e['judge2_total'], 2) ?></td>
                                         <td><strong><?= number_format((float)$e['final_total'], 2) ?></strong></td>
+                                        <td><span class="badge badge-<?= ($e['grade'] ?? '') === 'A' ? 'success' : 'neutral' ?>">Grade <?= e($e['grade'] ?? '—') ?></span></td>
+                                        <td style="text-align: center; color: #34d399; font-weight: 800;">+<?= number_format((float)($e['grade_bonus'] ?? 0), 0) ?></td>
                                         <td><strong><?= (int)$e['rank'] ?></strong></td>
                                         <td><strong><?= (int)$e['team_points'] ?></strong></td>
                                     <?php endif; ?>
