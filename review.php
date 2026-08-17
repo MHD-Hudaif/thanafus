@@ -23,7 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (!verify_csrf_token($csrfToken)) {
         $errorMessage = 'Security token validation failed. Please refresh and try again.';
-    } elseif (!rate_limit_check("review:$ip", 5, 300)) {
+    } elseif (!rate_limit_check("review:$ip", 5, 300)['allowed']) {
         $errorMessage = 'Too many feedback requests. Please wait a few minutes before submitting again.';
     } elseif ($rating < 1 || $rating > 5) {
         $errorMessage = 'Please select a valid star rating (1 to 5).';
@@ -48,7 +48,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ]);
             
             $sent = true;
-            rate_limit_increment("review:$ip", 300);
+            rate_limit_hit("review:$ip", 5, 300);
             regenerate_csrf_token();
         } catch (Throwable $e) {
             error_log('Review submission failed: ' . $e->getMessage());

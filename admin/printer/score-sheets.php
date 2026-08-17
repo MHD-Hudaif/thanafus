@@ -510,7 +510,7 @@ if ($action === 'print' && $activeEvent) {
                 $programHeading = $program['title'];
             }
         ?>
-            <?php for ($j = 1; $j <= $judgesCount; $j++): ?>
+            <?php for ($j = 1; $j <= (int)($program['judges_count'] ?? $judgesCount); $j++): ?>
                 <div class="judge-landscape-sheet <?= ($pIdx > 0 || $j > 1) ? 'page-break' : '' ?>" data-judge-number="<?= $j ?>">
                     <div class="print-header">
                         <div class="program-title-banner">

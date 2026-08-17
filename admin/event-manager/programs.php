@@ -545,6 +545,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         if ($stageCategory === 'off_stage') {
             $sectionId = null;
+            $judgesCount = 1;
         }
 
         $location = isset($_POST['location']) && $_POST['location'] !== '' ? trim((string)$_POST['location']) : null;
@@ -1669,13 +1670,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const toggleSectionGroup = () => {
             const secGroup = document.getElementById('scheduleSectionGroup');
+            const jCount = document.getElementById('judgesCount');
             if (secGroup) {
                 if (filterSelect.value === 'off_stage') {
                     secGroup.style.display = 'none';
                     const secIdInput = document.getElementById('programSectionId');
                     if (secIdInput) secIdInput.value = '';
+                    if (jCount) jCount.value = '1';
                 } else {
                     secGroup.style.display = '';
+                    if (jCount && jCount.value === '1') {
+                        jCount.value = String(window.GLOBAL_DEFAULT_JUDGES || '2');
+                    }
                 }
             }
         };

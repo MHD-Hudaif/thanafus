@@ -1171,7 +1171,7 @@ require_once __DIR__ . '/../../includes/header.php';
         <div class="active-console-panel">
             
             <!-- Active Performer Card Container (Preview vs Live states) -->
-            <div id="chestBox" class="broadcast-container state-preview" onclick="handleSlideClick()">
+            <div id="chestBox" class="broadcast-container state-preview">
                 <div class="state-banner" id="textSlideMode">PREVIEWING</div>
                 
                 <div style="text-align: center; width: 100%;">
@@ -1543,6 +1543,14 @@ function handleSlideClick() {
 function syncTimerUI(item, isLiveItem) {
     const timerPanel = document.getElementById('timerPanel');
     if (!timerPanel) return;
+
+    if (item && item.is_intro) {
+        timerPanel.style.display = 'none';
+        return;
+    } else {
+        timerPanel.style.display = '';
+    }
+
     const timerStatusBadge = document.getElementById('timerStatusBadge');
     const timerClock = document.getElementById('timerClock');
     const timerSubtext = document.getElementById('timerSubtext');
@@ -1557,6 +1565,12 @@ function syncTimerUI(item, isLiveItem) {
         btnStart.style.display = 'none';
         btnStop.style.display = 'inline-flex';
         btnReset.style.display = 'none';
+        
+        if (btnStop) {
+            btnStop.disabled = !isLiveItem;
+            btnStop.style.opacity = !isLiveItem ? '0.45' : '';
+            btnStop.style.pointerEvents = !isLiveItem ? 'none' : '';
+        }
         return;
     }
 
@@ -1579,11 +1593,24 @@ function syncTimerUI(item, isLiveItem) {
         btnStop.style.display = 'none';
         btnReset.style.display = (timerElapsedTime > 0) ? 'inline-flex' : 'none';
     }
+
+    // Apply disabled state if the item is not live
+    [btnStart, btnReset].forEach(btn => {
+        if (btn) {
+            btn.disabled = !isLiveItem;
+            btn.style.opacity = !isLiveItem ? '0.45' : '';
+            btn.style.pointerEvents = !isLiveItem ? 'none' : '';
+        }
+    });
 }
 
 // TIMER ENGINE FUNCTIONS
 function startTimer() {
     const item = stageQueue[currentIndex];
+    if (item && item.is_intro) {
+        showToast('Cannot start timer for Program Intro.');
+        return;
+    }
     const isLiveItem = (item.program_id === liveProgramId && item.entry_id === liveEntryId);
 
     if (!isLiveItem) {
@@ -1617,7 +1644,7 @@ function stopTimer() {
     timerInterval = null;
     isTimerRunning = false;
 
-    const item = stageQueue[currentIndex];
+    const item = stageQueue.find(it => it.program_id === liveProgramId && it.entry_id === liveEntryId) || stageQueue[currentIndex];
     const durationSec = Math.round(timerElapsedTime / 1000);
     const formatted = formatTimeMs(timerElapsedTime, false);
 
@@ -1630,7 +1657,7 @@ function stopTimer() {
     // Save to backend via AJAX
     saveRecordedTimeBackend(item.program_id, item.entry_id, durationSec, formatted);
 
-    syncTimerUI(item, true);
+    syncTimerUI(stageQueue[currentIndex], (stageQueue[currentIndex].program_id === liveProgramId && stageQueue[currentIndex].entry_id === liveEntryId));
     showToast(`Recorded time: ${formatted} saved!`);
 }
 
@@ -1671,6 +1698,11 @@ function updateLiveTimerBackend(running, startTime, elapsed) {
 }
 
 function toggleTimerFromMobile() {
+    const item = stageQueue[currentIndex];
+    if (item && item.is_intro) return;
+    const isLiveItem = (item.program_id === liveProgramId && item.entry_id === liveEntryId);
+    if (!isLiveItem) return;
+
     if (isTimerRunning) {
         stopTimer();
     } else {
@@ -1854,10 +1886,12 @@ function renderCardsGrid(filterText = '') {
 }
 
 function selectCardIndex(idx, broadcastNow = false) {
-    if (isTimerRunning) {
+    if (broadcastNow && isTimerRunning) {
         stopTimer();
     }
-    timerElapsedTime = 0;
+    if (!isTimerRunning) {
+        timerElapsedTime = 0;
+    }
     const direction = idx > currentIndex ? 'next' : 'prev';
     renderStageDeck(idx, direction);
     closeCardsModal();
@@ -1872,10 +1906,9 @@ function escapeHtml(str) {
 }
 
 function navigateStage(delta) {
-    if (isTimerRunning) {
-        stopTimer();
+    if (!isTimerRunning) {
+        timerElapsedTime = 0;
     }
-    timerElapsedTime = 0;
     const targetIdx = currentIndex + delta;
     if (targetIdx >= 0 && targetIdx < stageQueue.length) {
         renderStageDeck(targetIdx, delta > 0 ? 'next' : 'prev');
