@@ -201,7 +201,7 @@ require __DIR__ . '/includes/public-header.php';
           </div>
         </div>
 
-        <!-- MIDDLE COLUMN: 1st, 2nd, 3rd Scores & Grade A -->
+        <!-- MIDDLE COLUMN: 1st, 2nd, 3rd Scores -->
         <div class="timeline-col-middle">
           <?php if (!empty($item['results'])): ?>
             <div class="ranks-badge-list">
@@ -211,19 +211,13 @@ require __DIR__ . '/includes/public-header.php';
                 $ord = match($rankVal) { 1 => 'st', 2 => 'nd', 3 => 'rd', default => 'th' };
                 ?>
                 <span class="schedule-rank-tag schedule-rank-tag-<?= $rankVal ?>" style="background: <?= e($res['team_color'] ?? '#3b82f6') ?>;">
-                  <strong><?= $rankVal ?><?= $ord ?>:</strong> <?= e($res['team_name']) ?>
+                  <strong><?= $rankVal ?><?= $ord ?>:</strong> <?= $res['final_score'] !== null ? e(round($res['final_score'])) : '—' ?>
                 </span>
               <?php endforeach; ?>
             </div>
           <?php endif; ?>
 
-          <?php if (!empty($item['a_grade_count']) && (int)$item['a_grade_count'] > 0): ?>
-            <div class="grade-a-pill">
-              <i class="fa-solid fa-star"></i> <?= (int)$item['a_grade_count'] ?> Participant(s) Grade A
-            </div>
-          <?php endif; ?>
-
-          <?php if (empty($item['results']) && empty($item['a_grade_count'])): ?>
+          <?php if (empty($item['results'])): ?>
             <span style="font-size: 0.8em; color: #94a3b8;">—</span>
           <?php endif; ?>
         </div>

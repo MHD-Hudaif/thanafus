@@ -278,3 +278,25 @@ if (!function_exists('parse_visitor_user_agent')) {
         ];
     }
 }
+
+if (!function_exists('render_clarity_script')) {
+    /**
+     * Renders the Google Clarity tracking script if the project ID is configured.
+     */
+    function render_clarity_script(): void
+    {
+        $clarityId = env('CLARITY_PROJECT_ID');
+        if (empty($clarityId)) {
+            return;
+        }
+
+        echo "\n<!-- Google Clarity -->\n";
+        echo "<script type=\"text/javascript\">\n";
+        echo "    (function(c,l,a,r,i,t,y){\n";
+        echo "        c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};\n";
+        echo "        t=l.createElement(r);t.async=1;t.src=\"https://www.clarity.ms/tag/\"+i;\n";
+        echo "        y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);\n";
+        echo "    })(window,document,\"clarity\",\"script\",\"" . htmlspecialchars((string)$clarityId, ENT_QUOTES, 'UTF-8') . "\");\n";
+        echo "</script>\n";
+    }
+}

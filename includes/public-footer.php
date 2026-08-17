@@ -3,6 +3,9 @@
   <aside class="home-footer-utility home-footer-pulse home-footer-location" aria-label="Find Al Jamiathul Kauzariyya">
     <div class="footer-location-map">
       <iframe title="Interactive Google Map showing Al Jamiathul Kauzariyya in Edathala" src="https://www.google.com/maps?q=10.0730%2C76.3704&amp;z=16&amp;output=embed" loading="lazy" allowfullscreen referrerpolicy="no-referrer-when-downgrade"></iframe>
+      <span>
+        <svg viewBox="0 0 24 24" fill="none"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z" fill="#ea4335"/></svg>
+      </span>
     </div>
     <div class="footer-pulse-copy">
       <p class="overline">Our place &middot; our community</p>

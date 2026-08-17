@@ -97,7 +97,7 @@ while (time() - $startTime < 60) {
     if (ob_get_level() > 0) ob_flush();
     flush();
 
-    sleep(2);
+    usleep(500000); // Check every 0.5 seconds for instant database updates
 }
 
 exit;

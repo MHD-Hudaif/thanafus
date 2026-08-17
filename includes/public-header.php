@@ -42,6 +42,7 @@ $dateLabel = $event ? date('d F Y', strtotime($event['start_date'] ?? '2026-07-1
     <link rel="stylesheet" href="<?= asset_url('css/home-responsive.css') ?>?v=<?= filemtime(__DIR__ . '/../assets/css/home-responsive.css') ?>">
   <?php endif; ?>
   <script src="<?= asset_url('js/scroll.js') ?>"></script>
+  <?php if (function_exists('render_clarity_script')) render_clarity_script(); ?>
 </head>
 <body class="page-<?= e($page) ?> <?= $page === 'home' ? 'page-home' : '' ?>">
 <header class="site-header">

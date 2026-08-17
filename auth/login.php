@@ -133,6 +133,7 @@ if (!empty($_SESSION['oauth_error'])) {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
     <link rel="stylesheet" href="<?= asset_url('css/auth.css') ?>?v=20260722v1">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <?php if (function_exists('render_clarity_script')) render_clarity_script(); ?>
 </head>
 <body>
 

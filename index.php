@@ -71,6 +71,7 @@ try {
     <script src="https://unpkg.com/@studio-freight/lenis@1.0.34/dist/lenis.min.js"></script>
     <!-- JS Script -->
     <script src="<?= asset_url('js/intro.js') ?>?v=<?= file_exists(__DIR__ . '/assets/js/intro.js') ? filemtime(__DIR__ . '/assets/js/intro.js') : time() ?>" defer></script>
+    <?php if (function_exists('render_clarity_script')) render_clarity_script(); ?>
 </head>
 <body>
     <!-- Glowing background warmth -->

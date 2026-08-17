@@ -622,11 +622,21 @@ require_once __DIR__ . '/../../includes/sidebar.php';
         </div>
         
         <!-- Filter Controls -->
-        <div class="filter-btn-group">
-            <a href="?range=today" class="filter-btn <?= $range === 'today' ? 'active' : '' ?>">Today</a>
-            <a href="?range=7days" class="filter-btn <?= $range === '7days' ? 'active' : '' ?>">Last 7 Days</a>
-            <a href="?range=30days" class="filter-btn <?= $range === '30days' ? 'active' : '' ?>">30 Days</a>
-            <a href="?range=all" class="filter-btn <?= $range === 'all' ? 'active' : '' ?>">All Time</a>
+        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+            <?php 
+            $clarityId = env('CLARITY_PROJECT_ID');
+            if ($clarityId): 
+            ?>
+                <a href="https://clarity.microsoft.com/projects" target="_blank" class="btn-clarity" style="display: inline-flex; align-items: center; gap: 8px; background: rgba(59, 130, 246, 0.12); border: 1px solid rgba(59, 130, 246, 0.25); color: #60a5fa; text-decoration: none; padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; transition: all 0.2s ease;" onmouseover="this.style.background='rgba(59, 130, 246, 0.2)'; this.style.borderColor='rgba(59, 130, 246, 0.4)';" onmouseout="this.style.background='rgba(59, 130, 246, 0.12)'; this.style.borderColor='rgba(59, 130, 246, 0.25)';">
+                    <i class="fa-solid fa-chart-simple" style="color: #60a5fa;"></i> Go to Clarity <i class="fa-solid fa-up-right-from-square" style="font-size: 10px; opacity: 0.8;"></i>
+                </a>
+            <?php endif; ?>
+            <div class="filter-btn-group">
+                <a href="?range=today" class="filter-btn <?= $range === 'today' ? 'active' : '' ?>">Today</a>
+                <a href="?range=7days" class="filter-btn <?= $range === '7days' ? 'active' : '' ?>">Last 7 Days</a>
+                <a href="?range=30days" class="filter-btn <?= $range === '30days' ? 'active' : '' ?>">30 Days</a>
+                <a href="?range=all" class="filter-btn <?= $range === 'all' ? 'active' : '' ?>">All Time</a>
+            </div>
         </div>
     </div>
     

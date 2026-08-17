@@ -131,7 +131,7 @@ function schedule_items(): array
             $aGradeCount = 0;
             if ($status === 'completed' || $row['status'] === 'completed') {
                 $stmtRes = $pdo->prepare("
-                    SELECT pe.final_rank, pe.grade, pe.entry_name, t.team_name, t.team_color
+                    SELECT pe.final_rank, pe.grade, pe.entry_name, t.team_name, t.team_color, pe.final_score
                     FROM musabaqa_program_entries pe
                     JOIN musabaqa_teams t ON t.id = pe.team_id
                     WHERE pe.program_id = ?
@@ -149,7 +149,8 @@ function schedule_items(): array
                             'entry_name' => $resRow['entry_name'],
                             'team_name' => $resRow['team_name'],
                             'team_color' => $resRow['team_color'] ?: '#64748b',
-                            'grade' => $resRow['grade']
+                            'grade' => $resRow['grade'],
+                            'final_score' => $resRow['final_score'] !== null ? (float)$resRow['final_score'] : null
                         ];
                     }
                 }

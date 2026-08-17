@@ -106,6 +106,7 @@ window.APP_CONFIG = {
 };
 </script>
 <script src="<?= asset_url('js/admin.js') ?>?v=<?= filemtime(__DIR__ . '/../assets/js/admin.js') ?>" defer></script>
+<?php if (function_exists('render_clarity_script')) render_clarity_script(); ?>
 </head>
 
 <body class="layout-sidebar-enabled">
