@@ -488,6 +488,29 @@ if ($programId > 0) {
                 $prevScore = $item['score'];
             }
         }
+
+        // For rank-based programs, get the max rank limit from configuration
+        $maxRankLimit = null;
+        if (!empty($program['disable_scores']) && !empty($program['team_points_config'])) {
+            try {
+                $rankConfig = json_decode($program['team_points_config'], true);
+                if (is_array($rankConfig) && !empty($rankConfig)) {
+                    $maxRankLimit = (int)max(array_keys($rankConfig));
+                }
+            } catch (Throwable $e) {
+                // Invalid JSON, no rank limit
+            }
+        }
+
+        // Count how many ranks are already assigned
+        $assignedRanksCount = 0;
+        if ($maxRankLimit !== null) {
+            foreach ($entries as $entry) {
+                if ((int)($entry['final_rank'] ?? 0) > 0) {
+                    $assignedRanksCount++;
+                }
+            }
+        }
         ?>
 
         <div class="table-wrapper">
@@ -543,8 +566,13 @@ if ($programId > 0) {
                                 $entryGrade = $gInfo['grade'];
                                 $gradePts = $gInfo['grade_points'];
                             }
+
+                            // Check if this entry should be disabled/hidden (all slots filled and no rank assigned to this entry)
+                            $entryHasRank = (int)($entry['final_rank'] ?? 0) > 0;
+                            $isEntryDisabled = $maxRankLimit !== null && $assignedRanksCount >= $maxRankLimit && !$entryHasRank;
+                            $rowStyle = $isEntryDisabled ? 'opacity: 0.5; pointer-events: none; display: none;' : '';
                         ?>
-                        <tr data-entry-row="<?= $entryId ?>">
+                        <tr data-entry-row="<?= $entryId ?>" style="<?= $rowStyle ?>">
                             <td><strong><?= $orderIdx++ ?></strong></td>
                             <td><strong><?= e($entry['chest_number'] ?: '-') ?></strong></td>
                             <td><?= e($entry['entry_name'] ?: 'Unnamed Entry') ?></td>
@@ -559,11 +587,11 @@ if ($programId > 0) {
                                     <select class="score-grid-rank-select form-control input-sm"
                                             data-entry-id="<?= $entryId ?>"
                                             style="width: 130px; background: rgba(15,23,42,0.8); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 4px 6px; border-radius: 6px; display: inline-block;"
-                                            <?= $scoresLocked ? 'disabled' : '' ?>>
+                                            <?= $scoresLocked || $isEntryDisabled ? 'disabled' : '' ?>>
                                         <option value="0">None</option>
                                         <?php
-                                        $entriesCount = count($entries);
-                                        for ($rInt = 1; $rInt <= $entriesCount; $rInt++) {
+                                        $rankLimit = $maxRankLimit ?? count($entries);
+                                        for ($rInt = 1; $rInt <= $rankLimit; $rInt++) {
                                             $suffix = match($rInt) { 1 => 'st', 2 => 'nd', 3 => 'rd', default => 'th' };
                                             $selected = (int)($entry['final_rank'] ?? 0) === $rInt ? 'selected' : '';
                                             echo "<option value=\"{$rInt}\" {$selected}>{$rInt}{$suffix} Place</option>";
@@ -696,6 +724,7 @@ if ($programId > 0) {
     const CSRF_TOKEN = <?= json_encode(admin_csrf_value()) ?>;
     const PROGRAM_ID = <?= (int)$programId ?>;
     const SCORES_LOCKED = <?= json_encode($scoresLocked) ?>;
+    const MAX_RANK_LIMIT = <?= (int)($maxRankLimit ?? 0) ?>;
     const DRAFT_CACHE_KEY = `judge_draft_scores_prog_${PROGRAM_ID}`;
 
     function getDraftCache() {
@@ -734,6 +763,45 @@ if ($programId > 0) {
                 localStorage.setItem(DRAFT_CACHE_KEY, JSON.stringify(cache));
             }
         } catch (e) {}
+    }
+
+    function updateRowVisibilityForRanks() {
+        const rankSelects = document.querySelectorAll('.score-grid-rank-select');
+        if (rankSelects.length === 0 || MAX_RANK_LIMIT === 0) return; // Not a rank-based program
+
+        // Count how many ranks are assigned
+        let assignedCount = 0;
+        rankSelects.forEach(select => {
+            if (select.value && select.value !== '0') {
+                assignedCount++;
+            }
+        });
+
+        // If all rank slots are filled, hide and disable entries without ranks
+        const isAllSlotsFilled = assignedCount >= MAX_RANK_LIMIT;
+
+        rankSelects.forEach(select => {
+            const row = select.closest('tr[data-entry-row]');
+            if (!row) return;
+
+            const hasRank = select.value && select.value !== '0';
+
+            if (isAllSlotsFilled && !hasRank) {
+                // Hide this row by setting display:none
+                row.style.display = 'none';
+                row.style.opacity = '0.5';
+                row.style.pointerEvents = 'none';
+                select.disabled = true;
+            } else {
+                // Show this row
+                row.style.display = '';
+                row.style.opacity = '';
+                row.style.pointerEvents = '';
+                if (!select.disabled && !SCORES_LOCKED) {
+                    select.disabled = false;
+                }
+            }
+        });
     }
 
     function updateSendApprovalButtonState() {
@@ -864,6 +932,8 @@ if ($programId > 0) {
                 saveRowScore(entryId);
             }
         });
+
+        updateRowVisibilityForRanks(); // Update visibility after restoring cached ranks
     }
 
     async function saveRowScore(entryId) {
@@ -927,6 +997,7 @@ if ($programId > 0) {
                 }
 
                 updateSendApprovalButtonState();
+                updateRowVisibilityForRanks(); // Update visibility if this was a rank change
             } else {
                 throw new Error(data.message || 'Error saving score');
             }
@@ -1102,6 +1173,7 @@ if ($programId > 0) {
                 const fieldKey = input.dataset.judge ? `j${input.dataset.judge}_c${input.dataset.categoryId}` : 'rank';
                 saveDraftInputToCache(entryId, fieldKey, input.value);
                 updateSendApprovalButtonState();
+                updateRowVisibilityForRanks(); // Update visibility when rank changes
                 saveRowScore(entryId);
             }
         });
@@ -1182,6 +1254,7 @@ if ($programId > 0) {
     window.addEventListener('DOMContentLoaded', () => {
         restoreDraftScoresFromCache();
         updateSendApprovalButtonState();
+        updateRowVisibilityForRanks(); // Initial visibility check for rank-based programs
     });
     </script>
     <?php

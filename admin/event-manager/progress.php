@@ -52,6 +52,7 @@ $sql = "
         pe.status AS entry_status,
         p.title AS program_title,
         p.program_type,
+        p.judges_count,
         p.stage_type_id,
         p.section_id,
         sec.name AS session_name,
@@ -120,6 +121,7 @@ $teamGroupedData = [];
 foreach ($entriesRaw as $r) {
     $pId = (int)$r['program_id'];
     $tId = (int)$r['team_id'];
+    $jCount = (int)($r['judges_count'] ?? 2);
 
     // Format members
     $membersList = [];
@@ -145,6 +147,7 @@ foreach ($entriesRaw as $r) {
         'entry_number' => $r['entry_number'],
         'program_title' => $r['program_title'],
         'program_type' => $r['program_type'],
+        'judges_count' => $jCount,
         'session_name' => $r['session_name'] ?: 'General',
         'team_name' => $r['team_name'],
         'team_color' => $r['team_color'],
@@ -161,6 +164,7 @@ foreach ($entriesRaw as $r) {
             'id' => $pId,
             'title' => $r['program_title'],
             'type' => $r['program_type'],
+            'judges_count' => $jCount,
             'session_name' => $r['session_name'] ?: 'General',
             'entries' => [],
             'scored_count' => 0,
@@ -200,6 +204,7 @@ foreach ($entriesRaw as $r) {
                 'program_title' => $r['program_title'],
                 'program_type' => $r['program_type'],
                 'entry_name' => $r['entry_name'],
+                'judges_count' => $jCount,
                 'judge1_total' => $entryItem['judge1_total'],
                 'judge2_total' => $entryItem['judge2_total'],
                 'final_total' => $entryItem['final_total'],
@@ -215,6 +220,7 @@ foreach ($entriesRaw as $r) {
             'program_title' => $r['program_title'],
             'program_type' => $r['program_type'],
             'entry_name' => $r['entry_name'],
+            'judges_count' => $jCount,
             'judge1_total' => $entryItem['judge1_total'],
             'judge2_total' => $entryItem['judge2_total'],
             'final_total' => $entryItem['final_total'],

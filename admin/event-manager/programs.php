@@ -558,22 +558,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // ------------------------------------------------------------------
         $existingStartDt = null;
         $existingEndDt   = null;
+        $existingSectionId = null;
         if ($action === 'update' && $programId > 0) {
             $existingStmt = $pdo->prepare(
-                "SELECT start_time, end_time FROM musabaqa_programs WHERE id = ? AND event_id = ? LIMIT 1"
+                "SELECT start_time, end_time, section_id FROM musabaqa_programs WHERE id = ? AND event_id = ? LIMIT 1"
             );
             $existingStmt->execute([$programId, $activeEventId]);
             $existingRow = $existingStmt->fetch(PDO::FETCH_ASSOC);
             if ($existingRow) {
                 $existingStartDt = $existingRow['start_time'];
                 $existingEndDt   = $existingRow['end_time'];
+                $existingSectionId = $existingRow['section_id'];
             }
         }
 
         // Only validate when the program already has a scheduled time
         if ($existingStartDt && $existingEndDt) {
             // Rule 1: Program time must fit inside the assigned session window
-            if ($sectionId !== null) {
+            // Only validate if section_id is being changed (new assignment)
+            if ($sectionId !== null && $sectionId !== $existingSectionId) {
                 validate_program_session_window($pdo, $sectionId, $existingStartDt, $existingEndDt, $activeEventId);
             }
             // Rule 2: No two programs on the same stage can overlap in time
@@ -1021,7 +1024,8 @@ require_once __DIR__ . '/../../includes/sidebar.php';
     </div>
 </div>
 
-<!-- STAGE MANAGEMENT MODAL -->
+
+<!-- STAGE MANAGEMENT MODAL -->
 <div class="modal-overlay" id="stagesModal">
     <div class="modal-box" style="max-height: calc(100vh - 60px); display: flex; flex-direction: column; overflow: hidden; padding: 24px; width: 480px; background: #0b0f19; border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7); position: relative;">
         

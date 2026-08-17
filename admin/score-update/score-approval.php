@@ -408,7 +408,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' || isset($_GET['ajax']) || isset($_GET
                             <?php if ($isDisableScores): ?>
                                 <tr><th>Entry Name</th><th>Team</th><th style="text-align: center;">Placement Rank</th><th style="text-align: center;">Team Pts</th></tr>
                             <?php else: ?>
-                                <tr><th>Entry Name</th><th>Team</th><th>Judge 1 Total</th><th>Judge 2 Total</th><th>Final Total</th><th>Grade</th><th>Grade A Bonus</th><th>Rank</th><th>Team Pts</th></tr>
+                                <tr>
+                                    <th>Entry Name</th>
+                                    <th>Team</th>
+                                    <th><?= $judgesCount > 1 ? 'Judge 1 Total' : 'Judge Total' ?></th>
+                                    <?php if ($judgesCount > 1): ?>
+                                        <th>Judge 2 Total</th>
+                                    <?php endif; ?>
+                                    <th>Final Total</th>
+                                    <th>Grade</th>
+                                    <th>Grade A Bonus</th>
+                                    <th>Rank</th>
+                                    <th>Team Pts</th>
+                                </tr>
                             <?php endif; ?>
                         </thead>
                         <tbody>
@@ -431,7 +443,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' || isset($_GET['ajax']) || isset($_GET
                                         <td style="text-align: center;"><strong><?= (int)$e['team_points'] ?></strong></td>
                                     <?php else: ?>
                                         <td><?= number_format((float)$e['judge1_total'], 2) ?></td>
-                                        <td><?= number_format((float)$e['judge2_total'], 2) ?></td>
+                                        <?php if ($judgesCount > 1): ?>
+                                            <td><?= number_format((float)$e['judge2_total'], 2) ?></td>
+                                        <?php endif; ?>
                                         <td><strong><?= number_format((float)$e['final_total'], 2) ?></strong></td>
                                         <td><span class="badge badge-<?= ($e['grade'] ?? '') === 'A' ? 'success' : 'neutral' ?>">Grade <?= e($e['grade'] ?? '—') ?></span></td>
                                         <td style="text-align: center; color: #34d399; font-weight: 800;">+<?= number_format((float)($e['grade_bonus'] ?? 0), 0) ?></td>
@@ -595,6 +609,34 @@ require_once __DIR__ . '/../../includes/header.php';
 require_once __DIR__ . '/../../includes/sidebar.php';
 ?>
 
+<style>
+@keyframes pulse-submitted {
+    0% {
+        box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.6);
+        transform: scale(1);
+    }
+    70% {
+        box-shadow: 0 0 0 8px rgba(245, 158, 11, 0);
+        transform: scale(1.04);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(245, 158, 11, 0);
+        transform: scale(1);
+    }
+}
+.btn-submitted-pulse {
+    background: #f59e0b !important;
+    color: #0f172a !important;
+    border: 1px solid #d97706 !important;
+    font-weight: 700 !important;
+    animation: pulse-submitted 2s infinite ease-in-out;
+}
+.btn-submitted-pulse:hover {
+    background: #fbbf24 !important;
+    transform: scale(1.05);
+}
+</style>
+
 <div class="main-content">
     <div class="topbar">
         <div>
@@ -681,7 +723,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                             </td>
                             <td>
                                 <div class="flex gap-2 flex-wrap">
-                                    <button type="button" class="btn btn-secondary btn-sm" onclick="openSessionModal(<?= (int)$session['session_id'] ?>, '<?= e(addslashes($session['session_name'])) ?>')">
+                                    <button type="button" class="btn <?= $sub > 0 ? 'btn-submitted-pulse' : 'btn-secondary' ?> btn-sm" onclick="openSessionModal(<?= (int)$session['session_id'] ?>, '<?= e(addslashes($session['session_name'])) ?>')">
                                         <i class="fa-solid fa-folder-open mr-1"></i> Review Programs
                                     </button>
                                     

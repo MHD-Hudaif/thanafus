@@ -203,21 +203,29 @@ require __DIR__ . '/includes/public-header.php';
 
         <!-- MIDDLE COLUMN: 1st, 2nd, 3rd Scores -->
         <div class="timeline-col-middle">
-          <?php if (!empty($item['results'])): ?>
+          <?php 
+          $validResults = [];
+          if (!empty($item['results'])) {
+              foreach ($item['results'] as $res) {
+                  if ($res['final_score'] !== null && $res['final_score'] !== '') {
+                      $validResults[] = $res;
+                  }
+              }
+          }
+          ?>
+          <?php if (!empty($validResults)): ?>
             <div class="ranks-badge-list">
-              <?php foreach ($item['results'] as $res): ?>
+              <?php foreach ($validResults as $res): ?>
                 <?php
                 $rankVal = (int)($res['rank'] ?? 0);
                 $ord = match($rankVal) { 1 => 'st', 2 => 'nd', 3 => 'rd', default => 'th' };
                 ?>
                 <span class="schedule-rank-tag schedule-rank-tag-<?= $rankVal ?>" style="background: <?= e($res['team_color'] ?? '#3b82f6') ?>;">
-                  <strong><?= $rankVal ?><?= $ord ?>:</strong> <?= $res['final_score'] !== null ? e(round($res['final_score'])) : '—' ?>
+                  <strong><?= $rankVal ?><?= $ord ?>:</strong> <?= e(round($res['final_score'])) ?>
                 </span>
               <?php endforeach; ?>
             </div>
-          <?php endif; ?>
-
-          <?php if (empty($item['results'])): ?>
+          <?php else: ?>
             <span style="font-size: 0.8em; color: #94a3b8;">—</span>
           <?php endif; ?>
         </div>
