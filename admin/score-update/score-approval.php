@@ -359,7 +359,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' || isset($_GET['ajax']) || isset($_GET
                         $teamPoints = $pointConfig[1] ?? 0;
                     } elseif ($idx === 1) {
                         $c1 = $groupCounts[0] ?? 0;
-                        $teamPoints = ($c1 === 1 || $c1 === 2) ? ($pointConfig[2] ?? 0) : 0;
+                        // A shared first consumes both first and second place.
+                        // The following score group is rank 3, so it receives
+                        // the third-place points rather than second-place points.
+                        if ($c1 === 1) {
+                            $teamPoints = $pointConfig[2] ?? 0;
+                        } elseif ($c1 === 2) {
+                            $teamPoints = $pointConfig[3] ?? 0;
+                        }
                     } elseif ($idx === 2) {
                         $c1 = $groupCounts[0] ?? 0;
                         $c2 = $groupCounts[1] ?? 0;
