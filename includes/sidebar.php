@@ -185,6 +185,10 @@ if ($activeEventId) {
                     <i data-lucide="history" class="sidebar-icon"></i>
                     <span class="sidebar-label">Score History</span>
                 </a>
+                <a href="<?= app_url('/admin/score-entry/individual-leaderboard.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('individual-leaderboard.php') ?>">
+                    <i data-lucide="award" class="sidebar-icon"></i>
+                    <span class="sidebar-label">Individual Leaderboard</span>
+                </a>
                 <?php if (is_admin()): ?>
                 <a href="<?= app_url('/admin/score-update/score-approval.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('score-approval.php') ?>">
                     <i data-lucide="check-circle-2" class="sidebar-icon"></i>
