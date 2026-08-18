@@ -69,9 +69,16 @@ $tvSettings = $tvSettings ?? tv_get_settings($activeEventId);
 // POST Actions
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     $action = $_POST['action'];
+    $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') 
+              || (isset($_POST['ajax']) && $_POST['ajax'] === '1');
 
     if ($action === 'upload_quick_screen') {
         if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => 'Invalid security token.']);
+                exit;
+            }
             admin_flash('error', 'Invalid security token.');
             admin_redirect('/admin/live-display/control-live-display.php');
         }
@@ -93,11 +100,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 if (!move_uploaded_file($fileTmpPath, $dest_path)) {
                     throw new Exception('Failed to save uploaded image file.');
                 }
+                if ($isAjax) {
+                    header('Content-Type: application/json');
+                    echo json_encode([
+                        'success' => true, 
+                        'message' => 'Quick screen image uploaded successfully.',
+                        'image' => $newFileName,
+                        'url' => app_url('/uploads/quick-screens/' . $newFileName),
+                        'display_name' => preg_replace('/^\d+_/', '', $newFileName)
+                    ]);
+                    exit;
+                }
                 admin_flash('success', 'Quick screen image uploaded successfully.');
             } else {
                 throw new Exception('No image file selected or upload error.');
             }
         } catch (Throwable $e) {
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+                exit;
+            }
             admin_flash('error', $e->getMessage());
         }
         admin_redirect('/admin/live-display/control-live-display.php');
@@ -105,6 +128,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
     if ($action === 'delete_quick_screen') {
         if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => 'Invalid security token.']);
+                exit;
+            }
             admin_flash('error', 'Invalid security token.');
             admin_redirect('/admin/live-display/control-live-display.php');
         }
@@ -118,8 +146,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 $tvSettings['quick_screen_image'] = '';
                 tv_save_settings($activeEventId, $tvSettings);
             }
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => true, 'message' => 'Quick screen image deleted.']);
+                exit;
+            }
             admin_flash('success', 'Quick screen image deleted.');
         } else {
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => 'Image not found.']);
+                exit;
+            }
             admin_flash('error', 'Image not found.');
         }
         admin_redirect('/admin/live-display/control-live-display.php');
@@ -440,7 +478,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                 <div class="page-subtitle mb-4">Quick Screen Image Board</div>
                 
                 <!-- Upload Form -->
-                <form method="POST" enctype="multipart/form-data" class="mb-4" style="border-bottom: 1px dashed rgba(255,255,255,0.1); padding-bottom: 18px;">
+                <form id="qsUploadForm" method="POST" enctype="multipart/form-data" class="mb-4" style="border-bottom: 1px dashed rgba(255,255,255,0.1); padding-bottom: 18px;">
                     <?= admin_csrf_field() ?>
                     <input type="hidden" name="action" value="upload_quick_screen">
                     <label style="font-size: 13px; font-weight: 700; color: var(--text-primary); display: block; margin-bottom: 8px;">Upload New Quick Screen Image</label>
@@ -468,46 +506,38 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                         }
                     }
                 }
+                ?>
                 
-                if (empty($qsImages)): ?>
-                    <div style="text-align: center; padding: 24px; color: var(--text-muted); font-size: 13px; border: 1.5px dashed rgba(255,255,255,0.1); border-radius: 12px;">
-                        No quick screen images uploaded yet.
-                    </div>
-                <?php else: ?>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 16px;">
-                        <?php foreach ($qsImages as $img): 
-                            $isActive = (($tvSettings['quick_screen_image'] ?? '') === $img && !empty($tvSettings['quick_screen_enabled']));
-                        ?>
-                            <div class="quick-screen-card <?= $isActive ? 'is-active' : '' ?>" style="background: rgba(15, 23, 42, 0.4); border: 1.5px solid <?= $isActive ? '#10b981' : 'rgba(255,255,255,0.08)' ?>; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; position: relative;">
-                                <div style="aspect-ratio: 16/9; background-image: url('<?= app_url('/uploads/quick-screens/' . e($img)) ?>'); background-size: cover; background-position: center; position: relative; border-bottom: 1px solid rgba(255,255,255,0.08);">
+                <div id="qsEmptyState" style="display: <?= empty($qsImages) ? 'block' : 'none' ?>; text-align: center; padding: 24px; color: var(--text-muted); font-size: 13px; border: 1.5px dashed rgba(255,255,255,0.1); border-radius: 12px; margin-bottom: 16px;">
+                    No quick screen images uploaded yet.
+                </div>
+                
+                <div id="qsGrid" style="display: <?= empty($qsImages) ? 'grid' : 'none' ?>; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 16px;">
+                    <?php foreach ($qsImages as $img): 
+                        $isActive = (($tvSettings['quick_screen_image'] ?? '') === $img && !empty($tvSettings['quick_screen_enabled']));
+                    ?>
+                        <div class="quick-screen-card <?= $isActive ? 'is-active' : '' ?>" data-image-card="<?= e($img) ?>" style="background: rgba(15, 23, 42, 0.4); border: 1.5px solid <?= $isActive ? '#10b981' : 'rgba(255,255,255,0.08)' ?>; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; position: relative;">
+                            <div class="img-preview-box" style="aspect-ratio: 16/9; background-image: url('<?= app_url('/uploads/quick-screens/' . e($img)) ?>'); background-size: cover; background-position: center; position: relative; border-bottom: 1px solid rgba(255,255,255,0.08);">
+                                <span class="badge badge-success on-air-badge" style="position: absolute; top: 8px; left: 8px; font-size: 9px; padding: 2px 6px; border-radius: 6px; display: <?= $isActive ? 'inline-block' : 'none' ?>;">ON AIR</span>
+                            </div>
+                            <div style="padding: 10px; display: flex; flex-direction: column; gap: 8px; flex: 1; justify-content: space-between;">
+                                <span style="font-size: 11px; font-weight: 600; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; color: var(--text-muted); max-width: 100%;" title="<?= e($img) ?>">
+                                    <?= e(preg_replace('/^\d+_/', '', $img)) ?>
+                                </span>
+                                <div style="display: flex; gap: 4px;">
                                     <?php if ($isActive): ?>
-                                        <span class="badge badge-success" style="position: absolute; top: 8px; left: 8px; font-size: 9px; padding: 2px 6px; border-radius: 6px;">ON AIR</span>
+                                        <button class="btn btn-danger btn-xs btn-qs-deactivate" data-image="<?= e($img) ?>" style="flex: 1; padding: 4px;" title="Deactivate Quick Screen">Hide</button>
+                                    <?php else: ?>
+                                        <button class="btn btn-success btn-xs btn-qs-activate" data-image="<?= e($img) ?>" style="flex: 1; padding: 4px;" title="Activate Quick Screen">Show</button>
                                     <?php endif; ?>
-                                </div>
-                                <div style="padding: 10px; display: flex; flex-direction: column; gap: 8px; flex: 1; justify-content: space-between;">
-                                    <span style="font-size: 11px; font-weight: 600; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; color: var(--text-muted); max-width: 100%;" title="<?= e($img) ?>">
-                                        <?= e(preg_replace('/^\d+_/', '', $img)) ?>
-                                    </span>
-                                    <div style="display: flex; gap: 4px;">
-                                        <?php if ($isActive): ?>
-                                            <button class="btn btn-danger btn-xs btn-qs-deactivate" data-image="<?= e($img) ?>" style="flex: 1; padding: 4px;" title="Deactivate Quick Screen">Hide</button>
-                                        <?php else: ?>
-                                            <button class="btn btn-success btn-xs btn-qs-activate" data-image="<?= e($img) ?>" style="flex: 1; padding: 4px;" title="Activate Quick Screen">Show</button>
-                                        <?php endif; ?>
-                                        <form method="POST" style="margin: 0; display: inline;" onsubmit="return confirm('Are you sure you want to delete this image?');">
-                                            <?= admin_csrf_field() ?>
-                                            <input type="hidden" name="action" value="delete_quick_screen">
-                                            <input type="hidden" name="image" value="<?= e($img) ?>">
-                                            <button type="submit" class="btn btn-secondary btn-xs" style="padding: 4px; color: #ff6f6f;" title="Delete image">
-                                                <i class="fa-solid fa-trash"></i>
-                                            </button>
-                                        </form>
-                                    </div>
+                                    <button class="btn btn-secondary btn-xs btn-qs-delete" data-image="<?= e($img) ?>" style="padding: 4px; color: #ff6f6f;" title="Delete image">
+                                        <i class="fa-solid fa-trash"></i>
+                                    </button>
                                 </div>
                             </div>
-                        <?php endforeach; ?>
-                    </div>
-                <?php endif; ?>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
                 
                 <div style="font-size: 11.5px; color: var(--text-muted); line-height: 1.4; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 12px; margin-top: 16px;">
                     <span style="color: #3b82f6; font-weight: 700;">Tip:</span> Activating any image from this library will immediately broadcast it in fullscreen on all connected stage screens (super useful for custom break banners or announcements).
@@ -665,25 +695,170 @@ require_once __DIR__ . '/../../includes/sidebar.php';
         }
     });
 
-    // Quick Screen Image Actions
-    document.querySelectorAll('.btn-qs-activate').forEach(btn => {
-        btn.addEventListener('click', async function() {
-            const img = this.dataset.image;
+    // Helper to dynamically update the active quick screen UI card states
+    function updateActiveQuickScreen(activeImg) {
+        document.querySelectorAll('.quick-screen-card').forEach(card => {
+            const imgName = card.dataset.imageCard;
+            const badge = card.querySelector('.on-air-badge');
+            const actionBtn = card.querySelector('.btn-qs-activate, .btn-qs-deactivate');
+            
+            if (imgName === activeImg) {
+                card.classList.add('is-active');
+                card.style.borderColor = '#10b981';
+                if (badge) badge.style.display = 'inline-block';
+                if (actionBtn) {
+                    actionBtn.className = 'btn btn-danger btn-xs btn-qs-deactivate';
+                    actionBtn.textContent = 'Hide';
+                    actionBtn.title = 'Deactivate Quick Screen';
+                }
+            } else {
+                card.classList.remove('is-active');
+                card.style.borderColor = 'rgba(255,255,255,0.08)';
+                if (badge) badge.style.display = 'none';
+                if (actionBtn) {
+                    actionBtn.className = 'btn btn-success btn-xs btn-qs-activate';
+                    actionBtn.textContent = 'Show';
+                    actionBtn.title = 'Activate Quick Screen';
+                }
+            }
+        });
+        
+        // Reload preview iframe if visible to reflect display change immediately
+        if (iframe) iframe.src = iframe.src;
+    }
+
+    // Quick Screen Image Actions Event Delegation (Show / Hide / Delete)
+    document.addEventListener('click', async function(e) {
+        const actBtn = e.target.closest('.btn-qs-activate');
+        const deactBtn = e.target.closest('.btn-qs-deactivate');
+        const deleteBtn = e.target.closest('.btn-qs-delete');
+        
+        if (actBtn) {
+            e.preventDefault();
+            const img = actBtn.dataset.image;
             const res = await postSettings('quick_screen', { image: img, enabled: 1 });
             if (res && res.success) {
-                window.location.reload();
+                updateActiveQuickScreen(img);
+                if (window.showToast) window.showToast('Quick screen activated.', 'success');
             }
-        });
-    });
-
-    document.querySelectorAll('.btn-qs-deactivate').forEach(btn => {
-        btn.addEventListener('click', async function() {
-            const img = this.dataset.image;
+        }
+        
+        if (deactBtn) {
+            e.preventDefault();
+            const img = deactBtn.dataset.image;
             const res = await postSettings('quick_screen', { image: img, enabled: 0 });
             if (res && res.success) {
-                window.location.reload();
+                updateActiveQuickScreen(null);
+                if (window.showToast) window.showToast('Quick screen deactivated.', 'info');
             }
-        });
+        }
+
+        if (deleteBtn) {
+            e.preventDefault();
+            const img = deleteBtn.dataset.image;
+            if (!confirm('Are you sure you want to delete this image?')) return;
+            
+            const formData = new FormData();
+            formData.append('csrf_token', CSRF);
+            formData.append('action', 'delete_quick_screen');
+            formData.append('image', img);
+            formData.append('ajax', '1');
+            
+            try {
+                const response = await fetch(window.location.href, {
+                    method: 'POST',
+                    body: formData
+                });
+                const res = await response.json();
+                if (res && res.success) {
+                    if (window.showToast) window.showToast('Image deleted successfully.', 'success');
+                    // Remove card from DOM
+                    const card = document.querySelector(`[data-image-card="${img}"]`);
+                    if (card) card.remove();
+                    
+                    // Toggle empty state if grid is empty
+                    const grid = document.getElementById('qsGrid');
+                    const emptyState = document.getElementById('qsEmptyState');
+                    if (grid && grid.querySelectorAll('.quick-screen-card').length === 0) {
+                        grid.style.display = 'none';
+                        emptyState.style.display = 'block';
+                    }
+                } else {
+                    if (window.showToast) window.showToast(res.message || 'Failed to delete image.', 'error');
+                }
+            } catch (err) {
+                console.error(err);
+                if (window.showToast) window.showToast('Network error occurred.', 'error');
+            }
+        }
+    });
+
+    // Quick Screen Image Async Upload Handler
+    document.getElementById('qsUploadForm')?.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const submitBtn = this.querySelector('button[type="submit"]');
+        const originalBtnHTML = submitBtn.innerHTML;
+        
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Uploading...';
+        
+        const formData = new FormData(this);
+        formData.append('ajax', '1');
+        
+        try {
+            const response = await fetch(window.location.href, {
+                method: 'POST',
+                body: formData
+            });
+            const res = await response.json();
+            
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalBtnHTML;
+            
+            if (res && res.success) {
+                if (window.showToast) window.showToast(res.message || 'Uploaded successfully.', 'success');
+                // Reset file field
+                this.reset();
+                
+                // Add the new card to the grid
+                const grid = document.getElementById('qsGrid');
+                const emptyState = document.getElementById('qsEmptyState');
+                
+                if (grid && emptyState) {
+                    const cardHTML = `
+                        <div class="quick-screen-card" data-image-card="${res.image}" style="background: rgba(15, 23, 42, 0.4); border: 1.5px solid rgba(255,255,255,0.08); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; position: relative;">
+                            <div class="img-preview-box" style="aspect-ratio: 16/9; background-image: url('${res.url}'); background-size: cover; background-position: center; position: relative; border-bottom: 1px solid rgba(255,255,255,0.08);">
+                                <span class="badge badge-success on-air-badge" style="position: absolute; top: 8px; left: 8px; font-size: 9px; padding: 2px 6px; border-radius: 6px; display: none;">ON AIR</span>
+                            </div>
+                            <div style="padding: 10px; display: flex; flex-direction: column; gap: 8px; flex: 1; justify-content: space-between;">
+                                <span style="font-size: 11px; font-weight: 600; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; color: var(--text-muted); max-width: 100%;" title="${res.image}">
+                                    ${res.display_name}
+                                </span>
+                                <div style="display: flex; gap: 4px;">
+                                    <button class="btn btn-success btn-xs btn-qs-activate" data-image="${res.image}" style="flex: 1; padding: 4px;" title="Activate Quick Screen">Show</button>
+                                    <button class="btn btn-secondary btn-xs btn-qs-delete" data-image="${res.image}" style="padding: 4px; color: #ff6f6f;" title="Delete image">
+                                        <i class="fa-solid fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    // Insert at the beginning of the grid
+                    grid.insertAdjacentHTML('afterbegin', cardHTML);
+                    
+                    // Show grid and hide empty state
+                    grid.style.display = 'grid';
+                    emptyState.style.display = 'none';
+                }
+            } else {
+                if (window.showToast) window.showToast(res.message || 'Upload failed.', 'error');
+            }
+        } catch (err) {
+            console.error(err);
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalBtnHTML;
+            if (window.showToast) window.showToast('Network error during upload.', 'error');
+        }
     });
 
     // Loop Display mode auto/manual switching
