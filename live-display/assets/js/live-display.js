@@ -1655,7 +1655,7 @@
         if (isEnabled) {
             const imageName = settings.quick_screen_image;
             const bootstrapUrl = window.TV_BOOT?.api?.bootstrap || '';
-            const imageUrl = bootstrapUrl.replace('/live-display/api/settings.php', `/uploads/quick-screens/${imageName}`);
+            const imageUrl = bootstrapUrl.replace(/\/live-display\/api\/settings(\.php)?/i, `/uploads/quick-screens/${imageName}`);
 
             if (!overlay) {
                 overlay = document.createElement('div');

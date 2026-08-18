@@ -84,7 +84,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 if (!in_array($fileExtension, ['jpg', 'jpeg', 'png', 'webp', 'gif'], true)) {
                     throw new Exception('Only image files (JPG, PNG, WEBP, GIF) are allowed.');
                 }
-                $uploadFileDir = app_path('uploads/quick-screens/');
+                $uploadFileDir = app_path('uploads/quick-screens') . DIRECTORY_SEPARATOR;
                 if (!is_dir($uploadFileDir)) {
                     mkdir($uploadFileDir, 0755, true);
                 }
@@ -110,7 +110,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         }
 
         $image = (string)($_POST['image'] ?? '');
-        $imagePath = app_path('uploads/quick-screens/' . basename($image));
+        $imagePath = app_path('uploads/quick-screens') . DIRECTORY_SEPARATOR . basename($image);
         if ($image !== '' && file_exists($imagePath)) {
             unlink($imagePath);
             if (($tvSettings['quick_screen_image'] ?? '') === $image) {
@@ -455,7 +455,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                 <!-- Gallery -->
                 <label style="font-size: 13px; font-weight: 700; color: var(--text-primary); display: block; margin-bottom: 12px;">Quick Screen Library</label>
                 <?php
-                $quickScreensDir = app_path('uploads/quick-screens/');
+                $quickScreensDir = app_path('uploads/quick-screens') . DIRECTORY_SEPARATOR;
                 $qsImages = [];
                 if (is_dir($quickScreensDir)) {
                     $files = glob($quickScreensDir . '*.*');
