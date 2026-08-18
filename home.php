@@ -18,6 +18,14 @@ $eventInfo = [
 try {
     require_once __DIR__ . '/includes/public-data.php';
 
+    if (isset($_GET['from_app'])) {
+        if (session_status() === PHP_SESSION_NONE) {
+            @session_start();
+        }
+        $_SESSION['from_app'] = true;
+        session_write_close();
+    }
+
     // Retrieve and format active event
     $event = tv_active_event();
     $eventTitle = trim((string)($event['title'] ?? 'Al-Jamiathul Kauzariyya · Arts Festival'));

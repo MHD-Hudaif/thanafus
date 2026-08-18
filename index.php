@@ -10,6 +10,14 @@ if (!function_exists('term')) {
 // Establish database context or fall back gracefully
 try {
     require_once __DIR__ . '/includes/public-data.php';
+
+    if (isset($_GET['from_app'])) {
+        if (session_status() === PHP_SESSION_NONE) {
+            @session_start();
+        }
+        $_SESSION['from_app'] = true;
+        session_write_close();
+    }
     $event = tv_active_event();
     $eventStats = tv_stats();
     $teams = teams();

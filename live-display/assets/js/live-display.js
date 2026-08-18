@@ -164,6 +164,18 @@
                     globalTimerBox.classList.remove('is-running');
                 }
             }
+
+            const floatingTimerDisplay = document.getElementById('floatingStageTimerDisplay');
+            const floatingTimerBox = document.getElementById('floatingStageTimerBox');
+            if (floatingTimerDisplay) floatingTimerDisplay.textContent = timeText;
+            if (floatingTimerBox) {
+                const isIframe = window.self !== window.top;
+                if (running > 0 && !isIframe) {
+                    floatingTimerBox.style.display = 'flex';
+                } else {
+                    floatingTimerBox.style.display = 'none';
+                }
+            }
         } else {
             if (timerDisplay) timerDisplay.textContent = '00:00';
             if (timerBox) {
@@ -175,6 +187,13 @@
             if (globalTimerBox) {
                 globalTimerBox.style.display = 'none';
                 globalTimerBox.classList.remove('is-running');
+            }
+
+            const floatingTimerDisplay = document.getElementById('floatingStageTimerDisplay');
+            const floatingTimerBox = document.getElementById('floatingStageTimerBox');
+            if (floatingTimerDisplay) floatingTimerDisplay.textContent = '00:00';
+            if (floatingTimerBox) {
+                floatingTimerBox.style.display = 'none';
             }
         }
     }

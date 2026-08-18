@@ -120,6 +120,91 @@ $initialBgVideoSrc = tv_get_video_src($headerFirstColor);
         .performance-mode .program-row {
             transition-duration: 0.15s !important;
         }
+
+        /* Floating Global Stage Overlay Timer style */
+        .floating-stage-timer {
+            position: absolute;
+            top: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 999999;
+            pointer-events: none;
+            display: none; /* Controlled dynamically by JS */
+            align-items: center;
+            justify-content: center;
+        }
+        .floating-timer-inner {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1.5px solid rgba(239, 68, 68, 0.45);
+            padding: 8px 20px;
+            border-radius: 18px;
+            box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5), 0 0 25px rgba(239, 68, 68, 0.2);
+            color: #ffffff;
+            font-family: 'Space Grotesk', 'Cairo', sans-serif;
+            pointer-events: auto;
+            animation: floating-timer-pulse-border 2s infinite alternate;
+        }
+        .floating-timer-inner .pulse-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #ef4444;
+            box-shadow: 0 0 10px #ef4444;
+            animation: pulse-red-dot-floating 1.5s infinite;
+        }
+        .floating-timer-inner .timer-label {
+            font-size: 10px;
+            font-weight: 800;
+            color: #f87171;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .floating-timer-inner .timer-value {
+            font-size: 22px;
+            font-weight: 800;
+            color: #ffffff;
+            min-width: 58px;
+            text-align: center;
+            letter-spacing: 0.02em;
+        }
+        .performance-mode .floating-timer-inner {
+            animation: none !important;
+        }
+        .performance-mode .floating-timer-inner .pulse-dot {
+            animation: none !important;
+        }
+        @keyframes floating-timer-pulse-border {
+            0% {
+                box-shadow: 0 0 15px rgba(239, 68, 68, 0.15);
+                border-color: rgba(239, 68, 68, 0.45);
+            }
+            100% {
+                box-shadow: 0 0 30px rgba(239, 68, 68, 0.4);
+                border-color: rgba(239, 68, 68, 0.85);
+            }
+        }
+        @keyframes pulse-red-dot-floating {
+            0% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+            }
+            70% {
+                transform: scale(1);
+                box-shadow: 0 0 0 8px rgba(239, 68, 68, 0);
+            }
+            100% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+            }
+        }
     </style>
 </head>
     <script>
@@ -174,6 +259,15 @@ $initialBgVideoSrc = tv_get_video_src($headerFirstColor);
                 <div class="tv-clock" id="tvClock">--:--</div>
             </div>
         </header>
+
+        <!-- Floating Global Stage Overlay Timer (Centered Top Overlap) -->
+        <div class="floating-stage-timer" id="floatingStageTimerBox">
+            <div class="floating-timer-inner">
+                <span class="pulse-dot"></span>
+                <span class="timer-label"><i class="fa-solid fa-stopwatch"></i> LIVE TIMER</span>
+                <span class="timer-value" id="floatingStageTimerDisplay">00:00</span>
+            </div>
+        </div>
 
         <main class="tv-stage" id="tvStage">
 

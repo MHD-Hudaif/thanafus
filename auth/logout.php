@@ -1,16 +1,21 @@
 <?php
 require_once __DIR__ . '/../config/auth.php';
 
+// Check if they accessed the site from the mobile app
+$fromApp = !empty($_SESSION['from_app']) || (isset($_GET['redirect']) && $_GET['redirect'] === 'mobile-app');
+
 // If the user is already logged out, just redirect them
 if (empty($_SESSION['user_id'])) {
-    header('Location: ' . app_url('/'));
+    $redirectUrl = $fromApp ? app_url('/mobile-app/') : app_url('/');
+    header('Location: ' . $redirectUrl);
     exit;
 }
 
 // If confirmed, proceed to log out
 if (isset($_POST['confirm']) && $_POST['confirm'] === 'yes') {
     logout_user();
-    header('Location: ' . app_url('/'));
+    $redirectUrl = $fromApp ? app_url('/mobile-app/') : app_url('/');
+    header('Location: ' . $redirectUrl);
     exit;
 }
 

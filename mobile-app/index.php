@@ -1347,7 +1347,7 @@ $eventDateFormatted = !empty($event['start_date'])
             function handleSubmit() {
                 const dest = targetDestination.value;
                 if (dest === 'dashboard') {
-                    window.location.href = '../home.php';
+                    window.location.href = '../home.php?from_app=1';
                     return;
                 }
 
