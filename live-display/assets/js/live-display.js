@@ -986,7 +986,8 @@
             (Array.isArray(section.items) ? section.items : []).forEach((item) => {
                 rows.push({
                     ...item,
-                    section_name: section.name || 'Schedule',
+                    section_name: item.schedule_section_name || section.name || 'Schedule',
+                    schedule_date: item.schedule_date || (item.start_time ? item.start_time.split(' ')[0] : ''),
                     section_time_label: section.time_label || ''
                 });
             });
@@ -997,6 +998,7 @@
                 rows.push({
                     ...item,
                     section_name: 'Full Schedule',
+                    schedule_date: item.schedule_date || (item.start_time ? item.start_time.split(' ')[0] : ''),
                     section_time_label: ''
                 });
             });
@@ -1016,8 +1018,16 @@
 
     function buildSchedulePages(scheduleData) {
         let rows = flattenScheduleItems(scheduleData);
-        // Filter out breaks
+        // The schedule board is a program list, not a break timeline.
         rows = rows.filter(item => item.type !== 'break' && item.kind !== 'break');
+
+        // Keep the original event-wide day numbering before filtering to the
+        // day selected by the MC's live program.
+        const dayDates = [...new Set(rows.map(item => item.schedule_date).filter(Boolean))].sort();
+        const dayLabels = Object.fromEntries(dayDates.map((date, index) => [date, `Day ${index + 1}`]));
+        rows.forEach(item => {
+            item.schedule_day_label = dayLabels[item.schedule_date] || '';
+        });
         
         // 1. Find the active program (broadcasted by emcee)
         const liveProgramId = state.current_program_data?.program?.id || state.schedule.data?.live_program_id || null;
@@ -1031,43 +1041,30 @@
 
         // 2. Extract its date (or fallbacks)
         let activeDate = null;
-        if (activeProg && activeProg.start_time) {
-            activeDate = activeProg.start_time.split(' ')[0];
+        if (activeProg) {
+            activeDate = activeProg.schedule_date || (activeProg.start_time ? activeProg.start_time.split(' ')[0] : null);
         }
 
         if (!activeDate) {
             const firstUpcoming = rows.find(item => item.status !== 'completed' && item.approval_status !== 'approved');
-            if (firstUpcoming && firstUpcoming.start_time) {
-                activeDate = firstUpcoming.start_time.split(' ')[0];
+            if (firstUpcoming) {
+                activeDate = firstUpcoming.schedule_date || (firstUpcoming.start_time ? firstUpcoming.start_time.split(' ')[0] : null);
             }
         }
 
         if (!activeDate) {
             const firstProg = rows.find(item => item.start_time);
             if (firstProg) {
-                activeDate = firstProg.start_time.split(' ')[0];
+                activeDate = firstProg.schedule_date || (firstProg.start_time ? firstProg.start_time.split(' ')[0] : null);
             }
         }
 
         // 3. Filter schedule rows to only show this active day's programs
         if (activeDate) {
-            rows = rows.filter(item => item.start_time && item.start_time.split(' ')[0] === activeDate);
+            rows = rows.filter(item => item.schedule_date === activeDate);
         }
-        
-        // 4. Slide/crop past completed programs of the active day
-        let activeIdx = rows.findIndex(item => item.status === 'scoring' || item.status === 'active-stage');
-        if (activeIdx === -1 && liveProgramId) {
-            activeIdx = rows.findIndex(item => Number(item.id) === Number(liveProgramId));
-        }
-        if (activeIdx === -1) {
-            activeIdx = rows.findIndex(item => item.status !== 'completed' && item.approval_status !== 'approved');
-        }
-        
-        if (activeIdx !== -1) {
-            const startIdx = Math.max(0, activeIdx - 1);
-            rows = rows.slice(startIdx);
-        }
-        
+
+        // Keep every program on the MC-selected day, including completed ones.
         state.schedule.allRows = rows;
         const pageSize = scheduleRowsPerPage();
         const pages = [];
@@ -1193,22 +1190,12 @@
                 });
             }
 
-            // Dynamically build a map of date -> Day X across all rows
-            const uniqueDates = [...new Set(allRows.map(r => r.start_time ? r.start_time.split(' ')[0] : ''))]
-                .filter(Boolean)
-                .sort();
-            const dateToDayMap = {};
-            uniqueDates.forEach((d, idx) => {
-                dateToDayMap[d] = `Day ${idx + 1}`;
-            });
-
             // Sync Header Day Badge for the current page
             const dayBadgeEl = els.schedule?.querySelector('[data-schedule-day-badge]');
             let pageDay = '';
             if (page.length > 0) {
                 const firstItem = page[0];
-                const itemDate = firstItem.start_time ? firstItem.start_time.split(' ')[0] : '';
-                pageDay = dateToDayMap[itemDate] || '';
+                pageDay = firstItem.schedule_day_label || '';
             }
             if (dayBadgeEl && pageDay) {
                 dayBadgeEl.textContent = pageDay.toUpperCase();
@@ -1236,13 +1223,12 @@
                     timeStr = item.start_time;
                 }
 
-                const rawCategory = item.category || item.class_type_name || item.class_name || item.section_name || '';
+                const rawCategory = item.schedule_section_name || item.section_name || item.category || item.class_type_name || item.class_name || '';
                 const title = (item.title || item.name || 'Program').toUpperCase();
                 const secName = tvFormatScheduleSectionName(rawCategory);
                 const venueName = item.venue || item.stage_name || item.room || 'Normal Stage';
 
-                const itemDate = item.start_time ? item.start_time.split(' ')[0] : '';
-                const currentDay = dateToDayMap[itemDate] || '';
+                const currentDay = item.schedule_day_label || '';
 
                 let rowClasses = ['program-row', 'schedule-card'];
                 let indexClass = 'num-blue';
@@ -1289,7 +1275,7 @@
                     resultsHtml = '<span class="no-results-placeholder">—</span>';
                 }
 
-                const dayPill = (uniqueDates.length > 1 && currentDay) ? `<span class="program-day-tag">${escapeHtml(currentDay.toUpperCase())}</span>` : '';
+                const dayPill = currentDay ? `<span class="program-day-tag">${escapeHtml(currentDay.toUpperCase())}</span>` : '';
                 const secBadge = secName ? `<span class="program-sec-tag">${escapeHtml(secName)}</span>` : '';
 
                 html += `

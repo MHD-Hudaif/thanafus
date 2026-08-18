@@ -1020,6 +1020,7 @@ function live_display_schedule(?int $eventId = null, int $limit = 9): array
         $sectionsData[(int)$sec['id']] = [
             'id' => (int)$sec['id'],
             'name' => $sec['name'],
+            'section_date' => $sec['section_date'] ?? null,
             'start_time' => $sec['start_time'],
             'end_time' => $sec['end_time'],
             'time_label' => date('h:i A', strtotime($sec['start_time'])) . ' - ' . date('h:i A', strtotime($sec['end_time'])),
@@ -1030,6 +1031,7 @@ function live_display_schedule(?int $eventId = null, int $limit = 9): array
     $unassignedData = [
         'id' => 0,
         'name' => 'Other Programs',
+        'section_date' => null,
         'start_time' => null,
         'end_time' => null,
         'time_label' => '',
@@ -1058,8 +1060,14 @@ function live_display_schedule(?int $eventId = null, int $limit = 9): array
         }
 
         if ($assignedSecId !== null && isset($sectionsData[$assignedSecId])) {
-            $sectionsData[$assignedSecId]['items'][] = $item;
+            $sectionItem = $item;
+            $sectionItem['schedule_section_name'] = $sectionsData[$assignedSecId]['name'];
+            $sectionItem['schedule_date'] = $sectionsData[$assignedSecId]['section_date']
+                ?: (!empty($item['start_time']) ? date('Y-m-d', strtotime((string)$item['start_time'])) : null);
+            $sectionsData[$assignedSecId]['items'][] = $sectionItem;
         } else {
+            $item['schedule_section_name'] = $unassignedData['name'];
+            $item['schedule_date'] = !empty($item['start_time']) ? date('Y-m-d', strtotime((string)$item['start_time'])) : null;
             $unassignedData['items'][] = $item;
         }
     }
