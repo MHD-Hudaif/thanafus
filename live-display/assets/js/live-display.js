@@ -1895,10 +1895,13 @@
         }
 
         let interval = state.refresh_interval || (TV_BOOT.initial?.settings?.refresh_interval) || 5000;
-        if (state.activeSlide === 'current-programs') {
+        if (state.activeSlide === 'current-program' || state.activeSlide === 'current-programs' || (state.live_timer_running && state.live_timer_running > 0)) {
             interval = 500; // Boost to 500ms for instantaneous stage timer start/stop updates
-        } else if (state.performance_mode === 'performance') {
-            interval = Math.max(10000, interval * 2);
+        } else {
+            interval = 1000; // Poll every 1 second by default for delay-less slides/settings changes
+        }
+        if (state.performance_mode === 'performance' && (!state.live_timer_running || state.live_timer_running <= 0)) {
+            interval = Math.max(5000, interval * 5);
         }
 
         state.timers.refresh = setTimeout(async () => {

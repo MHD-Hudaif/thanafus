@@ -56,4 +56,19 @@ document.addEventListener('DOMContentLoaded', () => {
             link.classList.add('active');
         });
     });
+
+    // 4. APP Download Button Handlers
+    const appButtons = document.querySelectorAll('.app-button-pill');
+    appButtons.forEach(button => {
+        button.addEventListener('click', (e) => {
+            // Update these URLs with your actual APK download links
+            if (button.classList.contains('android-app')) {
+                // Replace with actual Android APK download URL
+                window.location.href = '#'; // Change to actual APK URL
+            } else if (button.classList.contains('gallery-app')) {
+                // Replace with actual Gallery APK download URL
+                window.location.href = '#'; // Change to actual APK URL
+            }
+        });
+    });
 });

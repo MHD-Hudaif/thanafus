@@ -1761,6 +1761,7 @@ footer {
     cursor: pointer;
     width: fit-content;
     margin: 0 auto;
+    font: inherit;
 }
 
 .btn-app-download:hover {
@@ -1769,6 +1770,62 @@ footer {
     border-color: rgba(255, 255, 255, 0.3);
     box-shadow: 0 12px 28px rgba(0, 0, 0, 0.22);
 }
+
+/* APK download chooser */
+.apk-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.25rem;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s ease, visibility 0.2s ease;
+}
+
+.apk-modal.is-open {
+    opacity: 1;
+    visibility: visible;
+}
+
+.apk-modal__backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(3, 7, 18, 0.62);
+    backdrop-filter: blur(5px);
+}
+
+.apk-modal__content {
+    position: relative;
+    z-index: 1;
+    width: min(100%, 410px);
+    padding: 2rem;
+    border: 1px solid rgba(27, 67, 50, 0.15);
+    border-radius: 24px;
+    background: #fff;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.3);
+    transform: translateY(12px) scale(0.98);
+    transition: transform 0.2s ease;
+}
+
+.apk-modal.is-open .apk-modal__content { transform: translateY(0) scale(1); }
+.apk-modal__close { position: absolute; top: 12px; right: 12px; border: 0; background: transparent; color: var(--text-secondary); font-size: 1.25rem; cursor: pointer; padding: 8px; }
+.apk-modal__heading { display: flex; align-items: center; gap: 12px; margin-bottom: 1.25rem; }
+.apk-modal__heading > i { color: #3ddc84; font-size: 2.25rem; }
+.apk-modal__heading p { color: var(--brand-gold); font-size: 0.7rem; font-weight: 800; letter-spacing: 1.2px; }
+.apk-modal__heading h2 { color: var(--brand-blue); font-family: 'Outfit', sans-serif; font-size: 1.5rem; }
+.apk-modal__download { display: flex; align-items: center; gap: 13px; padding: 14px; margin-top: 10px; border: 1px solid rgba(61, 220, 132, 0.35); border-radius: 15px; background: rgba(61, 220, 132, 0.08); color: var(--brand-blue); text-decoration: none; transition: transform 0.2s ease, background 0.2s ease; }
+.apk-modal__download:hover { transform: translateY(-2px); background: rgba(61, 220, 132, 0.16); }
+.apk-modal__download > i:first-child { color: #24a95f; font-size: 1.6rem; width: 24px; text-align: center; }
+.apk-modal__download span { display: flex; flex: 1; flex-direction: column; line-height: 1.25; }
+.apk-modal__download strong { font-size: 0.95rem; }
+.apk-modal__download small { color: var(--text-secondary); font-size: 0.75rem; margin-top: 3px; }
+.apk-modal__download--gallery { border-color: rgba(96, 165, 250, 0.4); background: rgba(96, 165, 250, 0.08); }
+.apk-modal__download--gallery:hover { background: rgba(96, 165, 250, 0.16); }
+.apk-modal__download--gallery > i:first-child { color: #3b82f6; }
+body.apk-modal-open { overflow: hidden; }
 
 .btn-app-download .download-icon {
     font-size: 1.7rem;

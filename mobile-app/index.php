@@ -27,6 +27,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         
         if ($pin === $emceePasskey) {
             $_SESSION['emcee_authenticated'] = true;
+            
+            // Set 30-day persistent cookie
+            $cookieValue = hash_hmac('sha256', $emceePasskey, 'kauzariyya_emcee_secret');
+            setcookie('KAUZARIYYA_EMCEE_AUTH', $cookieValue, [
+                'expires' => time() + (30 * 86400),
+                'path' => '/',
+                'secure' => false,
+                'httponly' => true,
+                'samesite' => 'Lax'
+            ]);
+            
             echo json_encode(['success' => true, 'redirect' => 'emcee/index.php']);
         } else {
             echo json_encode(['success' => false, 'message' => 'Invalid Emcee Passkey!']);
@@ -37,6 +48,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $pin = trim((string)($_POST['pin'] ?? ''));
         if ($pin === '7777') {
             $_SESSION['special_authenticated'] = true;
+            
+            // Set 30-day persistent cookie
+            $cookieValue = hash_hmac('sha256', '7777', 'kauzariyya_special_secret');
+            setcookie('KAUZARIYYA_SPECIAL_AUTH', $cookieValue, [
+                'expires' => time() + (30 * 86400),
+                'path' => '/',
+                'secure' => false,
+                'httponly' => true,
+                'samesite' => 'Lax'
+            ]);
+            
             echo json_encode(['success' => true, 'redirect' => 'special/index.php']);
         } else {
             echo json_encode(['success' => false, 'message' => 'Invalid Special Passkey!']);

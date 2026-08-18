@@ -151,13 +151,13 @@ try {
             <div class="hero-actions">
                 <a href="home.php" class="btn-primary">Live Dashboard</a>
                 <a href="live-display/" class="btn-secondary" target="_blank">Event Slideshow</a>
-                <a href="https://github.com/MHD-Hudaif/mobile-app-musabaqa/releases/download/latest/kauzariyya-musabaqa.apk" class="btn-app-download mobile-only" download>
+                <button type="button" class="btn-app-download mobile-only" id="apk-download-trigger" aria-haspopup="dialog" aria-controls="apk-download-modal">
                     <i class="fa-brands fa-android download-icon"></i>
                     <div class="download-text-wrap">
-                        <span class="download-sub">DOWNLOAD FOR</span>
-                        <span class="download-main">Android App (APK)</span>
+                        <span class="download-sub">DOWNLOAD</span>
+                        <span class="download-main">APKs</span>
                     </div>
-                </a>
+                </button>
             </div>
             
             <div style="margin-top: 2rem; font-size: 0.9rem; color: var(--brand-gold); font-weight: 700; letter-spacing: 2px;">
@@ -462,6 +462,30 @@ try {
             </div>
         </div>
     </section>
+
+    <div class="apk-modal" id="apk-download-modal" role="dialog" aria-modal="true" aria-labelledby="apk-modal-title" aria-hidden="true">
+        <div class="apk-modal__backdrop" data-apk-modal-close></div>
+        <div class="apk-modal__content" role="document">
+            <button type="button" class="apk-modal__close" aria-label="Close APK downloads" data-apk-modal-close><i class="fa-solid fa-xmark"></i></button>
+            <div class="apk-modal__heading">
+                <i class="fa-brands fa-android"></i>
+                <div>
+                    <p>DOWNLOAD APKS</p>
+                    <h2 id="apk-modal-title">Choose an app</h2>
+                </div>
+            </div>
+            <a href="https://github.com/MHD-Hudaif/mobile-app-musabaqa/releases/download/latest/kauzariyya-musabaqa.apk" class="apk-modal__download" download>
+                <i class="fa-brands fa-android"></i>
+                <span><strong>Android App</strong><small>Main Musabaqa app</small></span>
+                <i class="fa-solid fa-download"></i>
+            </a>
+            <a href="uploads/thanafus%20gallery.apk" class="apk-modal__download apk-modal__download--gallery" download>
+                <i class="fa-solid fa-images"></i>
+                <span><strong>Gallery App</strong><small>Thanafus gallery app</small></span>
+                <i class="fa-solid fa-download"></i>
+            </a>
+        </div>
+    </div>
 
     <!-- Footer Section -->
     <footer>

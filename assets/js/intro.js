@@ -287,7 +287,34 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 6. Live Website Update Checker (OTA)
+    // 6. APK download chooser
+    const apkTrigger = document.getElementById('apk-download-trigger');
+    const apkModal = document.getElementById('apk-download-modal');
+    if (apkTrigger && apkModal) {
+        const closeApkModal = () => {
+            apkModal.classList.remove('is-open');
+            apkModal.setAttribute('aria-hidden', 'true');
+            document.body.classList.remove('apk-modal-open');
+            apkTrigger.focus();
+        };
+
+        apkTrigger.addEventListener('click', () => {
+            apkModal.classList.add('is-open');
+            apkModal.setAttribute('aria-hidden', 'false');
+            document.body.classList.add('apk-modal-open');
+            apkModal.querySelector('.apk-modal__close').focus();
+        });
+
+        apkModal.querySelectorAll('[data-apk-modal-close]').forEach(control => {
+            control.addEventListener('click', closeApkModal);
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && apkModal.classList.contains('is-open')) closeApkModal();
+        });
+    }
+
+    // 7. Live Website Update Checker (OTA)
     const CURRENT_VERSION = '1.0.0';
     let checkInterval = null;
 

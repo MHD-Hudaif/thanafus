@@ -9,6 +9,16 @@ require_once __DIR__ . '/../../includes/event-guard.php';
 
 // Session authentication check for Emcee
 if (empty($_SESSION['emcee_authenticated']) || $_SESSION['emcee_authenticated'] !== true) {
+    if (!empty($_COOKIE['KAUZARIYYA_EMCEE_AUTH'])) {
+        $emceePasskey = get_emcee_passkey($GLOBALS['musabaqa_pdo']);
+        $expected = hash_hmac('sha256', $emceePasskey, 'kauzariyya_emcee_secret');
+        if (hash_equals($expected, $_COOKIE['KAUZARIYYA_EMCEE_AUTH'])) {
+            $_SESSION['emcee_authenticated'] = true;
+        }
+    }
+}
+
+if (empty($_SESSION['emcee_authenticated']) || $_SESSION['emcee_authenticated'] !== true) {
     header('Location: ../index.php?error=unauthorized');
     exit;
 }
@@ -92,7 +102,17 @@ if (isset($_GET['ajax_status'])) {
     header('Content-Type: application/json');
     $status = admin_get_live_stage_control($pdo);
     $recordedTimes = admin_get_recorded_times($pdo);
-    echo json_encode(['success' => true, 'live_control' => $status, 'recorded_times' => $recordedTimes]);
+    $settings = admin_get_settings($pdo);
+    echo json_encode([
+        'success' => true,
+        'live_control' => $status,
+        'recorded_times' => $recordedTimes,
+        'timer_settings' => [
+            'running' => (int)($settings['live_timer_running'] ?? 0),
+            'start_time' => (float)($settings['live_timer_start_time'] ?? 0.0),
+            'elapsed' => (int)($settings['live_timer_elapsed'] ?? 0)
+        ]
+    ]);
     exit;
 }
 
@@ -2151,6 +2171,59 @@ function goToCurrentLive() {
                 btnSelect.style.color = '';
                 btnActionText.innerText = 'GO LIVE';
             }
+
+            // Sync timer from server settings if changed by another device
+            if (data.timer_settings) {
+                const sRunning = parseInt(data.timer_settings.running) || 0;
+                const sStartTime = parseFloat(data.timer_settings.start_time) || 0;
+                const sElapsed = parseInt(data.timer_settings.elapsed) || 0;
+                
+                const isSRunning = (sRunning === 1);
+                
+                // Determine if local state matches server state (with small thresholds)
+                let needsSync = false;
+                if (isTimerRunning !== isSRunning) {
+                    needsSync = true;
+                } else if (isSRunning) {
+                    // Check start time mismatch (> 1.5 seconds)
+                    const localStartUnix = (Date.now() - (performance.now() - timerStartTime)) / 1000;
+                    if (Math.abs(localStartUnix - sStartTime) > 1.5) {
+                        needsSync = true;
+                    }
+                } else {
+                    // Check stopped elapsed time mismatch (> 1.5 seconds)
+                    if (Math.abs(timerElapsedTime - sElapsed) > 1500) {
+                        needsSync = true;
+                    }
+                }
+                
+                if (needsSync) {
+                    if (isSRunning) {
+                        if (timerInterval) clearInterval(timerInterval);
+                        isTimerRunning = true;
+                        const elapsedSinceStart = (Date.now() / 1000 - sStartTime) * 1000;
+                        timerStartTime = performance.now() - elapsedSinceStart;
+                        
+                        timerInterval = setInterval(() => {
+                            timerElapsedTime = performance.now() - timerStartTime;
+                            const clockEl = document.getElementById('timerClock');
+                            if (clockEl) clockEl.innerText = formatTimeMs(timerElapsedTime);
+                        }, 90);
+                        
+                        syncTimerUI(item, true);
+                    } else {
+                        if (timerInterval) clearInterval(timerInterval);
+                        timerInterval = null;
+                        isTimerRunning = false;
+                        timerElapsedTime = sElapsed;
+                        
+                        const clockEl = document.getElementById('timerClock');
+                        if (clockEl) clockEl.innerText = formatTimeMs(timerElapsedTime);
+                        
+                        syncTimerUI(item, isLiveItem);
+                    }
+                }
+            }
         }
     })
     .catch(() => {
@@ -2165,8 +2238,8 @@ document.addEventListener('DOMContentLoaded', () => {
     populateJumpDropdown();
     renderStageDeck(currentIndex, 'next');
     
-    // Poll status every 3 seconds
-    pollIntervalId = setInterval(goToCurrentLive, 3000);
+    // Poll status every 1 second (1000ms) for fast delay-less stage/timer sync
+    pollIntervalId = setInterval(goToCurrentLive, 1000);
 
     // Check if timer was already running on load
     if (typeof initTimerRunning !== 'undefined' && initTimerRunning === 1) {
