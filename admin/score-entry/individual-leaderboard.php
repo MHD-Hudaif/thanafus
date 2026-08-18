@@ -9,9 +9,59 @@ $dashboardPdo = $GLOBALS['dashboard_pdo'];
 $activeEvent = admin_require_active_event($pdo);
 $activeEventId = (int)$activeEvent['id'];
 
+// AJAX Request for Student Point Breakdown Modal
+if (isset($_GET['ajax_student_id'])) {
+    header('Content-Type: application/json; charset=utf-8');
+    $studentId = (int)$_GET['ajax_student_id'];
+    
+    // Fetch student info
+    $stmt = $pdo->prepare("
+        SELECT tm.chest_number, COALESCE(NULLIF(s.display_name, ''), s.full_name) AS student_name, t.team_name, t.team_color
+        FROM musabaqa_team_members tm
+        JOIN musabaqa_teams t ON t.id = tm.team_id
+        JOIN " . DB_MAIN_NAME . ".students s ON s.id = tm.student_id
+        WHERE tm.id = ? AND tm.event_id = ?
+        LIMIT 1
+    ");
+    $stmt->execute([$studentId, $activeEventId]);
+    $studentInfo = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    if (!$studentInfo) {
+        echo json_encode(['success' => false, 'message' => 'Student not found.']);
+        exit;
+    }
+    
+    // Fetch approved individual programs this student participated in
+    $stmt = $pdo->prepare("
+        SELECT 
+            p.id AS program_id,
+            p.title AS program_title,
+            pe.final_score,
+            pe.final_rank,
+            pe.team_score,
+            p.disable_scores
+        FROM musabaqa_program_entries pe
+        JOIN musabaqa_programs p ON p.id = pe.program_id
+        JOIN musabaqa_entry_members em ON em.entry_id = pe.id
+        WHERE em.team_member_id = ?
+          AND pe.event_id = ?
+          AND p.approval_status = 'approved'
+          AND p.program_type = 'individual'
+        ORDER BY pe.team_score DESC, pe.final_rank ASC, p.title ASC
+    ");
+    $stmt->execute([$studentId, $activeEventId]);
+    $programs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    echo json_encode([
+        'success' => true,
+        'student' => $studentInfo,
+        'programs' => $programs
+    ]);
+    exit;
+}
+
 // Filter parameters
 $selectedSection = trim((string)($_GET['section'] ?? 'all'));
-$selectedType = trim((string)($_GET['type'] ?? 'all'));
 $selectedTeamId = (int)($_GET['team_id'] ?? 0);
 $selectedPointsFilter = trim((string)($_GET['points_filter'] ?? 'has_points'));
 $searchQuery = trim((string)($_GET['search'] ?? ''));
@@ -23,13 +73,6 @@ if (in_array($selectedSection, ['senior', 'junior', 'subjunior'], true)) {
 }
 
 // Build SQL parts
-$subqueryTypeSql = "";
-if ($selectedType === 'individual') {
-    $subqueryTypeSql = " AND p.program_type = 'individual'";
-} elseif ($selectedType === 'group') {
-    $subqueryTypeSql = " AND p.program_type = 'group'";
-}
-
 $sectionSql = "";
 if (!empty($sectionIds)) {
     $placeholders = implode(',', array_fill(0, count($sectionIds), '?'));
@@ -53,7 +96,7 @@ if ($searchQuery !== '') {
 
 // Prepare parameters
 $queryParams = [];
-// 1. Subquery event_id
+// 1. Subquery event_id (Only counts individual programs)
 $queryParams[] = $activeEventId;
 // 2. Outer query event_id
 $queryParams[] = $activeEventId;
@@ -102,7 +145,7 @@ $sql = "
         JOIN musabaqa_programs p ON p.id = pe.program_id
         WHERE pe.event_id = ?
           AND p.approval_status = 'approved'
-          {$subqueryTypeSql}
+          AND p.program_type = 'individual'
         GROUP BY em.team_member_id
     ) points_data ON points_data.team_member_id = tm.id
     WHERE tm.event_id = ?
@@ -164,8 +207,8 @@ $teamsStmt = $pdo->prepare("
 $teamsStmt->execute([$activeEventId]);
 $filterTeams = $teamsStmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Approved Programs Count
-$approvedStmt = $pdo->prepare("SELECT COUNT(*) FROM musabaqa_programs WHERE event_id = ? AND approval_status = 'approved'");
+// Approved Individual Programs Count
+$approvedStmt = $pdo->prepare("SELECT COUNT(*) FROM musabaqa_programs WHERE event_id = ? AND approval_status = 'approved' AND program_type = 'individual'");
 $approvedStmt->execute([$activeEventId]);
 $totalApprovedPrograms = (int)$approvedStmt->fetchColumn();
 
@@ -280,7 +323,7 @@ if (!function_exists('render_leaderboard_rank_badge')) {
                 <i class="fa-solid fa-ranking-star mr-1" style="color: #fbbf24; font-size: 22px;"></i> 
                 Individual Student Leaderboard
             </div>
-            <div class="page-subtitle" style="margin-top: 2px;">Overall points earned by individual participants for their respective teams</div>
+            <div class="page-subtitle" style="margin-top: 2px;">Overall points earned by individual participants for their respective teams (excluding groups)</div>
         </div>
         <div class="flex gap-2">
             <?php 
@@ -364,10 +407,10 @@ if (!function_exists('render_leaderboard_rank_badge')) {
             </div>
         </div>
 
-        <!-- Card 4: Finalized Programs -->
+        <!-- Card 4: Finalized Ind. Programs -->
         <div class="leaderboard-metric-card" style="border-color: rgba(245, 158, 11, 0.25); background: radial-gradient(circle at top right, rgba(245, 158, 11, 0.12), rgba(245, 158, 11, 0.02));">
             <div class="flex-between items-center">
-                <span style="font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: #fbbf24;">Finalized Programs</span>
+                <span style="font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: #fbbf24;">Finalized Ind. Programs</span>
                 <span style="width: 32px; height: 32px; border-radius: 10px; background: rgba(245, 158, 11, 0.15); color: #fbbf24; display: flex; align-items: center; justify-content: center; font-size: 14px;">
                     <i class="fa-solid fa-circle-check"></i>
                 </span>
@@ -378,7 +421,7 @@ if (!function_exists('render_leaderboard_rank_badge')) {
                 </div>
             </div>
             <div style="font-size: 11px; color: var(--muted); border-top: 1px dashed rgba(245, 158, 11, 0.2); padding-top: 8px;">
-                <i class="fa-solid fa-lock mr-1" style="color: #fbbf24;"></i> Approved event standings
+                <i class="fa-solid fa-lock mr-1" style="color: #fbbf24;"></i> Approved ind. program scores
             </div>
         </div>
 
@@ -395,15 +438,6 @@ if (!function_exists('render_leaderboard_rank_badge')) {
                     <option value="senior" <?= $selectedSection === 'senior' ? 'selected' : '' ?>>Senior</option>
                     <option value="junior" <?= $selectedSection === 'junior' ? 'selected' : '' ?>>Junior</option>
                     <option value="subjunior" <?= $selectedSection === 'subjunior' ? 'selected' : '' ?>>Sub Junior</option>
-                </select>
-            </div>
-
-            <div class="input-group" style="min-width: 150px;">
-                <label style="font-size: 11px; font-weight: 600; color: var(--muted); margin-bottom: 4px;">Program Type</label>
-                <select name="type" class="form-input" onchange="this.form.submit()">
-                    <option value="all">-- All Programs --</option>
-                    <option value="individual" <?= $selectedType === 'individual' ? 'selected' : '' ?>>Individual Only</option>
-                    <option value="group" <?= $selectedType === 'group' ? 'selected' : '' ?>>Group Only</option>
                 </select>
             </div>
 
@@ -434,7 +468,7 @@ if (!function_exists('render_leaderboard_rank_badge')) {
 
             <div style="margin-top: 18px;" class="flex gap-2">
                 <button type="submit" class="btn btn-primary btn-md"><i class="fa-solid fa-magnifying-glass mr-1"></i> Filter</button>
-                <?php if ($selectedSection !== 'all' || $selectedType !== 'all' || $selectedTeamId > 0 || $selectedPointsFilter !== 'has_points' || $searchQuery !== ''): ?>
+                <?php if ($selectedSection !== 'all' || $selectedTeamId > 0 || $selectedPointsFilter !== 'has_points' || $searchQuery !== ''): ?>
                     <a href="?" class="btn btn-secondary btn-md" title="Reset Filters"><i class="fa-solid fa-rotate-left mr-1"></i> Reset</a>
                 <?php endif; ?>
             </div>
@@ -450,7 +484,7 @@ if (!function_exists('render_leaderboard_rank_badge')) {
                     Rank Standings List
                 </h3>
                 <span style="font-size: 12.5px; color: var(--muted); display: block; margin-top: 3px;">
-                    Displaying <strong><?= count($paginatedLeaderboard) ?></strong> students (Page <?= $page ?> of <?= max(1, (int)ceil($totalParticipants / $perPage)) ?>).
+                    Displaying <strong><?= count($paginatedLeaderboard) ?></strong> students (Page <?= $page ?> of <?= max(1, (int)ceil($totalParticipants / $perPage)) ?>). Click on any student's name to view their points breakdown.
                 </span>
             </div>
         </div>
@@ -488,7 +522,9 @@ if (!function_exists('render_leaderboard_rank_badge')) {
                                     </span>
                                 </td>
                                 <td style="padding: 14px 16px; vertical-align: middle;">
-                                    <strong style="color: #fff; font-size: 14px; font-weight: 700;"><?= e($row['student_name']) ?></strong>
+                                    <a href="javascript:void(0)" onclick="showStudentPoints(<?= (int)$row['team_member_id'] ?>)" style="color: #fff; text-decoration: none; border-bottom: 1px dashed rgba(255,255,255,0.25); transition: all 0.15s ease;" onmouseover="this.style.color='#818cf8'; this.style.borderColor='rgba(129,140,248,0.6)'" onmouseout="this.style.color='#fff'; this.style.borderColor='rgba(255,255,255,0.25)'">
+                                        <strong style="font-size: 14px; font-weight: 700;"><?= e($row['student_name']) ?></strong>
+                                    </a>
                                 </td>
                                 <td style="padding: 14px 16px; vertical-align: middle;">
                                     <div class="team-badge-container">
@@ -542,5 +578,131 @@ if (!function_exists('render_leaderboard_rank_badge')) {
     </div>
 
 </div>
+
+<!-- Points Breakdown Modal -->
+<div class="modal-overlay" id="pointsModal" style="display: none; z-index: 9999;">
+    <div class="modal-box" style="max-width: 600px; width: 100%;">
+        <div class="modal-header">
+            <div class="modal-title">Student Points Breakdown</div>
+            <button class="modal-close" type="button" data-close="pointsModal"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div id="pointsModalBody" style="padding: 20px;">
+            <!-- Content will be populated dynamically via AJAX -->
+        </div>
+        <div class="form-actions" style="padding: 15px 20px; border-top: 1px solid rgba(255, 255, 255, 0.08);">
+            <button type="button" class="btn btn-secondary btn-md" data-close="pointsModal">Close</button>
+        </div>
+    </div>
+</div>
+
+<script>
+(() => {
+    // Bind modal close listeners
+    document.querySelectorAll('[data-close]').forEach(btn => btn.addEventListener('click', () => window.closeModal(btn.dataset.close)));
+    document.querySelectorAll('.modal-overlay').forEach(modal => modal.addEventListener('click', e => { if (e.target === modal) window.closeModal(modal.id); }));
+})();
+
+function showStudentPoints(studentId) {
+    const body = document.getElementById('pointsModalBody');
+    body.innerHTML = `
+        <div class="text-center" style="padding: 30px;">
+            <i class="fa-solid fa-circle-notch fa-spin" style="font-size: 32px; color: #6366f1;"></i>
+            <p style="margin-top: 12px; color: var(--muted); font-size: 13px;">Loading points details...</p>
+        </div>
+    `;
+    window.openModal('pointsModal');
+    
+    fetch(`?ajax_student_id=${studentId}`)
+        .then(res => res.json())
+        .then(data => {
+            if (!data.success) {
+                body.innerHTML = `<div class="alert alert-error">${data.message || 'Error loading details'}</div>`;
+                return;
+            }
+            
+            const student = data.student;
+            const programs = data.programs;
+            
+            let headerHtml = `
+                <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 20px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); padding-bottom: 15px;">
+                    <div style="width: 44px; height: 44px; border-radius: 50%; background: ${student.team_color || '#6366f1'}22; display: flex; align-items: center; justify-content: center; border: 1px solid ${student.team_color || '#6366f1'}44;">
+                        <i class="fa-solid fa-user-graduate" style="color: ${student.team_color || '#6366f1'}; font-size: 18px;"></i>
+                    </div>
+                    <div>
+                        <h4 style="margin: 0; font-size: 16px; font-weight: 700; color: #fff;">${student.student_name}</h4>
+                        <div style="font-size: 12px; color: var(--muted); margin-top: 2px;">
+                            Chest #${String(student.chest_number || '').padStart(3, '0')} · <span style="color: ${student.team_color || '#fff'}; font-weight: 600;">${student.team_name}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            if (programs.length === 0) {
+                body.innerHTML = headerHtml + `
+                    <div class="text-center" style="padding: 40px 10px; color: var(--muted);">
+                        <i class="fa-solid fa-award mb-3" style="font-size: 32px; opacity: 0.3;"></i>
+                        <p style="margin: 0; font-size: 14px; font-weight: 600; color: #fff;">No Points Recorded</p>
+                        <p style="margin: 4px 0 0 0; font-size: 12px;">This student has not won any points in approved individual programs.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            let tableRows = '';
+            let totalPoints = 0;
+            programs.forEach((prog, index) => {
+                const pts = parseFloat(prog.team_score);
+                totalPoints += pts;
+                
+                let rankBadge = '—';
+                const rank = parseInt(prog.final_rank);
+                if (rank === 1) rankBadge = '🥇 1st';
+                else if (rank === 2) rankBadge = '🥈 2nd';
+                else if (rank === 3) rankBadge = '🥉 3rd';
+                else if (rank > 3) rankBadge = `Rank ${rank}`;
+                
+                const scoreDisplay = prog.disable_scores === '1' ? '—' : parseFloat(prog.final_score).toFixed(2);
+                
+                tableRows += `
+                    <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.03);">
+                        <td style="padding: 12px 10px; font-weight: 600; color: #fff;">${prog.program_title}</td>
+                        <td style="padding: 12px 10px; text-align: center;">${rankBadge}</td>
+                        <td style="padding: 12px 10px; text-align: right; font-family: monospace;">${scoreDisplay}</td>
+                        <td style="padding: 12px 10px; text-align: right; font-weight: 700; color: #10b981;">+${pts.toFixed(1)}</td>
+                    </tr>
+                `;
+            });
+            
+            let tableHtml = `
+                <div class="table-wrapper" style="margin: 0; border: 1px solid rgba(255,255,255,0.06); border-radius: 8px;">
+                    <table class="table" style="margin: 0; font-size: 12.5px; width: 100%;">
+                        <thead>
+                            <tr style="background: rgba(255, 255, 255, 0.02);">
+                                <th style="text-align: left; padding: 10px;">Program</th>
+                                <th style="text-align: center; padding: 10px; width: 90px;">Rank</th>
+                                <th style="text-align: right; padding: 10px; width: 80px;">Marks</th>
+                                <th style="text-align: right; padding: 10px; width: 80px;">Points</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${tableRows}
+                        </tbody>
+                        <tfoot>
+                            <tr style="background: rgba(16, 185, 129, 0.05); font-weight: 800;">
+                                <td colspan="3" style="padding: 12px 10px; text-align: right; color: #fff;">Total Points:</td>
+                                <td style="padding: 12px 10px; text-align: right; color: #34d399; font-size: 13.5px;">${totalPoints.toFixed(1)}</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            `;
+            
+            body.innerHTML = headerHtml + tableHtml;
+        })
+        .catch(err => {
+            body.innerHTML = `<div class="alert alert-error">Failed to fetch points: ${err}</div>`;
+        });
+}
+</script>
 
 <?php admin_close_page(); ?>
