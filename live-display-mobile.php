@@ -885,13 +885,13 @@ $startDateFormatted = !empty($activeEvent['start_date']) ? date('d F Y', strtoti
           <h3>Get the Mobile App</h3>
           <p>Install the native app for instant updates and presentation features.</p>
         </div>
-        <a href="<?= app_url('/uploads/kauzariyya-musabaqa.apk') ?>" class="btn-download-app" download>
+        <a href="https://github.com/MHD-Hudaif/mobile-app-musabaqa/releases/download/latest/kauzariyya-musabaqa.apk" class="btn-download-app" download>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
             <polyline points="7 10 12 15 17 10"></polyline>
             <line x1="12" y1="15" x2="12" y2="3"></line>
           </svg>
-          Download APK
+          Download APK (GitHub Latest)
         </a>
         <a href="<?= app_url('/uploads/thanafus%20gallery.apk') ?>" class="btn-download-app" style="margin-top: 10px; background: rgba(59, 130, 246, 0.1); border-color: rgba(59, 130, 246, 0.3); color: #60a5fa;" download>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: #60a5fa;">
@@ -1023,9 +1023,23 @@ $startDateFormatted = !empty($activeEvent['start_date']) ? date('d F Y', strtoti
       if (el) el.textContent = fmtTime();
     }
 
+    let _backoffMs = 0; // extra pause on top of normal interval after a 429
+
     async function fetchLiveUpdates() {
+      if (_backoffMs > 0) {
+        // Still in back-off cooldown — skip this tick silently
+        _backoffMs = Math.max(0, _backoffMs - 10000);
+        return;
+      }
       try {
         const response = await fetch(apiEndpoint + '?t=' + Date.now());
+        if (response.status === 429) {
+          // Rate-limited by server — back off exponentially (10 s → 20 s → 40 s … max 2 min)
+          _backoffMs = Math.min((_backoffMs || 10000) * 2, 120000);
+          console.warn('[LiveDisplay] 429 Too Many Requests — backing off for', _backoffMs / 1000, 's');
+          return;
+        }
+        _backoffMs = 0; // reset on success
         if (!response.ok) return;
         const res = await response.json();
         if (!res.success || !res.data) return;
@@ -1144,9 +1158,10 @@ $startDateFormatted = !empty($activeEvent['start_date']) ? date('d F Y', strtoti
         .replace(/"/g,'&quot;');
     }
 
-    // Start polling
+    // Start polling — 10 s interval to stay within Bluehost rate limits.
+    // (Was 4 s; multiple open screens × 15 hits/min was triggering HTTP 429.)
     fetchLiveUpdates();
-    setInterval(fetchLiveUpdates, 4000);
+    setInterval(fetchLiveUpdates, 10000);
   </script>
 </body>
 </html>

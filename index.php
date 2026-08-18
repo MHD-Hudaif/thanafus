@@ -477,14 +477,14 @@ try {
                     <h2 id="apk-modal-title">Choose an app</h2>
                 </div>
             </div>
-            <a href="uploads/kauzariyya-musabaqa.apk" class="apk-modal__download" download>
+            <a href="https://github.com/MHD-Hudaif/mobile-app-musabaqa/releases/download/latest/kauzariyya-musabaqa.apk" class="apk-modal__download" download>
                 <i class="fa-brands fa-android"></i>
-                <span><strong>Android App</strong><small>Main Musabaqa app</small></span>
+                <span><strong>Thanafus Main App</strong><small>Latest GitHub release (v1.0.0+)</small></span>
                 <i class="fa-solid fa-download"></i>
             </a>
             <a href="uploads/thanafus%20gallery.apk" class="apk-modal__download apk-modal__download--gallery" download>
                 <i class="fa-solid fa-images"></i>
-                <span><strong>Gallery App</strong><small>Thanafus gallery app</small></span>
+                <span><strong>Thanafus Gallery App</strong><small>Gallery & media viewer app</small></span>
                 <i class="fa-solid fa-download"></i>
             </a>
         </div>
