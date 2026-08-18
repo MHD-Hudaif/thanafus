@@ -1029,42 +1029,8 @@
             item.schedule_day_label = dayLabels[item.schedule_date] || '';
         });
         
-        // 1. Find the active program (broadcasted by emcee)
-        const liveProgramId = state.current_program_data?.program?.id || state.schedule.data?.live_program_id || null;
-        let activeProg = null;
-        if (liveProgramId) {
-            activeProg = rows.find(item => Number(item.id) === Number(liveProgramId));
-        }
-        if (!activeProg) {
-            activeProg = rows.find(item => item.status === 'scoring' || item.status === 'active-stage');
-        }
-
-        // 2. Extract its date (or fallbacks)
-        let activeDate = null;
-        if (activeProg) {
-            activeDate = activeProg.schedule_date || (activeProg.start_time ? activeProg.start_time.split(' ')[0] : null);
-        }
-
-        if (!activeDate) {
-            const firstUpcoming = rows.find(item => item.status !== 'completed' && item.approval_status !== 'approved');
-            if (firstUpcoming) {
-                activeDate = firstUpcoming.schedule_date || (firstUpcoming.start_time ? firstUpcoming.start_time.split(' ')[0] : null);
-            }
-        }
-
-        if (!activeDate) {
-            const firstProg = rows.find(item => item.start_time);
-            if (firstProg) {
-                activeDate = firstProg.schedule_date || (firstProg.start_time ? firstProg.start_time.split(' ')[0] : null);
-            }
-        }
-
-        // 3. Filter schedule rows to only show this active day's programs
-        if (activeDate) {
-            rows = rows.filter(item => item.schedule_date === activeDate);
-        }
-
-        // Keep every program on the MC-selected day, including completed ones.
+        // Show the complete event schedule. Individual days are identified on
+        // each row and the board paginates the list to preserve readability.
         state.schedule.allRows = rows;
         const pageSize = scheduleRowsPerPage();
         const pages = [];
@@ -1251,20 +1217,24 @@
                     const badges = results.map(r => {
                         let badgeText = '';
                         let badgeClass = 'rank-pill';
-                        if (r.rank === 1) {
+                        const rank = Number(r.rank || r.final_rank || 0);
+                        if (rank === 1) {
                             badgeText = `1st`;
                             badgeClass += ' rank-1';
-                        } else if (r.rank === 2) {
+                        } else if (rank === 2) {
                             badgeText = `2nd`;
                             badgeClass += ' rank-2';
-                        } else if (r.rank === 3) {
+                        } else if (rank === 3) {
                             badgeText = `3rd`;
                             badgeClass += ' rank-3';
                         } else {
                             return '';
                         }
                         
-                        return `<span class="${badgeClass}" style="--badge-team-color: ${escapeHtml(r.team_color)}">${badgeText}</span>`;
+                        const teamColor = String(r.team_color || '#64748b');
+                        return `<span class="${badgeClass}" style="--badge-team-color: ${escapeHtml(teamColor)}">
+                            <span class="rank-pill-place">${badgeText}</span>
+                        </span>`;
                     }).filter(Boolean);
                     
                     if (badges.length > 0) {

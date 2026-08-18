@@ -232,12 +232,13 @@ body:has(#slide-schedule.tv-slide--active) .tv-topbar {
 .rank-pill {
     display: inline-flex;
     align-items: center;
-    padding: 8px 20px !important;
-    border-radius: 30px;
-    font-size: 18px !important;
+    min-height: 42px;
+    padding: 5px !important;
+    border-radius: 12px;
+    font-size: 16px !important;
     font-weight: 900;
     letter-spacing: 0.02em;
-    text-transform: uppercase;
+    text-transform: none;
     /* Match the premium, dark-to-team-color treatment of leaderboard cards. */
     background: linear-gradient(135deg, #070c18 0%, color-mix(in srgb, var(--badge-team-color, #71717a) 42%, #03050a) 100%) !important;
     color: #fff !important;
@@ -245,6 +246,21 @@ body:has(#slide-schedule.tv-slide--active) .tv-topbar {
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, .14), 0 0 16px color-mix(in srgb, var(--badge-team-color, #71717a) 50%, transparent), 0 6px 14px rgba(0, 0, 0, 0.35) !important;
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
     white-space: nowrap;
+}
+.rank-pill-place {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 58px;
+    align-self: stretch;
+    padding: 0 9px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.16);
+    color: #fff;
+    font-family: 'Outfit', sans-serif;
+    font-size: 15px;
+    font-weight: 900;
+    letter-spacing: 0;
 }
 .no-results-placeholder {
     color: #cbd5e1; /* Darker placeholder text for white background */
@@ -391,6 +407,11 @@ body:has(#slide-schedule.tv-slide--active) .tv-topbar {
     .rank-pill {
         font-size: 13px !important;
         padding: 4px 12px !important;
+    }
+
+    .rank-pill-place {
+        min-width: 38px;
+        font-size: 12px;
     }
 
     .schedule-card-time-col {

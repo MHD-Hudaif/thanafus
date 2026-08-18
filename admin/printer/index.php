@@ -131,6 +131,16 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                             </div>
                         </a>
 
+                        <a href="<?= app_url('/admin/printer/group-program-certificates-csv.php') ?>" class="sidebar-action-btn">
+                            <div class="sidebar-action-icon" style="background: rgba(34, 197, 94, 0.15); color: #22c55e;">
+                                <i class="fa-solid fa-file-csv"></i>
+                            </div>
+                            <div class="sidebar-action-info">
+                                <div class="sidebar-action-title">Group Certificate CSV</div>
+                                <div class="sidebar-action-subtitle">Export participant names and programs</div>
+                            </div>
+                        </a>
+
                         <a href="<?= app_url('/admin/printer/logs.php') ?>" class="sidebar-action-btn">
                             <div class="sidebar-action-icon" style="background: rgba(139, 92, 246, 0.15); color: var(--accent);">
                                 <i class="fa-solid fa-clock-rotate-left"></i>
