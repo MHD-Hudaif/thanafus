@@ -474,7 +474,7 @@ try {
                     <h2 id="apk-modal-title">Choose an app</h2>
                 </div>
             </div>
-            <a href="https://github.com/MHD-Hudaif/mobile-app-musabaqa/releases/download/latest/kauzariyya-musabaqa.apk" class="apk-modal__download" download>
+            <a href="uploads/kauzariyya-musabaqa.apk" class="apk-modal__download" download>
                 <i class="fa-brands fa-android"></i>
                 <span><strong>Android App</strong><small>Main Musabaqa app</small></span>
                 <i class="fa-solid fa-download"></i>
