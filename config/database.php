@@ -13,8 +13,8 @@ $localPort = 3306;
 $isLocalMysqlRunning = false;
 
 if ($isLocalhost) {
-    // 1. Try port 3306
-    $fp = @fsockopen('127.0.0.1', 3306, $errno, $errstr, 0.15);
+    // 1. Try port 3306 - reduce timeout to 0.05 seconds for faster fallback
+    $fp = @fsockopen('127.0.0.1', 3306, $errno, $errstr, 0.05);
     if ($fp) {
         fclose($fp);
         try {
@@ -27,7 +27,7 @@ if ($isLocalhost) {
             $localPort = 3306;
         } catch (PDOException $e) {
             // Rejection on 3306 (e.g. conflicting service). Try Laragon default 3307
-            $fp2 = @fsockopen('127.0.0.1', 3307, $errno, $errstr, 0.15);
+            $fp2 = @fsockopen('127.0.0.1', 3307, $errno, $errstr, 0.05);
             if ($fp2) {
                 fclose($fp2);
                 try {
@@ -44,7 +44,7 @@ if ($isLocalhost) {
         }
     } else {
         // Port 3306 closed. Try port 3307
-        $fp2 = @fsockopen('127.0.0.1', 3307, $errno, $errstr, 0.15);
+        $fp2 = @fsockopen('127.0.0.1', 3307, $errno, $errstr, 0.05);
         if ($fp2) {
             fclose($fp2);
             try {
@@ -184,6 +184,7 @@ function create_pdo_connection(string $dsn, string $user, string $pass): PDO {
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
         PDO::ATTR_EMULATE_PREPARES => false,
+        PDO::ATTR_TIMEOUT => 3, // 3 second timeout for connection
         PDO::MYSQL_ATTR_INIT_COMMAND => "SET SESSION sql_mode='NO_ENGINE_SUBSTITUTION'",
     ];
 

@@ -1,6 +1,9 @@
 <?php
 declare(strict_types=1);
 
+// Set a reasonable max execution time for this page to prevent hanging
+set_time_limit(10);
+
 if (!function_exists('term')) {
     function term(string $eng, string $ara): string {
         return '<span class="term-toggle"><span class="eng">' . htmlspecialchars($eng) . '</span><span class="ara">' . htmlspecialchars($ara) . '</span></span>';
