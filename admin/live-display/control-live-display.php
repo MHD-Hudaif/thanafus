@@ -273,6 +273,52 @@ require_once __DIR__ . '/../../includes/sidebar.php';
     border-color: #3b82f6 !important;
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25) !important;
 }
+
+/* Custom Delete Confirmation Overlay */
+.qs-delete-confirm-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.94);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 12px;
+    text-align: center;
+    z-index: 20;
+    border-radius: 12px;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    animation: fadeInConfirm 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes fadeInConfirm {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+.qs-delete-confirm-overlay .confirm-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: #f87171;
+    letter-spacing: 0.02em;
+}
+
+.qs-delete-confirm-overlay .confirm-actions {
+    display: flex;
+    gap: 8px;
+    width: 100%;
+    justify-content: center;
+}
+
+.qs-delete-confirm-overlay .btn-xs {
+    padding: 5px 10px !important;
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    border-radius: 6px !important;
+    cursor: pointer;
+}
 </style>
 
 
@@ -613,7 +659,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
 
 <script>
 (() => {
-    const API_URL = <?= json_encode(app_url('/live-display/api/settings.php'), JSON_UNESCAPED_SLASHES) ?>;
+    const API_URL = <?= json_encode(app_url('/live-display/api/settings'), JSON_UNESCAPED_SLASHES) ?>;
     const CSRF = <?= json_encode(generate_csrf_token()) ?>;
 
     // Helper function to update status label toggles
@@ -756,7 +802,45 @@ require_once __DIR__ . '/../../includes/sidebar.php';
         if (deleteBtn) {
             e.preventDefault();
             const img = deleteBtn.dataset.image;
-            if (!confirm('Are you sure you want to delete this image?')) return;
+            const card = deleteBtn.closest('.quick-screen-card');
+            if (!card) return;
+            
+            // If already showing delete confirm overlay, ignore
+            if (card.querySelector('.qs-delete-confirm-overlay')) return;
+            
+            // Create confirmation overlay
+            const overlay = document.createElement('div');
+            overlay.className = 'qs-delete-confirm-overlay';
+            overlay.innerHTML = `
+                <div class="confirm-title"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Delete this image?</div>
+                <div class="confirm-actions">
+                    <button class="btn btn-danger btn-xs btn-confirm-delete-yes" data-image="${img}">Yes, Delete</button>
+                    <button class="btn btn-secondary btn-xs btn-confirm-delete-cancel">Cancel</button>
+                </div>
+            `;
+            card.appendChild(overlay);
+        }
+
+        const cancelBtn = e.target.closest('.btn-confirm-delete-cancel');
+        const confirmYesBtn = e.target.closest('.btn-confirm-delete-yes');
+        
+        if (cancelBtn) {
+            e.preventDefault();
+            const overlay = cancelBtn.closest('.qs-delete-confirm-overlay');
+            if (overlay) overlay.remove();
+        }
+        
+        if (confirmYesBtn) {
+            e.preventDefault();
+            const img = confirmYesBtn.dataset.image;
+            const overlay = confirmYesBtn.closest('.qs-delete-confirm-overlay');
+            const card = confirmYesBtn.closest('.quick-screen-card');
+            
+            // Disable actions during deletion
+            confirmYesBtn.disabled = true;
+            confirmYesBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+            const cancel = overlay.querySelector('.btn-confirm-delete-cancel');
+            if (cancel) cancel.disabled = true;
             
             const formData = new FormData();
             formData.append('csrf_token', CSRF);
@@ -765,7 +849,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
             formData.append('ajax', '1');
             
             try {
-                const response = await fetch(window.location.href, {
+                const response = await fetch(window.location.pathname.replace(/\.php$/, ''), {
                     method: 'POST',
                     body: formData
                 });
@@ -773,7 +857,6 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                 if (res && res.success) {
                     if (window.showToast) window.showToast('Image deleted successfully.', 'success');
                     // Remove card from DOM
-                    const card = document.querySelector(`[data-image-card="${img}"]`);
                     if (card) card.remove();
                     
                     // Toggle empty state if grid is empty
@@ -785,10 +868,12 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                     }
                 } else {
                     if (window.showToast) window.showToast(res.message || 'Failed to delete image.', 'error');
+                    if (overlay) overlay.remove();
                 }
             } catch (err) {
                 console.error(err);
                 if (window.showToast) window.showToast('Network error occurred.', 'error');
+                if (overlay) overlay.remove();
             }
         }
     });
@@ -806,7 +891,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
         formData.append('ajax', '1');
         
         try {
-            const response = await fetch(window.location.href, {
+            const response = await fetch(window.location.pathname.replace(/\.php$/, ''), {
                 method: 'POST',
                 body: formData
             });
