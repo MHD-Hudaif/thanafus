@@ -144,11 +144,16 @@ $filteredLogs = array_filter($allLogsWithCumulative, function ($item) use ($filt
 
 // Apply Sorting
 usort($filteredLogs, function ($a, $b) use ($sortOrder) {
+    $rA = (int)$a['final_rank'];
+    $rB = (int)$b['final_rank'];
+    $valA = $rA === 0 ? 999999 : $rA;
+    $valB = $rB === 0 ? 999999 : $rB;
+
     return match ($sortOrder) {
-        'oldest' => strcmp((string)$a['approved_at'], (string)$b['approved_at']) ?: ($a['entry_id'] <=> $b['entry_id']),
-        'points_desc' => ($b['team_score'] <=> $a['team_score']) ?: strcmp((string)$b['approved_at'], (string)$a['approved_at']),
-        'points_asc' => ($a['team_score'] <=> $b['team_score']) ?: strcmp((string)$a['approved_at'], (string)$a['approved_at']),
-        default => strcmp((string)$b['approved_at'], (string)$a['approved_at']) ?: ($b['entry_id'] <=> $a['entry_id']),
+        'oldest' => strcmp((string)$a['approved_at'], (string)$b['approved_at']) ?: ($valA <=> $valB) ?: ($a['entry_id'] <=> $b['entry_id']),
+        'points_desc' => ($b['team_score'] <=> $a['team_score']) ?: strcmp((string)$b['approved_at'], (string)$a['approved_at']) ?: ($valA <=> $valB) ?: ($b['entry_id'] <=> $a['entry_id']),
+        'points_asc' => ($a['team_score'] <=> $b['team_score']) ?: strcmp((string)$a['approved_at'], (string)$b['approved_at']) ?: ($valA <=> $valB) ?: ($a['entry_id'] <=> $b['entry_id']),
+        default => strcmp((string)$b['approved_at'], (string)$a['approved_at']) ?: ($valA <=> $valB) ?: ($b['entry_id'] <=> $a['entry_id']),
     };
 });
 
@@ -170,6 +175,27 @@ foreach ($filteredLogs as $log) {
     $programGroups[$pId]['total_points_awarded'] += (float)$log['team_score'];
     $programGroups[$pId]['entries'][] = $log;
 }
+
+// Sort entries within each program group by final_rank ASC (rank order)
+foreach ($programGroups as $pId => &$pData) {
+    usort($pData['entries'], function ($a, $b) {
+        $rA = (int)$a['final_rank'];
+        $rB = (int)$b['final_rank'];
+        $valA = $rA === 0 ? 999999 : $rA;
+        $valB = $rB === 0 ? 999999 : $rB;
+        if ($valA === $valB) {
+            // Tie breaker: final score desc, then entry_id asc
+            $sA = (float)$a['final_score'];
+            $sB = (float)$b['final_score'];
+            if ($sA == $sB) {
+                return (int)$a['entry_id'] <=> (int)$b['entry_id'];
+            }
+            return $sB <=> $sA;
+        }
+        return $valA <=> $valB;
+    });
+}
+unset($pData);
 
 // CSV Export Handling
 if (($_GET['export'] ?? '') === 'csv') {
