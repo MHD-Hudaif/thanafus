@@ -136,42 +136,42 @@ $initialBgVideoSrc = tv_get_video_src($headerFirstColor);
         .floating-timer-inner {
             display: flex;
             align-items: center;
-            gap: 12px;
-            background: rgba(15, 23, 42, 0.85);
+            gap: 16px;
+            background: rgba(15, 23, 42, 0.88);
             backdrop-filter: blur(16px);
             -webkit-backdrop-filter: blur(16px);
-            border: 1.5px solid rgba(239, 68, 68, 0.45);
-            padding: 8px 20px;
-            border-radius: 18px;
-            box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5), 0 0 25px rgba(239, 68, 68, 0.2);
+            border: 2px solid rgba(239, 68, 68, 0.5);
+            padding: 14px 28px;
+            border-radius: 22px;
+            box-shadow: 0 16px 44px rgba(0, 0, 0, 0.6), 0 0 35px rgba(239, 68, 68, 0.25);
             color: #ffffff;
             font-family: 'Space Grotesk', 'Cairo', sans-serif;
             pointer-events: auto;
             animation: floating-timer-pulse-border 2s infinite alternate;
         }
         .floating-timer-inner .pulse-dot {
-            width: 8px;
-            height: 8px;
+            width: 11px;
+            height: 11px;
             border-radius: 50%;
             background: #ef4444;
-            box-shadow: 0 0 10px #ef4444;
+            box-shadow: 0 0 12px #ef4444;
             animation: pulse-red-dot-floating 1.5s infinite;
         }
         .floating-timer-inner .timer-label {
-            font-size: 10px;
+            font-size: 13px;
             font-weight: 800;
             color: #f87171;
             letter-spacing: 0.08em;
             text-transform: uppercase;
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 8px;
         }
         .floating-timer-inner .timer-value {
-            font-size: 22px;
+            font-size: 34px;
             font-weight: 800;
             color: #ffffff;
-            min-width: 58px;
+            min-width: 90px;
             text-align: center;
             letter-spacing: 0.02em;
         }
