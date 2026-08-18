@@ -1128,9 +1128,9 @@
             loadChatUsers();
             fetchChatMessages();
 
-            // Start polling loop (every 3 seconds)
+            // Start polling loop (8 s — reduced from 3 s to stay within Bluehost rate limits)
             clearInterval(chatPollInterval);
-            chatPollInterval = setInterval(fetchChatMessages, 3000);
+            chatPollInterval = setInterval(fetchChatMessages, 8000);
         });
 
         // Close chat modal

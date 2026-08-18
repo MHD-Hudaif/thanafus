@@ -180,7 +180,18 @@
         document.body.classList.add('refresh-flash');
     }
 
+    let _lbBackoff = 0; // extra ticks to skip after a 429
+
     async function loadLeaderboard() {
+        // Don't poll when tab is hidden — saves server hits
+        if (document.hidden) return;
+
+        // Exponential back-off after a 429
+        if (_lbBackoff > 0) {
+            _lbBackoff--;
+            return;
+        }
+
         try {
             const response = await fetch(config.apiUrl, {
                 method: 'GET',
@@ -190,6 +201,15 @@
                 },
                 cache: 'no-store'
             });
+
+            if (response.status === 429) {
+                // Back off: skip 2 → 4 → 8 ticks before retrying (max ~16 intervals)
+                _lbBackoff = Math.min((_lbBackoff || 1) * 2, 16);
+                console.warn('[Leaderboard] 429 — backing off for', _lbBackoff, 'tick(s)');
+                return;
+            }
+
+            _lbBackoff = 0;
 
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}`);
@@ -230,7 +250,9 @@
         renderTeams(initial.teams || []);
         setRingProgress(initial.progress || { total: 0, completed: 0, percentage: 0 });
         loadLeaderboard();
-        setInterval(loadLeaderboard, Number(config.refreshMs || 5000));
+        // Minimum 15 s on Bluehost shared hosting; config.refreshMs can raise it but not lower it.
+        const interval = Math.max(15000, Number(config.refreshMs || 15000));
+        setInterval(loadLeaderboard, interval);
     }
 
     document.addEventListener('DOMContentLoaded', init);
