@@ -61,6 +61,9 @@ $submittedStmt = $pdo->prepare("
     SELECT
         p.id AS program_id,
         p.team_points_config,
+        p.judges_count,
+        p.disable_scores,
+        p.only_team_marks,
         pe.team_id,
         pe.final_rank,
         ss.final_total
@@ -79,6 +82,7 @@ foreach ($submittedStmt->fetchAll(PDO::FETCH_ASSOC) as $submittedEntry) {
 }
 
 $settings = admin_get_settings($pdo);
+$tiedMode = $settings['tied_rank_mode'] ?? 'shared_full';
 $defaultPointConfig = [
     1 => (int)($settings['first_place_points'] ?? 10),
     2 => (int)($settings['second_place_points'] ?? 7),
@@ -95,16 +99,83 @@ foreach ($submittedEntriesByProgram as $submittedEntries) {
         }
     }
 
-    $previousScore = null;
-    foreach ($submittedEntries as $entryIndex => $submittedEntry) {
-        $score = (float)$submittedEntry['final_total'];
-        $rank = $entryIndex + 1;
-        if ($previousScore !== null && abs($score - $previousScore) < 0.001) {
-            $rank = $entryIndex;
+    if (!empty($submittedEntries[0]['disable_scores'])) {
+        foreach ($submittedEntries as $submittedEntry) {
+            $rank = (int)($submittedEntry['final_rank'] ?? 0);
+            $teamId = (int)$submittedEntry['team_id'];
+            $submittedPointsByTeam[$teamId] = ($submittedPointsByTeam[$teamId] ?? 0) + (float)($pointConfig[$rank] ?? 0);
         }
-        $teamId = (int)$submittedEntry['team_id'];
-        $submittedPointsByTeam[$teamId] = ($submittedPointsByTeam[$teamId] ?? 0) + (float)($pointConfig[$rank] ?? 0);
-        $previousScore = $score;
+        continue;
+    }
+
+    $scoreGroups = [];
+    foreach ($submittedEntries as $submittedEntry) {
+        $scoreKey = (string)(float)$submittedEntry['final_total'];
+        $scoreGroups[$scoreKey][] = $submittedEntry;
+    }
+
+    $groupCounts = array_map('count', array_values($scoreGroups));
+    $position = 1;
+    $sequenceRank = 1;
+    $groupIndex = 0;
+    foreach ($scoreGroups as $scoreKey => $scoreGroup) {
+        $groupCount = count($scoreGroup);
+        $score = (float)$scoreKey;
+
+        if ($tiedMode === 'shared_split') {
+            $groupPoints = 0;
+            for ($offset = 0; $offset < $groupCount; $offset++) {
+                $groupPoints += (float)($pointConfig[$position + $offset] ?? 0);
+            }
+            $pointsPerEntry = $groupCount > 0 ? $groupPoints / $groupCount : 0;
+            $rank = $position;
+        } elseif ($tiedMode === 'shared_sequential') {
+            $pointsPerEntry = (float)($pointConfig[$sequenceRank] ?? 0);
+            $rank = $sequenceRank;
+        } elseif ($tiedMode === 'tie_breaker') {
+            $rank = $position;
+            $pointsPerEntry = null;
+        } else {
+            // Match the approval workflow's default shared-full behavior.
+            $rank = $position;
+            if ($groupIndex === 0) {
+                $pointsPerEntry = (float)($pointConfig[1] ?? 0);
+            } elseif ($groupIndex === 1) {
+                $firstCount = $groupCounts[0] ?? 0;
+                $pointsPerEntry = $firstCount === 1
+                    ? (float)($pointConfig[2] ?? 0)
+                    : ($firstCount === 2 ? (float)($pointConfig[3] ?? 0) : 0);
+            } elseif ($groupIndex === 2) {
+                $pointsPerEntry = (($groupCounts[0] ?? 0) === 1 && ($groupCounts[1] ?? 0) === 1)
+                    ? (float)($pointConfig[3] ?? 0)
+                    : 0;
+            } else {
+                $pointsPerEntry = 0;
+            }
+        }
+
+        foreach ($scoreGroup as $submittedEntry) {
+            $entryRank = $rank;
+            $entryPoints = $pointsPerEntry;
+            if ($tiedMode === 'tie_breaker') {
+                $entryPoints = (float)($pointConfig[$entryRank] ?? 0);
+            }
+
+            $entryGrade = admin_calculate_grade_info($score, (int)($submittedEntry['judges_count'] ?? 2), $settings);
+            if (empty($submittedEntry['only_team_marks']) && $entryRank > 3) {
+                $entryPoints += (float)$entryGrade['grade_points'];
+            }
+
+            $teamId = (int)$submittedEntry['team_id'];
+            $submittedPointsByTeam[$teamId] = ($submittedPointsByTeam[$teamId] ?? 0) + $entryPoints;
+            if ($tiedMode === 'tie_breaker') {
+                $rank++;
+            }
+        }
+
+        $position += $groupCount;
+        $sequenceRank++;
+        $groupIndex++;
     }
 }
 
