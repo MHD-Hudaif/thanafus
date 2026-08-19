@@ -29,6 +29,29 @@ foreach ($teams as $t) {
     $teamsById[(int)$t['id']] = $t;
 }
 
+// Show the four leading teams with all submitted score-sheet marks.
+$teamMarksStmt = $pdo->prepare(" 
+    SELECT
+        t.id,
+        t.team_name,
+        t.team_color,
+        t.total_score,
+        COALESCE(SUM(CASE WHEN ss.status = 'approved' THEN ss.final_total ELSE 0 END), 0) AS approved_marks,
+        COALESCE(SUM(CASE WHEN ss.status = 'submitted' THEN ss.final_total ELSE 0 END), 0) AS submitted_marks,
+        COALESCE(SUM(CASE WHEN ss.status IN ('approved', 'submitted') THEN ss.final_total ELSE 0 END), 0) AS total_marks
+    FROM musabaqa_teams t
+    LEFT JOIN musabaqa_program_entries pe
+        ON pe.team_id = t.id AND pe.event_id = t.event_id
+    LEFT JOIN musabaqa_score_sheets ss
+        ON ss.entry_id = pe.id AND ss.program_id = pe.program_id
+    WHERE t.event_id = ?
+    GROUP BY t.id, t.team_name, t.team_color, t.total_score
+    ORDER BY t.total_score DESC, t.team_name ASC
+    LIMIT 4
+");
+$teamMarksStmt->execute([$activeEventId]);
+$teamMarks = $teamMarksStmt->fetchAll(PDO::FETCH_ASSOC);
+
 // Fetch Approved Programs for filter dropdown
 $progsStmt = $pdo->prepare("
     SELECT id, title, program_type 
@@ -358,6 +381,9 @@ require_once __DIR__ . '/../../includes/sidebar.php';
             <a class="btn btn-secondary btn-md" href="<?= app_url('/admin/score-entry/program-scores.php') ?>">
                 <i class="fa-solid fa-list-check mr-1"></i> All Scores
             </a>
+            <button type="button" class="btn btn-primary btn-md" data-modal-open="teamMarksModal">
+                <i class="fa-solid fa-users-viewfinder mr-1"></i> Submitted Marks
+            </button>
             <?php 
                 $exportQuery = array_merge($_GET, ['export' => 'csv']); 
                 $exportUrl = '?' . http_build_query($exportQuery);
@@ -687,6 +713,67 @@ require_once __DIR__ . '/../../includes/sidebar.php';
         <?php endif; ?>
     </div>
 
+</div>
+
+<div class="modal-overlay" id="teamMarksModal" aria-hidden="true">
+    <div class="modal-box" style="width: min(760px, calc(100vw - 32px));">
+        <div class="modal-header">
+            <div>
+                <div class="modal-title"><i class="fa-solid fa-ranking-star mr-2" style="color: var(--accent);"></i> Team Submitted Marks</div>
+                <div style="margin-top: 4px; color: var(--muted); font-size: 12px;">Approved and submitted score-sheet marks for the four leading teams.</div>
+            </div>
+            <button class="modal-close" type="button" data-modal-close aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+
+        <div style="padding: 20px;">
+            <?php if (!$teamMarks): ?>
+                <div class="text-center" style="padding: 36px 16px; color: var(--muted);">
+                    <i class="fa-solid fa-users-slash" style="font-size: 32px; opacity: .55;"></i>
+                    <p style="margin: 12px 0 0;">No teams found for this event.</p>
+                </div>
+            <?php else: ?>
+                <div class="table-wrapper" style="margin: 0;">
+                    <table class="table" style="margin: 0;">
+                        <thead>
+                            <tr>
+                                <th style="width: 64px;">Rank</th>
+                                <th>Team</th>
+                                <th style="text-align: right;">Approved</th>
+                                <th style="text-align: right;">Submitted</th>
+                                <th style="text-align: right;">Total Marks</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($teamMarks as $teamIndex => $teamMark): ?>
+                                <tr>
+                                    <td style="font-weight: 800; color: var(--muted);">#<?= $teamIndex + 1 ?></td>
+                                    <td>
+                                        <div class="flex items-center gap-2">
+                                            <span style="width: 10px; height: 10px; border-radius: 50%; background: <?= e($teamMark['team_color'] ?: '#64748b') ?>; box-shadow: 0 0 8px <?= e($teamMark['team_color'] ?: '#64748b') ?>;"></span>
+                                            <strong><?= e($teamMark['team_name']) ?></strong>
+                                        </div>
+                                    </td>
+                                    <td style="text-align: right; color: #34d399; font-weight: 700;">
+                                        <?= number_format((float)$teamMark['approved_marks'], 2) ?>
+                                    </td>
+                                    <td style="text-align: right; color: #fbbf24; font-weight: 700;">
+                                        <?= number_format((float)$teamMark['submitted_marks'], 2) ?>
+                                    </td>
+                                    <td style="text-align: right; color: #fff; font-weight: 800; font-size: 15px;">
+                                        <?= number_format((float)$teamMark['total_marks'], 2) ?>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            <?php endif; ?>
+        </div>
+
+        <div class="form-actions" style="padding: 14px 20px; border-top: 1px solid rgba(255, 255, 255, 0.08);">
+            <button type="button" class="btn btn-secondary btn-md" data-modal-close>Close</button>
+        </div>
+    </div>
 </div>
 
 <script>
