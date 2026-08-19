@@ -9,22 +9,23 @@ $dashboardPdo = $GLOBALS['dashboard_pdo'];
 $activeEvent = admin_require_active_event($pdo);
 $activeEventId = (int)$activeEvent['id'];
 
-function admin_backup_database_sql(PDO $pdo): string {
+function admin_backup_database_sql(PDO $pdo): string
+{
     $tables = [];
     $result = $pdo->query("SHOW TABLES");
     while ($row = $result->fetch(PDO::FETCH_NUM)) {
         $tables[] = $row[0];
     }
-    
+
     $output = "-- Kauzariyya Musabaqa Database Backup\n";
     $output .= "-- Generated: " . date('Y-m-d H:i:s') . "\n\n";
     $output .= "SET FOREIGN_KEY_CHECKS=0;\n\n";
-    
+
     foreach ($tables as $table) {
         // Create Table statement
         $createRow = $pdo->query("SHOW CREATE TABLE `" . $table . "`")->fetch(PDO::FETCH_NUM);
         $output .= "\n\n" . $createRow[1] . ";\n\n";
-        
+
         // Insert statement
         $rows = $pdo->query("SELECT * FROM `" . $table . "`")->fetchAll(PDO::FETCH_ASSOC);
         if ($rows) {
@@ -44,7 +45,7 @@ function admin_backup_database_sql(PDO $pdo): string {
             $output .= implode(",\n", $inserts) . ";\n";
         }
     }
-    
+
     $output .= "\n\nSET FOREIGN_KEY_CHECKS=1;\n";
     return $output;
 }
@@ -69,11 +70,12 @@ if (isset($_GET['action']) && $_GET['action'] === 'backup') {
 }
 
 // Helper functions for settings
-function get_musabaqa_settings($pdo) {
+function get_musabaqa_settings($pdo)
+{
     $stmt = $pdo->prepare("SELECT setting_value FROM musabaqa_settings WHERE setting_key = 'global_musabaqa_settings' LIMIT 1");
     $stmt->execute();
     $row = $stmt->fetch();
-    
+
     $defaults = [
         'default_judges_count' => 2,
         'default_total_marks' => 100,
@@ -87,19 +89,20 @@ function get_musabaqa_settings($pdo) {
         'active_sections' => [],
         'section_limits' => []
     ];
-    
+
     if ($row) {
         $data = json_decode($row['setting_value'], true);
         if (is_array($data)) {
             return array_merge($defaults, $data);
         }
     }
-    
+
     return $defaults;
 }
 
 if (!function_exists('save_musabaqa_settings')) {
-    function save_musabaqa_settings($pdo, $settings) {
+    function save_musabaqa_settings($pdo, $settings)
+    {
         if (function_exists('admin_save_settings') && is_array($settings)) {
             admin_save_settings($pdo, $settings);
             return;
@@ -197,10 +200,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $pdo->prepare("DELETE FROM musabaqa_category_scores WHERE score_sheet_id IN (SELECT id FROM musabaqa_score_sheets WHERE program_id IN (SELECT id FROM musabaqa_programs WHERE event_id = ?))")->execute([$activeEventId]);
                 $pdo->prepare("DELETE FROM musabaqa_score_sheets WHERE program_id IN (SELECT id FROM musabaqa_programs WHERE event_id = ?)")->execute([$activeEventId]);
                 $pdo->prepare("DELETE FROM musabaqa_scores WHERE program_id IN (SELECT id FROM musabaqa_programs WHERE event_id = ?)")->execute([$activeEventId]);
-                
+
                 // Reset entries to scoring status
                 $pdo->prepare("UPDATE musabaqa_program_entries SET final_score = 0, final_rank = NULL, team_score = 0, status = 'scoring' WHERE event_id = ?")->execute([$activeEventId]);
-                
+
                 // Recalculate team totals (will be 0)
                 admin_recalculate_team_totals($pdo, $activeEventId);
             });
@@ -258,14 +261,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $maxJudgesCount = max(1, min(10, (int)($_POST['max_judges_count'] ?? $defaultJudgesCount)));
         $defaultTotalMarks = max(1, min(1000, (int)($_POST['default_total_marks'] ?? 100)));
         $defaultEntriesLimit = max(1, min(1000, (int)($_POST['default_entries_limit'] ?? 10)));
-        
+
         $activeSections = [];
         if (isset($_POST['active_sections']) && is_array($_POST['active_sections'])) {
             foreach ($_POST['active_sections'] as $ctId) {
                 $activeSections[] = (int)$ctId;
             }
         }
-        
+
         $sectionLimits = [];
         if (isset($_POST['section_limits']) && is_array($_POST['section_limits'])) {
             foreach ($_POST['section_limits'] as $classTypeId => $limits) {
@@ -275,7 +278,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ];
             }
         }
-        
+
         $firstPlacePoints = max(0, min(1000, (int)($_POST['first_place_points'] ?? 10)));
         $secondPlacePoints = max(0, min(1000, (int)($_POST['second_place_points'] ?? 7)));
         $thirdPlacePoints = max(0, min(1000, (int)($_POST['third_place_points'] ?? 5)));
@@ -284,7 +287,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $tiedRankMode = isset($_POST['tied_rank_mode']) && in_array($_POST['tied_rank_mode'], ['shared_full', 'shared_split', 'shared_sequential', 'tie_breaker'], true)
             ? $_POST['tied_rank_mode']
             : ($settings['tied_rank_mode'] ?? 'shared_full');
-        
+
         $judgePasskeys = [];
         if (isset($_POST['judge_passkeys']) && is_array($_POST['judge_passkeys'])) {
             foreach ($_POST['judge_passkeys'] as $jNo => $pin) {
@@ -319,9 +322,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'judge_passkeys' => $judgePasskeys,
             'emcee_passkey' => $emceePasskey
         ];
-        
+
         save_musabaqa_settings($pdo, $settings);
-        
+
         $tab = (string)($_GET['tab'] ?? 'defaults');
         admin_flash('success', 'Global Musabaqa settings updated successfully.');
         admin_redirect('/admin/event-manager/settings.php', ['tab' => $tab]);
@@ -401,17 +404,17 @@ require_once __DIR__ . '/../../includes/sidebar.php';
         <div class="settings-details-pane">
             <form method="POST" id="settingsForm">
                 <input type="hidden" name="csrf_token" value="<?= generate_csrf_token() ?>">
-                
+
                 <!-- SECTION 1: Program Defaults -->
                 <div class="settings-section-block mb-6" id="sectionDefaults">
                     <div class="panel-header" style="margin-bottom: 20px;">
                         <h3 class="panel-title" style="font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 10px;">
-                            <i class="fa-solid fa-wand-magic-sparkles" style="color: #14b8a6;"></i> 
+                            <i class="fa-solid fa-wand-magic-sparkles" style="color: #14b8a6;"></i>
                             Program Global Defaults
                         </h3>
                         <p style="font-size: 13px; color: var(--muted); margin-top: 4px;">These values populate automatically when adding a program in Default Mode.</p>
                     </div>
-                    
+
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px;">
                         <!-- Card 1: Judges Count -->
                         <div class="setting-card-v2">
@@ -422,7 +425,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                 <strong style="font-size: 16px; color: #fff; display: block;">Default Judges Count</strong>
                                 <span style="font-size: 12.5px; color: var(--muted); display: block; margin-top: 4px;">Number of judge scorecards generated per program.</span>
                             </div>
-                            
+
                             <div class="number-stepper">
                                 <button type="button" class="stepper-btn btn-step-down" data-target="defaultJudgesCount"><i class="fa-solid fa-minus"></i></button>
                                 <input type="number" name="default_judges_count" id="defaultJudgesCount" value="<?= (int)$settings['default_judges_count'] ?>" min="1" max="10" required>
@@ -439,7 +442,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                 <strong style="font-size: 16px; color: #fff; display: block;">Default Total Marks</strong>
                                 <span style="font-size: 12.5px; color: var(--muted); display: block; margin-top: 4px;">Maximum total mark score for each judge.</span>
                             </div>
-                            
+
                             <div class="number-stepper">
                                 <button type="button" class="stepper-btn btn-step-down" data-target="defaultTotalMarks" data-step="10"><i class="fa-solid fa-minus"></i></button>
                                 <input type="number" name="default_total_marks" id="defaultTotalMarks" value="<?= (int)$settings['default_total_marks'] ?>" min="1" max="1000" required>
@@ -456,7 +459,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                 <strong style="font-size: 16px; color: #fff; display: block;">Default Entries Limit per Team</strong>
                                 <span style="font-size: 12.5px; color: var(--muted); display: block; margin-top: 4px;">Maximum entries allowed for each team per program.</span>
                             </div>
-                            
+
                             <div class="number-stepper">
                                 <button type="button" class="stepper-btn btn-step-down" data-target="defaultEntriesLimit"><i class="fa-solid fa-minus"></i></button>
                                 <input type="number" name="default_entries_limit" id="defaultEntriesLimit" value="<?= (int)$settings['default_entries_limit'] ?>" min="1" max="1000" required>
@@ -470,12 +473,12 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                 <div class="settings-section-block mb-6" id="sectionTeamPoints" style="display: none;">
                     <div class="panel-header" style="margin-bottom: 20px;">
                         <h3 class="panel-title" style="font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 10px;">
-                            <i class="fa-solid fa-award" style="color: #14b8a6;"></i> 
+                            <i class="fa-solid fa-award" style="color: #14b8a6;"></i>
                             Team Placement Points
                         </h3>
                         <p style="font-size: 13px; color: var(--muted); margin-top: 4px;">Define the points awarded to the team of the 1st, 2nd, and 3rd placed students.</p>
                     </div>
-                    
+
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px;">
                         <!-- Card 1: First Place Points -->
                         <div class="setting-card-v2">
@@ -486,7 +489,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                 <strong style="font-size: 16px; color: #fff; display: block;">1st Place Points</strong>
                                 <span style="font-size: 12.5px; color: var(--muted); display: block; margin-top: 4px;">Points awarded to the team of the 1st placer.</span>
                             </div>
-                            
+
                             <div class="number-stepper">
                                 <button type="button" class="stepper-btn btn-step-down" data-target="firstPlacePoints"><i class="fa-solid fa-minus"></i></button>
                                 <input type="number" name="first_place_points" id="firstPlacePoints" value="<?= (int)($settings['first_place_points'] ?? 10) ?>" min="0" max="1000" required>
@@ -503,7 +506,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                 <strong style="font-size: 16px; color: #fff; display: block;">2nd Place Points</strong>
                                 <span style="font-size: 12.5px; color: var(--muted); display: block; margin-top: 4px;">Points awarded to the team of the 2nd placer.</span>
                             </div>
-                            
+
                             <div class="number-stepper">
                                 <button type="button" class="stepper-btn btn-step-down" data-target="secondPlacePoints"><i class="fa-solid fa-minus"></i></button>
                                 <input type="number" name="second_place_points" id="secondPlacePoints" value="<?= (int)($settings['second_place_points'] ?? 7) ?>" min="0" max="1000" required>
@@ -520,7 +523,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                 <strong style="font-size: 16px; color: #fff; display: block;">3rd Place Points</strong>
                                 <span style="font-size: 12.5px; color: var(--muted); display: block; margin-top: 4px;">Points awarded to the team of the 3rd placer.</span>
                             </div>
-                            
+
                             <div class="number-stepper">
                                 <button type="button" class="stepper-btn btn-step-down" data-target="thirdPlacePoints"><i class="fa-solid fa-minus"></i></button>
                                 <input type="number" name="third_place_points" id="thirdPlacePoints" value="<?= (int)($settings['third_place_points'] ?? 5) ?>" min="0" max="1000" required>
@@ -537,7 +540,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                 <strong style="font-size: 16px; color: #fff; display: block;">85+ Marks Bonus Points</strong>
                                 <span style="font-size: 12.5px; color: var(--muted); display: block; margin-top: 4px;">Extra points awarded to team for scoring 85+ marks in mark-based programs.</span>
                             </div>
-                            
+
                             <div class="number-stepper">
                                 <button type="button" class="stepper-btn btn-step-down" data-target="grade85PlusBonusPoints"><i class="fa-solid fa-minus"></i></button>
                                 <input type="number" name="grade_85_plus_bonus_points" id="grade85PlusBonusPoints" value="<?= (int)($settings['grade_85_plus_bonus_points'] ?? 3) ?>" min="0" max="100" required>
@@ -551,14 +554,14 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                 <div class="settings-section-block mb-6" id="sectionTiedMode" style="display: none;">
                     <div class="panel-header" style="margin-bottom: 20px;">
                         <h3 class="panel-title" style="font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 10px;">
-                            <i class="fa-solid fa-scale-balanced" style="color: #14b8a6;"></i> 
+                            <i class="fa-solid fa-scale-balanced" style="color: #14b8a6;"></i>
                             Tied Ranking Mode
                         </h3>
                         <p style="font-size: 13px; color: var(--muted); margin-top: 4px;">Choose how points are divided or sequential placements are calculated when participants tie for a rank.</p>
                     </div>
 
                     <div style="display: flex; flex-direction: column; gap: 16px;">
-                        <?php 
+                        <?php
                         $tiedRankMode = $settings['tied_rank_mode'] ?? 'shared_full';
                         ?>
                         <!-- Mode 1: Full Points (Shared) -->
@@ -604,7 +607,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                     <div class="panel-header" style="margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
                         <div>
                             <h3 class="panel-title" style="font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 10px;">
-                                <i class="fa-solid fa-graduation-cap" style="color: #14b8a6;"></i> 
+                                <i class="fa-solid fa-graduation-cap" style="color: #14b8a6;"></i>
                                 Active Musabaqa Sections
                             </h3>
                             <p style="font-size: 13px; color: var(--muted); margin-top: 4px;">Choose which sections (class categories) are participating in this Musabaqa event.</p>
@@ -620,15 +623,15 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                     </div>
 
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px;">
-                        <?php 
+                        <?php
                         $configuredActiveSections = $settings['active_sections'] ?? [];
                         $allActiveByDefault = empty($configuredActiveSections);
-                        
-                        foreach ($classTypes as $type): 
+
+                        foreach ($classTypes as $type):
                             $classTypeId = (int)$type['id'];
                             $sectionName = admin_class_type_display($type['name'] ?? null, $classTypeId);
                             $isSectionActive = $allActiveByDefault || in_array($classTypeId, $configuredActiveSections, true);
-                            ?>
+                        ?>
                             <label class="section-toggle-card <?= $isSectionActive ? 'is-active' : '' ?>" id="sectionToggleCard_<?= $classTypeId ?>" style="display: flex; align-items: center; justify-content: space-between; padding: 18px 20px; background: rgba(15, 23, 42, 0.6); border: 1px solid <?= $isSectionActive ? 'rgba(20, 184, 166, 0.4)' : 'rgba(255, 255, 255, 0.08)' ?>; border-radius: 16px; cursor: pointer; transition: all 0.25s ease;">
                                 <div style="display: flex; align-items: center; gap: 12px;">
                                     <div class="section-icon-box" style="width: 40px; height: 40px; border-radius: 10px; background: <?= $isSectionActive ? 'rgba(20, 184, 166, 0.18)' : 'rgba(255, 255, 255, 0.04)' ?>; border: 1px solid <?= $isSectionActive ? 'rgba(20, 184, 166, 0.35)' : 'rgba(255, 255, 255, 0.08)' ?>; display: flex; align-items: center; justify-content: center; color: <?= $isSectionActive ? '#14b8a6' : 'var(--muted)' ?>; font-size: 18px;">
@@ -649,24 +652,24 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                         <?php endforeach; ?>
                     </div>
                 </div>
-                
+
                 <!-- SECTION 5: Member Participation Limits -->
                 <div class="settings-section-block mb-6" id="sectionLimits" style="display: none;">
                     <div class="panel-header" style="margin-bottom: 20px;">
                         <h3 class="panel-title" style="font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 10px;">
-                            <i class="fa-solid fa-users-gear" style="color: #14b8a6;"></i> 
+                            <i class="fa-solid fa-users-gear" style="color: #14b8a6;"></i>
                             Section Participation Limits
                         </h3>
                         <p style="font-size: 13px; color: var(--muted); margin-top: 4px;">Enforce maximum program entry limits for individual members based on their section (Class Type).</p>
                     </div>
-                    
+
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
-                        <?php foreach ($classTypes as $type): 
+                        <?php foreach ($classTypes as $type):
                             $classTypeId = (int)$type['id'];
                             $onStage = (int)($settings['section_limits'][$classTypeId]['on_stage'] ?? 2);
                             $offStage = (int)($settings['section_limits'][$classTypeId]['off_stage'] ?? 3);
                             $sectionName = admin_class_type_display($type['name'] ?? null, $classTypeId);
-                            ?>
+                        ?>
                             <div class="section-limit-card-v2">
                                 <div style="display: flex; align-items: center; justify-content: space-between;">
                                     <div style="display: flex; align-items: center; gap: 12px;">
@@ -679,7 +682,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                         </div>
                                     </div>
                                 </div>
-                                
+
                                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
                                     <!-- On Stage Limit Box -->
                                     <div class="limit-badge-box on-stage">
@@ -726,12 +729,12 @@ require_once __DIR__ . '/../../includes/sidebar.php';
             <div class="settings-section-block mb-6" id="sectionBulkModify" style="display: none;">
                 <div class="panel-header" style="margin-bottom: 20px;">
                     <h3 class="panel-title" style="font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 10px;">
-                        <i class="fa-solid fa-toolbox" style="color: #14b8a6;"></i> 
+                        <i class="fa-solid fa-toolbox" style="color: #14b8a6;"></i>
                         Bulk Edit &amp; Reset Programs
                     </h3>
                     <p style="font-size: 13px; color: var(--muted); margin-top: 4px;">Update multiple programs' settings (judges count, total marks, entry limits, team-only scoring, and place points) to defaults or custom values in a single action.</p>
                 </div>
-                
+
                 <form method="POST" id="bulkModifyForm" style="display: flex; flex-direction: column; gap: 24px;">
                     <input type="hidden" name="csrf_token" value="<?= generate_csrf_token() ?>">
                     <input type="hidden" name="action" value="bulk_modify_programs">
@@ -835,16 +838,16 @@ require_once __DIR__ . '/../../includes/sidebar.php';
             <div class="settings-section-block mb-6" id="sectionJudgePasskeys" style="display: none; margin-bottom: 40px;">
                 <div class="panel-header" style="margin-bottom: 20px;">
                     <h3 class="panel-title" style="font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 10px;">
-                        <i class="fa-solid fa-key" style="color: #14b8a6;"></i> 
+                        <i class="fa-solid fa-key" style="color: #14b8a6;"></i>
                         Judge &amp; Emcee Passkey PIN Configurations
                     </h3>
                     <p style="font-size: 13px; color: var(--muted); margin-top: 4px;">Set security passkey PINs for judges and the Emcee. Judges use these to unlock marking portals, while the Emcee uses the passkey to open mobile controls.</p>
                 </div>
 
                 <div class="grid grid-2 gap-4" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;">
-                    <?php 
+                    <?php
                     $currentPasskeys = $settings['judge_passkeys'] ?? [1 => '1111', 2 => '2222', 3 => '3333', 4 => '4444', 5 => '5555'];
-                    for ($j = 1; $j <= 5; $j++): 
+                    for ($j = 1; $j <= 5; $j++):
                         $pinVal = $currentPasskeys[$j] ?? ($j * 1111);
                     ?>
                         <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 18px; border-radius: 14px;">
@@ -870,7 +873,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
             <div class="settings-section-block mb-6" id="sectionDatabase" style="display: none; margin-bottom: 40px;">
                 <div class="panel-header" style="margin-bottom: 20px;">
                     <h3 class="panel-title" style="font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 10px;">
-                        <i class="fa-solid fa-database" style="color: #14b8a6;"></i> 
+                        <i class="fa-solid fa-database" style="color: #14b8a6;"></i>
                         Database &amp; Maintenance Utilities
                     </h3>
                     <p style="font-size: 13px; color: var(--muted); margin-top: 4px;">Perform maintenance operations, reset program databases, or download system SQL dumps.</p>
@@ -955,160 +958,162 @@ require_once __DIR__ . '/../../includes/sidebar.php';
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', () => {
-    // Stepper Button Handler
-    document.querySelectorAll('.number-stepper .stepper-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const targetId = btn.dataset.target;
-            const step = Number(btn.dataset.step || 1);
-            const input = document.getElementById(targetId);
-            if (!input) return;
+    document.addEventListener('DOMContentLoaded', () => {
+        // Stepper Button Handler
+        document.querySelectorAll('.number-stepper .stepper-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const targetId = btn.dataset.target;
+                const step = Number(btn.dataset.step || 1);
+                const input = document.getElementById(targetId);
+                if (!input) return;
 
-            let val = Number(input.value || 0);
-            const min = input.hasAttribute('min') ? Number(input.min) : 0;
-            const max = input.hasAttribute('max') ? Number(input.max) : 1000;
+                let val = Number(input.value || 0);
+                const min = input.hasAttribute('min') ? Number(input.min) : 0;
+                const max = input.hasAttribute('max') ? Number(input.max) : 1000;
 
-            if (btn.classList.contains('btn-step-up')) {
-                val = Math.min(max, val + step);
-            } else if (btn.classList.contains('btn-step-down')) {
-                val = Math.max(min, val - step);
-            }
+                if (btn.classList.contains('btn-step-up')) {
+                    val = Math.min(max, val + step);
+                } else if (btn.classList.contains('btn-step-down')) {
+                    val = Math.max(min, val - step);
+                }
 
-            input.value = val;
-            input.dispatchEvent(new Event('change'));
-        });
-    });
-
-    // Active Sections Select All / Deselect All
-    const checkboxes = document.querySelectorAll('.section-checkbox');
-    const updateCardVisual = (cb) => {
-        const card = cb.closest('.section-toggle-card');
-        const iconBox = card ? card.querySelector('.section-icon-box') : null;
-        if (cb.checked) {
-            if (card) {
-                card.style.borderColor = 'rgba(20, 184, 166, 0.4)';
-                card.classList.add('is-active');
-            }
-            if (iconBox) {
-                iconBox.style.background = 'rgba(20, 184, 166, 0.18)';
-                iconBox.style.borderColor = 'rgba(20, 184, 166, 0.35)';
-                iconBox.style.color = '#14b8a6';
-            }
-        } else {
-            if (card) {
-                card.style.borderColor = 'rgba(255, 255, 255, 0.08)';
-                card.classList.remove('is-active');
-            }
-            if (iconBox) {
-                iconBox.style.background = 'rgba(255, 255, 255, 0.04)';
-                iconBox.style.borderColor = 'rgba(255, 255, 255, 0.08)';
-                iconBox.style.color = 'var(--muted)';
-            }
-        }
-    };
-
-    checkboxes.forEach(cb => {
-        cb.addEventListener('change', () => updateCardVisual(cb));
-    });
-
-    const selectAllBtn = document.getElementById('selectAllSectionsBtn');
-    if (selectAllBtn) {
-        selectAllBtn.addEventListener('click', () => {
-            checkboxes.forEach(cb => {
-                cb.checked = true;
-                updateCardVisual(cb);
+                input.value = val;
+                input.dispatchEvent(new Event('change'));
             });
         });
-    }
 
-    const deselectAllBtn = document.getElementById('deselectAllSectionsBtn');
-    if (deselectAllBtn) {
-        deselectAllBtn.addEventListener('click', () => {
-            checkboxes.forEach(cb => {
-                cb.checked = false;
-                updateCardVisual(cb);
-            });
-        });
-    }
-
-    // Tied Rank Card Selection change listener
-    const tiedRadios = document.querySelectorAll('input[name="tied_rank_mode"]');
-    tiedRadios.forEach(radio => {
-        radio.addEventListener('change', () => {
-            document.querySelectorAll('.tied-rank-card').forEach(c => c.classList.remove('is-active'));
-            const card = radio.closest('.tied-rank-card');
-            if (card) {
-                card.classList.add('is-active');
-            }
-        });
-    });
-
-    // Sub-tab Navigation Handler (Antigravity Style)
-    const tabBtns = document.querySelectorAll('.settings-sub-tab-btn');
-    const secDefaults = document.getElementById('sectionDefaults');
-    const secTeamPoints = document.getElementById('sectionTeamPoints');
-    const secTiedMode = document.getElementById('sectionTiedMode');
-    const secActiveSections = document.getElementById('sectionActiveSections');
-    const secLimits = document.getElementById('sectionLimits');
-    const secBulkModify = document.getElementById('sectionBulkModify');
-    const secJudgePasskeys = document.getElementById('sectionJudgePasskeys');
-    const secDatabase = document.getElementById('sectionDatabase');
-    const stickyBar = document.getElementById('stickySettingsBar');
-    const topSaveBtn = document.getElementById('topSaveSettingsBtn');
-
-    tabBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-            tabBtns.forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-
-            const tab = btn.dataset.tab;
-            if (secDefaults) secDefaults.style.display = (tab === 'defaults') ? 'block' : 'none';
-            if (secTeamPoints) secTeamPoints.style.display = (tab === 'points') ? 'block' : 'none';
-            if (secTiedMode) secTiedMode.style.display = (tab === 'tied-mode') ? 'block' : 'none';
-            if (secActiveSections) secActiveSections.style.display = (tab === 'sections') ? 'block' : 'none';
-            if (secLimits) secLimits.style.display = (tab === 'limits') ? 'block' : 'none';
-            if (secBulkModify) secBulkModify.style.display = (tab === 'bulk-modify') ? 'block' : 'none';
-            if (secJudgePasskeys) secJudgePasskeys.style.display = (tab === 'judge-passkeys') ? 'block' : 'none';
-            if (secDatabase) secDatabase.style.display = (tab === 'database') ? 'block' : 'none';
-
-            // Dynamically update browser URL parameter without reloading
-            const url = new URL(window.location.href);
-            url.searchParams.set('tab', tab);
-            window.history.replaceState({ ajaxUrl: url.href }, '', url.href);
-
-            // Hide save button toolbar for non-form utility tabs
-            if (tab === 'bulk-modify' || tab === 'database') {
-                if (stickyBar) stickyBar.style.display = 'none';
-                if (topSaveBtn) topSaveBtn.style.display = 'none';
+        // Active Sections Select All / Deselect All
+        const checkboxes = document.querySelectorAll('.section-checkbox');
+        const updateCardVisual = (cb) => {
+            const card = cb.closest('.section-toggle-card');
+            const iconBox = card ? card.querySelector('.section-icon-box') : null;
+            if (cb.checked) {
+                if (card) {
+                    card.style.borderColor = 'rgba(20, 184, 166, 0.4)';
+                    card.classList.add('is-active');
+                }
+                if (iconBox) {
+                    iconBox.style.background = 'rgba(20, 184, 166, 0.18)';
+                    iconBox.style.borderColor = 'rgba(20, 184, 166, 0.35)';
+                    iconBox.style.color = '#14b8a6';
+                }
             } else {
-                if (stickyBar) stickyBar.style.display = 'flex';
-                if (topSaveBtn) topSaveBtn.style.display = 'inline-flex';
+                if (card) {
+                    card.style.borderColor = 'rgba(255, 255, 255, 0.08)';
+                    card.classList.remove('is-active');
+                }
+                if (iconBox) {
+                    iconBox.style.background = 'rgba(255, 255, 255, 0.04)';
+                    iconBox.style.borderColor = 'rgba(255, 255, 255, 0.08)';
+                    iconBox.style.color = 'var(--muted)';
+                }
             }
+        };
+
+        checkboxes.forEach(cb => {
+            cb.addEventListener('change', () => updateCardVisual(cb));
         });
+
+        const selectAllBtn = document.getElementById('selectAllSectionsBtn');
+        if (selectAllBtn) {
+            selectAllBtn.addEventListener('click', () => {
+                checkboxes.forEach(cb => {
+                    cb.checked = true;
+                    updateCardVisual(cb);
+                });
+            });
+        }
+
+        const deselectAllBtn = document.getElementById('deselectAllSectionsBtn');
+        if (deselectAllBtn) {
+            deselectAllBtn.addEventListener('click', () => {
+                checkboxes.forEach(cb => {
+                    cb.checked = false;
+                    updateCardVisual(cb);
+                });
+            });
+        }
+
+        // Tied Rank Card Selection change listener
+        const tiedRadios = document.querySelectorAll('input[name="tied_rank_mode"]');
+        tiedRadios.forEach(radio => {
+            radio.addEventListener('change', () => {
+                document.querySelectorAll('.tied-rank-card').forEach(c => c.classList.remove('is-active'));
+                const card = radio.closest('.tied-rank-card');
+                if (card) {
+                    card.classList.add('is-active');
+                }
+            });
+        });
+
+        // Sub-tab Navigation Handler (Antigravity Style)
+        const tabBtns = document.querySelectorAll('.settings-sub-tab-btn');
+        const secDefaults = document.getElementById('sectionDefaults');
+        const secTeamPoints = document.getElementById('sectionTeamPoints');
+        const secTiedMode = document.getElementById('sectionTiedMode');
+        const secActiveSections = document.getElementById('sectionActiveSections');
+        const secLimits = document.getElementById('sectionLimits');
+        const secBulkModify = document.getElementById('sectionBulkModify');
+        const secJudgePasskeys = document.getElementById('sectionJudgePasskeys');
+        const secDatabase = document.getElementById('sectionDatabase');
+        const stickyBar = document.getElementById('stickySettingsBar');
+        const topSaveBtn = document.getElementById('topSaveSettingsBtn');
+
+        tabBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                tabBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+
+                const tab = btn.dataset.tab;
+                if (secDefaults) secDefaults.style.display = (tab === 'defaults') ? 'block' : 'none';
+                if (secTeamPoints) secTeamPoints.style.display = (tab === 'points') ? 'block' : 'none';
+                if (secTiedMode) secTiedMode.style.display = (tab === 'tied-mode') ? 'block' : 'none';
+                if (secActiveSections) secActiveSections.style.display = (tab === 'sections') ? 'block' : 'none';
+                if (secLimits) secLimits.style.display = (tab === 'limits') ? 'block' : 'none';
+                if (secBulkModify) secBulkModify.style.display = (tab === 'bulk-modify') ? 'block' : 'none';
+                if (secJudgePasskeys) secJudgePasskeys.style.display = (tab === 'judge-passkeys') ? 'block' : 'none';
+                if (secDatabase) secDatabase.style.display = (tab === 'database') ? 'block' : 'none';
+
+                // Dynamically update browser URL parameter without reloading
+                const url = new URL(window.location.href);
+                url.searchParams.set('tab', tab);
+                window.history.replaceState({
+                    ajaxUrl: url.href
+                }, '', url.href);
+
+                // Hide save button toolbar for non-form utility tabs
+                if (tab === 'bulk-modify' || tab === 'database') {
+                    if (stickyBar) stickyBar.style.display = 'none';
+                    if (topSaveBtn) topSaveBtn.style.display = 'none';
+                } else {
+                    if (stickyBar) stickyBar.style.display = 'flex';
+                    if (topSaveBtn) topSaveBtn.style.display = 'inline-flex';
+                }
+            });
+        });
+
+        // Bulk edit: Pre-fill defaults
+        const btnCopyDefaults = document.getElementById('btnCopyDefaults');
+        if (btnCopyDefaults) {
+            btnCopyDefaults.addEventListener('click', () => {
+                document.getElementById('chkUpdateJudges').checked = true;
+                document.getElementById('chkUpdateMarks').checked = true;
+                document.getElementById('chkUpdateLimit').checked = true;
+
+                document.getElementById('valJudges').value = '<?= (int)$settings['default_judges_count'] ?>';
+                document.getElementById('valMarks').value = '<?= (int)$settings['default_total_marks'] ?>';
+                document.getElementById('valLimit').value = '<?= (int)$settings['default_entries_limit'] ?>';
+            });
+        }
+
+        // Direct tab select by URL hash/param
+        const urlParams = new URLSearchParams(window.location.search);
+        const initialTab = urlParams.get('tab') || 'defaults';
+        const targetBtn = document.querySelector(`.settings-sub-tab-btn[data-tab="${initialTab}"]`);
+        if (targetBtn) {
+            targetBtn.click();
+        }
     });
-
-    // Bulk edit: Pre-fill defaults
-    const btnCopyDefaults = document.getElementById('btnCopyDefaults');
-    if (btnCopyDefaults) {
-        btnCopyDefaults.addEventListener('click', () => {
-            document.getElementById('chkUpdateJudges').checked = true;
-            document.getElementById('chkUpdateMarks').checked = true;
-            document.getElementById('chkUpdateLimit').checked = true;
-
-            document.getElementById('valJudges').value = '<?= (int)$settings['default_judges_count'] ?>';
-            document.getElementById('valMarks').value = '<?= (int)$settings['default_total_marks'] ?>';
-            document.getElementById('valLimit').value = '<?= (int)$settings['default_entries_limit'] ?>';
-        });
-    }
-
-    // Direct tab select by URL hash/param
-    const urlParams = new URLSearchParams(window.location.search);
-    const initialTab = urlParams.get('tab') || 'defaults';
-    const targetBtn = document.querySelector(`.settings-sub-tab-btn[data-tab="${initialTab}"]`);
-    if (targetBtn) {
-        targetBtn.click();
-    }
-});
 </script>
 
 <?php admin_close_page(); ?>

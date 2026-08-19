@@ -1293,36 +1293,68 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                     
                     <div id="specialFields" style="border-top: 1px solid var(--border); padding-top: 15px; margin-top: 15px; grid-column: span 2; width: 100%;">
                         <h4 style="font-size: 14px; font-weight: 700; margin-bottom: 12px; color: var(--accent, #14b8a6);"><i class="fa-solid fa-gear"></i> Customization & Scoring Rules</h4>
-                        <div class="form-grid-3" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
-                            <div class="input-group">
-                                <label>Judges Count</label>
-                                <input type="number" name="judges_count" id="judgesCount" min="1" max="10" value="2">
-                            </div>
-                            <div class="input-group">
-                                <label>Total Marks (per Judge)</label>
-                                <input type="number" name="total_marks" id="totalMarks" min="1" max="1000" value="100">
-                            </div>
-                            <div class="input-group">
-                                <label>Entries Limit</label>
-                                <input type="number" name="entries_limit" id="entriesLimit" min="1" max="1000" value="10">
-                            </div>
-                        </div>
-                        <div style="display: grid; gap: 12px; margin-top: 15px;">
-                            <div id="rowDisableScores" style="display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.04); padding: 10px 14px; border-radius: 10px;">
-                                <div>
-                                    <strong style="font-size: 13.5px; display: block; color: var(--text);">Disable Scores</strong>
-                                    <span style="font-size: 11.5px; color: var(--muted);">Disable/hide scores (useful for semi-finales/hiding)</span>
-                                </div>
-                                <label class="toggle-switch" style="position: relative; display: inline-block;">
-                                    <input type="checkbox" name="disable_scores" id="disableScores" value="1">
-                                    <span class="toggle-slider"></span>
+                        <!-- Scoring System Mode Selector -->
+                        <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); padding: 14px; border-radius: 12px; margin-bottom: 14px;">
+                            <label style="font-size: 13px; font-weight: 700; color: #fff; display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+                                <span><i class="fa-solid fa-scale-balanced mr-2" style="color: #14b8a6;"></i> Scoring System Mode</span>
+                                <span class="badge badge-neutral" id="currentScoringModeBadge" style="font-size: 10.5px; padding: 2px 8px;">Marking System</span>
+                            </label>
+                            
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                                <!-- Mode 1: Marking System -->
+                                <label id="labelModeMarking" style="display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; border-radius: 10px; border: 1.5px solid #14b8a6; background: rgba(20, 184, 166, 0.08); cursor: pointer; transition: all 0.2s;">
+                                    <input type="radio" name="scoring_mode_radio" id="modeRadioMarking" value="marking" checked style="margin-top: 3px; accent-color: #14b8a6;">
+                                    <div>
+                                        <strong style="font-size: 13.5px; display: flex; align-items: center; gap: 6px; color: #fff;">
+                                            <i class="fa-solid fa-calculator" style="color: #14b8a6; font-size: 12px;"></i> Marking System
+                                        </strong>
+                                        <span style="font-size: 11.5px; color: var(--muted); display: block; margin-top: 3px; line-height: 1.35;">
+                                            Judges score criteria (0–100). Total score, percentage &amp; ranks calculated automatically.
+                                        </span>
+                                    </div>
+                                </label>
+                                
+                                <!-- Mode 2: Direct Ranking System -->
+                                <label id="labelModeRanking" style="display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; border-radius: 10px; border: 1.5px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.02); cursor: pointer; transition: all 0.2s;">
+                                    <input type="radio" name="scoring_mode_radio" id="modeRadioRanking" value="ranking" style="margin-top: 3px; accent-color: #f59e0b;">
+                                    <div>
+                                        <strong style="font-size: 13.5px; display: flex; align-items: center; gap: 6px; color: #fff;">
+                                            <i class="fa-solid fa-trophy" style="color: #f59e0b; font-size: 12px;"></i> Direct Ranking System
+                                        </strong>
+                                        <span style="font-size: 11.5px; color: var(--muted); display: block; margin-top: 3px; line-height: 1.35;">
+                                            Judges award 1st, 2nd, 3rd ranks directly without entering marks (Word Fight, Debates, Knockouts).
+                                        </span>
+                                    </div>
                                 </label>
                             </div>
+                            
+                            <!-- Hidden input storing disable_scores (0 or 1) for database compatibility -->
+                            <input type="hidden" name="disable_scores" id="disableScores" value="0">
+                        </div>
 
+                        <!-- Marking System Specific Configuration Inputs -->
+                        <div id="markingSystemConfigBlock">
+                            <div class="form-grid-3" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                                <div class="input-group" id="groupJudgesCount">
+                                    <label>Judges Count</label>
+                                    <input type="number" name="judges_count" id="judgesCount" min="1" max="10" value="2">
+                                </div>
+                                <div class="input-group" id="groupTotalMarks">
+                                    <label>Total Marks (per Judge)</label>
+                                    <input type="number" name="total_marks" id="totalMarks" min="1" max="1000" value="100">
+                                </div>
+                                <div class="input-group" id="groupEntriesLimit">
+                                    <label>Entries Limit</label>
+                                    <input type="number" name="entries_limit" id="entriesLimit" min="1" max="1000" value="10">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="display: grid; gap: 12px; margin-top: 15px;">
                             <div id="rowRedirectToTeam" style="display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.04); padding: 10px 14px; border-radius: 10px;">
                                 <div>
                                     <strong style="font-size: 13.5px; display: block; color: var(--text);">Redirect to Team Total</strong>
-                                    <span style="font-size: 11.5px; color: var(--muted);">Redirect participants' scores to team total points</span>
+                                    <span style="font-size: 11.5px; color: var(--muted);">Redirect placement points to the participant's team leaderboard score</span>
                                 </div>
                                 <label class="toggle-switch" style="position: relative; display: inline-block;">
                                     <input type="checkbox" name="redirect_to_team" id="redirectToTeam" value="1" checked>
@@ -1764,15 +1796,13 @@ document.addEventListener('click', (e) => {
         if (jCount) jCount.value = window.GLOBAL_DEFAULT_JUDGES || '2';
         const tMarks = document.getElementById('totalMarks');
         if (tMarks) tMarks.value = '100';
-        const eLimit = document.getElementById('entriesLimit');
-        if (eLimit) eLimit.value = '10';
         const rTeam = document.getElementById('redirectToTeam');
         if (rTeam) rTeam.checked = true;
-        const dScores = document.getElementById('disableScores');
-        if (dScores) dScores.checked = false;
         const oTeam = document.getElementById('onlyTeamMarks');
         if (oTeam) oTeam.checked = false;
-        syncDisableScoresState();
+        
+        // Reset to Marking System mode
+        setScoringMode(false);
         
         renderRanks(window.GLOBAL_DEFAULT_POINTS);
         
@@ -1835,11 +1865,12 @@ document.addEventListener('click', (e) => {
             if (eLimit) eLimit.value = String(p.entries_limit || '10');
             const rTeam = document.getElementById('redirectToTeam');
             if (rTeam) rTeam.checked = p.redirect_to_team !== 0 && p.redirect_to_team !== '0';
-            const dScores = document.getElementById('disableScores');
-            if (dScores) dScores.checked = p.disable_scores === 1 || p.disable_scores === '1';
             const oTeam = document.getElementById('onlyTeamMarks');
             if (oTeam) oTeam.checked = p.only_team_marks === 1 || p.only_team_marks === '1';
-            syncDisableScoresState();
+
+            // Sync Scoring Mode (Marking System vs Direct Ranking System)
+            const isRankingMode = (p.disable_scores === 1 || p.disable_scores === '1');
+            setScoringMode(isRankingMode);
             
             let config = {};
             if (p.team_points_config) {
@@ -2228,66 +2259,83 @@ attachZeroRefreshForm('programForm', 'programModal');
 attachZeroRefreshForm('categoryForm', 'categoryModal');
 attachZeroRefreshForm('deleteForm', 'deleteModal');
 
-function syncDisableScoresState() {
+function setScoringMode(isRankingMode) {
     const dScores = document.getElementById('disableScores');
-    const rTeam = document.getElementById('redirectToTeam');
-    const oTeam = document.getElementById('onlyTeamMarks');
-    const jCount = document.getElementById('judgesCount');
-    const tMarks = document.getElementById('totalMarks');
+    const radioMarking = document.getElementById('modeRadioMarking');
+    const radioRanking = document.getElementById('modeRadioRanking');
+    const labelMarking = document.getElementById('labelModeMarking');
+    const labelRanking = document.getElementById('labelModeRanking');
+    const modeBadge = document.getElementById('currentScoringModeBadge');
+    
+    const jCountGroup = document.getElementById('groupJudgesCount');
+    const tMarksGroup = document.getElementById('groupTotalMarks');
+    const jCountInput = document.getElementById('judgesCount');
+    const tMarksInput = document.getElementById('totalMarks');
+    const oTeamRow = document.getElementById('rowOnlyTeamMarks');
 
     if (dScores) {
-        const isDisabled = dScores.checked;
+        dScores.value = isRankingMode ? '1' : '0';
+    }
 
-        if (jCount) {
-            jCount.disabled = isDisabled;
-            const jGroup = jCount.closest('.input-group');
-            if (jGroup) {
-                jGroup.style.opacity = isDisabled ? '0.45' : '1';
-                jGroup.style.pointerEvents = isDisabled ? 'none' : 'auto';
-            }
+    if (isRankingMode) {
+        if (radioRanking) radioRanking.checked = true;
+        if (labelRanking) {
+            labelRanking.style.border = '1.5px solid #f59e0b';
+            labelRanking.style.background = 'rgba(245, 158, 11, 0.08)';
+        }
+        if (labelMarking) {
+            labelMarking.style.border = '1.5px solid rgba(255,255,255,0.08)';
+            labelMarking.style.background = 'rgba(255,255,255,0.02)';
+        }
+        if (modeBadge) {
+            modeBadge.textContent = 'Direct Ranking System';
+            modeBadge.className = 'badge badge-warning';
+            modeBadge.style.color = '#f59e0b';
         }
 
-        if (tMarks) {
-            tMarks.disabled = isDisabled;
-            const tGroup = tMarks.closest('.input-group');
-            if (tGroup) {
-                tGroup.style.opacity = isDisabled ? '0.45' : '1';
-                tGroup.style.pointerEvents = isDisabled ? 'none' : 'auto';
-            }
+        // In ranking mode, judge count & max marks are not needed
+        if (jCountGroup) {
+            jCountGroup.style.opacity = '0.35';
+            jCountGroup.style.pointerEvents = 'none';
+        }
+        if (tMarksGroup) {
+            tMarksGroup.style.opacity = '0.35';
+            tMarksGroup.style.pointerEvents = 'none';
+        }
+        if (oTeamRow) {
+            oTeamRow.style.display = 'none';
+        }
+    } else {
+        if (radioMarking) radioMarking.checked = true;
+        if (labelMarking) {
+            labelMarking.style.border = '1.5px solid #14b8a6';
+            labelMarking.style.background = 'rgba(20, 184, 166, 0.08)';
+        }
+        if (labelRanking) {
+            labelRanking.style.border = '1.5px solid rgba(255,255,255,0.08)';
+            labelRanking.style.background = 'rgba(255,255,255,0.02)';
+        }
+        if (modeBadge) {
+            modeBadge.textContent = 'Marking System';
+            modeBadge.className = 'badge badge-neutral';
+            modeBadge.style.color = '#14b8a6';
         }
 
-        if (rTeam && oTeam) {
-            const rRow = document.getElementById('rowRedirectToTeam');
-            const oRow = document.getElementById('rowOnlyTeamMarks');
-            if (isDisabled) {
-                rTeam.disabled = true;
-                oTeam.disabled = true;
-                rTeam.checked = false;
-                oTeam.checked = false;
-                if (rRow) {
-                    rRow.style.opacity = '0.5';
-                    rRow.style.pointerEvents = 'none';
-                }
-                if (oRow) {
-                    oRow.style.opacity = '0.5';
-                    oRow.style.pointerEvents = 'none';
-                }
-            } else {
-                rTeam.disabled = false;
-                oTeam.disabled = false;
-                if (rRow) {
-                    rRow.style.opacity = '1';
-                    rRow.style.pointerEvents = 'auto';
-                }
-                if (oRow) {
-                    oRow.style.opacity = '1';
-                    oRow.style.pointerEvents = 'auto';
-                }
-            }
+        if (jCountGroup) {
+            jCountGroup.style.opacity = '1';
+            jCountGroup.style.pointerEvents = 'auto';
+        }
+        if (tMarksGroup) {
+            tMarksGroup.style.opacity = '1';
+            tMarksGroup.style.pointerEvents = 'auto';
+        }
+        if (oTeamRow) {
+            oTeamRow.style.display = 'flex';
         }
     }
 }
 
-document.getElementById('disableScores')?.addEventListener('change', syncDisableScoresState);
+document.getElementById('modeRadioMarking')?.addEventListener('change', () => setScoringMode(false));
+document.getElementById('modeRadioRanking')?.addEventListener('change', () => setScoringMode(true));
 </script>
 <?php admin_close_page(); ?>

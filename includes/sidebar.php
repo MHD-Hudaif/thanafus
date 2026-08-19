@@ -231,6 +231,10 @@ if ($activeEventId) {
                     <i data-lucide="printer" class="sidebar-icon"></i>
                     <span class="sidebar-label">Print MC Sheets</span>
                 </a>
+                <a href="<?= app_url('/admin/printer/group-program-certificates-csv.php') ?>" class="sidebar-vertical-link <?= str_contains($currentPath, '/printer/group-program-certificates-csv.php') ? 'active' : '' ?>">
+                    <i data-lucide="file-down" class="sidebar-icon"></i>
+                    <span class="sidebar-label">Group Certificate CSV</span>
+                </a>
                 <a href="<?= app_url('/admin/score-update/approval-marks.php') ?>" class="sidebar-vertical-link <?= admin_sidebar_is_active('approval-marks.php') ?>">
                     <i data-lucide="trophy" class="sidebar-icon"></i>
                     <span class="sidebar-label">Final Rankings</span>

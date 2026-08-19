@@ -39,6 +39,59 @@ require __DIR__ . '/includes/public-header.php';
   gap: 10px;
 }
 
+.schedule-phase {
+  margin-top: 36px;
+}
+
+.schedule-phase:first-child {
+  margin-top: 0;
+}
+
+.schedule-phase-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 16px;
+}
+
+.schedule-phase-heading i {
+  width: 38px;
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
+}
+
+.schedule-phase-upcoming .schedule-phase-heading i {
+  background: rgba(99, 102, 241, 0.12);
+  color: var(--primary, #6366f1);
+}
+
+.schedule-phase-heading h2 {
+  margin: 0;
+  color: var(--text-heading, #0f172a);
+  font-size: 1.2rem;
+  font-weight: 800;
+}
+
+.schedule-phase-heading p {
+  margin: 2px 0 0;
+  color: #64748b;
+  font-size: 0.84rem;
+}
+
+.schedule-phase-empty {
+  color: #64748b;
+  background: rgba(248, 250, 252, 0.8);
+  border: 1px dashed rgba(148, 163, 184, 0.55);
+  border-radius: 12px;
+  padding: 18px 20px;
+  font-size: 0.9rem;
+}
+
 .timeline-row-3col {
   display: flex;
   align-items: center;
@@ -160,93 +213,104 @@ require __DIR__ . '/includes/public-header.php';
   font-weight: 800;
   color: #0f172a;
 }
+
+.result-name {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 680px) {
+  .timeline-row-3col {
+    gap: 12px;
+    padding: 14px;
+  }
+
+  .timeline-col-left {
+    flex-basis: auto;
+  }
+
+  .timeline-col-middle {
+    align-items: flex-end;
+    flex: 0 1 auto;
+  }
+
+  .daily-prog-num,
+  .prog-info-meta {
+    display: none;
+  }
+
+  .schedule-rank-tag {
+    font-size: 0.72rem;
+  }
+}
 </style>
 
 <section class="schedule-minimal-timeline section-wrap">
-  <div class="timeline-list">
-    <?php 
-    $lastDayDate = null;
-    $dayIndex = 0;
-    foreach ($items as $index => $item): 
-      $isLive = ($item['status'] ?? '') === 'live' || ($item['status'] ?? '') === 'scoring';
-      $isDone = ($item['status'] ?? '') === 'completed';
-      $statusClass = $isLive ? 'status-live' : ($isDone ? 'status-completed' : 'status-upcoming');
-      $statusLabel = $isLive ? 'LIVE NOW' : ($isDone ? 'COMPLETED' : 'UPCOMING');
+  <?php
+  $completedItems = array_values(array_filter($items, static fn(array $item): bool => ($item['status'] ?? '') === 'completed'));
+  $upcomingItems = array_values(array_filter($items, static fn(array $item): bool => ($item['status'] ?? '') !== 'completed'));
+  ?>
 
-      $currentDayDate = $item['date'] ?? '';
-      if ($currentDayDate !== $lastDayDate):
-        $lastDayDate = $currentDayDate;
-        $dayIndex++;
-    ?>
-        <div class="schedule-day-group-title">
-          <i class="fa-solid fa-calendar-day" style="color: var(--primary, #6366f1);"></i>
-          Day <?= $dayIndex ?> — <?= e($currentDayDate ?: 'Event Schedule') ?>
-        </div>
+  <section class="schedule-phase schedule-phase-completed" data-schedule-phase="completed">
+    <header class="schedule-phase-heading">
+      <i class="fa-solid fa-trophy"></i>
+      <div><h2>Phase 1 — Completed Programs</h2><p>Final ranks and results</p></div>
+    </header>
+    <div class="timeline-list">
+      <?php if (empty($completedItems)): ?>
+        <div class="schedule-phase-empty">Completed program results will appear here.</div>
       <?php endif; ?>
-
-      <div class="timeline-row-3col <?= $statusClass ?>" data-session-row="<?= e($item['session'] ?? 'morning') ?>">
-        <!-- LEFT COLUMN: Program #, Title, Meta -->
-        <div class="timeline-col-left">
-          <div class="daily-prog-num" title="Program #<?= (int)($item['daily_program_no'] ?? 1) ?> of Day <?= $dayIndex ?>">
-            #<?= (int)($item['daily_program_no'] ?? 1) ?>
+      <?php foreach ($completedItems as $item): ?>
+        <div class="timeline-row-3col status-completed" data-session-row="<?= e($item['session'] ?? 'morning') ?>">
+          <div class="timeline-col-left">
+            <div class="prog-info-wrap"><h3 class="prog-info-title"><?= e($item['title']) ?></h3></div>
           </div>
-          <div class="prog-info-wrap">
-            <h3 class="prog-info-title"><?= e($item['title']) ?></h3>
-            <div class="prog-info-meta">
-              <span class="meta-pill"><i class="fa-solid fa-layer-group"></i> <?= e($item['category'] ?? 'General') ?></span>
-              <?php if (!empty($item['venue'])): ?>
-                <span class="meta-pill"><i class="fa-solid fa-location-dot"></i> <?= e($item['venue']) ?></span>
-              <?php endif; ?>
-            </div>
-          </div>
-        </div>
-
-        <!-- MIDDLE COLUMN: 1st, 2nd, 3rd Scores -->
-        <div class="timeline-col-middle">
-          <?php 
-          $validResults = [];
-          if (!empty($item['results'])) {
-              foreach ($item['results'] as $res) {
-                  if ($res['final_score'] !== null && $res['final_score'] !== '') {
-                      $validResults[] = $res;
-                  }
-              }
-          }
-          ?>
-          <?php if (!empty($validResults)): ?>
-            <div class="ranks-badge-list">
-              <?php foreach ($validResults as $res): ?>
-                <?php
-                $rankVal = (int)($res['rank'] ?? 0);
-                $ord = match($rankVal) { 1 => 'st', 2 => 'nd', 3 => 'rd', default => 'th' };
-                ?>
-                <span class="schedule-rank-tag schedule-rank-tag-<?= $rankVal ?>" style="background: <?= e($res['team_color'] ?? '#3b82f6') ?>;">
-                  <strong><?= $rankVal ?><?= $ord ?>:</strong> <?= e(round($res['final_score'])) ?>
-                </span>
-              <?php endforeach; ?>
-            </div>
-          <?php else: ?>
-            <span style="font-size: 0.8em; color: #94a3b8;">—</span>
-          <?php endif; ?>
-        </div>
-
-        <!-- RIGHT COLUMN: Time & Status -->
-        <div class="timeline-col-right">
-          <div class="time-big"><i class="fa-regular fa-clock mr-1" style="font-size: 0.85em; opacity: 0.7;"></i><?= e($item['start_time']) ?></div>
-          <div style="font-size: 0.8em; opacity: 0.8; margin-top: 2px;">
-            <span class="timeline-status <?= $statusClass ?>"><?= $statusLabel ?></span>
-            <span style="margin-left: 6px;"><?= e($item['duration_minutes']) ?>m</span>
+          <div class="timeline-col-middle">
+            <?php $validResults = array_values(array_filter($item['results'] ?? [], static fn(array $result): bool => $result['final_score'] !== null && $result['final_score'] !== '')); ?>
+            <?php if (!empty($validResults)): ?>
+              <div class="ranks-badge-list">
+                <?php foreach ($validResults as $res): ?>
+                  <?php $rankVal = (int)($res['rank'] ?? 0); $ord = match($rankVal) { 1 => 'st', 2 => 'nd', 3 => 'rd', default => 'th' }; ?>
+                  <span class="schedule-rank-tag schedule-rank-tag-<?= $rankVal ?>" style="background: <?= e($res['team_color'] ?? '#3b82f6') ?>;">
+                    <strong><?= $rankVal ?><?= $ord ?></strong><span class="result-name"><?= e($res['entry_name'] ?: $res['team_name']) ?></span><span><?= e(round((float)$res['final_score'])) ?></span>
+                  </span>
+                <?php endforeach; ?>
+              </div>
+            <?php else: ?>
+              <span style="font-size: 0.8em; color: #94a3b8;">Results pending</span>
+            <?php endif; ?>
           </div>
         </div>
-      </div>
-    <?php endforeach; ?>
-  </div>
+      <?php endforeach; ?>
+    </div>
+  </section>
+
+  <section class="schedule-phase schedule-phase-upcoming" data-schedule-phase="upcoming">
+    <header class="schedule-phase-heading">
+      <i class="fa-solid fa-calendar-clock"></i>
+      <div><h2>Phase 2 — Upcoming Programs</h2><p>Scheduled program times</p></div>
+    </header>
+    <div class="timeline-list">
+      <?php if (empty($upcomingItems)): ?>
+        <div class="schedule-phase-empty">No upcoming programs are scheduled.</div>
+      <?php endif; ?>
+      <?php foreach ($upcomingItems as $item): ?>
+        <div class="timeline-row-3col status-upcoming" data-session-row="<?= e($item['session'] ?? 'morning') ?>">
+          <div class="timeline-col-left"><div class="prog-info-wrap"><h3 class="prog-info-title"><?= e($item['title']) ?></h3></div></div>
+          <div class="timeline-col-right"><div class="time-big"><i class="fa-regular fa-clock mr-1" style="font-size: 0.85em; opacity: 0.7;"></i><?= e($item['start_time']) ?></div></div>
+        </div>
+      <?php endforeach; ?>
+    </div>
+  </section>
 </section>
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
   const tabs = document.querySelectorAll('.minimal-tab');
   const rows = document.querySelectorAll('[data-session-row]');
+  const phases = document.querySelectorAll('[data-schedule-phase]');
 
   tabs.forEach(tab => {
     tab.addEventListener('click', () => {
@@ -260,6 +324,12 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
           row.style.display = 'none';
         }
+      });
+
+      phases.forEach(phase => {
+        const visibleRows = Array.from(phase.querySelectorAll('[data-session-row]'))
+          .some(row => row.style.display !== 'none');
+        phase.style.display = visibleRows || !phase.querySelector('[data-session-row]') ? '' : 'none';
       });
     });
   });

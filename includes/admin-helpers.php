@@ -874,12 +874,13 @@ function admin_trigger_live_score_reveal(PDO $pdo, int $eventId, $programIds = [
             $programIds = $programIds ? [(int)$programIds] : [];
         }
         $programIds = array_values(array_filter(array_map('intval', $programIds)));
-
-        $whereCond = "p.event_id = ? AND (p.approval_status = 'approved'";
-        if (!empty($programIds)) {
-            $whereCond .= " OR p.id IN (" . implode(',', $programIds) . ")";
+        if (empty($programIds)) {
+            return;
         }
-        $whereCond .= ")";
+
+        // A reveal is an announcement for the program(s) approved in this
+        // action, not a recap of every previously approved program.
+        $whereCond = "p.event_id = ? AND p.id IN (" . implode(',', $programIds) . ")";
 
         $stmt = $pdo->prepare("
             SELECT p.id, p.title, p.program_type, ct.name AS class_type_name
