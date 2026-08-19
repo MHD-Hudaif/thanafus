@@ -37,8 +37,8 @@ $teamMarksStmt = $pdo->prepare("
         t.team_color,
         t.total_score,
         COALESCE(SUM(CASE WHEN p.approval_status = 'approved' AND ss.status = 'approved' THEN pe.team_score ELSE 0 END), 0) AS approved_points,
-        COALESCE(SUM(CASE WHEN p.approval_status = 'submitted' AND ss.status = 'submitted' THEN pe.team_score ELSE 0 END), 0) AS submitted_points,
-        COALESCE(SUM(CASE WHEN p.approval_status IN ('approved', 'submitted') AND ss.status IN ('approved', 'submitted') THEN pe.team_score ELSE 0 END), 0) AS total_points
+        0 AS submitted_points,
+        COALESCE(SUM(CASE WHEN p.approval_status = 'approved' AND ss.status = 'approved' THEN pe.team_score ELSE 0 END), 0) AS total_points
     FROM musabaqa_teams t
     LEFT JOIN musabaqa_program_entries pe
         ON pe.team_id = t.id AND pe.event_id = t.event_id
@@ -53,6 +53,67 @@ $teamMarksStmt = $pdo->prepare("
 ");
 $teamMarksStmt->execute([$activeEventId]);
 $teamMarks = $teamMarksStmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Submitted programs do not receive pe.team_score until approval, so calculate
+// their provisional rank points from the submitted score sheets.
+$submittedPointsByTeam = [];
+$submittedStmt = $pdo->prepare(" 
+    SELECT
+        p.id AS program_id,
+        p.team_points_config,
+        pe.team_id,
+        pe.final_rank,
+        ss.final_total
+    FROM musabaqa_programs p
+    JOIN musabaqa_program_entries pe ON pe.program_id = p.id AND pe.event_id = p.event_id
+    JOIN musabaqa_score_sheets ss ON ss.entry_id = pe.id AND ss.program_id = p.id
+    WHERE p.event_id = ?
+      AND p.approval_status = 'submitted'
+      AND ss.status = 'submitted'
+    ORDER BY p.id ASC, ss.final_total DESC, pe.id ASC
+");
+$submittedStmt->execute([$activeEventId]);
+$submittedEntriesByProgram = [];
+foreach ($submittedStmt->fetchAll(PDO::FETCH_ASSOC) as $submittedEntry) {
+    $submittedEntriesByProgram[(int)$submittedEntry['program_id']][] = $submittedEntry;
+}
+
+$settings = admin_get_settings($pdo);
+$defaultPointConfig = [
+    1 => (int)($settings['first_place_points'] ?? 10),
+    2 => (int)($settings['second_place_points'] ?? 7),
+    3 => (int)($settings['third_place_points'] ?? 5),
+];
+
+foreach ($submittedEntriesByProgram as $submittedEntries) {
+    $pointConfig = $defaultPointConfig;
+    $customConfig = json_decode((string)($submittedEntries[0]['team_points_config'] ?? ''), true);
+    if (is_array($customConfig)) {
+        $pointConfig = [];
+        foreach ($customConfig as $rank => $points) {
+            $pointConfig[(int)$rank] = (float)$points;
+        }
+    }
+
+    $previousScore = null;
+    foreach ($submittedEntries as $entryIndex => $submittedEntry) {
+        $score = (float)$submittedEntry['final_total'];
+        $rank = $entryIndex + 1;
+        if ($previousScore !== null && abs($score - $previousScore) < 0.001) {
+            $rank = $entryIndex;
+        }
+        $teamId = (int)$submittedEntry['team_id'];
+        $submittedPointsByTeam[$teamId] = ($submittedPointsByTeam[$teamId] ?? 0) + (float)($pointConfig[$rank] ?? 0);
+        $previousScore = $score;
+    }
+}
+
+foreach ($teamMarks as &$teamMark) {
+    $teamId = (int)$teamMark['id'];
+    $teamMark['submitted_points'] = (float)($submittedPointsByTeam[$teamId] ?? 0);
+    $teamMark['total_points'] = (float)$teamMark['approved_points'] + $teamMark['submitted_points'];
+}
+unset($teamMark);
 
 // Fetch Approved Programs for filter dropdown
 $progsStmt = $pdo->prepare("
