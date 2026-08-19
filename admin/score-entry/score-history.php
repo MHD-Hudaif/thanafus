@@ -36,14 +36,16 @@ $teamMarksStmt = $pdo->prepare("
         t.team_name,
         t.team_color,
         t.total_score,
-        COALESCE(SUM(CASE WHEN p.approval_status = 'approved' THEN pe.team_score ELSE 0 END), 0) AS approved_points,
-        COALESCE(SUM(CASE WHEN p.approval_status = 'submitted' THEN pe.team_score ELSE 0 END), 0) AS submitted_points,
-        COALESCE(SUM(CASE WHEN p.approval_status IN ('approved', 'submitted') THEN pe.team_score ELSE 0 END), 0) AS total_points
+        COALESCE(SUM(CASE WHEN p.approval_status = 'approved' AND ss.status = 'approved' THEN pe.team_score ELSE 0 END), 0) AS approved_points,
+        COALESCE(SUM(CASE WHEN p.approval_status = 'submitted' AND ss.status = 'submitted' THEN pe.team_score ELSE 0 END), 0) AS submitted_points,
+        COALESCE(SUM(CASE WHEN p.approval_status IN ('approved', 'submitted') AND ss.status IN ('approved', 'submitted') THEN pe.team_score ELSE 0 END), 0) AS total_points
     FROM musabaqa_teams t
     LEFT JOIN musabaqa_program_entries pe
         ON pe.team_id = t.id AND pe.event_id = t.event_id
     LEFT JOIN musabaqa_programs p
         ON p.id = pe.program_id AND p.event_id = pe.event_id
+    LEFT JOIN musabaqa_score_sheets ss
+        ON ss.entry_id = pe.id AND ss.program_id = pe.program_id
     WHERE t.event_id = ?
     GROUP BY t.id, t.team_name, t.team_color, t.total_score
     ORDER BY t.total_score DESC, t.team_name ASC
