@@ -29,21 +29,21 @@ foreach ($teams as $t) {
     $teamsById[(int)$t['id']] = $t;
 }
 
-// Show the four leading teams with all submitted score-sheet marks.
+// Show the four leading teams with points earned by their entries.
 $teamMarksStmt = $pdo->prepare(" 
     SELECT
         t.id,
         t.team_name,
         t.team_color,
         t.total_score,
-        COALESCE(SUM(CASE WHEN ss.status = 'approved' THEN ss.final_total ELSE 0 END), 0) AS approved_marks,
-        COALESCE(SUM(CASE WHEN ss.status = 'submitted' THEN ss.final_total ELSE 0 END), 0) AS submitted_marks,
-        COALESCE(SUM(CASE WHEN ss.status IN ('approved', 'submitted') THEN ss.final_total ELSE 0 END), 0) AS total_marks
+        COALESCE(SUM(CASE WHEN p.approval_status = 'approved' THEN pe.team_score ELSE 0 END), 0) AS approved_points,
+        COALESCE(SUM(CASE WHEN p.approval_status = 'submitted' THEN pe.team_score ELSE 0 END), 0) AS submitted_points,
+        COALESCE(SUM(CASE WHEN p.approval_status IN ('approved', 'submitted') THEN pe.team_score ELSE 0 END), 0) AS total_points
     FROM musabaqa_teams t
     LEFT JOIN musabaqa_program_entries pe
         ON pe.team_id = t.id AND pe.event_id = t.event_id
-    LEFT JOIN musabaqa_score_sheets ss
-        ON ss.entry_id = pe.id AND ss.program_id = pe.program_id
+    LEFT JOIN musabaqa_programs p
+        ON p.id = pe.program_id AND p.event_id = pe.event_id
     WHERE t.event_id = ?
     GROUP BY t.id, t.team_name, t.team_color, t.total_score
     ORDER BY t.total_score DESC, t.team_name ASC
@@ -719,8 +719,8 @@ require_once __DIR__ . '/../../includes/sidebar.php';
     <div class="modal-box" style="width: min(760px, calc(100vw - 32px));">
         <div class="modal-header">
             <div>
-                <div class="modal-title"><i class="fa-solid fa-ranking-star mr-2" style="color: var(--accent);"></i> Team Submitted Marks</div>
-                <div style="margin-top: 4px; color: var(--muted); font-size: 12px;">Approved and submitted score-sheet marks for the four leading teams.</div>
+                <div class="modal-title"><i class="fa-solid fa-ranking-star mr-2" style="color: var(--accent);"></i> Team Points</div>
+                <div style="margin-top: 4px; color: var(--muted); font-size: 12px;">Approved and submitted team points for the four leading teams.</div>
             </div>
             <button class="modal-close" type="button" data-modal-close aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
         </div>
@@ -738,9 +738,9 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                             <tr>
                                 <th style="width: 64px;">Rank</th>
                                 <th>Team</th>
-                                <th style="text-align: right;">Approved</th>
-                                <th style="text-align: right;">Submitted</th>
-                                <th style="text-align: right;">Total Marks</th>
+                                <th style="text-align: right;">Approved Points</th>
+                                <th style="text-align: right;">Submitted Points</th>
+                                <th style="text-align: right;">Total Points</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -754,13 +754,13 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                         </div>
                                     </td>
                                     <td style="text-align: right; color: #34d399; font-weight: 700;">
-                                        <?= number_format((float)$teamMark['approved_marks'], 2) ?>
+                                        <?= number_format((float)$teamMark['approved_points'], 1) ?>
                                     </td>
                                     <td style="text-align: right; color: #fbbf24; font-weight: 700;">
-                                        <?= number_format((float)$teamMark['submitted_marks'], 2) ?>
+                                        <?= number_format((float)$teamMark['submitted_points'], 1) ?>
                                     </td>
                                     <td style="text-align: right; color: #fff; font-weight: 800; font-size: 15px;">
-                                        <?= number_format((float)$teamMark['total_marks'], 2) ?>
+                                        <?= number_format((float)$teamMark['total_points'], 1) ?>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
