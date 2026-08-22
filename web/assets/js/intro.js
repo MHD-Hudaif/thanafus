@@ -45,14 +45,17 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 2. Live Countdown Timer
+    // 2. Live Countdown Timer / Event Status Handler
     const countdownEl = document.getElementById('countdown');
     if (countdownEl) {
+        const eventStatus = countdownEl.getAttribute('data-event-status') || '';
         const targetDateStr = countdownEl.getAttribute('data-target-date');
-        let targetDate;
-        if (targetDateStr) {
+        
+        if (eventStatus === 'none' || !targetDateStr) {
+            // No active or scheduled event; no countdown timer to run
+        } else {
             const parts = targetDateStr.split(/[-T: ]/);
-            targetDate = new Date(
+            const targetDate = new Date(
                 parseInt(parts[0], 10),
                 parseInt(parts[1], 10) - 1,
                 parseInt(parts[2], 10),
@@ -60,38 +63,61 @@ document.addEventListener('DOMContentLoaded', () => {
                 parseInt(parts[4], 10) || 0,
                 parseInt(parts[5], 10) || 0
             ).getTime();
-        } else {
-            targetDate = new Date('2027-05-04T09:00:00').getTime();
-        }
-        
-        const daysVal = document.getElementById('days-val');
-        const hoursVal = document.getElementById('hours-val');
-        const minutesVal = document.getElementById('minutes-val');
-        const secondsVal = document.getElementById('seconds-val');
-        
-        function updateCountdown() {
-            const now = new Date().getTime();
-            const distance = targetDate - now;
-            
-            if (distance < 0) {
-                countdownEl.className = 'countdown-container-live';
-                countdownEl.innerHTML = `<div class="event-live-banner"><span class="live-dot-pulse"></span><span class="live-text-glow">Event Live!</span></div>`;
-                return;
+
+            if (!isNaN(targetDate)) {
+                const daysVal = document.getElementById('days-val');
+                const hoursVal = document.getElementById('hours-val');
+                const minutesVal = document.getElementById('minutes-val');
+                const secondsVal = document.getElementById('seconds-val');
+                let timerInterval = null;
+                
+                function updateCountdown() {
+                    const now = new Date().getTime();
+                    const distance = targetDate - now;
+                    
+                    if (distance <= 0) {
+                        if (timerInterval) {
+                            clearInterval(timerInterval);
+                            timerInterval = null;
+                        }
+
+                        if (eventStatus === 'active' || eventStatus === 'scheduled') {
+                            countdownEl.className = 'countdown-container-live';
+                            countdownEl.innerHTML = `
+                                <div class="event-live-banner">
+                                    <span class="live-dot-pulse"></span>
+                                    <span class="live-text-glow">Event Live!</span>
+                                </div>
+                            `;
+                        } else {
+                            countdownEl.className = 'no-events-container';
+                            countdownEl.innerHTML = `
+                                <div class="no-events-pill">
+                                    <span class="no-events-icon"><i class="fa-solid fa-calendar-xmark"></i></span>
+                                    <span class="no-events-text">No events active or scheduled</span>
+                                </div>
+                            `;
+                        }
+                        return;
+                    }
+                    
+                    const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+                    const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                    const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                    const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+                    
+                    if (daysVal) daysVal.innerText = String(days).padStart(2, '0');
+                    if (hoursVal) hoursVal.innerText = String(hours).padStart(2, '0');
+                    if (minutesVal) minutesVal.innerText = String(minutes).padStart(2, '0');
+                    if (secondsVal) secondsVal.innerText = String(seconds).padStart(2, '0');
+                }
+                
+                updateCountdown();
+                if (targetDate > new Date().getTime()) {
+                    timerInterval = setInterval(updateCountdown, 1000);
+                }
             }
-            
-            const days = Math.floor(distance / (1000 * 60 * 60 * 24));
-            const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-            const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-            const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-            
-            if (daysVal) daysVal.innerText = String(days).padStart(2, '0');
-            if (hoursVal) hoursVal.innerText = String(hours).padStart(2, '0');
-            if (minutesVal) minutesVal.innerText = String(minutes).padStart(2, '0');
-            if (secondsVal) secondsVal.innerText = String(seconds).padStart(2, '0');
         }
-        
-        updateCountdown();
-        setInterval(updateCountdown, 1000);
     }
 
     // 2.5. Typewriter & Backspace Catchphrase Rotator
@@ -257,7 +283,34 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 6. Live Website Update Checker (OTA)
+    // 6. APK download chooser
+    const apkTrigger = document.getElementById('apk-download-trigger');
+    const apkModal = document.getElementById('apk-download-modal');
+    if (apkTrigger && apkModal) {
+        const closeApkModal = () => {
+            apkModal.classList.remove('is-open');
+            apkModal.setAttribute('aria-hidden', 'true');
+            document.body.classList.remove('apk-modal-open');
+            apkTrigger.focus();
+        };
+
+        apkTrigger.addEventListener('click', () => {
+            apkModal.classList.add('is-open');
+            apkModal.setAttribute('aria-hidden', 'false');
+            document.body.classList.add('apk-modal-open');
+            apkModal.querySelector('.apk-modal__close').focus();
+        });
+
+        apkModal.querySelectorAll('[data-apk-modal-close]').forEach(control => {
+            control.addEventListener('click', closeApkModal);
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && apkModal.classList.contains('is-open')) closeApkModal();
+        });
+    }
+
+    // 7. Live Website Update Checker (OTA)
     const CURRENT_VERSION = '1.0.0';
     let checkInterval = null;
 

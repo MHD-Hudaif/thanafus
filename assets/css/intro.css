@@ -1665,6 +1665,201 @@ footer {
 }
 
 @media (max-width: 768px) {
+        padding: 5.5rem 1.25rem 3rem;
+        min-height: auto;
+        width: 100%;
+        max-width: 100vw;
+        box-sizing: border-box;
+        overflow-x: hidden;
+    }
+
+    .hero-title {
+        font-size: clamp(2rem, 8.5vw, 3.4rem);
+        letter-spacing: -1px;
+    }
+
+    .hero-description {
+        font-size: 1.05rem;
+        padding: 0 0.5rem;
+    }
+
+    .section-header {
+        margin-bottom: 2.5rem;
+        padding: 0 1rem;
+    }
+
+    .section-title {
+        font-size: 2rem;
+    }
+
+    .stats, .scholars, .map-section, .categories-section, .scoring-section, .stages-section, .guidelines-section, .articles-section, .text-block-section {
+        padding: 3.5rem 1.25rem;
+        width: 100%;
+        max-width: 100vw;
+        box-sizing: border-box;
+        overflow-x: hidden;
+    }
+
+    .text-block-grid {
+        grid-template-columns: 1fr;
+        gap: 2rem;
+    }
+
+    .map-card {
+        grid-template-columns: 1fr;
+        padding: 1.25rem;
+        border-radius: 20px;
+        gap: 1.5rem;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .map-iframe-container {
+        min-height: 280px;
+        border-radius: 16px;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .map-info {
+        padding: 0.25rem;
+    }
+
+    .map-info-title {
+        font-size: 1.75rem;
+    }
+
+    .scoring-rules, .guidelines-grid {
+        grid-template-columns: 1fr;
+        gap: 1.25rem;
+    }
+}
+
+@media (max-width: 640px) {
+    .nav-container {
+        padding: 0.85rem 1rem;
+    }
+
+    .hero {
+        padding: 7.2rem 1rem 2.5rem;
+    }
+
+    .hero-subtitle {
+        font-size: 0.85rem;
+        letter-spacing: 2.5px;
+    }
+
+    .hero-title {
+        font-size: clamp(1.85rem, 8vw, 2.6rem);
+    }
+
+    .countdown-container {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.75rem;
+        width: 100%;
+        max-width: 340px;
+        margin: 1.25rem auto;
+    }
+
+    .countdown-box {
+        padding: 1rem 0.75rem;
+        min-width: 0;
+        border-radius: 16px;
+        text-align: center;
+    }
+
+    .countdown-value {
+        font-size: 1.75rem;
+    }
+
+    .countdown-label {
+        font-size: 0.7rem;
+        margin-top: 0.35rem;
+    }
+
+    .hero-actions {
+        flex-direction: column;
+        width: 100%;
+        max-width: 320px;
+        gap: 0.75rem;
+    }
+
+    .btn-primary, .btn-secondary {
+        width: 100%;
+        text-align: center;
+        padding: 0.85rem 1.5rem;
+        font-size: 0.95rem;
+    }
+
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+    }
+
+    .stat-card {
+        padding: 1.5rem 1.25rem;
+        min-height: 200px;
+        border-radius: 24px;
+    }
+
+    .stat-number {
+        font-size: 2.8rem;
+    }
+
+    .stat-name {
+        font-size: 1.2rem;
+    }
+
+    .scholars-grid {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+
+    .scholar-card {
+        height: 350px;
+        border-radius: 20px;
+    }
+
+    .categories-grid, .stages-grid, .articles-grid {
+        grid-template-columns: 1fr;
+        gap: 1.25rem;
+    }
+
+    .category-card, .stage-card, .article-card, .rule-box, .guideline-card {
+        padding: 1.75rem 1.25rem;
+        border-radius: 20px;
+    }
+
+    .scoring-table th, .scoring-table td {
+        padding: 0.85rem 1rem;
+        font-size: 0.85rem;
+    }
+
+    .footer-container {
+        gap: 2.5rem;
+    }
+
+    footer {
+        padding: 3.5rem 1.25rem 2rem;
+    }
+
+    .footer-brand {
+        max-width: 100%;
+    }
+
+    .footer-links-group {
+        gap: 2rem;
+        flex-direction: column;
+    }
+}
+
+/* ── Visibility Utilities ────────────────────────────────────── */
+.mobile-only {
+    display: none;
+}
+
+@media (max-width: 768px) {
     .mobile-only {
         display: inline-flex;
     }
@@ -1718,6 +1913,46 @@ footer {
     text-shadow: 0 4px 25px rgba(16, 185, 129, 0.5);
 }
 
+/* ── No Events Active or Scheduled Banner ───────────────────── */
+.no-events-container {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin: 1.2rem 0;
+    width: auto;
+}
+
+.no-events-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    padding: 14px 34px;
+    border-radius: 9999px;
+    background: radial-gradient(circle at 20% 20%, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.95) 100%);
+    border: 1.5px solid rgba(255, 255, 255, 0.18);
+    box-shadow: 0 12px 35px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    transition: all 0.3s ease;
+}
+
+.no-events-icon {
+    font-size: 1.2rem;
+    color: #f59e0b;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.no-events-text {
+    font-family: 'Plus Jakarta Sans', 'Ubuntu', sans-serif;
+    font-size: clamp(15px, 2.5vw, 19px);
+    font-weight: 700;
+    color: #f1f5f9;
+    letter-spacing: 0.5px;
+}
+
 @keyframes livePulseDot {
     0% {
         transform: scale(0.92);
@@ -1746,8 +1981,6 @@ footer {
 
 /* Professional Mobile App Download Button */
 .btn-app-download {
-    display: inline-flex;
-    align-items: center;
     background: linear-gradient(135deg, #111827 0%, #030712 100%);
     color: #ffffff !important;
     border: 1px solid rgba(255, 255, 255, 0.15);

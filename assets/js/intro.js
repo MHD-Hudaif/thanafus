@@ -45,14 +45,17 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 2. Live Countdown Timer
+    // 2. Live Countdown Timer / Event Status Handler
     const countdownEl = document.getElementById('countdown');
     if (countdownEl) {
+        const eventStatus = countdownEl.getAttribute('data-event-status') || '';
         const targetDateStr = countdownEl.getAttribute('data-target-date');
-        let targetDate;
-        if (targetDateStr) {
+        
+        if (eventStatus === 'none' || !targetDateStr) {
+            // No active or scheduled event; no countdown timer to run
+        } else {
             const parts = targetDateStr.split(/[-T: ]/);
-            targetDate = new Date(
+            const targetDate = new Date(
                 parseInt(parts[0], 10),
                 parseInt(parts[1], 10) - 1,
                 parseInt(parts[2], 10),
@@ -60,68 +63,61 @@ document.addEventListener('DOMContentLoaded', () => {
                 parseInt(parts[4], 10) || 0,
                 parseInt(parts[5], 10) || 0
             ).getTime();
-        } else {
-            targetDate = new Date('2027-05-04T09:00:00').getTime();
-        }
-        
-        const daysVal = document.getElementById('days-val');
-        const hoursVal = document.getElementById('hours-val');
-        const minutesVal = document.getElementById('minutes-val');
-        const secondsVal = document.getElementById('seconds-val');
-        
-        function updateCountdown() {
-            const now = new Date().getTime();
-            const distance = targetDate - now;
-            
-            if (distance < 0) {
-                countdownEl.className = 'countdown-container-live';
-                
-                // Calculate Live Elapsed Program Time (counting UP)
-                const elapsedSeconds = Math.floor((now - targetDate) / 1000);
-                const hrs = Math.floor(elapsedSeconds / 3600);
-                const mins = Math.floor((elapsedSeconds % 3600) / 60);
-                const secs = elapsedSeconds % 60;
 
-                countdownEl.innerHTML = `
-                    <div class="program-timer-box" style="display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 22px 28px; background: rgba(15, 23, 42, 0.72); backdrop-filter: blur(16px); border-radius: 28px; border: 1.5px solid rgba(16, 185, 129, 0.4); box-shadow: 0 16px 40px rgba(0,0,0,0.35), 0 0 30px rgba(16,185,129,0.15); width: 100%; max-width: 520px; margin: 0 auto; text-align: center;">
-                        <div style="font-size: 13px; font-weight: 900; color: #10b981; text-transform: uppercase; letter-spacing: 1.5px; display: flex; align-items: center; gap: 8px;">
-                            <span class="live-dot-pulse" style="background: #10b981; box-shadow: 0 0 10px #10b981; display: inline-block; width: 8px; height: 8px; border-radius: 50%;"></span>
-                            PROGRAM STARTED &bull; LIVE TIMER
-                        </div>
-                        <div style="display: flex; align-items: center; justify-content: center; gap: 12px; font-family: 'Outfit', 'Inter', sans-serif;">
-                            <div style="display: flex; flex-direction: column; align-items: center; background: rgba(255,255,255,0.06); padding: 10px 18px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.1); min-width: 72px;">
-                                <span style="font-size: 32px; font-weight: 900; color: #ffffff; line-height: 1;">${String(hrs).padStart(2, '0')}</span>
-                                <span style="font-size: 10px; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-top: 4px;">Hours</span>
-                            </div>
-                            <span style="font-size: 28px; font-weight: 900; color: #10b981;">:</span>
-                            <div style="display: flex; flex-direction: column; align-items: center; background: rgba(255,255,255,0.06); padding: 10px 18px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.1); min-width: 72px;">
-                                <span style="font-size: 32px; font-weight: 900; color: #ffffff; line-height: 1;">${String(mins).padStart(2, '0')}</span>
-                                <span style="font-size: 10px; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-top: 4px;">Mins</span>
-                            </div>
-                            <span style="font-size: 28px; font-weight: 900; color: #10b981;">:</span>
-                            <div style="display: flex; flex-direction: column; align-items: center; background: rgba(255,255,255,0.06); padding: 10px 18px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.1); min-width: 72px;">
-                                <span style="font-size: 32px; font-weight: 900; color: #10b981; line-height: 1;">${String(secs).padStart(2, '0')}</span>
-                                <span style="font-size: 10px; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-top: 4px;">Secs</span>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                return;
+            if (!isNaN(targetDate)) {
+                const daysVal = document.getElementById('days-val');
+                const hoursVal = document.getElementById('hours-val');
+                const minutesVal = document.getElementById('minutes-val');
+                const secondsVal = document.getElementById('seconds-val');
+                let timerInterval = null;
+                
+                function updateCountdown() {
+                    const now = new Date().getTime();
+                    const distance = targetDate - now;
+                    
+                    if (distance <= 0) {
+                        if (timerInterval) {
+                            clearInterval(timerInterval);
+                            timerInterval = null;
+                        }
+
+                        if (eventStatus === 'active' || eventStatus === 'scheduled') {
+                            countdownEl.className = 'countdown-container-live';
+                            countdownEl.innerHTML = `
+                                <div class="event-live-banner">
+                                    <span class="live-dot-pulse"></span>
+                                    <span class="live-text-glow">Event Live!</span>
+                                </div>
+                            `;
+                        } else {
+                            countdownEl.className = 'no-events-container';
+                            countdownEl.innerHTML = `
+                                <div class="no-events-pill">
+                                    <span class="no-events-icon"><i class="fa-solid fa-calendar-xmark"></i></span>
+                                    <span class="no-events-text">No events active or scheduled</span>
+                                </div>
+                            `;
+                        }
+                        return;
+                    }
+                    
+                    const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+                    const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                    const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                    const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+                    
+                    if (daysVal) daysVal.innerText = String(days).padStart(2, '0');
+                    if (hoursVal) hoursVal.innerText = String(hours).padStart(2, '0');
+                    if (minutesVal) minutesVal.innerText = String(minutes).padStart(2, '0');
+                    if (secondsVal) secondsVal.innerText = String(seconds).padStart(2, '0');
+                }
+                
+                updateCountdown();
+                if (targetDate > new Date().getTime()) {
+                    timerInterval = setInterval(updateCountdown, 1000);
+                }
             }
-            
-            const days = Math.floor(distance / (1000 * 60 * 60 * 24));
-            const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-            const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-            const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-            
-            if (daysVal) daysVal.innerText = String(days).padStart(2, '0');
-            if (hoursVal) hoursVal.innerText = String(hours).padStart(2, '0');
-            if (minutesVal) minutesVal.innerText = String(minutes).padStart(2, '0');
-            if (secondsVal) secondsVal.innerText = String(seconds).padStart(2, '0');
         }
-        
-        updateCountdown();
-        setInterval(updateCountdown, 1000);
     }
 
     // 2.5. Typewriter & Backspace Catchphrase Rotator

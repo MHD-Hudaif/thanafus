@@ -21,22 +21,78 @@ try {
         $_SESSION['from_app'] = true;
         session_write_close();
     }
-    $event = tv_active_event();
+    $event = null;
     $eventStats = tv_stats();
     $teams = teams();
     $schedule = schedule_items();
     $workingCommittee = working_committee();
     $venues = venues_data();
     
+    // Determine active or scheduled event status
+    $activeEvent = null;
+    $hasActiveOrScheduled = false;
+    $eventState = 'none'; // 'live', 'scheduled', 'none'
+    $nowTime = time();
+
+    if (isset($GLOBALS['musabaqa_pdo'])) {
+        try {
+            $stmtAct = $GLOBALS['musabaqa_pdo']->query("
+                SELECT * FROM musabaqa_events
+                WHERE status IN ('active', 'scheduled', 'upcoming')
+                ORDER BY CASE WHEN status = 'active' THEN 1 ELSE 2 END, COALESCE(start_date, '1900-01-01') ASC, id DESC
+                LIMIT 1
+            ");
+            $activeEvent = $stmtAct->fetch(PDO::FETCH_ASSOC) ?: null;
+        } catch (\Throwable $e) {}
+    }
+
+    if (!$activeEvent) {
+        $cand = tv_active_event();
+        if ($cand && in_array(strtolower(trim((string)($cand['status'] ?? ''))), ['active', 'scheduled', 'upcoming'], true)) {
+            $activeEvent = $cand;
+        }
+    }
+
+    if ($activeEvent) {
+        $st = strtolower(trim((string)($activeEvent['status'] ?? '')));
+        $startTs = !empty($activeEvent['start_date']) ? strtotime((string)$activeEvent['start_date']) : false;
+        $endTs = !empty($activeEvent['end_date']) ? strtotime((string)$activeEvent['end_date']) : false;
+
+        if ($st === 'active') {
+            if ($startTs !== false && $startTs > $nowTime) {
+                $eventState = 'scheduled';
+                $hasActiveOrScheduled = true;
+            } elseif ($endTs !== false && $endTs < $nowTime) {
+                $eventState = 'none';
+                $hasActiveOrScheduled = false;
+            } else {
+                $eventState = 'live';
+                $hasActiveOrScheduled = true;
+            }
+        } elseif (in_array($st, ['scheduled', 'upcoming'], true)) {
+            if ($startTs !== false && $startTs > $nowTime) {
+                $eventState = 'scheduled';
+                $hasActiveOrScheduled = true;
+            } elseif ($endTs === false || $endTs >= $nowTime) {
+                $eventState = 'live';
+                $hasActiveOrScheduled = true;
+            } else {
+                $eventState = 'none';
+                $hasActiveOrScheduled = false;
+            }
+        }
+    }
+
+    $event = $hasActiveOrScheduled ? $activeEvent : null;
     $eventTitle = trim((string)($event['title'] ?? 'Kauzariyya Musabaqa 2026-27'));
     $eventTitle = $eventTitle !== '' ? $eventTitle : 'Kauzariyya Musabaqa 2026-27';
     
-    $eventStart = !empty($event['start_date']) ? str_replace(' ', 'T', (string)$event['start_date']) : '2027-05-04T09:00:00';
+    $eventStart = !empty($event['start_date']) ? str_replace(' ', 'T', (string)$event['start_date']) : '';
     $eventDateFormatted = !empty($event['start_date']) 
         ? date('d F Y', strtotime((string)$event['start_date'])) 
-        : '4 - 5 May 2027';
+        : '';
 
-    $eventId = tv_active_event_id();
+    $eventId = $hasActiveOrScheduled ? (int)($event['id'] ?? 0) : 0;
     $candidatesCount = '800+';
     if ($eventId > 0 && isset($GLOBALS['musabaqa_pdo'])) {
         try {
@@ -55,8 +111,9 @@ try {
     $divisionsCount = '3';
 } catch (\Throwable $e) {
     $eventTitle = 'Kauzariyya Musabaqa 2026-27';
-    $eventStart = '2027-05-04T09:00:00';
-    $eventDateFormatted = '4 - 5 May 2027';
+    $eventStart = '';
+    $eventDateFormatted = '';
+    $eventState = 'none';
     $candidatesCount = '800+';
     $teamsCount = '4';
     $programsText = '45';
@@ -130,8 +187,16 @@ try {
                 <span id="typewriter-text" style="color: var(--brand-blue); font-weight: 700; display: inline-block;"></span>
             </p>
             
-            <!-- Countdown module -->
-            <div class="countdown-container glass-timer" id="countdown" data-target-date="<?= htmlspecialchars($eventStart) ?>">
+            <!-- Countdown / Event status module -->
+            <?php if ($eventState === 'live'): ?>
+            <div class="countdown-container-live" id="countdown" data-event-status="active">
+                <div class="event-live-banner">
+                    <span class="live-dot-pulse"></span>
+                    <span class="live-text-glow">Event Live!</span>
+                </div>
+            </div>
+            <?php elseif ($eventState === 'scheduled' && !empty($eventStart)): ?>
+            <div class="countdown-container glass-timer" id="countdown" data-target-date="<?= htmlspecialchars($eventStart) ?>" data-event-status="scheduled">
                 <div class="countdown-box">
                     <div class="countdown-value" id="days-val">00</div>
                     <div class="countdown-label">Days</div>
@@ -149,6 +214,14 @@ try {
                     <div class="countdown-label">Secs</div>
                 </div>
             </div>
+            <?php else: ?>
+            <div class="no-events-container" id="countdown" data-event-status="none">
+                <div class="no-events-pill">
+                    <span class="no-events-icon"><i class="fa-solid fa-calendar-xmark"></i></span>
+                    <span class="no-events-text">No events active or scheduled</span>
+                </div>
+            </div>
+            <?php endif; ?>
 
             <!-- CTA Actions -->
             <div class="hero-actions">
@@ -164,7 +237,7 @@ try {
             </div>
             
             <div style="margin-top: 2rem; font-size: 0.9rem; color: var(--brand-gold); font-weight: 700; letter-spacing: 2px;">
-                <i class="fa-solid fa-location-dot" style="margin-right: 6px;"></i> Edathala, Aluva, Kerala | <?= htmlspecialchars($eventDateFormatted) ?>
+                <i class="fa-solid fa-location-dot" style="margin-right: 6px;"></i> Edathala, Aluva, Kerala<?= !empty($eventDateFormatted) ? ' | ' . htmlspecialchars($eventDateFormatted) : '' ?>
             </div>
         </div>
     </section>
